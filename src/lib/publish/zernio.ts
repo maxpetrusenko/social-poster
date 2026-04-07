@@ -1,5 +1,5 @@
 const ZERNIO_API_KEY = process.env.ZERNIO_API_KEY ?? "";
-const ZERNIO_BASE_URL = "https://app.zernio.com/api/v1";
+const ZERNIO_BASE_URL = "https://zernio.com/api/v1";
 
 const ACCOUNT_IDS: Record<string, string | undefined> = {
   twitter: process.env.ZERNIO_TWITTER_ACCOUNT_ID,
@@ -33,8 +33,13 @@ export async function publishToZernio(opts: {
   }
 
   try {
-    const body: Record<string, unknown> = { accountId, content, publishNow: true };
-    if (mediaUrl) body.mediaUrls = [mediaUrl];
+    const body: Record<string, unknown> = {
+      content,
+      platforms: [{ platform, accountId }],
+    };
+    if (mediaUrl) {
+      body.mediaItems = [{ type: "image", url: mediaUrl }];
+    }
 
     const res = await fetch(`${ZERNIO_BASE_URL}/posts`, {
       method: "POST",
@@ -45,11 +50,27 @@ export async function publishToZernio(opts: {
       body: JSON.stringify(body),
     });
 
-    const data = await res.json();
-    if (!res.ok) {
-      return { platform, success: false, error: data?.message ?? data?.error ?? `HTTP ${res.status}` };
+    const text = await res.text();
+    let data: Record<string, unknown>;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      return { platform, success: false, error: `Non-JSON response (${res.status}): ${text.slice(0, 200)}` };
     }
-    return { platform, success: true, postId: data?.id ?? data?.postId, postUrl: data?.url ?? data?.postUrl };
+
+    if (!res.ok) {
+      return {
+        platform,
+        success: false,
+        error: (data?.message ?? data?.error ?? `HTTP ${res.status}`) as string,
+      };
+    }
+    return {
+      platform,
+      success: true,
+      postId: (data?.id ?? data?.postId) as string | undefined,
+      postUrl: (data?.url ?? data?.postUrl) as string | undefined,
+    };
   } catch (err) {
     return { platform, success: false, error: err instanceof Error ? err.message : String(err) };
   }
