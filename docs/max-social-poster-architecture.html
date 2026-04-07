@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Max Social Poster — Architecture</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro', 'Inter', system-ui, sans-serif; background: #0a0e17; color: #e2e8f0; min-height: 100vh; padding: 24px; }
+
+  .header { text-align: center; margin-bottom: 32px; }
+  .header h1 { font-size: 28px; font-weight: 700; background: linear-gradient(135deg, #60a5fa, #a78bfa, #f472b6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .header p { color: #94a3b8; font-size: 14px; margin-top: 4px; }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 8px; justify-content: center; margin-bottom: 24px; flex-wrap: wrap; }
+  .tab { padding: 8px 18px; border-radius: 8px; border: 1px solid #1e293b; background: #0f172a; color: #94a3b8; cursor: pointer; font-size: 13px; font-weight: 500; transition: all 0.2s; }
+  .tab:hover { border-color: #334155; color: #e2e8f0; }
+  .tab.active { background: #1e293b; color: #60a5fa; border-color: #3b82f6; }
+
+  .view { display: none; }
+  .view.active { display: block; }
+
+  /* System diagram */
+  .system-grid { display: grid; grid-template-columns: 1fr; gap: 16px; max-width: 1100px; margin: 0 auto; }
+
+  .layer { border-radius: 12px; border: 1px solid #1e293b; padding: 20px; position: relative; }
+  .layer-label { position: absolute; top: -10px; left: 16px; background: #0a0e17; padding: 0 8px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
+
+  .layer.ingest { border-color: #2563eb33; }
+  .layer.ingest .layer-label { color: #60a5fa; }
+  .layer.process { border-color: #7c3aed33; }
+  .layer.process .layer-label { color: #a78bfa; }
+  .layer.workflows { border-color: #059669; }
+  .layer.workflows .layer-label { color: #34d399; }
+  .layer.output { border-color: #ea580c33; }
+  .layer.output .layer-label { color: #fb923c; }
+
+  .feed-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; margin-top: 8px; }
+  .feed-chip { background: #1e293b; border-radius: 6px; padding: 6px 10px; font-size: 11px; color: #94a3b8; display: flex; align-items: center; gap: 6px; }
+  .feed-chip .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .feed-chip .dot.blog { background: #3b82f6; }
+  .feed-chip .dot.news { background: #f59e0b; }
+  .feed-chip .dot.social { background: #ec4899; }
+  .feed-chip .dot.paper { background: #8b5cf6; }
+
+  .flow-arrow { text-align: center; padding: 6px 0; color: #334155; font-size: 20px; }
+
+  /* Workflow cards */
+  .wf-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; margin-top: 8px; }
+  .wf-card { background: #0f172a; border-radius: 10px; padding: 16px; border: 1px solid #1e293b; transition: border-color 0.2s; }
+  .wf-card:hover { border-color: #334155; }
+  .wf-card h3 { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+  .wf-card .wf-meta { font-size: 11px; color: #64748b; margin-bottom: 8px; }
+  .wf-card .wf-desc { font-size: 12px; color: #94a3b8; line-height: 1.5; }
+  .wf-card .wf-platforms { display: flex; gap: 4px; margin-top: 8px; flex-wrap: wrap; }
+  .wf-card .plat { font-size: 10px; padding: 2px 8px; border-radius: 4px; font-weight: 500; }
+  .plat.x { background: #1d4ed822; color: #60a5fa; }
+  .plat.tt { background: #ec489922; color: #f472b6; }
+  .plat.ig { background: #f59e0b22; color: #fbbf24; }
+  .plat.li { background: #0ea5e922; color: #22d3ee; }
+  .plat.fb { background: #3b82f622; color: #93c5fd; }
+  .plat.rd { background: #f9731622; color: #fb923c; }
+
+  .wf1 h3 { color: #60a5fa; }
+  .wf2 h3 { color: #f472b6; }
+  .wf3 h3 { color: #34d399; }
+  .wf4 h3 { color: #fbbf24; }
+
+  /* Process boxes */
+  .proc-row { display: flex; gap: 12px; margin-top: 8px; flex-wrap: wrap; }
+  .proc-box { background: #0f172a; border-radius: 8px; padding: 12px 16px; border: 1px solid #1e293b; flex: 1; min-width: 180px; }
+  .proc-box h4 { font-size: 12px; font-weight: 600; color: #a78bfa; margin-bottom: 4px; }
+  .proc-box p { font-size: 11px; color: #94a3b8; line-height: 1.5; }
+
+  /* Output section */
+  .output-row { display: flex; gap: 12px; margin-top: 8px; flex-wrap: wrap; align-items: center; }
+  .out-box { background: #0f172a; border-radius: 8px; padding: 12px 16px; border: 1px solid #1e293b; flex: 1; min-width: 150px; text-align: center; }
+  .out-box .out-icon { font-size: 24px; margin-bottom: 4px; }
+  .out-box .out-label { font-size: 12px; color: #fb923c; font-weight: 600; }
+  .out-box .out-detail { font-size: 10px; color: #64748b; margin-top: 2px; }
+
+  /* Folder view */
+  .folder-tree { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 12px; line-height: 1.8; background: #0f172a; border-radius: 10px; padding: 20px; border: 1px solid #1e293b; max-width: 700px; margin: 0 auto; }
+  .folder-tree .dir { color: #60a5fa; }
+  .folder-tree .file { color: #94a3b8; }
+  .folder-tree .desc { color: #475569; font-style: italic; }
+  .folder-tree .highlight { color: #34d399; }
+
+  /* Schedule view */
+  .sched-table { width: 100%; max-width: 800px; margin: 0 auto; border-collapse: collapse; }
+  .sched-table th { text-align: left; padding: 10px 12px; font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #1e293b; }
+  .sched-table td { padding: 10px 12px; font-size: 13px; border-bottom: 1px solid #1e293b22; }
+  .sched-table tr:hover td { background: #1e293b22; }
+  .time-badge { background: #1e293b; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-family: monospace; }
+  .freq-badge { font-size: 11px; padding: 2px 8px; border-radius: 4px; }
+  .freq-badge.daily { background: #059669; color: #d1fae5; }
+  .freq-badge.twice { background: #7c3aed22; color: #a78bfa; }
+
+  /* Budget view */
+  .budget-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; max-width: 900px; margin: 0 auto; }
+  .budget-card { background: #0f172a; border-radius: 10px; padding: 20px; border: 1px solid #1e293b; text-align: center; }
+  .budget-card .big-num { font-size: 36px; font-weight: 700; }
+  .budget-card .big-label { font-size: 12px; color: #64748b; margin-top: 4px; }
+  .budget-card .sub { font-size: 11px; color: #475569; margin-top: 8px; }
+  .num-blue { color: #60a5fa; }
+  .num-green { color: #34d399; }
+  .num-orange { color: #fb923c; }
+  .num-pink { color: #f472b6; }
+
+  .bar-container { margin-top: 12px; background: #1e293b; border-radius: 4px; height: 8px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 4px; transition: width 0.5s; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Max Social Poster</h1>
+  <p>Unified automated posting system — 4 workflows, 8 platforms, 1 pipeline</p>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="showView('system')">System Diagram</div>
+  <div class="tab" onclick="showView('workflows')">Workflows</div>
+  <div class="tab" onclick="showView('folders')">Folder Structure</div>
+  <div class="tab" onclick="showView('schedule')">Schedule</div>
+  <div class="tab" onclick="showView('budget')">Post Budget</div>
+</div>
+
+<!-- SYSTEM DIAGRAM -->
+<div class="view active" id="view-system">
+<div class="system-grid">
+
+  <div class="layer ingest">
+    <div class="layer-label">1 · INGEST — 50-100 RSS/API Feeds (single bulk pull)</div>
+    <div class="feed-grid">
+      <div class="feed-chip"><span class="dot blog"></span>OpenAI Blog</div>
+      <div class="feed-chip"><span class="dot blog"></span>Anthropic Blog</div>
+      <div class="feed-chip"><span class="dot blog"></span>Google AI Blog</div>
+      <div class="feed-chip"><span class="dot blog"></span>HuggingFace Blog</div>
+      <div class="feed-chip"><span class="dot blog"></span>Meta AI Blog</div>
+      <div class="feed-chip"><span class="dot news"></span>TechCrunch AI</div>
+      <div class="feed-chip"><span class="dot news"></span>The Verge AI</div>
+      <div class="feed-chip"><span class="dot news"></span>Ars Technica AI</div>
+      <div class="feed-chip"><span class="dot news"></span>VentureBeat AI</div>
+      <div class="feed-chip"><span class="dot news"></span>Hacker News</div>
+      <div class="feed-chip"><span class="dot paper"></span>ArXiv cs.AI</div>
+      <div class="feed-chip"><span class="dot paper"></span>ArXiv cs.CL</div>
+      <div class="feed-chip"><span class="dot paper"></span>ArXiv cs.LG</div>
+      <div class="feed-chip"><span class="dot social"></span>@kimmonismus</div>
+      <div class="feed-chip"><span class="dot social"></span>@karpathy</div>
+      <div class="feed-chip"><span class="dot social"></span>r/MachineLearning</div>
+      <div class="feed-chip"><span class="dot social"></span>r/LocalLLaMA</div>
+      <div class="feed-chip"><span class="dot news"></span>AI Newsletter feeds</div>
+      <div class="feed-chip"><span class="dot news"></span>+30-80 more...</div>
+    </div>
+  </div>
+
+  <div class="flow-arrow">▼</div>
+
+  <div class="layer process">
+    <div class="layer-label">2 · PROCESS — Dedup + Rank + Signal Detection</div>
+    <div class="proc-row">
+      <div class="proc-box">
+        <h4>Dedup Engine</h4>
+        <p>Normalize URLs, fuzzy-match titles (Levenshtein). If same story appears in 3+ feeds → <strong style="color:#34d399">popularity signal</strong>. Merge into single canonical item.</p>
+      </div>
+      <div class="proc-box">
+        <h4>Rank & Score</h4>
+        <p>Score = (source_count × 3) + recency_bonus + keyword_match + engagement_proxy. Top N candidates per workflow. Configurable thresholds.</p>
+      </div>
+      <div class="proc-box">
+        <h4>Content Router</h4>
+        <p>Route items to workflows: breaking news → AI News Repost. Visual/demo → TikTok. Opinion/hot-take → Engagement Post. Lifestyle/behind-scenes → IG Story.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="flow-arrow">▼</div>
+
+  <div class="layer workflows">
+    <div class="layer-label">3 · WORKFLOWS — 4 Automated Pipelines</div>
+    <div class="wf-grid">
+      <div class="wf-card wf1">
+        <h3>AI News Repost</h3>
+        <div class="wf-meta">2×/day · Top trending AI stories</div>
+        <div class="wf-desc">Bulk RSS → dedup → top stories by cross-feed repetition → generate hook + commentary → quote-style post with link</div>
+        <div class="wf-platforms">
+          <span class="plat x">X</span>
+          <span class="plat li">LinkedIn</span>
+          <span class="plat fb">Facebook</span>
+          <span class="plat rd">Reddit</span>
+        </div>
+      </div>
+      <div class="wf-card wf2">
+        <h3>TikTok AI News</h3>
+        <div class="wf-meta">1×/day · Video format AI explainer</div>
+        <div class="wf-desc">Top visual/demo story → auto-generate script → TTS + screen recording or template video → upload with hooks + captions</div>
+        <div class="wf-platforms">
+          <span class="plat tt">TikTok</span>
+          <span class="plat ig">IG Reels</span>
+        </div>
+      </div>
+      <div class="wf-card wf3">
+        <h3>Daily Engagement Post</h3>
+        <div class="wf-meta">1×/day · Hot take or question</div>
+        <div class="wf-desc">Pick trending topic → craft contrarian take or open question → max engagement format per platform → track replies</div>
+        <div class="wf-platforms">
+          <span class="plat x">X</span>
+          <span class="plat li">LinkedIn</span>
+        </div>
+      </div>
+      <div class="wf-card wf4">
+        <h3>Daily IG Story</h3>
+        <div class="wf-meta">1×/day · Behind-the-scenes / build log</div>
+        <div class="wf-desc">Structured template: "What I'm building" + screenshot/photo + 1-liner insight. Low effort, high authenticity signal.</div>
+        <div class="wf-platforms">
+          <span class="plat ig">IG Story</span>
+          <span class="plat fb">FB Story</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="flow-arrow">▼</div>
+
+  <div class="layer output">
+    <div class="layer-label">4 · OUTPUT — Zernio API + Dashboard</div>
+    <div class="output-row">
+      <div class="out-box">
+        <div class="out-icon">📡</div>
+        <div class="out-label">Zernio/Late API</div>
+        <div class="out-detail">POST /v1/posts → 8 platforms</div>
+      </div>
+      <div class="out-box">
+        <div class="out-icon">📊</div>
+        <div class="out-label">maxpetrusenko.com</div>
+        <div class="out-detail">/socialmedia live dashboard</div>
+      </div>
+      <div class="out-box">
+        <div class="out-icon">📋</div>
+        <div class="out-label">Dedup Store</div>
+        <div class="out-detail">posted_urls.json — no repeats</div>
+      </div>
+      <div class="out-box">
+        <div class="out-icon">⏰</div>
+        <div class="out-label">Scheduler</div>
+        <div class="out-detail">Cowork scheduled tasks</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<!-- WORKFLOWS DETAIL -->
+<div class="view" id="view-workflows">
+<div style="max-width:900px; margin:0 auto;">
+
+  <div class="wf-card wf1" style="margin-bottom:16px; padding:24px;">
+    <h3 style="font-size:18px;">1. AI News Repost</h3>
+    <div class="wf-meta">Schedule: 9:00 AM + 5:00 PM UTC · Platforms: X, LinkedIn, Facebook, Reddit</div>
+    <div class="wf-desc" style="font-size:13px; margin-top:12px;">
+      <strong style="color:#60a5fa;">How it works:</strong><br>
+      → Pull 50-100 RSS feeds in one batch (feedparser, ~2s total)<br>
+      → Normalize & dedup: same URL or title similarity > 0.85 → merge<br>
+      → Score: stories appearing in 3+ feeds get 3× boost (virality signal)<br>
+      → Pick top 2 stories → generate tweet: hook + insight + link<br>
+      → Post via Zernio API to X account <code>petrusenko_max</code><br>
+      → Cross-post adapted versions to LinkedIn, Facebook, Reddit<br>
+      → Log URL to dedup store to prevent re-posting
+    </div>
+    <div class="wf-platforms" style="margin-top:12px;">
+      <span class="plat x">X</span><span class="plat li">LinkedIn</span><span class="plat fb">Facebook</span><span class="plat rd">Reddit</span>
+    </div>
+  </div>
+
+  <div class="wf-card wf2" style="margin-bottom:16px; padding:24px;">
+    <h3 style="font-size:18px;">2. TikTok AI News</h3>
+    <div class="wf-meta">Schedule: 12:00 PM UTC · Platforms: TikTok, IG Reels</div>
+    <div class="wf-desc" style="font-size:13px; margin-top:12px;">
+      <strong style="color:#f472b6;">How it works:</strong><br>
+      → Same feed pipeline, but filter for stories with visual demos, launches, or wow-factor<br>
+      → Generate 30-60s video script with hook-in-2-seconds format<br>
+      → Use existing video generation pipeline (TTS + template) or screen recording<br>
+      → Upload via Zernio to TikTok + Instagram Reels<br>
+      → Hashtags auto-generated from topic keywords
+    </div>
+    <div class="wf-platforms" style="margin-top:12px;">
+      <span class="plat tt">TikTok</span><span class="plat ig">IG Reels</span>
+    </div>
+  </div>
+
+  <div class="wf-card wf3" style="margin-bottom:16px; padding:24px;">
+    <h3 style="font-size:18px;">3. Daily Engagement Post</h3>
+    <div class="wf-meta">Schedule: 2:00 PM UTC · Platforms: X, LinkedIn</div>
+    <div class="wf-desc" style="font-size:13px; margin-top:12px;">
+      <strong style="color:#34d399;">How it works:</strong><br>
+      → Pick hottest topic from today's feed (highest cross-feed score)<br>
+      → Generate contrarian take, hot question, or "unpopular opinion" format<br>
+      → Optimized for replies/engagement, not clicks<br>
+      → Post to X + LinkedIn with platform-specific formatting<br>
+      → No links — pure engagement bait (in a good way)
+    </div>
+    <div class="wf-platforms" style="margin-top:12px;">
+      <span class="plat x">X</span><span class="plat li">LinkedIn</span>
+    </div>
+  </div>
+
+  <div class="wf-card wf4" style="margin-bottom:16px; padding:24px;">
+    <h3 style="font-size:18px;">4. Daily IG Story</h3>
+    <div class="wf-meta">Schedule: 7:00 PM UTC · Platforms: IG Story, FB Story</div>
+    <div class="wf-desc" style="font-size:13px; margin-top:12px;">
+      <strong style="color:#fbbf24;">How it works:</strong><br>
+      → Structured template (consistent brand):<br>
+      &nbsp;&nbsp;• Top bar: "Day N of building [project]"<br>
+      &nbsp;&nbsp;• Screenshot or photo of work-in-progress<br>
+      &nbsp;&nbsp;• 1-liner insight or "TIL" takeaway<br>
+      &nbsp;&nbsp;• Poll or question sticker for engagement<br>
+      → Can be auto-generated from git commits or manual photo drop<br>
+      → Post via Zernio Stories API
+    </div>
+    <div class="wf-platforms" style="margin-top:12px;">
+      <span class="plat ig">IG Story</span><span class="plat fb">FB Story</span>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<!-- FOLDER STRUCTURE -->
+<div class="view" id="view-folders">
+<div class="folder-tree">
+<span class="dir">Projects/skills/skills/max-social-poster/</span> <span class="desc">← parent skill</span>
+├── <span class="file">SKILL.md</span> <span class="desc">← orchestrator skill (routes to sub-workflows)</span>
+├── <span class="dir">rules/</span>
+│   ├── <span class="file">feeds.json</span> <span class="desc">← 50-100 RSS feed URLs + metadata</span>
+│   ├── <span class="file">dedup-store.json</span> <span class="desc">← posted URLs (no repeats)</span>
+│   ├── <span class="file">scoring.md</span> <span class="desc">← ranking algorithm docs</span>
+│   └── <span class="file">platform-formatting.md</span> <span class="desc">← from existing social-media.md</span>
+├── <span class="dir highlight">workflows/</span>
+│   ├── <span class="dir">ai-news-repost/</span>
+│   │   ├── <span class="file">SKILL.md</span> <span class="desc">← AI news → X, LinkedIn, FB, Reddit</span>
+│   │   └── <span class="file">run.py</span> <span class="desc">← feed pull → dedup → rank → post</span>
+│   ├── <span class="dir">tiktok-ai-news/</span>
+│   │   ├── <span class="file">SKILL.md</span> <span class="desc">← visual AI news → TikTok, IG Reels</span>
+│   │   └── <span class="file">run.py</span> <span class="desc">← script gen → video → upload</span>
+│   ├── <span class="dir">daily-engagement/</span>
+│   │   ├── <span class="file">SKILL.md</span> <span class="desc">← hot takes / questions → X, LinkedIn</span>
+│   │   └── <span class="file">run.py</span> <span class="desc">← topic pick → craft → post</span>
+│   └── <span class="dir">daily-ig-story/</span>
+│       ├── <span class="file">SKILL.md</span> <span class="desc">← build log → IG Story, FB Story</span>
+│       └── <span class="file">run.py</span> <span class="desc">← template → image → upload</span>
+├── <span class="dir">scripts/</span>
+│   ├── <span class="file">feed_engine.py</span> <span class="desc">← shared: bulk RSS pull + dedup + rank</span>
+│   ├── <span class="file">zernio_client.py</span> <span class="desc">← shared: Zernio API wrapper</span>
+│   └── <span class="file">max_social_publish.py</span> <span class="desc">← existing publisher script</span>
+└── <span class="dir">assets/</span>
+    ├── <span class="file">ig-story-template.png</span> <span class="desc">← IG story brand template</span>
+    └── <span class="file">tiktok-overlay.png</span> <span class="desc">← TikTok text overlay template</span>
+
+<br>
+<span class="desc">── Also updates: ──</span>
+<span class="dir">maxpetrusenko.com/nextjs/app/socialmedia/</span>
+├── <span class="file">page.tsx</span> <span class="desc">← add 4 workflow cards to dashboard</span>
+└── <span class="file">SocialDashboard.tsx</span> <span class="desc">← live feed of automated posts</span>
+</div>
+</div>
+
+<!-- SCHEDULE -->
+<div class="view" id="view-schedule">
+<table class="sched-table">
+  <thead>
+    <tr><th>Time (UTC)</th><th>Workflow</th><th>Platforms</th><th>Frequency</th><th>Posts/Day</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><span class="time-badge">09:00</span></td>
+      <td style="color:#60a5fa;">AI News Repost (AM)</td>
+      <td><span class="plat x">X</span> <span class="plat li">LI</span> <span class="plat fb">FB</span> <span class="plat rd">RD</span></td>
+      <td><span class="freq-badge daily">Daily</span></td>
+      <td>1 story × 4 platforms</td>
+    </tr>
+    <tr>
+      <td><span class="time-badge">12:00</span></td>
+      <td style="color:#f472b6;">TikTok AI News</td>
+      <td><span class="plat tt">TT</span> <span class="plat ig">IG Reels</span></td>
+      <td><span class="freq-badge daily">Daily</span></td>
+      <td>1 video × 2 platforms</td>
+    </tr>
+    <tr>
+      <td><span class="time-badge">14:00</span></td>
+      <td style="color:#34d399;">Daily Engagement</td>
+      <td><span class="plat x">X</span> <span class="plat li">LI</span></td>
+      <td><span class="freq-badge daily">Daily</span></td>
+      <td>1 post × 2 platforms</td>
+    </tr>
+    <tr>
+      <td><span class="time-badge">17:00</span></td>
+      <td style="color:#60a5fa;">AI News Repost (PM)</td>
+      <td><span class="plat x">X</span> <span class="plat li">LI</span> <span class="plat fb">FB</span> <span class="plat rd">RD</span></td>
+      <td><span class="freq-badge daily">Daily</span></td>
+      <td>1 story × 4 platforms</td>
+    </tr>
+    <tr>
+      <td><span class="time-badge">19:00</span></td>
+      <td style="color:#fbbf24;">Daily IG Story</td>
+      <td><span class="plat ig">IG</span> <span class="plat fb">FB</span></td>
+      <td><span class="freq-badge daily">Daily</span></td>
+      <td>1 story × 2 platforms</td>
+    </tr>
+  </tbody>
+</table>
+<p style="text-align:center; color:#475569; font-size:12px; margin-top:16px;">Total: 5 content pieces/day → ~14 platform posts/day (well within Tier 2 limit of 5/day/account)</p>
+</div>
+
+<!-- BUDGET -->
+<div class="view" id="view-budget">
+<div class="budget-grid">
+  <div class="budget-card">
+    <div class="big-num num-blue">5</div>
+    <div class="big-label">Content pieces / day</div>
+    <div class="sub">2 news + 1 TikTok + 1 engagement + 1 story</div>
+  </div>
+  <div class="budget-card">
+    <div class="big-num num-green">~14</div>
+    <div class="big-label">Platform posts / day</div>
+    <div class="sub">Cross-posted across 8 connected accounts</div>
+    <div class="bar-container"><div class="bar-fill" style="width:56%; background: linear-gradient(90deg, #34d399, #059669);"></div></div>
+    <div class="sub" style="margin-top:4px;">56% of X daily limit (5/day/account × 5 workflows ≈ used ~3/account)</div>
+  </div>
+  <div class="budget-card">
+    <div class="big-num num-orange">150</div>
+    <div class="big-label">Posts / month</div>
+    <div class="sub">5 pieces × 30 days = 150 unique contents</div>
+  </div>
+  <div class="budget-card">
+    <div class="big-num num-pink">~420</div>
+    <div class="big-label">Platform posts / month</div>
+    <div class="sub">14/day × 30 = 420 cross-platform deliveries</div>
+    <div class="bar-container"><div class="bar-fill" style="width:100%; background: linear-gradient(90deg, #f472b6, #ec4899);"></div></div>
+    <div class="sub" style="margin-top:4px;">AppSumo Tier 2: Unlimited uploads ✓</div>
+  </div>
+</div>
+
+<div style="max-width:600px; margin: 24px auto 0; padding: 16px; background: #0f172a; border-radius: 10px; border: 1px solid #1e293b;">
+  <h4 style="color: #34d399; font-size: 13px; margin-bottom: 8px;">Rate Limit Safety</h4>
+  <div style="font-size: 12px; color: #94a3b8; line-height: 1.7;">
+    <strong>Zernio Tier 2:</strong> 5 posts/day/account, Unlimited uploads → ✅ safe<br>
+    <strong>API Rate:</strong> 120 req/min (Build plan) → ✅ never hit (we do ~15 calls/day)<br>
+    <strong>RSS Reads:</strong> 50-100 feeds × 1 pull/day = 50-100 HTTP GETs → ✅ trivial<br>
+    <strong>Dedup Store:</strong> Local JSON, ~1KB/day growth → ✅ years of headroom
+  </div>
+</div>
+</div>
+
+<script>
+function showView(id) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('view-' + id).classList.add('active');
+  event.target.classList.add('active');
+}
+</script>
+
+</body>
+</html>

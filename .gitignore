@@ -1,0 +1,15 @@
+node_modules/
+.next/
+dist/
+data/
+.env
+.env.local
+*.db
+*.db-shm
+*.db-wal
+.DS_Store
+.codex
+.claude
+.cursor
+CLAUDE.md
+drizzle/
