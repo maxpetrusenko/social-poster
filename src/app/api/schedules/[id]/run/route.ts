@@ -1,8 +1,9 @@
 import { db } from "@/db";
-import { pipelineRuns, schedules } from "@/db/schema";
+import { schedules } from "@/db/schema";
 import { requireApiSession } from "@/lib/auth";
 import { eq } from "drizzle-orm";
-import crypto from "node:crypto";
+import { runAvatarVideoJob } from "@/lib/pipeline/runners/avatar-video";
+import { runImagePostJob } from "@/lib/pipeline/runners/image-post";
 
 export async function POST(
   request: Request,
@@ -13,8 +14,6 @@ export async function POST(
 
   try {
     const { id: scheduleId } = await params;
-
-    // Verify schedule exists
     const schedule = await db.query.schedules.findFirst({
       where: eq(schedules.id, scheduleId),
     });
@@ -23,26 +22,19 @@ export async function POST(
       return Response.json({ error: "Schedule not found" }, { status: 404 });
     }
 
-    const runId = crypto.randomUUID();
-    const now = new Date();
+    // Fire job async (don't block the response)
+    const jobPromise =
+      schedule.jobType === "avatar_video"
+        ? runAvatarVideoJob(schedule)
+        : schedule.jobType === "image_post"
+          ? runImagePostJob(schedule)
+          : Promise.reject(new Error(`Unknown job type: ${schedule.jobType}`));
 
-    // Create a new pipeline run with trigger="manual" and status="running"
-    const result = await db
-      .insert(pipelineRuns)
-      .values({
-        id: runId,
-        scheduleId,
-        postId: null,
-        trigger: "manual",
-        status: "running",
-        steps: [],
-        startedAt: now,
-      })
-      .returning();
+    jobPromise.catch((err) =>
+      console.error(`[api] manual run failed for ${scheduleId}:`, err)
+    );
 
-    // TODO: Wire up actual job execution (queue to worker, etc.)
-
-    return Response.json(result[0], { status: 201 });
+    return Response.json({ message: "Job started", scheduleId, jobType: schedule.jobType }, { status: 202 });
   } catch (error) {
     console.error("POST /api/schedules/[id]/run error:", error);
     return Response.json({ error: "Internal server error" }, { status: 500 });
