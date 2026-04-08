@@ -29,6 +29,7 @@ RUN apt-get update \
 
 RUN mkdir -p /app/data
 
+COPY --from=deps /app/node_modules ./node_modules
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
