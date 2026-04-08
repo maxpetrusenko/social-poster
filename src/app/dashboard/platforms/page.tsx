@@ -16,7 +16,7 @@ export default async function PlatformsPage() {
       <DashboardHero
         eyebrow="Connected platforms"
         title="Distribution map"
-        description="Every account, attached schedules, last delivery, and 30-day error count. No more blind list."
+        description="Accounts, schedules, last delivery, errors."
         actions={
           <>
             <HeroButton href="/dashboard">Overview</HeroButton>
@@ -33,7 +33,7 @@ export default async function PlatformsPage() {
 
       <SectionCard
         title="Platform roster"
-        subtitle="Same data model, cleaner signal."
+        subtitle="Clean view."
         action={
           <Link
             href="/dashboard/platforms/new"

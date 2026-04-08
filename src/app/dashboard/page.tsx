@@ -15,7 +15,7 @@ export default async function DashboardPage() {
       <DashboardHero
         eyebrow="Live dashboard"
         title="Automated social posting"
-        description="Same visual language as maxpetrusenko.com. Same pipeline truth as the VPS. Cadence, failures, connected platforms, and upcoming slots now come from real schedule + run data."
+        description="Cadence, failures, connected platforms, upcoming slots."
         actions={
           <>
             <HeroButton href="/dashboard/pipeline">View runs</HeroButton>
@@ -54,7 +54,7 @@ export default async function DashboardPage() {
       <div className="grid gap-6 xl:grid-cols-[1.35fr_0.95fr]">
         <SectionCard
           title="Posting rhythm"
-          subtitle={`14-day view. Bars track delivered content pieces. Streak: ${data.streakDays} day${data.streakDays === 1 ? "" : "s"}.`}
+          subtitle={`14-day view. Streak: ${data.streakDays} day${data.streakDays === 1 ? "" : "s"}.`}
         >
           <TinyBars
             items={data.timeseries.map((item) => ({
@@ -90,7 +90,7 @@ export default async function DashboardPage() {
 
         <SectionCard
           title="Platform health"
-          subtitle="Connected platforms with real 30-day delivery stats."
+          subtitle="30-day delivery stats."
           action={<Link href="/dashboard/platforms" className="text-sm font-semibold text-[var(--accent-tech)]">All platforms</Link>}
         >
           <div className="space-y-3">
@@ -131,7 +131,7 @@ export default async function DashboardPage() {
       <div className="grid gap-6 xl:grid-cols-[1.05fr_1.25fr]">
         <SectionCard
           title="Schedule cadence"
-          subtitle="Target platforms, next fire, recent health."
+          subtitle="Next fire. Health. Targets."
           action={<Link href="/dashboard/schedules" className="text-sm font-semibold text-[var(--accent-tech)]">Manage schedules</Link>}
         >
           <div className="space-y-3">
@@ -188,7 +188,7 @@ export default async function DashboardPage() {
 
         <SectionCard
           title="Recent activity"
-          subtitle="Last runs and real failure surface."
+          subtitle="Latest runs."
           action={<Link href="/dashboard/pipeline" className="text-sm font-semibold text-[var(--accent-tech)]">Open pipeline</Link>}
         >
           <div className="space-y-3">

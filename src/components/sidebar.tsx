@@ -41,7 +41,7 @@ export function Sidebar() {
             Social Poster
           </p>
           <p className="mt-3 text-sm leading-6 text-[var(--dark-zone-muted)]">
-            Max site language. Real pipeline data. No dead shells.
+            Live pipeline dashboard.
           </p>
         </div>
 
@@ -80,9 +80,6 @@ export function Sidebar() {
           <p className="section-eyebrow text-[var(--accent-tech)]">Live loop</p>
           <p className="mt-2 text-sm font-semibold text-[var(--dark-zone-text)]">
             Feed → render → publish → track
-          </p>
-          <p className="mt-2 text-sm leading-6 text-[var(--dark-zone-muted)]">
-            Dashboard now reads pipeline truth. Schedules, errors, cadence.
           </p>
         </div>
       </div>

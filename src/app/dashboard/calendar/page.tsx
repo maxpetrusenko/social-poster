@@ -49,7 +49,7 @@ export default async function CalendarPage({
       <DashboardHero
         eyebrow="Calendar"
         title="Cadence across the month"
-        description="Planned schedule slots and actual run results in one grid. Gray = scheduled. Green = landed. Red = failed."
+        description="Scheduled slots and real run results."
         actions={
           <>
             <HeroButton href={`/dashboard/calendar?month=${prevMonthStr}`} tone="ghost">Prev</HeroButton>
@@ -60,7 +60,7 @@ export default async function CalendarPage({
 
       <SectionCard
         title={calendar.monthLabel}
-        subtitle="Calendar now reads schedule recurrence plus real pipeline runs."
+        subtitle="Schedules plus runs."
         action={
           <div className="flex items-center gap-2">
             <Link href={`/dashboard/calendar?month=${prevMonthStr}`} className="rounded-[10px] border border-[var(--line)] bg-white px-3 py-2 text-sm font-semibold text-[var(--ink)]">

@@ -22,7 +22,7 @@ export default async function SchedulesPage() {
       <DashboardHero
         eyebrow="Schedules"
         title="Automation cadence"
-        description="What fires, where it posts, what broke last, and how consistent each loop is."
+        description="What fires. Where it posts. What broke."
         actions={
           <>
             <HeroButton href="/dashboard/calendar" tone="ghost">Calendar</HeroButton>
@@ -49,7 +49,7 @@ export default async function SchedulesPage() {
 
       <SectionCard
         title="All schedules"
-        subtitle="Real success rate from pipeline runs. Toggle stays wired to cron reload."
+        subtitle="Real success rate."
         action={
           <Link
             href="/dashboard/schedules/new"
