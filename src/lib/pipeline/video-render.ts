@@ -13,7 +13,7 @@ export interface RenderOpts {
 
 export async function renderVideo(opts: RenderOpts): Promise<Buffer> {
   const remotionDir = join(process.cwd(), "src", "remotion");
-  const publicDir = join(remotionDir, "public");
+  const publicDir = join(process.cwd(), "public");
   mkdirSync(publicDir, { recursive: true });
 
   // Copy media to remotion/public/
