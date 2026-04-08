@@ -1,94 +1,138 @@
-import { db } from "@/db";
-import { schedules } from "@/db/schema";
-import { desc } from "drizzle-orm";
 import Link from "next/link";
 import { Plus } from "lucide-react";
+import { DashboardHero, HeroButton, MetricCard, PlatformChip, SectionCard, StatusBadge } from "@/components/dashboard/ui";
 import { ScheduleEnabledToggle } from "@/components/schedule-enabled-toggle";
+import { getDashboardInsights } from "@/lib/dashboard/insights";
+import { formatDate, relativeTime } from "@/lib/utils";
+import { getPlatformMeta } from "@/lib/dashboard/platforms";
 
 export default async function SchedulesPage() {
-  const items = await db
-    .select()
-    .from(schedules)
-    .orderBy(desc(schedules.createdAt));
+  const { scheduleInsights } = await getDashboardInsights();
+  const activeCount = scheduleInsights.filter((schedule) => schedule.enabled).length;
+  const failedCount = scheduleInsights.filter((schedule) => schedule.lastStatus === "failed").length;
+  const nextRun = scheduleInsights
+    .map((schedule) => schedule.nextRunAt)
+    .filter((value): value is Date => value instanceof Date)
+    .sort((a, b) => a.getTime() - b.getTime())[0] ?? null;
 
   return (
-    <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Schedules</h1>
-        <Link
-          href="/dashboard/schedules/new"
-          className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors"
-        >
-          <Plus className="h-4 w-4" />
-          Add Schedule
-        </Link>
+    <div className="space-y-6">
+      <DashboardHero
+        eyebrow="Schedules"
+        title="Automation cadence"
+        description="What fires, where it posts, what broke last, and how consistent each loop is."
+        actions={
+          <>
+            <HeroButton href="/dashboard/calendar" tone="ghost">Calendar</HeroButton>
+            <HeroButton href="/dashboard/schedules/new">Add schedule</HeroButton>
+          </>
+        }
+      />
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <MetricCard label="Active" value={activeCount} sub={`${scheduleInsights.length} total schedules`} />
+        <MetricCard
+          label="Next fire"
+          value={nextRun ? formatDate(nextRun) : "none"}
+          sub={nextRun ? relativeTime(nextRun) : "no enabled schedule"}
+          accent="var(--accent-mindfold)"
+        />
+        <MetricCard
+          label="Needs attention"
+          value={failedCount}
+          sub="last run status = failed"
+          accent={failedCount > 0 ? "#dc2626" : "var(--accent-spirit)"}
+        />
       </div>
 
-      {items.length === 0 ? (
-        <div className="bg-white border border-gray-200 rounded-lg p-12 text-center">
-          <p className="text-gray-500 mb-4">
-            No schedules yet. Create one to automate your content.
-          </p>
+      <SectionCard
+        title="All schedules"
+        subtitle="Real success rate from pipeline runs. Toggle stays wired to cron reload."
+        action={
           <Link
             href="/dashboard/schedules/new"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors"
+            className="inline-flex items-center gap-2 rounded-[10px] bg-[var(--ink)] px-4 py-2 text-sm font-semibold text-[var(--sand)]"
           >
             <Plus className="h-4 w-4" />
-            Create Schedule
+            Add
           </Link>
-        </div>
-      ) : (
-        <div className="grid gap-4">
-          {items.map((schedule) => (
+        }
+      >
+        <div className="space-y-4">
+          {scheduleInsights.map((schedule) => (
             <div
               key={schedule.id}
-              className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow"
+              className="rounded-[20px] border border-[rgba(12,17,21,0.08)] bg-[var(--paper)] p-5"
             >
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex-1">
-                  <h3 className="font-medium text-gray-900">
-                    <Link
-                      href={`/dashboard/schedules/${schedule.id}`}
-                      className="hover:text-indigo-600"
-                    >
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-3">
+                    <Link href={`/dashboard/schedules/${schedule.id}`} className="font-serif text-[1.4rem] text-[var(--ink)]">
                       {schedule.name}
                     </Link>
-                  </h3>
-                  {schedule.description ? (
-                    <p className="text-sm text-gray-600 mt-1">
-                      {schedule.description}
-                    </p>
-                  ) : null}
+                    <StatusBadge tone={schedule.lastStatus === "failed" ? "bad" : schedule.enabled ? "good" : "neutral"}>
+                      {schedule.enabled ? "enabled" : "disabled"}
+                    </StatusBadge>
+                    <StatusBadge tone="neutral">{schedule.jobType.replace(/_/g, " ")}</StatusBadge>
+                  </div>
+                  <p className="mt-2 text-sm text-[var(--muted)]">
+                    {schedule.cronHuman || schedule.cron}
+                  </p>
                 </div>
-                <ScheduleEnabledToggle
-                  id={schedule.id}
-                  enabled={schedule.enabled}
-                />
+
+                <ScheduleEnabledToggle id={schedule.id} enabled={schedule.enabled} />
               </div>
 
-              <div className="grid grid-cols-2 gap-3 text-sm">
+              <div className="mt-4 flex flex-wrap gap-2">
+                {schedule.targetPlatforms.map((platform) => {
+                  const meta = getPlatformMeta(platform);
+                  return (
+                    <PlatformChip
+                      key={`${schedule.id}-${platform}`}
+                      label={platform}
+                      accent={meta.accent}
+                      shortLabel={meta.shortLabel}
+                    />
+                  );
+                })}
+              </div>
+
+              <div className="mt-5 grid gap-4 md:grid-cols-5">
                 <div>
-                  <p className="text-xs text-gray-500">Cron</p>
-                  <p className="font-mono text-xs text-gray-900">
-                    {schedule.cron}
+                  <p className="section-eyebrow text-[var(--muted)]">Next</p>
+                  <p className="mt-1 text-sm font-semibold text-[var(--ink)]">
+                    {schedule.nextRunAt ? formatDate(schedule.nextRunAt) : "paused"}
                   </p>
-                  {schedule.cronHuman ? (
-                    <p className="text-xs text-gray-600 mt-1">
-                      {schedule.cronHuman}
-                    </p>
-                  ) : null}
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500">Type</p>
-                  <p className="text-xs text-gray-900 capitalize">
-                    {schedule.jobType.replace(/_/g, " ")}
+                  <p className="section-eyebrow text-[var(--muted)]">Success</p>
+                  <p className="mt-1 text-sm font-semibold text-[var(--ink)]">{schedule.successRate}%</p>
+                </div>
+                <div>
+                  <p className="section-eyebrow text-[var(--muted)]">Runs</p>
+                  <p className="mt-1 text-sm font-semibold text-[var(--ink)]">{schedule.totalRuns}</p>
+                </div>
+                <div>
+                  <p className="section-eyebrow text-[var(--muted)]">Avg</p>
+                  <p className="mt-1 text-sm font-semibold text-[var(--ink)]">{schedule.avgDurationSeconds}s</p>
+                </div>
+                <div>
+                  <p className="section-eyebrow text-[var(--muted)]">Last</p>
+                  <p className="mt-1 text-sm font-semibold text-[var(--ink)]">
+                    {schedule.lastRunAt ? relativeTime(schedule.lastRunAt) : "never"}
                   </p>
                 </div>
               </div>
+
+              {schedule.lastError ? (
+                <div className="mt-4 rounded-[14px] border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                  {schedule.lastError}
+                </div>
+              ) : null}
             </div>
           ))}
         </div>
-      )}
+      </SectionCard>
     </div>
   );
 }

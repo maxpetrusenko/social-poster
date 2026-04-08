@@ -41,13 +41,13 @@ Deploys to `social.maxpetrusenko.com` on Contabo/Coolify.
 
 ### Dashboard Pages (all under /dashboard)
 - [x] Layout with sidebar navigation
-- [x] Dashboard home — stat cards + recent runs + recent posts
+- [x] Dashboard home — live metrics for posting cadence, consistency, errors, schedules, and platform health
 - [x] Platforms — list, create, edit, delete, per-platform skills/config editor
 - [x] Profiles — list, create, edit, delete (voice ID, face ID, tone)
 - [x] Posts — list with status filters, create with platform targeting, detail view
-- [x] Calendar — monthly grid view with scheduled posts
+- [x] Calendar — monthly grid view with schedule recurrences + actual pipeline runs
 - [x] Pipeline — run history with expandable step detail
-- [x] Schedules — list, create, edit, delete, manual "Run Now"
+- [x] Schedules — list, create, edit, delete, manual "Run Now", success/error stats
 - [x] Settings — read-only config display
 
 ### API Routes
@@ -96,6 +96,7 @@ Deploys to `social.maxpetrusenko.com` on Contabo/Coolify.
 - [x] Fix TypeScript / import errors blocking build
 - [x] Seed script for initial platforms + profile + schedules
 - [x] Git init + first commit + push to GitHub
+- [x] Dashboard visual language aligned to `maxpetrusenko.com/socialmedia`
 - [ ] Public social feed endpoint (GET /api/feed — for website consumption)
 - [ ] Real-time status updates (polling or SSE on pipeline page)
 - [ ] Toast notifications for form actions

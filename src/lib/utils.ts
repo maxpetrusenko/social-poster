@@ -17,12 +17,14 @@ export function formatDate(date: Date | number | string) {
 export function relativeTime(date: Date | number | string) {
   const now = Date.now();
   const then = new Date(date).getTime();
-  const diff = now - then;
-  const mins = Math.floor(diff / 60000);
+  const diff = then - now;
+  const future = diff > 0;
+  const absMs = Math.abs(diff);
+  const mins = Math.floor(absMs / 60000);
   if (mins < 1) return "just now";
-  if (mins < 60) return `${mins}m ago`;
+  if (mins < 60) return future ? `in ${mins}m` : `${mins}m ago`;
   const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
+  if (hours < 24) return future ? `in ${hours}h` : `${hours}h ago`;
   const days = Math.floor(hours / 24);
-  return `${days}d ago`;
+  return future ? `in ${days}d` : `${days}d ago`;
 }
