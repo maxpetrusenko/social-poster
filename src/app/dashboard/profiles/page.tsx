@@ -3,6 +3,8 @@ import { profiles } from "@/db/schema";
 import Link from "next/link";
 import { Plus } from "lucide-react";
 
+export const dynamic = "force-dynamic";
+
 export default async function ProfilesPage() {
   const allProfiles = await db.select().from(profiles);
 

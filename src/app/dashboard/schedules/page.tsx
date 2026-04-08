@@ -6,6 +6,8 @@ import { getDashboardInsights } from "@/lib/dashboard/insights";
 import { formatDate, relativeTime } from "@/lib/utils";
 import { getPlatformMeta } from "@/lib/dashboard/platforms";
 
+export const dynamic = "force-dynamic";
+
 export default async function SchedulesPage() {
   const { scheduleInsights } = await getDashboardInsights();
   const activeCount = scheduleInsights.filter((schedule) => schedule.enabled).length;

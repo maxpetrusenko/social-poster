@@ -3,6 +3,8 @@ import { Plus } from "lucide-react";
 import { DashboardHero, HeroButton, MetricCard, PlatformChip, SectionCard, StatusBadge } from "@/components/dashboard/ui";
 import { getDashboardInsights } from "@/lib/dashboard/insights";
 
+export const dynamic = "force-dynamic";
+
 export default async function PlatformsPage() {
   const { platformInsights } = await getDashboardInsights();
   const enabled = platformInsights.filter((platform) => platform.enabled).length;

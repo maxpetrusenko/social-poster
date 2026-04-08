@@ -4,6 +4,8 @@ import { desc, inArray } from "drizzle-orm";
 import { CheckCircle2, Clock, XCircle } from "lucide-react";
 import { relativeTime } from "@/lib/utils";
 
+export const dynamic = "force-dynamic";
+
 function getStatusIcon(status: string) {
   switch (status) {
     case "completed":
