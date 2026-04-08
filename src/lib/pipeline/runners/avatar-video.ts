@@ -7,7 +7,7 @@ import { writeFileSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
 
 import { getTopStories, markPosted } from "../feed-engine";
-import { writeVideoBullets, writeVoiceScript, writePostCaption } from "../script-writer";
+import { writeVoiceScript, writePostCaption } from "../script-writer";
 import { generateTTS } from "../tts";
 import { generateAvatar } from "../avatar";
 import { renderVideo } from "../video-render";
@@ -60,8 +60,7 @@ export async function runAvatarVideoJob(
     const s2 = step("script:write");
     steps.push(s2);
     const voiceScript = writeVoiceScript(story);
-    const bullets = writeVideoBullets(story);
-    complete(s2, { chars: voiceScript.length, bullets });
+    complete(s2, { chars: voiceScript.length });
 
     // 3. TTS
     const s3 = step("tts:generate");
@@ -82,64 +81,31 @@ export async function runAvatarVideoJob(
     // 5. Render
     const s5 = step("video:render");
     steps.push(s5);
-    const needsPortrait = targets.some((platform) => usesPortraitVideo(platform.type));
-    const needsSquare = targets.some((platform) => usesSquareVideo(platform.type));
-    const mediaByPlatform = new Map<string, string>();
-    const renderMeta: Array<{ layout: string; bytes: number; url: string; targets: string[] }> = [];
+    const videoBuffer = await renderVideo({
+      headline: story.title,
+      bullets: [],
+      audioPath,
+      avatarPath,
+    });
+    complete(s5, { bytes: videoBuffer.length });
 
-    if (needsPortrait) {
-      const portraitBuffer = await renderVideo({
-        headline: story.title,
-        bullets,
-        audioPath,
-        avatarPath,
-        layout: "portrait",
-      });
-      const portraitUrl = await uploadToCatbox(portraitBuffer, `portrait-${runId}.mp4`);
-      for (const platform of targets.filter((target) => usesPortraitVideo(target.type))) {
-        mediaByPlatform.set(platform.id, portraitUrl);
-      }
-      renderMeta.push({
-        layout: "portrait",
-        bytes: portraitBuffer.length,
-        url: portraitUrl,
-        targets: targets.filter((target) => usesPortraitVideo(target.type)).map((target) => target.type),
-      });
-    }
-
-    if (needsSquare) {
-      const squareBuffer = await renderVideo({
-        headline: story.title,
-        bullets,
-        audioPath,
-        avatarPath,
-        layout: "square",
-      });
-      const squareUrl = await uploadToCatbox(squareBuffer, `square-${runId}.mp4`);
-      for (const platform of targets.filter((target) => usesSquareVideo(target.type))) {
-        mediaByPlatform.set(platform.id, squareUrl);
-      }
-      renderMeta.push({
-        layout: "square",
-        bytes: squareBuffer.length,
-        url: squareUrl,
-        targets: targets.filter((target) => usesSquareVideo(target.type)).map((target) => target.type),
-      });
-    }
-
-    complete(s5, { renders: renderMeta });
+    // 6. Upload
+    const s6 = step("video:upload");
+    steps.push(s6);
+    const videoUrl = await uploadToCatbox(videoBuffer, `vid-${runId}.mp4`);
+    complete(s6, { url: videoUrl });
 
     const scheduleConfig = (schedule.config || {}) as Record<string, unknown>;
 
-    // 6. Publish
-    const s6 = step("publish");
-    steps.push(s6);
+    // 7. Publish
+    const s7 = step("publish");
+    steps.push(s7);
     const results = await publishToLate(
       targets.map((platform) => ({
         platform: platform.type,
         accountId: platform.accountId,
         content: writePostCaption(story, platform.type),
-        mediaUrl: mediaByPlatform.get(platform.id),
+        mediaUrl: videoUrl,
         mediaType: "video" as const,
         instagramContentType:
           platform.type === "instagram" ? getInstagramVideoType(scheduleConfig) : undefined,
@@ -147,7 +113,7 @@ export async function runAvatarVideoJob(
     );
     const ok = results.filter((r) => r.success).map((r) => r.platform);
     const failed = results.filter((r) => !r.success);
-    complete(s6, { published: ok, errors: failed.map((r) => `${r.platform}: ${r.error}`) });
+    complete(s7, { published: ok, errors: failed.map((r) => `${r.platform}: ${r.error}`) });
 
     // Dedup
     await markPosted(story);
@@ -193,15 +159,6 @@ async function fail(runId: string, steps: PipelineStep[], startedAt: Date, error
     completedAt: now,
   }).where(eq(pipelineRuns.id, runId));
 }
-
-function usesSquareVideo(platform: string): boolean {
-  return ["twitter", "x", "linkedin"].includes(platform.toLowerCase());
-}
-
-function usesPortraitVideo(platform: string): boolean {
-  return !usesSquareVideo(platform);
-}
-
 function getInstagramVideoType(config: Record<string, unknown>): "reel" | "story" {
   return config.instagramVideoContentType === "story" ? "story" : "reel";
 }

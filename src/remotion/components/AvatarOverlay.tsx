@@ -5,13 +5,9 @@ const ACCENT = "#DA7756";
 
 interface AvatarOverlayProps {
   avatarVideoUrl: string;
-  layout?: "portrait" | "square";
 }
 
-export const AvatarOverlay: React.FC<AvatarOverlayProps> = ({ avatarVideoUrl, layout = "portrait" }) => {
-  const avatarSize = layout === "square" ? 268 : 348;
-  const padding = layout === "square" ? 34 : 36;
-
+export const AvatarOverlay: React.FC<AvatarOverlayProps> = ({ avatarVideoUrl }) => {
   return (
     <AbsoluteFill
       style={{
@@ -23,14 +19,13 @@ export const AvatarOverlay: React.FC<AvatarOverlayProps> = ({ avatarVideoUrl, la
       <div
         style={{
           position: "relative",
-          width: avatarSize,
-          height: avatarSize,
-          borderRadius: layout === "square" ? 32 : 999,
+          width: 400,
+          height: 400,
+          borderRadius: "50%",
           overflow: "hidden",
-          margin: `${padding}px`,
+          margin: "28px",
           border: `4px solid ${ACCENT}`,
           backgroundColor: "#000000",
-          boxShadow: "0 28px 80px rgba(0,0,0,0.45)",
         }}
       >
         <OffthreadVideo
