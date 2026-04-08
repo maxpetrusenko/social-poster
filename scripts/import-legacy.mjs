@@ -70,7 +70,7 @@ const tx = db.transaction(() => {
       "7270ea4d-a17a-4f21-a3da-03f2b128669d",
     faceId:
       process.env.SIMLI_FACE_ID ??
-      "e5b26d08-3287-4e0c-a9c5-d5914a7c0de8",
+      "7bb46589-4be6-4df8-ab80-03443fb75d6f",
     tone: "professional",
     config: JSON.stringify({
       importedFrom: "legacy-social-agent",
@@ -243,30 +243,58 @@ function buildSchedules(schedule, profileId, platforms) {
   const platformIdMap = new Map(platforms.map((item) => [item.type, item.id]));
 
   return schedule.jobs.map((job) => ({
-    id: job.id,
-    name: job.name,
-    description: job.description ?? null,
-    cron: job.cron,
-    cronHuman: job.cronHuman ?? null,
-    jobType: mapJobType(job.contentType),
-    profileId,
-    targetPlatformIds: JSON.stringify(
-      job.targets
-        .map((target) => mapPlatformType(target))
-        .filter(Boolean)
-        .map((target) => platformIdMap.get(target))
-        .filter(Boolean)
-    ),
-    config: JSON.stringify({
-      importedFrom: "legacy-social-agent",
-      actions: job.actions ?? [],
-      count: job.count ?? null,
-      contentType: job.contentType ?? null,
-    }),
-    enabled: 0,
-    createdAt: importedAt,
-    updatedAt: importedAt,
+    ...(() => {
+      const override = getScheduleOverride(job.id);
+      const targetTypes = override?.targets ?? job.targets.map((target) => mapPlatformType(target)).filter(Boolean);
+      return {
+        id: job.id,
+        name: job.name,
+        description: job.description ?? null,
+        cron: job.cron,
+        cronHuman: job.cronHuman ?? null,
+        jobType: mapJobType(job.contentType),
+        profileId,
+        targetPlatformIds: JSON.stringify(
+          targetTypes
+            .map((target) => platformIdMap.get(target))
+            .filter(Boolean)
+        ),
+        config: JSON.stringify({
+          importedFrom: "legacy-social-agent",
+          actions: job.actions ?? [],
+          count: job.count ?? null,
+          contentType: job.contentType ?? null,
+          ...(override?.config ?? {}),
+        }),
+        enabled: 0,
+        createdAt: importedAt,
+        updatedAt: importedAt,
+      };
+    })(),
   }));
+}
+
+function getScheduleOverride(id) {
+  switch (id) {
+    case "news-dedup-morning":
+      return {
+        targets: ["twitter", "linkedin", "instagram", "tiktok"],
+        config: { instagramVideoContentType: "reel" },
+      };
+    case "news-dedup-evening":
+      return {
+        targets: ["twitter", "linkedin", "instagram", "tiktok"],
+        config: { instagramVideoContentType: "story" },
+      };
+    case "post-x-linkedin-11am":
+    case "post-x-linkedin-1pm":
+    case "post-x-linkedin-3pm":
+      return {
+        targets: ["twitter", "linkedin"],
+      };
+    default:
+      return null;
+  }
 }
 
 function buildPipelineRuns(rows) {

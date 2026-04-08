@@ -8,6 +8,7 @@ const defaultProps: AiNewsVideoProps = {
   bullets: ["Point one", "Point two", "Point three"],
   audioUrl: "narration.wav",
   durationInSeconds: 15,
+  layout: "portrait",
 };
 
 const RootComponent = () => {
@@ -20,9 +21,14 @@ const RootComponent = () => {
       width={1080}
       height={1920}
       defaultProps={defaultProps}
-      calculateMetadata={({ props }) => ({
-        durationInFrames: Math.round(props.durationInSeconds * 30),
-      })}
+      calculateMetadata={({ props }) => {
+        const isSquare = props.layout === "square";
+        return {
+          durationInFrames: Math.round(props.durationInSeconds * 30),
+          width: 1080,
+          height: isSquare ? 1080 : 1920,
+        };
+      }}
     />
   );
 };

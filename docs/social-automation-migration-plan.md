@@ -169,7 +169,7 @@ All times ET unless changed centrally in config.
 | 11 AM | Image + caption | X, LinkedIn, IG Story | lighter path |
 | 1 PM | Image + caption | X | lighter path |
 | 3 PM | Image + caption | X | lighter path |
-| 6 PM | Avatar video | TikTok, IG Reels, LinkedIn video, X image | heavy render path |
+| 6 PM | Avatar video | TikTok, IG Stories, LinkedIn square video, X square video | heavy render path |
 
 ## Repository and Runtime
 

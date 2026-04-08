@@ -7,6 +7,7 @@ export interface RenderOpts {
   bullets: string[];
   audioPath: string;   // absolute path to WAV
   avatarPath: string;  // absolute path to MP4
+  layout: "portrait" | "square";
   outputPath?: string;
 }
 
@@ -39,6 +40,7 @@ export async function renderVideo(opts: RenderOpts): Promise<Buffer> {
     audioUrl: audioName,
     avatarVideoUrl: avatarName,
     durationInSeconds: durationSec,
+    layout: opts.layout,
   };
 
   const propsFile = join("/tmp", `props-${Date.now()}.json`);

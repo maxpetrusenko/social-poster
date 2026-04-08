@@ -1,16 +1,16 @@
 import React from "react";
-import { OffthreadVideo, AbsoluteFill, staticFile, useVideoConfig } from "remotion";
+import { OffthreadVideo, AbsoluteFill, staticFile } from "remotion";
 
 const ACCENT = "#DA7756";
 
 interface AvatarOverlayProps {
   avatarVideoUrl: string;
+  layout?: "portrait" | "square";
 }
 
-export const AvatarOverlay: React.FC<AvatarOverlayProps> = ({ avatarVideoUrl }) => {
-  const { width, height, durationInFrames } = useVideoConfig();
-  const avatarSize = 400;
-  const padding = 28;
+export const AvatarOverlay: React.FC<AvatarOverlayProps> = ({ avatarVideoUrl, layout = "portrait" }) => {
+  const avatarSize = layout === "square" ? 268 : 348;
+  const padding = layout === "square" ? 34 : 36;
 
   return (
     <AbsoluteFill
@@ -25,11 +25,12 @@ export const AvatarOverlay: React.FC<AvatarOverlayProps> = ({ avatarVideoUrl }) 
           position: "relative",
           width: avatarSize,
           height: avatarSize,
-          borderRadius: "50%",
+          borderRadius: layout === "square" ? 32 : 999,
           overflow: "hidden",
           margin: `${padding}px`,
           border: `4px solid ${ACCENT}`,
           backgroundColor: "#000000",
+          boxShadow: "0 28px 80px rgba(0,0,0,0.45)",
         }}
       >
         <OffthreadVideo

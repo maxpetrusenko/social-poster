@@ -9,20 +9,22 @@ import {
   useCurrentFrame,
   useVideoConfig,
 } from "remotion";
-import { AiNewsVideoProps } from "./lib/types";
 import { AvatarOverlay } from "./components/AvatarOverlay";
+import { AiNewsVideoProps } from "./lib/types";
 
-const ACCENT = "#DA7756";
-const BLUE = "#0f7ea9";
-const DARK = "#0e1520";
-const CARD_BG = "rgba(10,18,30,0.78)";
+const ACCENT = "#f26b3a";
+const GOLD = "#ffcf63";
+const CYAN = "#62d5ff";
+const INK = "#050816";
+const CARD = "rgba(7, 12, 27, 0.82)";
+const GRID = "rgba(255,255,255,0.08)";
 
-/**
- * V3 — Scene-based TikTok AI News Video
- * Each scene gets its own background image held 2-3s.
- * Crossfade between images. Numbered bullet cards.
- * Progress dots. Variety in card placement.
- */
+const THEMES = [
+  { label: "Signal", accent: ACCENT, helper: CYAN },
+  { label: "Flow", accent: CYAN, helper: GOLD },
+  { label: "Stack", accent: GOLD, helper: ACCENT },
+];
+
 export const AiNewsVideo: React.FC<AiNewsVideoProps> = ({
   headline,
   bullets,
@@ -30,331 +32,364 @@ export const AiNewsVideo: React.FC<AiNewsVideoProps> = ({
   imageUrls,
   avatarVideoUrl,
   durationInSeconds,
+  layout = "portrait",
 }) => {
   const frame = useCurrentFrame();
-  const { fps, width, height } = useVideoConfig();  const totalFrames = Math.round(durationInSeconds * fps);
-  const images = (imageUrls ?? []).filter(Boolean);
-
-  // === SCENE TIMELINE ===
-  // Hook(1.5s) → Headline(2.5s) → Bullets(2-3s each) → Outro(2s)
-  const hookDur = Math.round(Math.min(1.5, durationInSeconds * 0.1) * fps);
-  const headlineDur = Math.round(Math.min(2.5, durationInSeconds * 0.18) * fps);
-  const outroDur = Math.round(Math.min(2, durationInSeconds * 0.12) * fps);
-  const bulletZone = totalFrames - hookDur - headlineDur - outroDur;
-  const bulletCount = bullets.length || 1;
-  const bulletDur = Math.max(Math.round(bulletZone / bulletCount), fps); // min 1s per bullet
-
-  // Scene boundaries [start, end)
-  const scenes: { start: number; end: number; type: string; idx?: number }[] = [];
-  scenes.push({ start: 0, end: hookDur, type: "hook" });
-  scenes.push({ start: hookDur, end: hookDur + headlineDur, type: "headline" });
-  for (let i = 0; i < bulletCount; i++) {
-    const s = hookDur + headlineDur + i * bulletDur;
-    scenes.push({ start: s, end: s + bulletDur, type: "bullet", idx: i });
-  }
-  const outroStart = totalFrames - outroDur;
-  scenes.push({ start: outroStart, end: totalFrames, type: "outro" });
-
-  // Assign one image per scene (round-robin if fewer images than scenes)
-  const getSceneImage = (sceneIdx: number) => {
-    if (images.length === 0) return null;
-    return images[sceneIdx % images.length];
-  };
-  // Find current scene
-  const currentSceneIdx = scenes.findIndex((s) => frame >= s.start && frame < s.end);
-  const prevSceneIdx = currentSceneIdx > 0 ? currentSceneIdx - 1 : -1;
-
-  // Crossfade duration between images (frames)
-  const xfadeDur = Math.round(fps * 0.4);
-
-  // Ken Burns zoom per scene — slow steady zoom 1.0 → 1.06
-  const sceneLocalFrame = currentSceneIdx >= 0 ? frame - scenes[currentSceneIdx].start : 0;
-  const sceneTotalDur = currentSceneIdx >= 0 ? scenes[currentSceneIdx].end - scenes[currentSceneIdx].start : 1;
-  const zoomProgress = sceneLocalFrame / sceneTotalDur;
-  const zoom = 1 + zoomProgress * 0.06;
-
-  // Global progress (for top bar)
+  const { fps } = useVideoConfig();
+  const totalFrames = Math.max(1, Math.round(durationInSeconds * fps));
+  const beatFrames = Math.max(fps, Math.round(fps * 2));
+  const storyBeats = [headline, ...bullets];
+  const sceneIndex = Math.floor(frame / beatFrames);
+  const activeBeat = Math.min(storyBeats.length - 1, sceneIndex);
+  const beatStart = activeBeat * beatFrames;
+  const beatProgress = (frame - beatStart) / beatFrames;
+  const enter = spring({ frame: frame - beatStart, fps, config: { damping: 14, stiffness: 180 } });
+  const fade = interpolate(beatProgress, [0, 0.1, 0.82, 1], [0, 1, 1, 0], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
   const progress = Math.min(frame / totalFrames, 1);
-
-  // === CARD PLACEMENT VARIETY ===
-  // Alternate card positions: center, bottom-third, center, top-third...
-  const cardPositions: Array<"center" | "bottom" | "top"> = ["center", "bottom", "center", "top", "bottom", "center"];
-  const getCardPosition = (idx: number) => cardPositions[idx % cardPositions.length];
+  const isSquare = layout === "square";
+  const avatarInset = avatarVideoUrl ? (isSquare ? 330 : 430) : 56;
+  const cardBottom = isSquare ? 48 : 94;
+  const cardMinHeight = isSquare ? 268 : 300;
+  const activeTheme = THEMES[sceneIndex % THEMES.length];
+  const activeImage = imageUrls?.length ? imageUrls[sceneIndex % imageUrls.length] : null;
 
   return (
-    <AbsoluteFill style={{ backgroundColor: DARK }}>
+    <AbsoluteFill
+      style={{
+        backgroundColor: INK,
+        color: "#fff",
+        fontFamily: '"Inter","SF Pro Display",sans-serif',
+      }}
+    >
+      <BackgroundLayer
+        frame={frame}
+        totalFrames={totalFrames}
+        accent={activeTheme.accent}
+        helper={activeTheme.helper}
+        imageUrl={activeImage}
+      />
 
-      {/* === BACKGROUND IMAGES with crossfade === */}
-      {images.length > 0 && scenes.map((scene, sIdx) => {
-        const img = getSceneImage(sIdx);
-        if (!img) return null;
-        // Image opacity: fade in at scene start, fade out at scene end
-        const fadeIn = interpolate(frame, [scene.start, scene.start + xfadeDur], [0, 1], {
-          extrapolateLeft: "clamp", extrapolateRight: "clamp",
-        });
-        const fadeOut = interpolate(frame, [scene.end - xfadeDur, scene.end], [1, 0], {
-          extrapolateLeft: "clamp", extrapolateRight: "clamp",
-        });
-        const imgOpacity = Math.min(fadeIn, fadeOut);
-        if (imgOpacity <= 0) return null;
-
-        // Per-scene zoom
-        const localF = Math.max(0, frame - scene.start);
-        const localTotal = scene.end - scene.start;
-        const sceneZoom = 1 + (localF / localTotal) * 0.06;
-
-        return (
-          <AbsoluteFill key={`bg-${sIdx}`} style={{ opacity: imgOpacity }}>
-            <Img
-              src={staticFile(img)}
-              style={{
-                width: "100%", height: "100%", objectFit: "cover",
-                transform: `scale(${sceneZoom})`,
-                filter: "brightness(0.4) saturate(1.2)",
-              }}
-            />
-          </AbsoluteFill>
-        );
-      })}
-      {/* Fallback gradient when no images */}
-      {images.length === 0 && (
-        <AbsoluteFill style={{
-          background: `radial-gradient(circle at 30% 40%, rgba(218,119,86,0.25), transparent 50%),
-                       radial-gradient(circle at 70% 60%, rgba(15,126,169,0.15), transparent 40%),
-                       linear-gradient(145deg, ${DARK} 0%, #152438 100%)`,
-        }} />
-      )}
-
-      {/* === VIGNETTE overlay for depth === */}
-      <AbsoluteFill style={{
-        background: "radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.5) 100%)",
-        zIndex: 5,
-      }} />
-
-      {/* === PROGRESS BAR (top) === */}
-      <div style={{
-        position: "absolute", top: 0, left: 0, height: 5, zIndex: 30,
-        width: `${progress * 100}%`,
-        background: `linear-gradient(90deg, ${ACCENT}, ${BLUE})`,
-        borderRadius: "0 3px 3px 0",
-      }} />
-
-      {/* === SCENE COUNTER DOTS (bottom) === */}
-      <div style={{
-        position: "absolute", bottom: 100, left: 0, right: 0,
-        display: "flex", justifyContent: "center", gap: 10, zIndex: 25,
-      }}>
-        {scenes.filter(s => s.type !== "hook").map((s, i) => {          const isActive = frame >= s.start && frame < s.end;
-          return (
-            <div key={`dot-${i}`} style={{
-              width: isActive ? 24 : 8, height: 8, borderRadius: 4,
-              backgroundColor: isActive ? ACCENT : "rgba(255,255,255,0.3)",
-              transition: "all 0.2s",
-            }} />
-          );
-        })}
+      <div
+        style={{
+          position: "absolute",
+          top: isSquare ? 28 : 34,
+          left: isSquare ? 34 : 40,
+          right: isSquare ? 34 : 40,
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          zIndex: 20,
+        }}
+      >
+        <div
+          style={{
+            borderRadius: 999,
+            border: `1px solid ${GRID}`,
+            background: "rgba(255,255,255,0.05)",
+            padding: "10px 16px",
+            fontSize: isSquare ? 20 : 22,
+            fontWeight: 700,
+            letterSpacing: 1.5,
+            textTransform: "uppercase",
+          }}
+        >
+          {activeTheme.label}
+        </div>
+        <div
+          style={{
+            fontSize: isSquare ? 18 : 20,
+            color: "rgba(255,255,255,0.62)",
+            letterSpacing: 1.2,
+          }}
+        >
+          AI system brief
+        </div>
       </div>
 
-      {/* ======= HOOK SCENE (first 1.5s) ======= */}
-      {frame < hookDur && (() => {
-        const hookScale = spring({ frame, fps, config: { damping: 12, stiffness: 200 } });
-        const hookOpacity = interpolate(frame, [0, 4, hookDur - 6, hookDur], [0, 1, 1, 0], {
-          extrapolateLeft: "clamp", extrapolateRight: "clamp",
-        });
-        return (
-          <AbsoluteFill style={{
-            justifyContent: "center", alignItems: "center",
-            opacity: hookOpacity, zIndex: 10,
-          }}>
-            {/* Flash effect */}
-            <AbsoluteFill style={{
-              backgroundColor: "rgba(255,255,255,0.15)",
-              opacity: interpolate(frame, [0, 8], [1, 0], {
-                extrapolateRight: "clamp",
-              }),
-            }} />            <div style={{
-              transform: `scale(${hookScale})`, textAlign: "center", padding: "0 40px",
-            }}>
-              <div style={{
-                display: "inline-block", backgroundColor: ACCENT,
-                borderRadius: 14, padding: "14px 40px",
-                boxShadow: "0 8px 32px rgba(218,119,86,0.4)",
-              }}>
-                <span style={{
-                  fontSize: 36, fontWeight: 800, color: "#fff", letterSpacing: 5,
-                  fontFamily: '"Inter",sans-serif',
-                }}>BREAKING</span>
-              </div>
-              <p style={{
-                fontSize: 22, color: "rgba(255,255,255,0.6)", marginTop: 16,
-                fontFamily: '"Inter",sans-serif', letterSpacing: 2,
-              }}>AI NEWS</p>
+      <div
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          height: 6,
+          width: `${progress * 100}%`,
+          background: `linear-gradient(90deg, ${activeTheme.accent}, ${activeTheme.helper})`,
+          zIndex: 30,
+          boxShadow: `0 0 30px ${activeTheme.accent}`,
+        }}
+      />
+
+      <div
+        style={{
+          position: "absolute",
+          left: isSquare ? 34 : 40,
+          right: isSquare ? 34 : 40,
+          bottom: cardBottom,
+          minHeight: cardMinHeight,
+          padding: isSquare ? "28px 30px" : "30px 34px",
+          paddingLeft: avatarVideoUrl ? avatarInset : isSquare ? 30 : 34,
+          borderRadius: 30,
+          background: CARD,
+          border: `1px solid ${GRID}`,
+          boxShadow: "0 36px 120px rgba(0,0,0,0.38)",
+          backdropFilter: "blur(16px)",
+          zIndex: 18,
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "space-between",
+        }}
+      >
+        <div style={{ opacity: fade, transform: `translateY(${(1 - enter) * 28}px)` }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 14,
+              marginBottom: 18,
+              color: activeTheme.accent,
+              fontWeight: 800,
+              letterSpacing: 1.2,
+              textTransform: "uppercase",
+              fontSize: isSquare ? 17 : 18,
+            }}
+          >
+            <span>{String(activeBeat + 1).padStart(2, "0")}</span>
+            <div
+              style={{
+                flex: 1,
+                height: 2,
+                background: `linear-gradient(90deg, ${activeTheme.accent}, transparent)`,
+              }}
+            />
+          </div>
+
+          <div
+            style={{
+              fontSize: activeBeat === 0 ? (isSquare ? 54 : 66) : isSquare ? 36 : 44,
+              lineHeight: activeBeat === 0 ? 1.02 : 1.12,
+              fontWeight: activeBeat === 0 ? 900 : 800,
+              letterSpacing: activeBeat === 0 ? -1.8 : -0.8,
+              textWrap: "balance",
+            }}
+          >
+            {storyBeats[activeBeat]}
+          </div>
+
+          {activeBeat > 0 ? (
+            <div
+              style={{
+                marginTop: 18,
+                fontSize: isSquare ? 21 : 24,
+                lineHeight: 1.28,
+                color: "rgba(255,255,255,0.72)",
+              }}
+            >
+              {headline}
             </div>
-          </AbsoluteFill>
-        );
-      })()}
+          ) : null}
+        </div>
 
-      {/* ======= HEADLINE SCENE (1.5s — 4s) ======= */}
-      {frame >= hookDur && frame < hookDur + headlineDur && (() => {
-        const lf = frame - hookDur;
-        const hlFade = Math.min(8, Math.floor(headlineDur / 3));
-        const hlOpacity = interpolate(frame, [hookDur, hookDur + hlFade, hookDur + headlineDur - hlFade, hookDur + headlineDur], [0, 1, 1, 0], {
-          extrapolateLeft: "clamp", extrapolateRight: "clamp",
-        });        const hlY = spring({ frame: lf, fps, config: { damping: 14, stiffness: 180 } });
-        return (
-          <AbsoluteFill style={{
-            justifyContent: "center", alignItems: "center",
-            opacity: hlOpacity, zIndex: 10,
-          }}>
-            <div style={{
-              transform: `translateY(${(1 - hlY) * 40}px)`,
-              textAlign: "center", padding: "0 48px", maxWidth: "95%",
-            }}>
-              {/* Topic label */}
-              <div style={{
-                display: "inline-block", marginBottom: 20,
-                borderBottom: `3px solid ${ACCENT}`, paddingBottom: 8,
-              }}>
-                <span style={{
-                  fontSize: 20, fontWeight: 600, color: ACCENT, letterSpacing: 3,
-                  fontFamily: '"Inter",sans-serif', textTransform: "uppercase",
-                }}>Artificial Intelligence</span>
-              </div>
-              <h1 style={{
-                fontSize: 68, fontWeight: 900, color: "#fff", margin: 0,
-                lineHeight: 1.08, letterSpacing: -1,
-                textShadow: "0 6px 24px rgba(0,0,0,0.6), 0 2px 4px rgba(0,0,0,0.4)",
-                fontFamily: '"Inter","SF Pro Display",sans-serif',
-              }}>{headline}</h1>
-            </div>
-          </AbsoluteFill>
-        );
-      })()}
-      {/* ======= BULLET SCENES — each held 2-3s with unique image ======= */}
-      {bullets.map((bullet, idx) => {
-        const bStart = hookDur + headlineDur + idx * bulletDur;
-        const bEnd = bStart + bulletDur;
-        if (frame < bStart || frame >= bEnd) return null;
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            marginTop: 22,
+          }}
+        >
+          {storyBeats.map((_, index) => (
+            <div
+              key={`beat-${index}`}
+              style={{
+                flex: 1,
+                height: 8,
+                borderRadius: 999,
+                background:
+                  index === activeBeat
+                    ? `linear-gradient(90deg, ${activeTheme.accent}, ${activeTheme.helper})`
+                    : "rgba(255,255,255,0.14)",
+                opacity: index <= activeBeat ? 1 : 0.7,
+              }}
+            />
+          ))}
+        </div>
+      </div>
 
-        const localFrame = frame - bStart;
-        const bSpring = spring({ frame: localFrame, fps, config: { damping: 13, stiffness: 180 } });
-        const fadeOutF = Math.min(8, Math.floor(bulletDur / 4));
-        const fadeOut = interpolate(frame, [bEnd - fadeOutF, bEnd], [1, 0], {
-          extrapolateLeft: "clamp", extrapolateRight: "clamp",
-        });
-
-        // Card position varies per bullet
-        const pos = getCardPosition(idx);
-        const justifyContent = pos === "top" ? "flex-start" : pos === "bottom" ? "flex-end" : "center";
-        const paddingTop = pos === "top" ? 200 : 0;
-        const paddingBottom = pos === "bottom" ? 220 : 0;
-
-        // Number string
-        const numStr = String(idx + 1).padStart(2, "0");
-        const totalStr = String(bulletCount).padStart(2, "0");
-
-        return (
-          <AbsoluteFill key={idx} style={{
-            justifyContent, alignItems: "center",
-            paddingTop, paddingBottom,
-            opacity: fadeOut, zIndex: 10,
-          }}>            <div style={{
-              transform: `scale(${bSpring}) translateY(${(1 - bSpring) * 50}px)`,
-              padding: "0 44px", maxWidth: "92%", width: "100%",
-            }}>
-              {/* Number indicator */}
-              <div style={{
-                display: "flex", alignItems: "center", gap: 12, marginBottom: 16,
-              }}>
-                <span style={{
-                  fontSize: 52, fontWeight: 900, color: ACCENT,
-                  fontFamily: '"Inter",sans-serif', lineHeight: 1,
-                  opacity: 0.9,
-                }}>{numStr}</span>
-                <div style={{
-                  flex: 1, height: 2,
-                  background: `linear-gradient(90deg, ${ACCENT}, transparent)`,
-                }} />
-                <span style={{
-                  fontSize: 18, fontWeight: 600, color: "rgba(255,255,255,0.4)",
-                  fontFamily: '"Inter",sans-serif',
-                }}>/ {totalStr}</span>
-              </div>
-
-              {/* Card */}
-              <div style={{
-                backgroundColor: CARD_BG,
-                backdropFilter: "blur(16px)",
-                borderRadius: 24,
-                padding: "32px 36px",
-                borderLeft: `5px solid ${ACCENT}`,
-                boxShadow: "0 12px 40px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.06)",
-              }}>                <p style={{
-                  fontSize: 44, fontWeight: 700, color: "#fff", margin: 0,
-                  lineHeight: 1.25,
-                  textShadow: "0 2px 8px rgba(0,0,0,0.2)",
-                  fontFamily: '"Inter","SF Pro",sans-serif',
-                }}>{bullet}</p>
-              </div>
-            </div>
-          </AbsoluteFill>
-        );
-      })}
-
-      {/* ======= OUTRO SCENE — last 2s ======= */}
-      {frame >= outroStart && (() => {
-        const lf = frame - outroStart;
-        const outroSpring = spring({ frame: lf, fps, config: { damping: 14, stiffness: 160 } });
-        const outroOpacity = interpolate(frame, [outroStart, outroStart + 8], [0, 1], {
-          extrapolateLeft: "clamp", extrapolateRight: "clamp",
-        });
-        return (
-          <AbsoluteFill style={{
-            justifyContent: "center", alignItems: "center", zIndex: 10,
-            opacity: outroOpacity,
-          }}>
-            <div style={{
-              textAlign: "center",
-              transform: `scale(${outroSpring})`,
-            }}>
-              {/* Accent line */}
-              <div style={{
-                width: 80, height: 4, borderRadius: 2, margin: "0 auto 20px",
-                background: `linear-gradient(90deg, ${ACCENT}, ${BLUE})`,
-              }} />              <h2 style={{
-                fontSize: 52, fontWeight: 800, color: "#fff", margin: 0,
-                textShadow: "0 4px 16px rgba(0,0,0,0.5)",
-                fontFamily: '"Inter","SF Pro",sans-serif',
-              }}>@petrusenko_max</h2>
-              <p style={{
-                fontSize: 26, color: "rgba(255,255,255,0.6)", marginTop: 12,
-                fontFamily: '"Inter",sans-serif', letterSpacing: 1,
-              }}>Follow for daily AI news</p>
-              {/* CTA button */}
-              <div style={{
-                display: "inline-block", marginTop: 28,
-                backgroundColor: ACCENT, borderRadius: 40,
-                padding: "14px 48px",
-                boxShadow: "0 8px 24px rgba(218,119,86,0.35)",
-              }}>
-                <span style={{
-                  fontSize: 24, fontWeight: 700, color: "#fff",
-                  fontFamily: '"Inter",sans-serif', letterSpacing: 1,
-                }}>FOLLOW</span>
-              </div>
-              <div style={{
-                width: 80, height: 4, borderRadius: 2, margin: "24px auto 0",
-                background: `linear-gradient(90deg, ${BLUE}, ${ACCENT})`,
-              }} />
-            </div>
-          </AbsoluteFill>
-        );
-      })()}
-      {/* === AVATAR (bottom-left) === */}
-      {avatarVideoUrl && <AvatarOverlay avatarVideoUrl={avatarVideoUrl} />}
-
-      {/* === AUDIO === */}
+      {avatarVideoUrl ? <AvatarOverlay avatarVideoUrl={avatarVideoUrl} layout={layout} /> : null}
       <Audio src={staticFile(audioUrl)} />
     </AbsoluteFill>
   );
 };
+
+const BackgroundLayer: React.FC<{
+  frame: number;
+  totalFrames: number;
+  accent: string;
+  helper: string;
+  imageUrl?: string | null;
+}> = ({ frame, totalFrames, accent, helper, imageUrl }) => {
+  const pulse = interpolate(frame % 120, [0, 60, 120], [0.72, 1, 0.72], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+  const drift = interpolate(frame % totalFrames, [0, totalFrames], [0, 180], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+
+  return (
+    <AbsoluteFill>
+      <AbsoluteFill
+        style={{
+          background: `radial-gradient(circle at 18% 20%, ${withAlpha(accent, 0.32)}, transparent 28%),
+            radial-gradient(circle at 82% 22%, ${withAlpha(helper, 0.22)}, transparent 26%),
+            linear-gradient(140deg, #040713 0%, #091225 54%, #060b17 100%)`,
+        }}
+      />
+
+      {imageUrl ? (
+        <AbsoluteFill style={{ opacity: 0.16, mixBlendMode: "screen" }}>
+          <Img
+            src={staticFile(imageUrl)}
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              transform: `scale(1.08) translateX(${drift * -0.1}px)`,
+            }}
+          />
+        </AbsoluteFill>
+      ) : null}
+
+      <svg
+        width="100%"
+        height="100%"
+        viewBox="0 0 1080 1920"
+        style={{ position: "absolute", inset: 0, opacity: 0.9 }}
+      >
+        <defs>
+          <linearGradient id="grid" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor={withAlpha(accent, 0.44)} />
+            <stop offset="100%" stopColor={withAlpha(helper, 0.18)} />
+          </linearGradient>
+        </defs>
+        {Array.from({ length: 12 }).map((_, index) => (
+          <line
+            key={`v-${index}`}
+            x1={index * 96}
+            y1="0"
+            x2={index * 96}
+            y2="1920"
+            stroke={GRID}
+            strokeWidth="1"
+          />
+        ))}
+        {Array.from({ length: 20 }).map((_, index) => (
+          <line
+            key={`h-${index}`}
+            x1="0"
+            y1={index * 96}
+            x2="1080"
+            y2={index * 96}
+            stroke={GRID}
+            strokeWidth="1"
+          />
+        ))}
+        <circle
+          cx={180 + drift * 0.2}
+          cy="280"
+          r={84 * pulse}
+          fill={withAlpha(accent, 0.12)}
+          stroke="url(#grid)"
+          strokeWidth="2"
+        />
+        <circle
+          cx="860"
+          cy={420 + drift * 0.16}
+          r="128"
+          fill="none"
+          stroke={withAlpha(helper, 0.28)}
+          strokeWidth="4"
+        />
+        <path
+          d={`M 110 1230 C 340 ${1080 - drift * 0.2}, 620 ${1440 + drift * 0.08}, 980 1160`}
+          fill="none"
+          stroke={withAlpha(accent, 0.46)}
+          strokeWidth="14"
+          strokeLinecap="round"
+        />
+        <path
+          d={`M 120 1290 C 360 ${1160 - drift * 0.12}, 690 ${1330 + drift * 0.08}, 980 1280`}
+          fill="none"
+          stroke={withAlpha(helper, 0.28)}
+          strokeWidth="8"
+          strokeLinecap="round"
+        />
+      </svg>
+
+      <div
+        style={{
+          position: "absolute",
+          top: 140,
+          right: 56,
+          width: 280,
+          padding: 18,
+          borderRadius: 24,
+          border: `1px solid ${GRID}`,
+          background: "rgba(255,255,255,0.04)",
+          boxShadow: "0 18px 50px rgba(0,0,0,0.18)",
+        }}
+      >
+        <div
+          style={{
+            fontSize: 18,
+            textTransform: "uppercase",
+            letterSpacing: 1.4,
+            color: "rgba(255,255,255,0.6)",
+          }}
+        >
+          Infra pulse
+        </div>
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            alignItems: "flex-end",
+            height: 110,
+            marginTop: 18,
+          }}
+        >
+          {[52, 78, 40, 92, 66].map((bar, index) => (
+            <div
+              key={`bar-${index}`}
+              style={{
+                flex: 1,
+                height: `${bar * pulse}%`,
+                borderRadius: 999,
+                background: index % 2 === 0 ? accent : helper,
+                opacity: 0.84,
+              }}
+            />
+          ))}
+        </div>
+      </div>
+
+      <AbsoluteFill
+        style={{
+          background: "radial-gradient(circle at center, transparent 54%, rgba(0,0,0,0.44) 100%)",
+        }}
+      />
+    </AbsoluteFill>
+  );
+};
+
+function withAlpha(hex: string, alpha: number): string {
+  const safe = hex.replace("#", "");
+  if (safe.length !== 6) return hex;
+  const value = Math.round(alpha * 255)
+    .toString(16)
+    .padStart(2, "0");
+  return `#${safe}${value}`;
+}

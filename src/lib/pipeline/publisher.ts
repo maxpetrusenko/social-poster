@@ -15,46 +15,55 @@ export interface PublishResult {
   error?: string;
 }
 
+export interface PublishTarget {
+  platform: string;
+  accountId?: string | null;
+  content: string;
+  mediaUrl?: string;
+  mediaType?: "video" | "image";
+  instagramContentType?: "reel" | "story";
+}
+
 function getToken(): string {
   const t = process.env.LATE_API_KEY || process.env.GETLATE_DEV_API_KEY_FREE || process.env.GETLATE_API_KEY;
   if (!t) throw new Error("No LATE_API_KEY");
   return t;
 }
 
-export async function publishToLate(opts: {
-  content: string;
-  platforms: string[];
-  mediaUrl?: string;
-  mediaType?: "video" | "image";
-}): Promise<PublishResult[]> {
+function normalizePlatform(platform: string): string {
+  const value = platform.toLowerCase();
+  return value === "x" ? "twitter" : value;
+}
+
+export async function publishToLate(targets: PublishTarget[]): Promise<PublishResult[]> {
   const token = getToken();
   const results: PublishResult[] = [];
 
-  for (const platform of opts.platforms) {
-    const accountId = ACCOUNT_IDS[platform.toLowerCase()];
+  for (const target of targets) {
+    const platform = normalizePlatform(target.platform);
+    const accountId = target.accountId || ACCOUNT_IDS[platform];
     if (!accountId) {
       results.push({ platform, success: false, error: `Unknown platform: ${platform}` });
       continue;
     }
 
     try {
-      const platformEntry: Record<string, unknown> = { platform: platform.toLowerCase(), accountId };
+      const platformEntry: Record<string, unknown> = { platform, accountId };
 
-      // IG reels/stories
-      if (platform.toLowerCase() === "instagram" && opts.mediaUrl) {
+      if (platform === "instagram" && target.mediaUrl) {
         platformEntry.platformSpecificData = {
-          contentType: opts.mediaType === "video" ? "reel" : "story",
+          contentType: target.instagramContentType || (target.mediaType === "video" ? "reel" : "story"),
         };
       }
 
       const body: Record<string, unknown> = {
-        content: opts.content,
+        content: target.content,
         platforms: [platformEntry],
         publishNow: true,
       };
 
-      if (opts.mediaUrl) {
-        body.mediaItems = [{ type: opts.mediaType || "image", url: opts.mediaUrl }];
+      if (target.mediaUrl) {
+        body.mediaItems = [{ type: target.mediaType || "image", url: target.mediaUrl }];
       }
 
       const res = await fetch(LATE_URL, {

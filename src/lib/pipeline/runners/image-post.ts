@@ -31,9 +31,13 @@ export async function runImagePostJob(
   const platformRows = await Promise.all(
     targetIds.map((pid) => db.query.platforms.findFirst({ where: eq(platforms.id, pid) }))
   );
-  const platformTypes = platformRows.filter(Boolean).map((p) => p!.type);
+  const targets = platformRows.filter(Boolean).map((platform) => ({
+    platform: platform!.type,
+    accountId: platform!.accountId,
+    content: "",
+  }));
 
-  if (platformTypes.length === 0) {
+  if (targets.length === 0) {
     await fail(runId, steps, startedAt, "No target platforms");
     return;
   }
@@ -52,19 +56,30 @@ export async function runImagePostJob(
     // 2. Caption
     const s2: PipelineStep = { name: "caption:write", status: "running", startedAt: new Date().toISOString() };
     steps.push(s2);
-    const caption = writePostCaption(story, platformTypes[0]);
+    const publishTargets = targets.map((target) => ({
+      ...target,
+      content: writePostCaption(story, target.platform),
+    }));
     s2.status = "completed";
     s2.completedAt = new Date().toISOString();
-    s2.output = { chars: caption.length };
+    s2.output = {
+      captions: publishTargets.map((target) => ({
+        platform: target.platform,
+        chars: target.content.length,
+      })),
+    };
 
     // 3. Publish (text only)
     const s3: PipelineStep = { name: "publish", status: "running", startedAt: new Date().toISOString() };
     steps.push(s3);
-    const results = await publishToLate({ content: caption, platforms: platformTypes });
+    const results = await publishToLate(publishTargets);
     const ok = results.filter((r) => r.success).map((r) => r.platform);
     s3.status = "completed";
     s3.completedAt = new Date().toISOString();
-    s3.output = { published: ok };
+    s3.output = {
+      published: ok,
+      errors: results.filter((result) => !result.success).map((result) => `${result.platform}: ${result.error}`),
+    };
 
     await markPosted(story);
 

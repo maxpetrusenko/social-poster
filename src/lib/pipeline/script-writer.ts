@@ -22,6 +22,31 @@ export function writeVoiceScript(story: { title: string; summary: string }): str
   return templates[idx];
 }
 
+export function writeVideoBullets(story: { title: string; summary: string }): string[] {
+  const source = `${story.title}. ${story.summary}`.replace(/\s+/g, " ").trim();
+  const sentences = source
+    .split(/(?<=[.!?])\s+/)
+    .map((line) => line.replace(/\s+/g, " ").trim())
+    .filter(Boolean);
+
+  const bullets = [
+    extractStatLine(source),
+    shorten(sentences[0] || story.title, 60),
+    shorten(sentences[1] || pickWhyMatters(story.title), 60),
+    shorten(sentences[2] || pickBuilderAngle(story.title), 60),
+  ]
+    .filter(Boolean)
+    .map((line) => line!.replace(/[.!?]+$/g, "").trim())
+    .filter((line, index, arr) => arr.indexOf(line) === index)
+    .slice(0, 4);
+
+  while (bullets.length < 4) {
+    bullets.push(fallbackBullet(bullets.length, story.title));
+  }
+
+  return bullets;
+}
+
 export function writePostCaption(story: { title: string; summary: string }, platform: string): string {
   const t = story.title;
   const s = story.summary;
@@ -74,6 +99,12 @@ function pickDetail(summary: string): string {
   return firstSentence(summary);
 }
 
+function extractStatLine(source: string): string {
+  const stat = source.match(/\b\d[\d,.]*\s?(?:billion|million|thousand|x|%|tokens?|models?|gpus?)\b/i);
+  if (stat?.[0]) return `${stat[0]} in the middle of it`;
+  return "builder angle, not press release";
+}
+
 function verbalize(title: string): string {
   const lower = title.toLowerCase();
   if (lower.startsWith("how")) return lower;
@@ -85,6 +116,22 @@ function verbalize(title: string): string {
 function firstSentence(s: string): string {
   const m = s.match(/^[^.!?]+[.!?]/);
   return m ? m[0].trim() : s.slice(0, 200).trim();
+}
+
+function shorten(s: string, max: number): string {
+  const clean = s.replace(/\s+/g, " ").trim();
+  if (clean.length <= max) return clean;
+  return clean.slice(0, max - 1).trimEnd() + "…";
+}
+
+function fallbackBullet(index: number, title: string): string {
+  const fallbacks = [
+    pickInsight(title),
+    pickWhyMatters(title),
+    pickBuilderAngle(title),
+    "worth watching in prod",
+  ];
+  return fallbacks[index] || "details matter here";
 }
 
 function truncate(s: string, max: number): string {

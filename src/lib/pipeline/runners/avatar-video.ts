@@ -7,7 +7,7 @@ import { writeFileSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
 
 import { getTopStories, markPosted } from "../feed-engine";
-import { writeVoiceScript, writePostCaption } from "../script-writer";
+import { writeVideoBullets, writeVoiceScript, writePostCaption } from "../script-writer";
 import { generateTTS } from "../tts";
 import { generateAvatar } from "../avatar";
 import { renderVideo } from "../video-render";
@@ -34,12 +34,13 @@ export async function runAvatarVideoJob(
     startedAt,
   });
 
-  // Resolve target platform types from IDs
+  // Resolve target platform rows from IDs
   const targetIds = (schedule.targetPlatformIds || []) as string[];
   const platformRows = await Promise.all(
     targetIds.map((pid) => db.query.platforms.findFirst({ where: eq(platforms.id, pid) }))
   );
-  const platformTypes = platformRows.filter(Boolean).map((p) => p!.type);
+  const targets = platformRows.filter(Boolean).map((platform) => platform!);
+  const platformTypes = targets.map((platform) => platform.type);
 
   if (platformTypes.length === 0) {
     await fail(runId, steps, startedAt, "No target platforms");
@@ -59,8 +60,8 @@ export async function runAvatarVideoJob(
     const s2 = step("script:write");
     steps.push(s2);
     const voiceScript = writeVoiceScript(story);
-    const caption = writePostCaption(story, platformTypes[0]);
-    complete(s2, { chars: voiceScript.length });
+    const bullets = writeVideoBullets(story);
+    complete(s2, { chars: voiceScript.length, bullets });
 
     // 3. TTS
     const s3 = step("tts:generate");
@@ -81,32 +82,72 @@ export async function runAvatarVideoJob(
     // 5. Render
     const s5 = step("video:render");
     steps.push(s5);
-    const videoBuffer = await renderVideo({
-      headline: story.title,
-      bullets: [],
-      audioPath,
-      avatarPath,
-    });
-    complete(s5, { bytes: videoBuffer.length });
+    const needsPortrait = targets.some((platform) => usesPortraitVideo(platform.type));
+    const needsSquare = targets.some((platform) => usesSquareVideo(platform.type));
+    const mediaByPlatform = new Map<string, string>();
+    const renderMeta: Array<{ layout: string; bytes: number; url: string; targets: string[] }> = [];
 
-    // 6. Upload
-    const s6 = step("video:upload");
+    if (needsPortrait) {
+      const portraitBuffer = await renderVideo({
+        headline: story.title,
+        bullets,
+        audioPath,
+        avatarPath,
+        layout: "portrait",
+      });
+      const portraitUrl = await uploadToCatbox(portraitBuffer, `portrait-${runId}.mp4`);
+      for (const platform of targets.filter((target) => usesPortraitVideo(target.type))) {
+        mediaByPlatform.set(platform.id, portraitUrl);
+      }
+      renderMeta.push({
+        layout: "portrait",
+        bytes: portraitBuffer.length,
+        url: portraitUrl,
+        targets: targets.filter((target) => usesPortraitVideo(target.type)).map((target) => target.type),
+      });
+    }
+
+    if (needsSquare) {
+      const squareBuffer = await renderVideo({
+        headline: story.title,
+        bullets,
+        audioPath,
+        avatarPath,
+        layout: "square",
+      });
+      const squareUrl = await uploadToCatbox(squareBuffer, `square-${runId}.mp4`);
+      for (const platform of targets.filter((target) => usesSquareVideo(target.type))) {
+        mediaByPlatform.set(platform.id, squareUrl);
+      }
+      renderMeta.push({
+        layout: "square",
+        bytes: squareBuffer.length,
+        url: squareUrl,
+        targets: targets.filter((target) => usesSquareVideo(target.type)).map((target) => target.type),
+      });
+    }
+
+    complete(s5, { renders: renderMeta });
+
+    const scheduleConfig = (schedule.config || {}) as Record<string, unknown>;
+
+    // 6. Publish
+    const s6 = step("publish");
     steps.push(s6);
-    const videoUrl = await uploadToCatbox(videoBuffer, `vid-${runId}.mp4`);
-    complete(s6, { url: videoUrl });
-
-    // 7. Publish
-    const s7 = step("publish");
-    steps.push(s7);
-    const results = await publishToLate({
-      content: caption,
-      platforms: platformTypes,
-      mediaUrl: videoUrl,
-      mediaType: "video",
-    });
+    const results = await publishToLate(
+      targets.map((platform) => ({
+        platform: platform.type,
+        accountId: platform.accountId,
+        content: writePostCaption(story, platform.type),
+        mediaUrl: mediaByPlatform.get(platform.id),
+        mediaType: "video" as const,
+        instagramContentType:
+          platform.type === "instagram" ? getInstagramVideoType(scheduleConfig) : undefined,
+      }))
+    );
     const ok = results.filter((r) => r.success).map((r) => r.platform);
     const failed = results.filter((r) => !r.success);
-    complete(s7, { published: ok, errors: failed.map((r) => `${r.platform}: ${r.error}`) });
+    complete(s6, { published: ok, errors: failed.map((r) => `${r.platform}: ${r.error}`) });
 
     // Dedup
     await markPosted(story);
@@ -151,4 +192,16 @@ async function fail(runId: string, steps: PipelineStep[], startedAt: Date, error
     durationMs: now.getTime() - startedAt.getTime(),
     completedAt: now,
   }).where(eq(pipelineRuns.id, runId));
+}
+
+function usesSquareVideo(platform: string): boolean {
+  return ["twitter", "x", "linkedin"].includes(platform.toLowerCase());
+}
+
+function usesPortraitVideo(platform: string): boolean {
+  return !usesSquareVideo(platform);
+}
+
+function getInstagramVideoType(config: Record<string, unknown>): "reel" | "story" {
+  return config.instagramVideoContentType === "story" ? "story" : "reel";
 }

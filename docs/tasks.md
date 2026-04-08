@@ -1,6 +1,6 @@
 # Social Poster — Tasks & Status
 
-Last updated: 2026-04-05
+Last updated: 2026-04-07
 
 ## Current State
 
@@ -71,30 +71,31 @@ Deploys to `social.maxpetrusenko.com` on Contabo/Coolify.
 - [ ] Re-enable auth before production hardening if needed
 
 ### Agent / Pipeline Engine
-- [ ] Port feed ingest logic from old social-agent (news.ts → src/lib/feeds/)
-- [ ] Port Zernio adapter (zernio.ts → src/lib/publish/zernio.ts)
-- [ ] Simli avatar video generation adapter
-- [ ] Cartesia TTS adapter
-- [ ] Remotion video rendering pipeline
+- [x] Feed ingest logic ported into `src/lib/pipeline/feed-engine.ts`
+- [x] Late/Zernio publish path ported into `src/lib/pipeline/publisher.ts`
+- [x] Simli avatar video generation adapter
+- [x] Cartesia TTS adapter
+- [x] Remotion video rendering pipeline
 - [ ] Image generation pipeline (sharp-based card renderer)
 - [ ] Bird (X CLI) adapter as fallback
-- [ ] Cron scheduler that reads from `schedules` table (not hardcoded JSON)
-- [ ] Pipeline orchestrator: feed → dedup → render → publish → log
+- [x] Cron scheduler that reads from `schedules` table
+- [x] Pipeline orchestrator: feed → dedup → render → publish → log
 - [ ] Idempotency keys on every publish attempt
 
 ### Deploy
 - [x] Dockerfile (standalone Next.js + chromium + ffmpeg)
 - [x] docker-compose.yml for local dev
-- [ ] Coolify app config (persistent volume, env vars, Traefik)
-- [ ] Migrate env vars from old social-agent Coolify app
-- [ ] Update SIMLI_FACE_ID on Contabo → `e5b26d08-3287-4e0c-a9c5-d5914a7c0de8`
-- [ ] Update CARTESIA_VOICE_ID → `7270ea4d-a17a-4f21-a3da-03f2b128669d`
+- [x] VPS deploy live behind Traefik at `social.maxpetrusenko.com`
+- [x] Env vars migrated for Cartesia, Simli, Late/Zernio
+- [x] Update SIMLI_FACE_ID on Contabo → `7bb46589-4be6-4df8-ab80-03443fb75d6f`
+- [x] Update CARTESIA_VOICE_ID → `7270ea4d-a17a-4f21-a3da-03f2b128669d`
+- [x] Root deployment doc: `DEPLOYMENT.md`
 
 ### Polish
 - [x] npm install + build verification
 - [x] Fix TypeScript / import errors blocking build
 - [x] Seed script for initial platforms + profile + schedules
-- [ ] Git init + first commit + push to GitHub
+- [x] Git init + first commit + push to GitHub
 - [ ] Public social feed endpoint (GET /api/feed — for website consumption)
 - [ ] Real-time status updates (polling or SSE on pipeline page)
 - [ ] Toast notifications for form actions
@@ -142,6 +143,7 @@ social-poster/
 
 ## Ops Notes
 - `/health` returns JSON health status for Coolify / load balancer probes
+- `/api/health` returns app + active scheduler state
 - Local restore command:
   `npm run legacy:import -- --legacy-dir ../social-agent --with-remote-runs --ssh-target max@173.249.52.27 --ssh-key ~/.ssh/contabo_vmi3203669_ed25519 --volume <coolify-volume>`
 - Imported schedules default to disabled, matching pre-cutover safety
@@ -151,5 +153,5 @@ social-poster/
 - Contabo VPS: 173.249.52.27
 - Coolify: coolify.maxpetrusenko.com
 - Domain: social.maxpetrusenko.com
-- Simli Face ID: e5b26d08-3287-4e0c-a9c5-d5914a7c0de8
+- Simli Face ID: 7bb46589-4be6-4df8-ab80-03443fb75d6f
 - Cartesia Voice ID: 7270ea4d-a17a-4f21-a3da-03f2b128669d

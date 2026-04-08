@@ -13,7 +13,7 @@ const TONE_OPTIONS = [
 ];
 
 const DEFAULT_VOICE_ID = "7270ea4d-a17a-4f21-a3da-03f2b128669d";
-const DEFAULT_FACE_ID = "e5b26d08-3287-4e0c-a9c5-d5914a7c0de8";
+const DEFAULT_FACE_ID = "7bb46589-4be6-4df8-ab80-03443fb75d6f";
 
 export default function NewProfilePage() {
   const router = useRouter();
