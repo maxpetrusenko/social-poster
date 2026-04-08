@@ -5,5 +5,4 @@ export interface AiNewsVideoProps {
   imageUrls?: string[];
   avatarVideoUrl?: string;
   durationInSeconds: number;
-  layout?: "portrait" | "square";
 }
