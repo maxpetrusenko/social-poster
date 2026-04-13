@@ -49,6 +49,25 @@ test("resolveFixedScheduleContent can pin rotation to calendar weeks", () => {
   );
 });
 
+test("resolveFixedScheduleContent clamps calendar rotation before anchor", () => {
+  const content = resolveFixedScheduleContent(
+    {
+      postMode: "fixed",
+      title: "Referral",
+      rotationMode: "calendar_week",
+      rotationAnchorDate: "2026-04-16T14:30:00-04:00",
+      contentVariants: ["week1", "week2", "week3", "week4"],
+    },
+    ["twitter"],
+    999,
+    new Date("2026-04-13T18:58:00-04:00")
+  );
+
+  assert.ok(content);
+  assert.equal(content?.variantIndex, 0);
+  assert.equal(content?.contentByPlatform.twitter, "week1");
+});
+
 test("resolveFixedScheduleContent supports platform specific variants", () => {
   const content = resolveFixedScheduleContent(
     {

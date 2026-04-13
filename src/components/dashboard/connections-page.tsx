@@ -45,6 +45,7 @@ export function ConnectionsPage({
   const [selectedProfileId, setSelectedProfileId] = useState<string>("all");
   const [formState, setFormState] = useState<FormState>({
     useInstalledBirdSession: true,
+    threadLongPosts: true,
   });
   const [error, setError] = useState<string | null>(null);
   const [isSaving, startSaving] = useTransition();
@@ -116,6 +117,7 @@ export function ConnectionsPage({
     setSelectedMethodId(null);
     setFormState({
       useInstalledBirdSession: true,
+      threadLongPosts: true,
     });
     setError(null);
   }

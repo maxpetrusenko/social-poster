@@ -19,7 +19,7 @@ export type PublishClassification =
 
 export interface PublishResult {
   platform: string;
-  provider: "late";
+  provider: "late" | "bird";
   accountId: string | null;
   success: boolean;
   classification: PublishClassification;

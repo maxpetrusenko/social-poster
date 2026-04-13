@@ -22,9 +22,11 @@ ENV HOSTNAME=0.0.0.0
 ENV PORT=3000
 ENV DATABASE_URL=/data/social-poster.db
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+ENV BIRD_RUNNER=bird
 
 RUN apt-get update \
   && apt-get install -y --no-install-recommends chromium ffmpeg ca-certificates curl dumb-init \
+  && npm install -g @steipete/bird \
   && rm -rf /var/lib/apt/lists/*
 
 RUN mkdir -p /data

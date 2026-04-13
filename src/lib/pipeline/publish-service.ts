@@ -4,6 +4,7 @@ import {
   getPlatformCapabilities,
   type PublishMediaKind,
 } from "@/lib/platform-capabilities";
+import { publishToBird } from "./bird-publisher";
 import { publishToLate, type PublishResult } from "./publisher";
 
 type PlatformRow = typeof platforms.$inferSelect;
@@ -26,6 +27,13 @@ export type PublishExecutionSummary = {
   }>;
 };
 
+function shouldPublishViaBird(platform: Pick<PlatformRow, "provider" | "type">) {
+  return (
+    platform.provider === "bird" &&
+    ["twitter", "x"].includes(platform.type.toLowerCase())
+  );
+}
+
 function resolveRequestedMediaKind(
   target: Pick<PublishPlatformInput, "mediaUrl" | "mediaType">
 ): PublishMediaKind {
@@ -46,7 +54,7 @@ function createValidationFailure(
 ): PublishResult {
   return {
     platform: target.platform.type,
-    provider: "late",
+    provider: target.platform.provider === "bird" ? "bird" : "late",
     accountId: target.platform.accountId,
     success: false,
     classification: "validation_error",
@@ -79,16 +87,24 @@ export async function publishPlatformTargets(
       continue;
     }
 
-    const [outcome] = await publishToLate([
-      {
-        platform: target.platform.type,
-        accountId: target.platform.accountId,
-        content: target.content,
-        mediaUrl: target.mediaUrl,
-        mediaType: target.mediaType,
-        instagramContentType: target.instagramContentType,
-      },
-    ]);
+    const outcome = shouldPublishViaBird(target.platform)
+      ? await publishToBird({
+          platform: target.platform,
+          content: target.content,
+          mediaUrl: target.mediaUrl,
+        })
+      : (
+          await publishToLate([
+            {
+              platform: target.platform.type,
+              accountId: target.platform.accountId,
+              content: target.content,
+              mediaUrl: target.mediaUrl,
+              mediaType: target.mediaType,
+              instagramContentType: target.instagramContentType,
+            },
+          ])
+        )[0];
 
     outcomes.push(outcome);
   }

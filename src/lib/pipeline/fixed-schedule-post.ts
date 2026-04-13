@@ -113,7 +113,7 @@ function resolveRotationIndex(
   }
 
   const weekMs = 7 * 24 * 60 * 60 * 1000;
-  return Math.floor((runTime - anchorTime) / weekMs);
+  return Math.max(0, Math.floor((runTime - anchorTime) / weekMs));
 }
 
 export function resolveFixedScheduleContent(

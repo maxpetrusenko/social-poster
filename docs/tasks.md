@@ -90,6 +90,7 @@ Deploys to `social.maxpetrusenko.com` on Contabo/Coolify.
 - [x] `/api/health` and dashboard expose DB-enabled vs runtime-registered schedule counts
 - [x] Manual and scheduled publishing now share one normalized publish service
 - [x] Mixed manual post delivery can resolve to `partial_failure`
+- [x] X publish now routes through Bird when the platform provider is `bird`, with dashboard credentials first and env fallback second
 - [ ] Idempotency keys on every publish attempt
 
 ### Deploy

@@ -112,40 +112,63 @@ export const CONNECTION_PLATFORM_DEFINITIONS: ConnectionPlatformDefinition[] = [
       },
       {
         id: "bird_cli",
-        label: "Bird tool + custom instructions",
+        label: "Bird session or cookie tokens",
         provider: "bird",
         description:
-          "Use the installed Bird CLI for browser-session posting or reply workflows.",
+          "Use Bird for real X posting with browser session cookies locally or explicit auth tokens in the container.",
         recommendation:
-          "Best when direct API is overkill or when you need local operator control.",
+          "Best when you want native X posting, long-post threading, and a local-to-prod fallback path.",
         fields: [
           textField("displayName", "Connection name", "X via Bird"),
           textField("handle", "Handle", "@maxpetrusenko"),
           toggleField(
             "useInstalledBirdSession",
             "Use installed Bird session",
-            "Leave on to use the default local Firefox-backed Bird session."
+            "Use browser cookies from the local machine when explicit auth tokens are not provided."
           ),
           textField(
-            "birdProfilePath",
-            "Bird profile path",
-            "/Users/maxpetrusenko/.../Firefox/Profile",
-            "Optional custom Firefox profile path."
+            "chromeProfile",
+            "Chrome profile name",
+            "Default",
+            "Optional. Example: Default or Profile 1."
+          ),
+          textField(
+            "chromeProfileDir",
+            "Chrome profile dir",
+            "/Users/maxpetrusenko/.../Chrome/Profile",
+            "Optional explicit Chrome profile path."
+          ),
+          textField(
+            "firefoxProfile",
+            "Firefox profile name",
+            "default-release",
+            "Optional. Use if Bird should read Firefox cookies instead."
           ),
           passwordField(
-            "accessToken",
-            "Access token",
-            "Optional if your Bird flow also uses app tokens"
+            "authToken",
+            "auth_token cookie",
+            "Optional explicit X auth_token for container/runtime use"
           ),
           passwordField(
-            "accessTokenSecret",
-            "Access token secret",
-            "Optional if your Bird flow also uses app tokens"
+            "ct0",
+            "ct0 cookie",
+            "Optional explicit X ct0 for container/runtime use"
+          ),
+          toggleField(
+            "threadLongPosts",
+            "Thread long posts",
+            "Automatically split long X posts into a thread."
+          ),
+          textField(
+            "threadChunkLimit",
+            "Thread chunk limit",
+            "260",
+            "Keep under the X limit after thread numbering."
           ),
           textareaField(
             "customInstructions",
             "Bird instructions",
-            "Example: use /Users/maxpetrusenko/Desktop/Projects/bird/bird and default Firefox session"
+            "Example: prefer Chrome default profile locally, env cookies in container, thread long posts"
           ),
         ],
         docs: [

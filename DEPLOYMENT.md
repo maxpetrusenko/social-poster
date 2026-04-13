@@ -44,7 +44,7 @@ Container requires these env vars (set via `docker run -e`):
 | `ZERNIO_INSTAGRAM_ACCOUNT_ID` | Instagram account in Zernio |
 | `X_AUTH_TOKEN` | X auth cookie for reply engine |
 | `X_CT0` | X ct0 cookie for reply engine |
-| `BIRD_RUNNER=npx` | bird CLI runner inside container |
+| `BIRD_RUNNER=bird` | bird CLI runner inside container |
 
 Keys live in Doppler (`api_keys` project, `dev` config). Fetch:
 ```bash
@@ -59,7 +59,7 @@ Target state:
 - app expects SQLite at `/data/social-poster.db`
 - app always serves Next.js on `3000`; entrypoint bridges any Coolify rollout port to `3000`
 - GitHub source uses an SSH deploy key; no public-repo toggle
-- required reply env vars in Coolify: `X_AUTH_TOKEN`, `X_CT0`, `BIRD_RUNNER=npx`
+- required reply env vars in Coolify: `X_AUTH_TOKEN`, `X_CT0`, `BIRD_RUNNER=bird`
 
 ```bash
 # 1. Push code

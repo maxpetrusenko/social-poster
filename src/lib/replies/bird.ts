@@ -38,8 +38,11 @@ function getBirdAuth(): { authToken: string; ct0: string } {
 
 async function runBird(args: string[], expectJson = true): Promise<unknown> {
   const { authToken, ct0 } = getBirdAuth();
-  const command = [BIRD_PACKAGE, "--auth-token", authToken, "--ct0", ct0, ...args];
-  const runnerArgs = BIRD_RUNNER === "npx" ? ["-y", ...command] : command;
+  const commandArgs = ["--auth-token", authToken, "--ct0", ct0, ...args];
+  const runnerArgs =
+    BIRD_RUNNER === "npx"
+      ? ["-y", BIRD_PACKAGE, ...commandArgs]
+      : commandArgs;
 
   const { stdout } = await execFileAsync(BIRD_RUNNER, runnerArgs, {
     timeout: 30_000,
