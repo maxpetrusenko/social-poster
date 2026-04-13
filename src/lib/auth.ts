@@ -5,12 +5,18 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import crypto from "node:crypto";
 import {
-  AUTH_DISABLED,
+  AUTH_MODE,
   ALLOWED_EMAIL,
+  getAuthConfigError,
   MAGIC_LINK_TTL_MS,
   SESSION_COOKIE,
   SESSION_TTL_MS,
 } from "@/lib/auth-config";
+import {
+  isSupabaseConfigured,
+  isWorkspaceUserAllowed,
+} from "@/lib/supabase/config";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 function id() {
   return crypto.randomUUID();
@@ -32,8 +38,32 @@ function getBypassSession() {
   };
 }
 
+async function getSupabaseSession() {
+  if (AUTH_MODE !== "supabase" || !isSupabaseConfigured()) return null;
+
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
+
+  if (error || !isWorkspaceUserAllowed(user?.email)) {
+    return null;
+  }
+
+  const now = new Date();
+
+  return {
+    id: user!.id,
+    email: user!.email ?? ALLOWED_EMAIL,
+    token: "supabase",
+    expiresAt: new Date(now.getTime() + SESSION_TTL_MS),
+    createdAt: now,
+  };
+}
+
 export async function createMagicLink(email: string): Promise<string | null> {
-  if (AUTH_DISABLED) return "auth-disabled";
+  if (AUTH_MODE !== "magic_link") return null;
   if (email.toLowerCase() !== ALLOWED_EMAIL.toLowerCase()) return null;
 
   const t = token();
@@ -52,9 +82,7 @@ export async function createMagicLink(email: string): Promise<string | null> {
 }
 
 export async function verifyMagicLink(t: string): Promise<string | null> {
-  if (AUTH_DISABLED) {
-    return ALLOWED_EMAIL;
-  }
+  if (AUTH_MODE !== "magic_link") return null;
 
   const link = db
     .select()
@@ -102,8 +130,21 @@ export async function verifyMagicLink(t: string): Promise<string | null> {
 }
 
 export async function getSession() {
-  if (AUTH_DISABLED) {
+  if (AUTH_MODE === "bypass") {
     return getBypassSession();
+  }
+
+  if (AUTH_MODE === "misconfigured") {
+    return null;
+  }
+
+  const supabaseSession = await getSupabaseSession();
+  if (supabaseSession) {
+    return supabaseSession;
+  }
+
+  if (AUTH_MODE === "supabase" || isSupabaseConfigured()) {
+    return null;
   }
 
   const cookieStore = await cookies();
@@ -125,7 +166,13 @@ export async function getSession() {
 }
 
 export async function logout() {
-  if (AUTH_DISABLED) return;
+  if (AUTH_MODE === "bypass" || AUTH_MODE === "misconfigured") return;
+
+  if (AUTH_MODE === "supabase" && isSupabaseConfigured()) {
+    const supabase = await createSupabaseServerClient();
+    await supabase.auth.signOut();
+    return;
+  }
 
   const cookieStore = await cookies();
   const t = cookieStore.get(SESSION_COOKIE)?.value;
@@ -144,8 +191,15 @@ export async function requireAuth() {
 }
 
 export async function requireApiSession() {
-  if (AUTH_DISABLED) {
+  if (AUTH_MODE === "bypass") {
     return getBypassSession();
+  }
+
+  if (AUTH_MODE === "misconfigured") {
+    return NextResponse.json(
+      { error: getAuthConfigError() ?? "Authentication is misconfigured." },
+      { status: 503 }
+    );
   }
 
   const session = await getSession();

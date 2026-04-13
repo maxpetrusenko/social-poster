@@ -4,6 +4,8 @@ import {
   hasSmtpConfig,
   sendMagicLinkEmail,
 } from "@/lib/mail";
+import { AUTH_MODE, getAuthConfigError } from "@/lib/auth-config";
+import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -12,6 +14,27 @@ const loginSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
+  if (AUTH_MODE === "misconfigured") {
+    return NextResponse.json(
+      { error: getAuthConfigError() ?? "Authentication is misconfigured." },
+      { status: 503 }
+    );
+  }
+
+  if (AUTH_MODE === "supabase" && isSupabaseConfigured()) {
+    return NextResponse.json(
+      { error: "Google sign-in required" },
+      { status: 400 }
+    );
+  }
+
+  if (AUTH_MODE !== "magic_link") {
+    return NextResponse.json(
+      { error: "Magic link sign-in is unavailable." },
+      { status: 400 }
+    );
+  }
+
   try {
     const body = await request.json();
     const { email } = loginSchema.parse(body);

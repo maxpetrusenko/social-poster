@@ -1,0 +1,20 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "allowImportingTsExtensions": true
+  },
+  "include": [
+    "types/next-typecheck.d.ts",
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "scripts/**/*.mjs",
+    "middleware.ts",
+    "next.config.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    ".next",
+    ".next-dev",
+    "src/remotion"
+  ]
+}
