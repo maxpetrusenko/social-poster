@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { DashboardHero, HeroButton, SectionCard, StatusBadge } from "@/components/dashboard/ui";
 import { getCalendarInsights } from "@/lib/dashboard/insights";
+import { formatTimeInZone } from "@/lib/timezone";
 
 function getCalendarDays(year: number, monthIndex: number) {
   const firstDay = new Date(year, monthIndex, 1);
@@ -124,7 +125,7 @@ export default async function CalendarPage({
                         <div className="flex items-center justify-between gap-2">
                           <span className="truncate">{event.label}</span>
                           <span className="shrink-0 opacity-70">
-                            {event.at.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
+                            {formatTimeInZone(event.at)}
                           </span>
                         </div>
                       </div>

@@ -1,3 +1,5 @@
+import { getAppTimeZone, getZonedDateParts } from "@/lib/timezone";
+
 const FIELD_RANGES = [
   { min: 0, max: 59 },
   { min: 0, max: 23 },
@@ -88,13 +90,14 @@ function parseCron(expression: string): ParsedCron | null {
   return parsed;
 }
 
-function matches(parsed: ParsedCron, date: Date): boolean {
+function matches(parsed: ParsedCron, date: Date, timeZone: string): boolean {
+  const parts = getZonedDateParts(date, timeZone);
   return (
-    parsed.minute.has(date.getMinutes()) &&
-    parsed.hour.has(date.getHours()) &&
-    parsed.dayOfMonth.has(date.getDate()) &&
-    parsed.month.has(date.getMonth() + 1) &&
-    parsed.dayOfWeek.has(date.getDay())
+    parsed.minute.has(parts.minute) &&
+    parsed.hour.has(parts.hour) &&
+    parsed.dayOfMonth.has(parts.day) &&
+    parsed.month.has(parts.month) &&
+    parsed.dayOfWeek.has(parts.weekday)
   );
 }
 
@@ -111,7 +114,8 @@ export function getCronOccurrences(
   expression: string,
   start: Date,
   end: Date,
-  limit = 500
+  limit = 500,
+  timeZone = getAppTimeZone()
 ): Date[] {
   const parsed = parseCron(expression);
   if (!parsed) return [];
@@ -120,7 +124,7 @@ export function getCronOccurrences(
   const results: Date[] = [];
 
   while (cursor.getTime() <= end.getTime() && results.length < limit) {
-    if (matches(parsed, cursor)) {
+    if (matches(parsed, cursor, timeZone)) {
       results.push(new Date(cursor));
     }
     cursor.setMinutes(cursor.getMinutes() + 1);
@@ -132,9 +136,10 @@ export function getCronOccurrences(
 export function getNextCronOccurrence(
   expression: string,
   from: Date,
-  lookaheadDays = 60
+  lookaheadDays = 60,
+  timeZone = getAppTimeZone()
 ): Date | null {
   const end = new Date(from);
   end.setDate(end.getDate() + lookaheadDays);
-  return getCronOccurrences(expression, from, end, 1)[0] ?? null;
+  return getCronOccurrences(expression, from, end, 1, timeZone)[0] ?? null;
 }

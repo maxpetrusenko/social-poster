@@ -12,6 +12,8 @@ import {
   FileText,
   Activity,
   Settings,
+  MessageSquareReply,
+  Tags,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -19,10 +21,12 @@ const nav = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { label: "Posts", href: "/dashboard/posts", icon: FileText },
   { label: "Calendar", href: "/dashboard/calendar", icon: CalendarDays },
-  { label: "Platforms", href: "/dashboard/platforms", icon: Share2 },
+  { label: "Connections", href: "/dashboard/platforms", icon: Share2 },
   { label: "Profiles", href: "/dashboard/profiles", icon: UserCircle },
   { label: "Pipeline", href: "/dashboard/pipeline", icon: Activity },
+  { label: "Replies", href: "/dashboard/replies", icon: MessageSquareReply },
   { label: "Schedules", href: "/dashboard/schedules", icon: MonitorPlay },
+  { label: "Categories", href: "/dashboard/categories", icon: Tags },
   { label: "Settings", href: "/dashboard/settings", icon: Settings },
 ];
 

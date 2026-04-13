@@ -5,12 +5,20 @@ import { eq } from "drizzle-orm";
 import crypto from "node:crypto";
 
 import { getTopStories, markPosted } from "../feed-engine";
+import { resolveFixedScheduleContent } from "../fixed-schedule-post";
 import { writePostCaption } from "../script-writer";
-import { publishToLate } from "../publisher";
+import { publishPlatformTargets } from "../publish-service";
+import { resolvePublishResultsStatus } from "../status";
 
 export async function runImagePostJob(
-  schedule: typeof schedules.$inferSelect
+  schedule: typeof schedules.$inferSelect,
+  trigger: "cron" | "manual" | "api" = "cron"
 ): Promise<void> {
+  const priorRuns = await db
+    .select({ id: pipelineRuns.id })
+    .from(pipelineRuns)
+    .where(eq(pipelineRuns.scheduleId, schedule.id));
+
   const runId = crypto.randomUUID();
   const startedAt = new Date();
   const steps: PipelineStep[] = [];
@@ -21,7 +29,7 @@ export async function runImagePostJob(
     id: runId,
     scheduleId: schedule.id,
     postId: null,
-    trigger: "cron",
+    trigger,
     status: "running",
     steps: [],
     startedAt,
@@ -31,11 +39,7 @@ export async function runImagePostJob(
   const platformRows = await Promise.all(
     targetIds.map((pid) => db.query.platforms.findFirst({ where: eq(platforms.id, pid) }))
   );
-  const targets = platformRows.filter(Boolean).map((platform) => ({
-    platform: platform!.type,
-    accountId: platform!.accountId,
-    content: "",
-  }));
+  const targets = platformRows.filter(Boolean).map((platform) => platform!);
 
   if (targets.length === 0) {
     await fail(runId, steps, startedAt, "No target platforms");
@@ -43,28 +47,67 @@ export async function runImagePostJob(
   }
 
   try {
-    // 1. Feed
-    const s1: PipelineStep = { name: "feed:pull", status: "running", startedAt: new Date().toISOString() };
+    const fixedContent = resolveFixedScheduleContent(
+      schedule.config,
+      targets.map((platform) => platform.type),
+      priorRuns.length,
+      startedAt
+    );
+
+    // 1. Content source
+    const s1: PipelineStep = {
+      name: fixedContent ? "content:load" : "feed:pull",
+      status: "running",
+      startedAt: new Date().toISOString(),
+    };
     steps.push(s1);
-    const stories = await getTopStories(1);
-    if (stories.length === 0) throw new Error("No stories");
-    const story = stories[0];
+    const story = fixedContent
+      ? {
+          title: fixedContent.title,
+          summary: fixedContent.summary,
+          score: 100,
+          link: "",
+        }
+      : await (async () => {
+          const stories = await getTopStories(1);
+          if (stories.length === 0) throw new Error("No stories");
+          return stories[0];
+        })();
     s1.status = "completed";
     s1.completedAt = new Date().toISOString();
-    s1.output = { title: story.title, score: story.score };
+    s1.output = fixedContent
+      ? {
+          title: fixedContent.title,
+          variantIndex: fixedContent.variantIndex,
+          mediaUrlByPlatform: fixedContent.mediaUrlByPlatform,
+        }
+      : { title: story.title, score: story.score };
 
     // 2. Caption
     const s2: PipelineStep = { name: "caption:write", status: "running", startedAt: new Date().toISOString() };
     steps.push(s2);
-    const publishTargets = targets.map((target) => ({
-      ...target,
-      content: writePostCaption(story, target.platform),
-    }));
+    const publishTargets = targets.map((platform) => {
+      const platformType = platform.type === "x" ? "twitter" : platform.type;
+      const mediaUrl = fixedContent?.mediaUrlByPlatform[platformType] ?? undefined;
+
+      return {
+        platform,
+        content: fixedContent
+          ? fixedContent.contentByPlatform[platformType] || fixedContent.title
+          : writePostCaption(story, platform.type),
+        mediaUrl,
+        mediaType: mediaUrl ? ("image" as const) : undefined,
+        instagramContentType:
+          platform.type === "instagram"
+            ? fixedContent?.instagramContentTypeByPlatform.instagram
+            : undefined,
+      };
+    });
     s2.status = "completed";
     s2.completedAt = new Date().toISOString();
     s2.output = {
       captions: publishTargets.map((target) => ({
-        platform: target.platform,
+        platform: target.platform.type,
         chars: target.content.length,
       })),
     };
@@ -72,20 +115,28 @@ export async function runImagePostJob(
     // 3. Publish (text only)
     const s3: PipelineStep = { name: "publish", status: "running", startedAt: new Date().toISOString() };
     steps.push(s3);
-    const results = await publishToLate(publishTargets);
+    const summary = await publishPlatformTargets(publishTargets);
+    const results = summary.outcomes;
     const ok = results.filter((r) => r.success).map((r) => r.platform);
-    s3.status = "completed";
+    const failed = results.filter((result) => !result.success);
+    s3.status = failed.length > 0 ? "failed" : "completed";
     s3.completedAt = new Date().toISOString();
     s3.output = {
-      published: ok,
-      errors: results.filter((result) => !result.success).map((result) => `${result.platform}: ${result.error}`),
+      outcomes: results,
+      published: summary.published,
+      errors: summary.errors,
     };
+    if (failed.length > 0) {
+      s3.error = failed.map((result) => `${result.platform}: ${result.error}`).join("; ");
+    }
 
-    await markPosted(story);
+    if (!fixedContent) {
+      await markPosted(story);
+    }
 
     const now = new Date();
     await db.update(pipelineRuns).set({
-      status: ok.length > 0 ? "completed" : "failed",
+      status: resolvePublishResultsStatus(results),
       steps,
       durationMs: now.getTime() - startedAt.getTime(),
       completedAt: now,

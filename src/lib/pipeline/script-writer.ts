@@ -3,9 +3,11 @@
  * Max voice: personal take first, fragments ok, no hashtags/emoji/BREAKING.
  */
 
+import { cleanRichText } from "./content-clean";
+
 export function writeVoiceScript(story: { title: string; summary: string }): string {
-  const t = story.title;
-  const s = story.summary;
+  const t = cleanRichText(story.title);
+  const s = cleanRichText(story.summary);
 
   // Extract a number if present
   const nums = (t + " " + s).match(/\d[\d,.]*[BMK]?/g);
@@ -23,7 +25,9 @@ export function writeVoiceScript(story: { title: string; summary: string }): str
 }
 
 export function writeVideoBullets(story: { title: string; summary: string }): string[] {
-  const source = `${story.title}. ${story.summary}`.replace(/\s+/g, " ").trim();
+  const title = cleanRichText(story.title);
+  const summary = cleanRichText(story.summary);
+  const source = `${title}. ${summary}`.replace(/\s+/g, " ").trim();
   const sentences = source
     .split(/(?<=[.!?])\s+/)
     .map((line) => line.replace(/\s+/g, " ").trim())
@@ -31,9 +35,9 @@ export function writeVideoBullets(story: { title: string; summary: string }): st
 
   const bullets = [
     extractStatLine(source),
-    shorten(sentences[0] || story.title, 60),
-    shorten(sentences[1] || pickWhyMatters(story.title), 60),
-    shorten(sentences[2] || pickBuilderAngle(story.title), 60),
+    shorten(sentences[0] || title, 60),
+    shorten(sentences[1] || pickWhyMatters(title), 60),
+    shorten(sentences[2] || pickBuilderAngle(title), 60),
   ]
     .filter(Boolean)
     .map((line) => line!.replace(/[.!?]+$/g, "").trim())
@@ -41,15 +45,15 @@ export function writeVideoBullets(story: { title: string; summary: string }): st
     .slice(0, 4);
 
   while (bullets.length < 4) {
-    bullets.push(fallbackBullet(bullets.length, story.title));
+    bullets.push(fallbackBullet(bullets.length, title));
   }
 
   return bullets;
 }
 
 export function writePostCaption(story: { title: string; summary: string }, platform: string): string {
-  const t = story.title;
-  const s = story.summary;
+  const t = cleanRichText(story.title);
+  const s = cleanRichText(story.summary);
 
   switch (platform.toLowerCase()) {
     case "twitter":
@@ -57,7 +61,7 @@ export function writePostCaption(story: { title: string; summary: string }, plat
       // 280 char max, punchy
       return truncate(`${pickReaction()} ${t.toLowerCase()}. ${pickInsight(t)}`, 275);
     case "linkedin":
-      return `${pickReaction()} ${t}.\n\n${s ? firstSentence(s) + "." : ""}\n\n${pickWhyMatters(t)}.`;
+      return `${pickReaction()} ${t}.\n\n${s ? ensureSentence(firstSentence(s)) : ""}\n\n${pickWhyMatters(t)}.`;
     case "tiktok":
       return truncate(`${t}. ${pickInsight(t)}`, 150);
     case "instagram":
@@ -116,6 +120,10 @@ function verbalize(title: string): string {
 function firstSentence(s: string): string {
   const m = s.match(/^[^.!?]+[.!?]/);
   return m ? m[0].trim() : s.slice(0, 200).trim();
+}
+
+function ensureSentence(s: string): string {
+  return /[.!?]$/.test(s) ? s : `${s}.`;
 }
 
 function shorten(s: string, max: number): string {

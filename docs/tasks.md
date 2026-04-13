@@ -1,6 +1,6 @@
 # Social Poster — Tasks & Status
 
-Last updated: 2026-04-07
+Last updated: 2026-04-13
 
 ## Current State
 
@@ -31,17 +31,21 @@ Deploys to `social.maxpetrusenko.com` on Contabo/Coolify.
 - [x] `schedules` — cron job definitions (editable from UI)
 - [x] `pipeline_runs` — execution history with step-level detail
 - [x] `dedup_cache` — content deduplication
+- [x] `candidate_cache` — manual candidate snapshot + OG-image cache
 
 ### Auth
 - [x] Magic link email flow (src/lib/auth.ts, src/lib/mail.ts)
 - [x] Session cookie management (30-day TTL)
 - [x] Single allowed email (AUTH_EMAIL env var)
+- [x] Google sign-in gate via Supabase (env-gated, allowlist-based)
 - [x] Login page (src/app/login/page.tsx)
-- [x] Auth temporarily bypassed (`DISABLE_AUTH` defaults on for now)
+- [x] Explicit auth mode resolution: bypass, Supabase, magic-link, or fail-closed misconfigured
+- [x] Production auth now fails closed if bypass is requested or Supabase env is missing
 
 ### Dashboard Pages (all under /dashboard)
 - [x] Layout with sidebar navigation
 - [x] Dashboard home — live metrics for posting cadence, consistency, errors, schedules, and platform health
+- [x] Schedule category presets via `schedules.config` — take/opinion, product update, source share, hype/future, hiring
 - [x] Platforms — list, create, edit, delete, per-platform skills/config editor
 - [x] Profiles — list, create, edit, delete (voice ID, face ID, tone)
 - [x] Posts — list with status filters, create with platform targeting, detail view
@@ -68,7 +72,7 @@ Deploys to `social.maxpetrusenko.com` on Contabo/Coolify.
 - [x] `src/app/api/auth/verify/route.ts` — GET handler to verify token + create session
 - [x] `src/app/api/auth/logout/route.ts` — POST handler to destroy session
 - [x] Middleware to protect /dashboard routes (next middleware.ts)
-- [ ] Re-enable auth before production hardening if needed
+- [ ] Set Supabase env in production and verify live Google sign-in against allowlist
 
 ### Agent / Pipeline Engine
 - [x] Feed ingest logic ported into `src/lib/pipeline/feed-engine.ts`
@@ -80,12 +84,21 @@ Deploys to `social.maxpetrusenko.com` on Contabo/Coolify.
 - [ ] Bird (X CLI) adapter as fallback
 - [x] Cron scheduler that reads from `schedules` table
 - [x] Pipeline orchestrator: feed → dedup → render → publish → log
+- [x] Reply engine duplicate guard skips already-attempted drafts before calling X again
+- [x] Boot recovery marks interrupted `running` pipeline rows failed after app restarts
+- [x] Schedule runtime now reconciles by diff instead of full reload
+- [x] `/api/health` and dashboard expose DB-enabled vs runtime-registered schedule counts
+- [x] Manual and scheduled publishing now share one normalized publish service
+- [x] Mixed manual post delivery can resolve to `partial_failure`
 - [ ] Idempotency keys on every publish attempt
 
 ### Deploy
 - [x] Dockerfile (standalone Next.js + chromium + ffmpeg)
 - [x] docker-compose.yml for local dev
 - [x] VPS deploy live behind Traefik at `social.maxpetrusenko.com`
+- [x] Coolify project cleanup (`Root Team -> social-poster -> production -> social-poster`)
+- [x] Runtime SQLite path aligned to Coolify volume mount (`/data/social-poster.db`)
+- [x] Container startup handles Coolify rollout ports while keeping app healthchecks on `3000`
 - [x] Env vars migrated for Cartesia, Simli, Late/Zernio
 - [x] Update SIMLI_FACE_ID on Contabo → `7bb46589-4be6-4df8-ab80-03443fb75d6f`
 - [x] Update CARTESIA_VOICE_ID → `7270ea4d-a17a-4f21-a3da-03f2b128669d`
@@ -101,6 +114,11 @@ Deploys to `social.maxpetrusenko.com` on Contabo/Coolify.
 - [ ] Real-time status updates (polling or SSE on pipeline page)
 - [ ] Toast notifications for form actions
 - [ ] Mobile-responsive sidebar (hamburger on small screens)
+- [x] Manual candidate caching in SQLite with stale-while-refresh reads
+- [x] Fixed schedules can now resolve per-platform media assets
+- [x] Fixed schedules can pin variant rotation to calendar weeks so retries/manual runs do not shift the campaign loop
+- [x] Referral story assets generated into `public/campaigns/referral/` for deploy-stable URLs
+- [x] Sharability scoring helper added via `HOOKS` framework (`src/lib/post-framework.ts`)
 
 ### Cutover Plan
 1. Deploy new social-poster to Coolify
@@ -145,6 +163,7 @@ social-poster/
 ## Ops Notes
 - `/health` returns JSON health status for Coolify / load balancer probes
 - `/api/health` returns app + active scheduler state
+- `/api/health.schedules` now includes both `dbEnabledCount` and `runtimeRegisteredCount`
 - Local restore command:
   `npm run legacy:import -- --legacy-dir ../social-agent --with-remote-runs --ssh-target max@173.249.52.27 --ssh-key ~/.ssh/contabo_vmi3203669_ed25519 --volume <coolify-volume>`
 - Imported schedules default to disabled, matching pre-cutover safety

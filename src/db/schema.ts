@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, real } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
 
 // ── Auth ──────────────────────────────────────────────────────────────
 export const sessions = sqliteTable("sessions", {
@@ -112,12 +112,43 @@ export const pipelineRuns = sqliteTable("pipeline_runs", {
   completedAt: integer("completed_at", { mode: "timestamp" }),
 });
 
+// ── Reply Events ──────────────────────────────────────────────────────
+export const replyEvents = sqliteTable("reply_events", {
+  id: text("id").primaryKey(),
+  runId: text("run_id").references(() => pipelineRuns.id, { onDelete: "set null" }),
+  scheduleId: text("schedule_id").references(() => schedules.id, { onDelete: "set null" }),
+  platformId: text("platform_id").references(() => platforms.id, { onDelete: "set null" }),
+  tweetUrl: text("tweet_url").notNull(),
+  replyUrl: text("reply_url"),
+  authorHandle: text("author_handle").notNull(),
+  category: text("category"),
+  lane: text("lane").notNull(),
+  replyText: text("reply_text"),
+  status: text("status").notNull().default("sent"), // "sent" | "failed" | "skipped"
+  error: text("error"),
+  metadata: text("metadata", { mode: "json" }).$type<Record<string, unknown>>(),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+});
+
 // ── Dedup Cache ───────────────────────────────────────────────────────
 export const dedupCache = sqliteTable("dedup_cache", {
   id: text("id").primaryKey(),
   key: text("key").notNull().unique(),
   source: text("source"),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+});
+
+// ── Candidate Cache ───────────────────────────────────────────────────
+export const candidateCache = sqliteTable("candidate_cache", {
+  link: text("link").primaryKey(),
+  title: text("title").notNull(),
+  summary: text("summary").notNull(),
+  score: integer("score").notNull(),
+  imageUrl: text("image_url"),
+  ogImageUrl: text("og_image_url"),
+  sourceName: text("source_name"),
+  publishedAt: integer("published_at", { mode: "timestamp" }),
+  fetchedAt: integer("fetched_at", { mode: "timestamp" }).notNull(),
 });
 
 // ── Types ─────────────────────────────────────────────────────────────

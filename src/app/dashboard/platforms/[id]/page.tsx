@@ -33,7 +33,7 @@ export default async function PlatformDetailPage({
         </Link>
 
         <h1 className="text-2xl font-semibold text-gray-900 mb-6">
-          Edit Platform
+          Manage Connection
         </h1>
 
         <EditPlatformForm platform={platform} />

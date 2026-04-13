@@ -34,7 +34,6 @@ export default function EditProfilePage() {
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [profile, setProfile] = useState<Profile | null>(null);
   const [formData, setFormData] = useState<Profile | null>(null);
 
   useEffect(() => {
@@ -43,7 +42,6 @@ export default function EditProfilePage() {
         const response = await fetch(`/api/profiles/${id}`);
         if (!response.ok) throw new Error("Failed to fetch profile");
         const data = await response.json();
-        setProfile(data);
         setFormData(data);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load profile");

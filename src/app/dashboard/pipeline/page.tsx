@@ -3,6 +3,7 @@ import { pipelineRuns, schedules } from "@/db/schema";
 import { desc, inArray } from "drizzle-orm";
 import { CheckCircle2, Clock, XCircle } from "lucide-react";
 import { relativeTime } from "@/lib/utils";
+import { resolvePipelineRunStatus } from "@/lib/pipeline/status";
 
 export const dynamic = "force-dynamic";
 
@@ -71,6 +72,7 @@ export default async function PipelinePage() {
             const schedule = run.scheduleId
               ? scheduleMap.get(run.scheduleId)
               : null;
+            const effectiveStatus = resolvePipelineRunStatus(run);
 
             return (
               <details
@@ -80,7 +82,7 @@ export default async function PipelinePage() {
                 <summary className="list-none cursor-pointer p-4 hover:bg-gray-50 transition-colors">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3 flex-1">
-                      {getStatusIcon(run.status)}
+                      {getStatusIcon(effectiveStatus)}
                       <div className="flex-1 min-w-0">
                         <div className="font-medium text-gray-900 text-sm">
                           {schedule?.name ?? "Manual Run"}
@@ -98,7 +100,7 @@ export default async function PipelinePage() {
                         {getDuration(run)}
                       </div>
                       <div className="text-xs text-gray-500 capitalize">
-                        {run.status}
+                        {effectiveStatus}
                       </div>
                     </div>
                   </div>

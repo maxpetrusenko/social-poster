@@ -1,6 +1,7 @@
 import { db } from "@/db";
 import { schedules } from "@/db/schema";
 import { requireApiSession } from "@/lib/auth";
+import { reconcileSchedules } from "@/lib/scheduler";
 import { eq } from "drizzle-orm";
 
 export async function POST(
@@ -18,6 +19,8 @@ export async function POST(
     if (result.length === 0) {
       return Response.json({ error: "Schedule not found" }, { status: 404 });
     }
+
+    await reconcileSchedules("schedule:delete");
 
     return Response.json({ success: true });
   } catch (error) {

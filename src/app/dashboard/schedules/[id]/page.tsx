@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { pipelineRuns, platforms, profiles, schedules } from "@/db/schema";
 import { desc, eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
+import { resolvePipelineRunStatus } from "@/lib/pipeline/status";
 
 export default async function ScheduleDetailPage({
   params,
@@ -39,15 +40,21 @@ export default async function ScheduleDetailPage({
     notFound();
   }
 
+  const normalizedRuns = runRows.map((run) => ({
+    ...run,
+    status: resolvePipelineRunStatus(run),
+  }));
+
   return (
     <EditScheduleForm
       schedule={{
         ...schedule,
         targetPlatformIds: schedule.targetPlatformIds ?? [],
+        config: schedule.config ?? null,
       }}
       profiles={profileRows}
       platforms={platformRows}
-      runs={runRows}
+      runs={normalizedRuns}
     />
   );
 }

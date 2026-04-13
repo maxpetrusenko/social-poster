@@ -5,6 +5,11 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ArrowLeft, Play, Trash2 } from "lucide-react";
 import { relativeTime } from "@/lib/utils";
+import { POST_CATEGORIES, getPostCategoryMeta } from "@/lib/post-categories";
+import {
+  buildScheduleConfig,
+  serializeAdvancedScheduleConfig,
+} from "@/lib/schedule-config";
 
 type ScheduleRecord = {
   id: string;
@@ -15,6 +20,7 @@ type ScheduleRecord = {
   jobType: string;
   profileId: string | null;
   targetPlatformIds: string[] | null;
+  config: Record<string, unknown> | null;
   enabled: boolean;
 };
 
@@ -41,6 +47,7 @@ const JOB_TYPES = [
   { value: "text_post", label: "Text Post" },
   { value: "image_post", label: "Image Post" },
   { value: "avatar_video", label: "Avatar Video" },
+  { value: "reply_engine", label: "X Reply Engine" },
 ];
 
 const CRON_EXAMPLES = [
@@ -70,6 +77,8 @@ export function EditScheduleForm({
     description: schedule.description ?? "",
     cron: schedule.cron,
     jobType: schedule.jobType,
+    contentCategory: String(schedule.config?.contentCategory || "opinion_take"),
+    advancedConfigText: serializeAdvancedScheduleConfig(schedule.config),
     profileId: schedule.profileId ?? "",
     targetPlatformIds: schedule.targetPlatformIds ?? [],
     enabled: schedule.enabled,
@@ -95,10 +104,19 @@ export function EditScheduleForm({
     setSubmitting(true);
 
     try {
+      const config = buildScheduleConfig({
+        contentCategory: form.contentCategory,
+        advancedConfigText: form.advancedConfigText,
+        baseConfig: schedule.config,
+      });
+
       const response = await fetch(`/api/schedules/${schedule.id}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          ...form,
+          config,
+        }),
       });
 
       if (!response.ok) {
@@ -266,6 +284,45 @@ export function EditScheduleForm({
 
                 <div>
                   <label className="block text-sm font-medium text-gray-900 mb-2">
+                    Content Category
+                  </label>
+                  <select
+                    value={form.contentCategory}
+                    onChange={(event) =>
+                      setForm({ ...form, contentCategory: event.target.value })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-600 focus:border-transparent outline-none"
+                  >
+                    {POST_CATEGORIES.map((category) => (
+                      <option key={category.value} value={category.value}>
+                        {category.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-900 mb-2">
+                    Advanced Config JSON
+                  </label>
+                  <textarea
+                    value={form.advancedConfigText}
+                    onChange={(event) =>
+                      setForm({
+                        ...form,
+                        advancedConfigText: event.target.value,
+                      })
+                    }
+                    rows={12}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono focus:ring-2 focus:ring-indigo-600 focus:border-transparent outline-none"
+                  />
+                  <p className="mt-2 text-xs text-gray-500">
+                    Use for fixed campaigns, per-platform copy, and per-platform media.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-900 mb-2">
                     Profile
                   </label>
                   <select
@@ -361,15 +418,21 @@ export function EditScheduleForm({
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500">Status</p>
+                    <p className="text-xs text-gray-500">Category</p>
                     <p className="text-sm text-gray-900 mt-1">
-                      {schedule.enabled ? "Enabled" : "Disabled"}
+                      {getPostCategoryMeta(String(schedule.config?.contentCategory || ""))?.label || "Not set"}
                     </p>
                   </div>
                   <div>
                     <p className="text-xs text-gray-500">Targets</p>
                     <p className="text-sm text-gray-900 mt-1">
                       {schedule.targetPlatformIds?.length ?? 0} platforms
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Status</p>
+                    <p className="text-sm text-gray-900 mt-1">
+                      {schedule.enabled ? "Enabled" : "Disabled"}
                     </p>
                   </div>
                 </div>

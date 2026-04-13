@@ -109,11 +109,40 @@ function ensureSchema(sqlite: Database.Database) {
       completed_at INTEGER
     );
 
+    CREATE TABLE IF NOT EXISTS reply_events (
+      id TEXT PRIMARY KEY NOT NULL,
+      run_id TEXT REFERENCES pipeline_runs(id) ON DELETE SET NULL,
+      schedule_id TEXT REFERENCES schedules(id) ON DELETE SET NULL,
+      platform_id TEXT REFERENCES platforms(id) ON DELETE SET NULL,
+      tweet_url TEXT NOT NULL,
+      reply_url TEXT,
+      author_handle TEXT NOT NULL,
+      category TEXT,
+      lane TEXT NOT NULL,
+      reply_text TEXT,
+      status TEXT NOT NULL DEFAULT 'sent',
+      error TEXT,
+      metadata TEXT,
+      created_at INTEGER NOT NULL
+    );
+
     CREATE TABLE IF NOT EXISTS dedup_cache (
       id TEXT PRIMARY KEY NOT NULL,
       key TEXT NOT NULL UNIQUE,
       source TEXT,
       created_at INTEGER NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS candidate_cache (
+      link TEXT PRIMARY KEY NOT NULL,
+      title TEXT NOT NULL,
+      summary TEXT NOT NULL,
+      score INTEGER NOT NULL,
+      image_url TEXT,
+      og_image_url TEXT,
+      source_name TEXT,
+      published_at INTEGER,
+      fetched_at INTEGER NOT NULL
     );
   `);
 }

@@ -1,14 +1,18 @@
 import Link from "next/link";
-import { AlertTriangle, ArrowRight, CalendarClock, CheckCircle2, Sparkles } from "lucide-react";
+import { AlertTriangle, ArrowRight, CalendarClock, CheckCircle2, MessageSquareReply, Sparkles } from "lucide-react";
 import { DashboardHero, HeroButton, MetricCard, PlatformChip, SectionCard, StatusBadge, TinyBars } from "@/components/dashboard/ui";
+import { ManualCandidateCard } from "@/components/dashboard/manual-candidate-card";
 import { getDashboardInsights } from "@/lib/dashboard/insights";
-import { formatDate, relativeTime } from "@/lib/utils";
+import { relativeTime } from "@/lib/utils";
 import { getPlatformMeta } from "@/lib/dashboard/platforms";
+import { getDashboardCandidates } from "@/lib/dashboard/candidates";
+import { formatDateInZone } from "@/lib/timezone";
 
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
   const data = await getDashboardInsights();
+  const candidates = await getDashboardCandidates(4);
 
   return (
     <div className="space-y-6">
@@ -34,13 +38,13 @@ export default async function DashboardPage() {
         <MetricCard
           label="Platform deliveries"
           value={data.deliveryCount30d}
-          sub={`${data.enabledPlatformCount} connected platforms live`}
+          sub={`${data.replyCount30d} replies sent in 30d`}
           accent="var(--accent-spirit)"
         />
         <MetricCard
           label="Consistency, 30d"
           value={`${data.consistencyScore30d}%`}
-          sub={`${data.activeScheduleCount} active schedules`}
+          sub={`${data.activeScheduleCount} DB live / ${data.runtimeScheduleCount} runtime`}
           accent="var(--accent-mindfold)"
         />
         <MetricCard
@@ -169,7 +173,7 @@ export default async function DashboardPage() {
                   <div>
                     <p className="section-eyebrow text-[var(--muted)]">Next</p>
                     <p className="mt-1 text-sm font-semibold text-[var(--ink)]">
-                      {schedule.nextRunAt ? formatDate(schedule.nextRunAt) : "paused"}
+                      {schedule.nextRunAt ? formatDateInZone(schedule.nextRunAt) : "paused"}
                     </p>
                   </div>
                   <div>
@@ -264,6 +268,84 @@ export default async function DashboardPage() {
           </div>
         </SectionCard>
       </div>
+
+      {data.scheduleRuntimeDrift !== 0 ? (
+        <SectionCard
+          title="Runtime drift"
+          subtitle="DB schedule state and in-memory scheduler do not agree."
+        >
+          <div className="rounded-[18px] border border-red-200 bg-red-50 px-4 py-4 text-sm text-red-700">
+            DB enabled: {data.activeScheduleCount}. Runtime registered: {data.runtimeScheduleCount}.
+          </div>
+        </SectionCard>
+      ) : null}
+
+      <SectionCard
+        title="Reply engine"
+        subtitle="Latest X replies sent from the app."
+        action={<Link href="/dashboard/replies" className="text-sm font-semibold text-[var(--accent-tech)]">Open replies</Link>}
+      >
+        <div className="space-y-3">
+          {data.recentReplies.length === 0 ? (
+            <div className="rounded-[18px] border border-[rgba(12,17,21,0.08)] bg-[var(--paper)] px-4 py-6 text-sm text-[var(--muted)]">
+              No reply history yet.
+            </div>
+          ) : (
+            data.recentReplies.slice(0, 5).map((reply) => (
+              <div
+                key={reply.id}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-[18px] border border-[rgba(12,17,21,0.08)] bg-[var(--paper)] px-4 py-4"
+              >
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <MessageSquareReply className="h-4 w-4 text-[var(--accent-tech)]" />
+                    <p className="truncate text-sm font-semibold text-[var(--ink)]">@{reply.authorHandle}</p>
+                    <StatusBadge tone={reply.status === "sent" ? "good" : reply.status === "failed" ? "bad" : "neutral"}>
+                      {reply.status}
+                    </StatusBadge>
+                  </div>
+                  <p className="mt-2 text-sm text-[var(--muted)]">{reply.replyText || reply.error || "No reply text"}</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  {reply.replyUrl ? (
+                    <Link href={reply.replyUrl} className="text-sm font-semibold text-[var(--accent-tech)]">
+                      Open
+                    </Link>
+                  ) : null}
+                  <p className="text-xs text-[var(--muted)]">{relativeTime(reply.createdAt)}</p>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </SectionCard>
+
+      <SectionCard
+        title="Manual candidates"
+        subtitle="Recent feed picks with OG image when available."
+        action={<Link href="/dashboard/posts/new" className="text-sm font-semibold text-[var(--accent-tech)]">Create post</Link>}
+      >
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {candidates.map((candidate) => {
+            const href = `/dashboard/posts/new?${new URLSearchParams({
+              title: candidate.title,
+              content: candidate.title,
+              contentType: candidate.ogImageUrl ? "image" : "text",
+              sourceUrl: candidate.link,
+              ...(candidate.ogImageUrl ? { mediaUrl: candidate.ogImageUrl } : {}),
+            }).toString()}`;
+
+            return (
+              <ManualCandidateCard
+                key={candidate.link}
+                candidate={candidate}
+                href={href}
+                showSummary={false}
+              />
+            );
+          })}
+        </div>
+      </SectionCard>
     </div>
   );
 }

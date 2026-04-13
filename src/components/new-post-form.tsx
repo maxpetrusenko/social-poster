@@ -17,21 +17,33 @@ type Platform = {
 export function NewPostForm({
   profiles,
   platforms,
+  initialValues,
 }: {
   profiles: Profile[];
   platforms: Platform[];
+  initialValues?: {
+    title?: string;
+    content?: string;
+    contentType?: string;
+    sourceUrl?: string;
+    mediaUrl?: string;
+  };
 }) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
-    title: "",
-    content: "",
-    contentType: "text",
-    sourceUrl: "",
+    title: initialValues?.title || "",
+    content: initialValues?.content || "",
+    contentType: initialValues?.contentType || "text",
+    sourceUrl: initialValues?.sourceUrl || "",
     scheduledAt: "",
     profileId: "",
     platformIds: [] as string[],
+    mediaUrl: initialValues?.mediaUrl || "",
   });
+  const mediaPreviewUrl = formData.mediaUrl
+    ? `/api/og-image?${new URLSearchParams({ url: formData.mediaUrl }).toString()}`
+    : "";
 
   const handleChange = (
     e: React.ChangeEvent<
@@ -146,6 +158,27 @@ export function NewPostForm({
           placeholder="https://example.com"
           className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-transparent"
         />
+      </div>
+
+      <div>
+        <label htmlFor="mediaUrl" className="block text-sm font-medium text-gray-900 mb-1">
+          Media URL (optional)
+        </label>
+        <input
+          type="url"
+          id="mediaUrl"
+          name="mediaUrl"
+          value={formData.mediaUrl}
+          onChange={handleChange}
+          placeholder="https://example.com/og-image.jpg"
+          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-transparent"
+        />
+        {formData.mediaUrl ? (
+          <div className="mt-3 overflow-hidden rounded-lg border border-gray-200 bg-gray-50">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={mediaPreviewUrl} alt="Post media preview" className="h-52 w-full object-cover" />
+          </div>
+        ) : null}
       </div>
 
       {/* Schedule */}

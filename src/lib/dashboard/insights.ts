@@ -1,13 +1,17 @@
 import { db } from "@/db";
-import { pipelineRuns, platforms, posts, schedules } from "@/db/schema";
+import { pipelineRuns, platforms, posts, replyEvents, schedules } from "@/db/schema";
 import { and, desc, eq, gte, lt } from "drizzle-orm";
 import { getCronOccurrences, getNextCronOccurrence } from "./cron";
 import { getPlatformLabel, getPlatformMeta, normalizePlatformType } from "./platforms";
+import { resolvePipelineRunStatus } from "@/lib/pipeline/status";
+import { getSchedulerSnapshot } from "@/lib/scheduler";
+import { getPostCategoryMeta } from "@/lib/post-categories";
 
 type RunRow = typeof pipelineRuns.$inferSelect;
 type ScheduleRow = typeof schedules.$inferSelect;
 type PlatformRow = typeof platforms.$inferSelect;
 type PostRow = typeof posts.$inferSelect;
+type ReplyEventRow = typeof replyEvents.$inferSelect;
 
 type RunPublishDetails = {
   publishedPlatforms: string[];
@@ -27,6 +31,8 @@ export type ScheduleInsight = {
   cron: string;
   cronHuman: string | null;
   jobType: string;
+  contentCategory: string | null;
+  contentCategoryLabel: string | null;
   enabled: boolean;
   targetPlatforms: string[];
   targetCount: number;
@@ -60,17 +66,21 @@ export type DashboardInsights = {
   publishedPieces30d: number;
   deliveryCount30d: number;
   failureCount30d: number;
+  replyCount30d: number;
   consistencyScore30d: number;
   completionRate30d: number;
   streakDays: number;
   enabledPlatformCount: number;
   activeScheduleCount: number;
+  runtimeScheduleCount: number;
+  scheduleRuntimeDrift: number;
   lastPublishedAt: Date | null;
   timeseries: DashboardTimeseriesPoint[];
   scheduleInsights: ScheduleInsight[];
   platformInsights: PlatformInsight[];
   recentRuns: Array<RunRow & { scheduleName: string | null; publish: RunPublishDetails }>;
   recentPosts: PostRow[];
+  recentReplies: ReplyEventRow[];
 };
 
 export type CalendarEvent = {
@@ -134,27 +144,88 @@ function parseErrorItem(item: unknown) {
   return null;
 }
 
+function parseOutcomeItem(item: unknown) {
+  if (!item || typeof item !== "object") {
+    return null;
+  }
+
+  const record = item as Record<string, unknown>;
+
+  return {
+    platform: normalizePlatformType(String(record.platform || "unknown")),
+    success: Boolean(record.success),
+    error: typeof record.error === "string" ? record.error : null,
+  };
+}
+
 function getRunPublishDetails(run: RunRow): RunPublishDetails {
-  const publishStep = run.steps?.find((step) => step.name === "publish");
-  const output =
-    publishStep?.output && typeof publishStep.output === "object"
-      ? (publishStep.output as Record<string, unknown>)
-      : null;
+  const publishedPlatforms = new Set<string>();
+  const failedPlatforms = new Map<string, { platform: string; error: string }>();
 
-  const publishedRaw = output?.published;
-  const errorsRaw = output?.errors;
+  for (const step of run.steps ?? []) {
+    if (!step.name.startsWith("publish")) {
+      continue;
+    }
 
-  const publishedPlatforms = Array.isArray(publishedRaw)
-    ? publishedRaw
-        .map((item) => normalizePlatformType(String(item)))
-        .filter(Boolean)
-    : [];
+    const output =
+      step.output && typeof step.output === "object"
+        ? (step.output as Record<string, unknown>)
+        : null;
 
-  const failedPlatforms = Array.isArray(errorsRaw)
-    ? errorsRaw.map(parseErrorItem).filter(Boolean) as Array<{ platform: string; error: string }>
-    : [];
+    if (output?.platform) {
+      const parsed = parseOutcomeItem(output);
+      if (!parsed) continue;
 
-  return { publishedPlatforms, failedPlatforms };
+      if (parsed.success) {
+        publishedPlatforms.add(parsed.platform);
+      } else {
+        failedPlatforms.set(parsed.platform, {
+          platform: parsed.platform,
+          error: parsed.error ?? "Unknown error",
+        });
+      }
+      continue;
+    }
+
+    const publishedRaw = output?.published;
+    const errorsRaw = output?.errors;
+    const outcomesRaw = output?.outcomes;
+
+    if (Array.isArray(publishedRaw)) {
+      for (const item of publishedRaw) {
+        publishedPlatforms.add(normalizePlatformType(String(item)));
+      }
+    }
+
+    if (Array.isArray(errorsRaw)) {
+      for (const item of errorsRaw) {
+        const parsed = parseErrorItem(item);
+        if (parsed) {
+          failedPlatforms.set(parsed.platform, parsed);
+        }
+      }
+    }
+
+    if (Array.isArray(outcomesRaw)) {
+      for (const item of outcomesRaw) {
+        const parsed = parseOutcomeItem(item);
+        if (!parsed) continue;
+        if (parsed.success) {
+          publishedPlatforms.add(parsed.platform);
+        } else {
+          failedPlatforms.set(parsed.platform, {
+            platform: parsed.platform,
+            error: parsed.error ?? "Unknown error",
+          });
+        }
+      }
+    }
+  }
+
+  return {
+    publishedPlatforms: Array.from(publishedPlatforms),
+    failedPlatforms: Array.from(failedPlatforms.values()),
+  };
 }
 
 function buildTimeseries(runs: Array<RunRow & { publish: RunPublishDetails }>, days = 14) {
@@ -227,6 +298,11 @@ function buildScheduleInsights(
       cron: schedule.cron,
       cronHuman: schedule.cronHuman,
       jobType: schedule.jobType,
+      contentCategory: typeof schedule.config?.contentCategory === "string" ? schedule.config.contentCategory : null,
+      contentCategoryLabel:
+        getPostCategoryMeta(
+          typeof schedule.config?.contentCategory === "string" ? schedule.config.contentCategory : null
+        )?.label ?? null,
       enabled: schedule.enabled,
       targetPlatforms,
       targetCount: targetPlatforms.length,
@@ -289,14 +365,19 @@ function buildPlatformInsights(
 }
 
 export async function getDashboardInsights(): Promise<DashboardInsights> {
-  const [platformRows, scheduleRows, runRowsRaw, postRows] = await Promise.all([
+  const [platformRows, scheduleRows, runRowsRaw, postRows, replyRows] = await Promise.all([
     db.select().from(platforms),
     db.select().from(schedules).orderBy(schedules.createdAt),
     db.select().from(pipelineRuns).orderBy(desc(pipelineRuns.startedAt)),
     db.select().from(posts).orderBy(desc(posts.createdAt)).limit(8),
+    db.select().from(replyEvents).orderBy(desc(replyEvents.createdAt)),
   ]);
 
-  const runRows = runRowsRaw.map((run) => ({ ...run, publish: getRunPublishDetails(run) }));
+  const runRows = runRowsRaw.map((run) => ({
+    ...run,
+    status: resolvePipelineRunStatus(run),
+    publish: getRunPublishDetails(run),
+  }));
 
   const start30d = startOfDay(new Date());
   start30d.setDate(start30d.getDate() - 29);
@@ -313,8 +394,12 @@ export async function getDashboardInsights(): Promise<DashboardInsights> {
     (sum, run) => sum + run.publish.failedPlatforms.length + (run.status === "failed" ? 1 : 0),
     0
   );
+  const replyCount30d = replyRows.filter(
+    (reply) => reply.status === "sent" && new Date(reply.createdAt) >= start30d
+  ).length;
 
   const enabledSchedules = scheduleRows.filter((schedule) => schedule.enabled);
+  const scheduler = getSchedulerSnapshot();
   const end30d = endOfDay(new Date());
   const expectedSlots30d = enabledSchedules.reduce(
     (sum, schedule) => sum + getCronOccurrences(schedule.cron, start30d, end30d, 300).length,
@@ -326,6 +411,7 @@ export async function getDashboardInsights(): Promise<DashboardInsights> {
     publishedPieces30d,
     deliveryCount30d,
     failureCount30d,
+    replyCount30d,
     consistencyScore30d: percent(successfulSlots30d, expectedSlots30d),
     completionRate30d: percent(
       recent30dRuns.filter((run) => run.status === "completed").length,
@@ -334,6 +420,9 @@ export async function getDashboardInsights(): Promise<DashboardInsights> {
     streakDays: getStreakDays(runRows),
     enabledPlatformCount: platformRows.filter((platform) => platform.enabled).length,
     activeScheduleCount: enabledSchedules.length,
+    runtimeScheduleCount: scheduler.runtimeRegisteredCount,
+    scheduleRuntimeDrift:
+      enabledSchedules.length - scheduler.runtimeRegisteredCount,
     lastPublishedAt:
       runRows.find((run) => run.status === "completed" || run.publish.publishedPlatforms.length > 0)?.startedAt ??
       null,
@@ -345,6 +434,7 @@ export async function getDashboardInsights(): Promise<DashboardInsights> {
       scheduleName: scheduleRows.find((schedule) => schedule.id === run.scheduleId)?.name ?? null,
     })),
     recentPosts: postRows,
+    recentReplies: replyRows,
   };
 }
 
@@ -380,13 +470,14 @@ export async function getCalendarInsights(monthValue: string): Promise<CalendarI
   }
 
   for (const run of runRowsRaw) {
+    const status = resolvePipelineRunStatus(run);
     const schedule = run.scheduleId ? scheduleMap.get(run.scheduleId) : null;
     events.push({
       id: run.id,
       dayKey: dayKey(new Date(run.startedAt)),
       at: new Date(run.startedAt),
       label: schedule?.name ?? "Manual run",
-      tone: run.status === "completed" ? "completed" : run.status === "failed" ? "failed" : "running",
+      tone: status === "completed" ? "completed" : status === "failed" ? "failed" : "running",
       kind: "run",
     });
   }

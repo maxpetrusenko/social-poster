@@ -307,23 +307,27 @@ function buildPipelineRuns(rows) {
         : null;
     const results = JSON.parse(row.results_json ?? "[]");
 
+    const steps = results.map((result) => ({
+      name: `platform:${result.platform}`,
+      status: mapStepStatus(result.status),
+      completedAt: result.timestamp,
+      error: result.error ?? undefined,
+      output: {
+        platform: result.platform,
+        legacyStatus: result.status,
+      },
+    }));
+
     return {
       id: `legacy-run-${row.id}`,
       scheduleId: row.job_id,
       trigger: row.trigger_source,
-      status: row.status,
-      steps: JSON.stringify(
-        results.map((result) => ({
-          name: `platform:${result.platform}`,
-          status: mapStepStatus(result.status),
-          completedAt: result.timestamp,
-          error: result.error ?? undefined,
-          output: {
-            platform: result.platform,
-            legacyStatus: result.status,
-          },
-        }))
-      ),
+      status: resolvePipelineRunStatus({
+        status: row.status,
+        steps,
+        error: row.error_text ?? null,
+      }),
+      steps: JSON.stringify(steps),
       error: row.error_text ?? null,
       durationMs,
       startedAt: startedAtMs,
@@ -499,6 +503,22 @@ function mapStepStatus(status) {
   if (status === "failed") return "failed";
   if (status === "skipped") return "skipped";
   return "completed";
+}
+
+function resolvePipelineRunStatus(input) {
+  if (input.status === "running") return "running";
+  if (input.error) return "failed";
+
+  const steps = input.steps ?? [];
+  if (
+    steps.some(
+      (step) => step.status === "failed" || (step.status === "skipped" && Boolean(step.error))
+    )
+  ) {
+    return "failed";
+  }
+
+  return input.status === "failed" ? "failed" : "completed";
 }
 
 function buildPlatformNotes(type, tools) {

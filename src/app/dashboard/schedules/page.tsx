@@ -3,13 +3,15 @@ import { Plus } from "lucide-react";
 import { DashboardHero, HeroButton, MetricCard, PlatformChip, SectionCard, StatusBadge } from "@/components/dashboard/ui";
 import { ScheduleEnabledToggle } from "@/components/schedule-enabled-toggle";
 import { getDashboardInsights } from "@/lib/dashboard/insights";
-import { formatDate, relativeTime } from "@/lib/utils";
+import { relativeTime } from "@/lib/utils";
 import { getPlatformMeta } from "@/lib/dashboard/platforms";
+import { formatDateInZone } from "@/lib/timezone";
 
 export const dynamic = "force-dynamic";
 
 export default async function SchedulesPage() {
-  const { scheduleInsights } = await getDashboardInsights();
+  const { scheduleInsights, runtimeScheduleCount, scheduleRuntimeDrift } =
+    await getDashboardInsights();
   const activeCount = scheduleInsights.filter((schedule) => schedule.enabled).length;
   const failedCount = scheduleInsights.filter((schedule) => schedule.lastStatus === "failed").length;
   const nextRun = scheduleInsights
@@ -32,20 +34,39 @@ export default async function SchedulesPage() {
       />
 
       <div className="grid gap-4 md:grid-cols-3">
-        <MetricCard label="Active" value={activeCount} sub={`${scheduleInsights.length} total schedules`} />
+        <MetricCard
+          label="Active"
+          value={activeCount}
+          sub={`${runtimeScheduleCount} runtime registered`}
+        />
         <MetricCard
           label="Next fire"
-          value={nextRun ? formatDate(nextRun) : "none"}
+          value={nextRun ? formatDateInZone(nextRun) : "none"}
           sub={nextRun ? relativeTime(nextRun) : "no enabled schedule"}
           accent="var(--accent-mindfold)"
         />
         <MetricCard
           label="Needs attention"
-          value={failedCount}
-          sub="last run status = failed"
-          accent={failedCount > 0 ? "#dc2626" : "var(--accent-spirit)"}
+          value={scheduleRuntimeDrift !== 0 ? Math.abs(scheduleRuntimeDrift) : failedCount}
+          sub={
+            scheduleRuntimeDrift !== 0
+              ? "scheduler drift detected"
+              : "last run status = failed"
+          }
+          accent={
+            scheduleRuntimeDrift !== 0 || failedCount > 0
+              ? "#dc2626"
+              : "var(--accent-spirit)"
+          }
         />
       </div>
+
+      {scheduleRuntimeDrift !== 0 ? (
+        <div className="rounded-[20px] border border-red-200 bg-red-50 px-4 py-4 text-sm text-red-700">
+          DB enabled schedules and runtime registrations differ. Check `/api/health`
+          before trusting pause/resume state.
+        </div>
+      ) : null}
 
       <SectionCard
         title="All schedules"
@@ -76,6 +97,9 @@ export default async function SchedulesPage() {
                       {schedule.enabled ? "enabled" : "disabled"}
                     </StatusBadge>
                     <StatusBadge tone="neutral">{schedule.jobType.replace(/_/g, " ")}</StatusBadge>
+                    {schedule.contentCategoryLabel ? (
+                      <StatusBadge tone="neutral">{schedule.contentCategoryLabel}</StatusBadge>
+                    ) : null}
                   </div>
                   <p className="mt-2 text-sm text-[var(--muted)]">
                     {schedule.cronHuman || schedule.cron}
@@ -103,7 +127,7 @@ export default async function SchedulesPage() {
                 <div>
                   <p className="section-eyebrow text-[var(--muted)]">Next</p>
                   <p className="mt-1 text-sm font-semibold text-[var(--ink)]">
-                    {schedule.nextRunAt ? formatDate(schedule.nextRunAt) : "paused"}
+                    {schedule.nextRunAt ? formatDateInZone(schedule.nextRunAt) : "paused"}
                   </p>
                 </div>
                 <div>

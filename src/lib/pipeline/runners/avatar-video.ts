@@ -12,10 +12,12 @@ import { generateTTS } from "../tts";
 import { generateAvatar } from "../avatar";
 import { renderVideo } from "../video-render";
 import { uploadToCatbox } from "../upload";
-import { publishToLate } from "../publisher";
+import { publishPlatformTargets } from "../publish-service";
+import { resolvePublishResultsStatus } from "../status";
 
 export async function runAvatarVideoJob(
-  schedule: typeof schedules.$inferSelect
+  schedule: typeof schedules.$inferSelect,
+  trigger: "cron" | "manual" | "api" = "cron"
 ): Promise<void> {
   const runId = crypto.randomUUID();
   const startedAt = new Date();
@@ -28,7 +30,7 @@ export async function runAvatarVideoJob(
     id: runId,
     scheduleId: schedule.id,
     postId: null,
-    trigger: "cron",
+    trigger,
     status: "running",
     steps: [],
     startedAt,
@@ -100,10 +102,9 @@ export async function runAvatarVideoJob(
     // 7. Publish
     const s7 = step("publish");
     steps.push(s7);
-    const results = await publishToLate(
+    const summary = await publishPlatformTargets(
       targets.map((platform) => ({
-        platform: platform.type,
-        accountId: platform.accountId,
+        platform,
         content: writePostCaption(story, platform.type),
         mediaUrl: videoUrl,
         mediaType: "video" as const,
@@ -111,9 +112,18 @@ export async function runAvatarVideoJob(
           platform.type === "instagram" ? getInstagramVideoType(scheduleConfig) : undefined,
       }))
     );
+    const results = summary.outcomes;
     const ok = results.filter((r) => r.success).map((r) => r.platform);
     const failed = results.filter((r) => !r.success);
-    complete(s7, { published: ok, errors: failed.map((r) => `${r.platform}: ${r.error}`) });
+    complete(s7, {
+      outcomes: results,
+      published: summary.published,
+      errors: summary.errors,
+    });
+    if (failed.length > 0) {
+      s7.status = "failed";
+      s7.error = failed.map((result) => `${result.platform}: ${result.error}`).join("; ");
+    }
 
     // Dedup
     await markPosted(story);
@@ -125,7 +135,7 @@ export async function runAvatarVideoJob(
     // Done
     const now = new Date();
     await db.update(pipelineRuns).set({
-      status: failed.length === results.length ? "failed" : "completed",
+      status: resolvePublishResultsStatus(results),
       steps,
       durationMs: now.getTime() - startedAt.getTime(),
       completedAt: now,

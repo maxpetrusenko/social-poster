@@ -1,5 +1,5 @@
 import { execSync } from "node:child_process";
-import { writeFileSync, readFileSync, unlinkSync, copyFileSync, mkdirSync, existsSync } from "node:fs";
+import { writeFileSync, readFileSync, unlinkSync, copyFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 
 export interface RenderOpts {

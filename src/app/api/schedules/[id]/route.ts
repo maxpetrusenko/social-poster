@@ -1,6 +1,7 @@
 import { db } from "@/db";
 import { schedules } from "@/db/schema";
 import { requireApiSession } from "@/lib/auth";
+import { reconcileSchedules } from "@/lib/scheduler";
 import { eq } from "drizzle-orm";
 
 export async function POST(
@@ -31,6 +32,7 @@ export async function POST(
       jobType: body.jobType ?? current.jobType,
       profileId: body.profileId ?? current.profileId,
       targetPlatformIds: body.targetPlatformIds ?? current.targetPlatformIds,
+      config: body.config ?? current.config,
       enabled: body.enabled !== undefined ? body.enabled : current.enabled,
       updatedAt: new Date(),
     };
@@ -40,6 +42,8 @@ export async function POST(
       .set(updates)
       .where(eq(schedules.id, scheduleId))
       .returning();
+
+    await reconcileSchedules("schedule:update");
 
     return Response.json(result[0]);
   } catch (error) {

@@ -1,6 +1,7 @@
 import { db } from "@/db";
 import { schedules } from "@/db/schema";
 import { requireApiSession } from "@/lib/auth";
+import { reconcileSchedules } from "@/lib/scheduler";
 import crypto from "node:crypto";
 
 export async function POST(request: Request) {
@@ -9,7 +10,7 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const { name, description, cron, cronHuman, jobType, profileId, targetPlatformIds, enabled } = body;
+    const { name, description, cron, cronHuman, jobType, profileId, targetPlatformIds, enabled, config } = body;
 
     if (!name || !cron || !jobType) {
       return Response.json({ error: "Missing required fields" }, { status: 400 });
@@ -29,11 +30,14 @@ export async function POST(request: Request) {
         jobType,
         profileId: profileId || null,
         targetPlatformIds: targetPlatformIds || [],
+        config: config || null,
         enabled: enabled !== false,
         createdAt: now,
         updatedAt: now,
       })
       .returning();
+
+    await reconcileSchedules("schedule:create");
 
     return Response.json(result[0], { status: 201 });
   } catch (error) {

@@ -12,6 +12,7 @@ const STATUS_COLORS: Record<string, string> = {
   scheduled: "bg-blue-100 text-blue-700",
   publishing: "bg-purple-100 text-purple-700",
   published: "bg-green-100 text-green-700",
+  partial_failure: "bg-amber-100 text-amber-700",
   failed: "bg-red-100 text-red-700",
 };
 
@@ -75,7 +76,7 @@ export default async function PostsPage({
 
       {/* Filter Tabs */}
       <div className="flex gap-2 mb-8 border-b border-gray-200">
-        {["all", "draft", "scheduled", "published", "failed"].map((status) => (
+        {["all", "draft", "scheduled", "published", "partial_failure", "failed"].map((status) => (
           <Link
             key={status}
             href={
@@ -89,7 +90,9 @@ export default async function PostsPage({
                 : "border-transparent text-gray-600 hover:text-gray-900"
             }`}
           >
-            {status.charAt(0).toUpperCase() + status.slice(1)}
+            {status === "partial_failure"
+              ? "Partial failure"
+              : status.charAt(0).toUpperCase() + status.slice(1)}
           </Link>
         ))}
       </div>
@@ -112,7 +115,7 @@ export default async function PostsPage({
         </div>
       ) : (
         <div className="space-y-3">
-          {postStatuses.map(({ post, targets }) => (
+          {postStatuses.map(({ post }) => (
             <Link
               key={post.id}
               href={`/dashboard/posts/${post.id}`}

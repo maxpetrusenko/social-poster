@@ -2,10 +2,14 @@ import { db } from "@/db";
 import { posts, postTargets, platforms, pipelineRuns } from "@/db/schema";
 import type { PipelineStep } from "@/db/schema";
 import { requireApiSession } from "@/lib/auth";
-import { publishToZernio } from "@/lib/publish/zernio";
+import { publishPlatformTargets } from "@/lib/pipeline/publish-service";
 import { eq } from "drizzle-orm";
 import crypto from "node:crypto";
 import { NextResponse } from "next/server";
+import {
+  resolvePostStatusFromTargetResults,
+  resolvePublishResultsStatus,
+} from "@/lib/pipeline/status";
 
 export async function POST(
   _request: Request,
@@ -49,17 +53,26 @@ export async function POST(
   // Update post status
   await db.update(posts).set({ status: "publishing", updatedAt: now }).where(eq(posts.id, postId));
 
-  let allSuccess = true;
+  const results = [];
 
   for (const { target, platform } of targets) {
     const stepName = `publish:${platform.type}`;
     const stepStart = new Date();
 
-    const result = await publishToZernio({
-      platform: platform.type,
-      content: post.content,
-      mediaUrl: post.mediaUrl,
-    });
+    const execution = await publishPlatformTargets([
+      {
+        platform,
+        content: post.content,
+        mediaUrl: post.mediaUrl ?? undefined,
+        mediaType: getMediaType(post.contentType, post.mediaUrl),
+        instagramContentType:
+          platform.type === "instagram" && isVideoContent(post.contentType)
+            ? "reel"
+            : undefined,
+      },
+    ]);
+    const result = execution.outcomes[0];
+    results.push(result);
 
     const stepEnd = new Date();
     const step: PipelineStep = {
@@ -75,21 +88,25 @@ export async function POST(
 
     // Update target status
     await db.update(postTargets).set({
-      status: result.success ? "published" : "failed",
+      status: result.success
+        ? "published"
+        : result.classification === "duplicate"
+          ? "skipped"
+          : "failed",
       publishedUrl: result.postUrl ?? null,
       platformPostId: result.postId ?? null,
       error: result.error ?? null,
       publishedAt: result.success ? stepEnd : null,
     }).where(eq(postTargets.id, target.id));
-
-    if (!result.success) allSuccess = false;
   }
 
   const completedAt = new Date();
+  const runStatus = resolvePublishResultsStatus(results);
+  const postStatus = resolvePostStatusFromTargetResults(results);
 
   // Update pipeline run
   await db.update(pipelineRuns).set({
-    status: allSuccess ? "completed" : "failed",
+    status: runStatus,
     steps,
     durationMs: completedAt.getTime() - now.getTime(),
     completedAt,
@@ -97,10 +114,24 @@ export async function POST(
 
   // Update post status
   await db.update(posts).set({
-    status: allSuccess ? "published" : "failed",
-    publishedAt: allSuccess ? completedAt : null,
+    status: postStatus,
+    publishedAt: postStatus === "published" ? completedAt : null,
     updatedAt: completedAt,
   }).where(eq(posts.id, postId));
 
-  return NextResponse.json({ runId, steps, success: allSuccess });
+  return NextResponse.json({
+    runId,
+    steps,
+    success: runStatus === "completed",
+    postStatus,
+  });
+}
+
+function isVideoContent(contentType: string) {
+  return contentType === "video" || contentType === "avatar_video";
+}
+
+function getMediaType(contentType: string, mediaUrl: string | null) {
+  if (!mediaUrl) return undefined;
+  return isVideoContent(contentType) ? "video" : "image";
 }

@@ -2,8 +2,7 @@ import { db } from "@/db";
 import { schedules } from "@/db/schema";
 import { requireApiSession } from "@/lib/auth";
 import { eq } from "drizzle-orm";
-import { runAvatarVideoJob } from "@/lib/pipeline/runners/avatar-video";
-import { runImagePostJob } from "@/lib/pipeline/runners/image-post";
+import { runScheduleJob } from "@/lib/schedule-jobs";
 
 export async function POST(
   request: Request,
@@ -23,12 +22,7 @@ export async function POST(
     }
 
     // Fire job async (don't block the response)
-    const jobPromise =
-      schedule.jobType === "avatar_video"
-        ? runAvatarVideoJob(schedule)
-        : schedule.jobType === "image_post"
-          ? runImagePostJob(schedule)
-          : Promise.reject(new Error(`Unknown job type: ${schedule.jobType}`));
+    const jobPromise = runScheduleJob(schedule, "manual");
 
     jobPromise.catch((err) =>
       console.error(`[api] manual run failed for ${scheduleId}:`, err)

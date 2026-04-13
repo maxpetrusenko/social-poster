@@ -6,8 +6,9 @@
 - **SSH**: `ssh -i ~/.ssh/contabo_vmi3203669_ed25519 root@173.249.52.27`
 - **Reverse proxy**: Traefik (managed by Coolify) with Let's Encrypt TLS
 - **Domain**: `social.maxpetrusenko.com`
-- **App**: Docker container `social-poster` on `coolify` network
-- **DB**: SQLite (WAL mode) at `/app/data/social-poster.db`, volume-mounted from `/opt/social-poster/data/`
+- **Coolify path**: `Root Team -> social-poster -> production -> social-poster`
+- **App**: Coolify-managed `social-poster` service
+- **DB**: SQLite (WAL mode) at `/data/social-poster.db`, backed by the Coolify volume mount
 
 ## Stack
 
@@ -41,6 +42,9 @@ Container requires these env vars (set via `docker run -e`):
 | `ZERNIO_LINKEDIN_ACCOUNT_ID` | LinkedIn account in Zernio |
 | `ZERNIO_FACEBOOK_ACCOUNT_ID` | Facebook account in Zernio |
 | `ZERNIO_INSTAGRAM_ACCOUNT_ID` | Instagram account in Zernio |
+| `X_AUTH_TOKEN` | X auth cookie for reply engine |
+| `X_CT0` | X ct0 cookie for reply engine |
+| `BIRD_RUNNER=npx` | bird CLI runner inside container |
 
 Keys live in Doppler (`api_keys` project, `dev` config). Fetch:
 ```bash
@@ -49,53 +53,30 @@ doppler secrets get CARTESIA_API_KEY SIMLI_API_KEY GETLATE_DEV_API_KEY_FREE --pr
 
 ## Deploy Flow
 
+Target state:
+- Coolify owns build, restart, logs, env vars, domain routing
+- avoid ad-hoc standalone containers once Coolify app is live
+- app expects SQLite at `/data/social-poster.db`
+- app always serves Next.js on `3000`; entrypoint bridges any Coolify rollout port to `3000`
+- GitHub source uses an SSH deploy key; no public-repo toggle
+- required reply env vars in Coolify: `X_AUTH_TOKEN`, `X_CT0`, `BIRD_RUNNER=npx`
+
 ```bash
 # 1. Push code
 cd ~/Desktop/Projects/social-poster
 git add -A && git commit -m "feat: ..." && git push origin main
 
-# 2. Temporarily make repo public (VPS has no SSH key for GitHub)
-gh repo edit --visibility public --accept-visibility-change-consequences
+# 2. Redeploy the connected Coolify app
+# use Coolify UI or API to trigger a new deployment
 
-# 3. Pull on VPS
-ssh root@173.249.52.27 'cd /opt/social-poster && git pull origin main'
-
-# 4. Build Docker image
-ssh root@173.249.52.27 'cd /opt/social-poster && docker build -t social-poster:latest .'
-
-# 5. Restart container (preserves DB via volume mount)
-ssh root@173.249.52.27 'docker stop social-poster && docker rm social-poster && docker run -d \
-  --name social-poster --network coolify --restart unless-stopped \
-  -e AUTH_DISABLED=true -e HOSTNAME=0.0.0.0 -e PORT=3000 \
-  -e CARTESIA_API_KEY=<key> -e CARTESIA_VOICE_ID=<id> \
-  -e SIMLI_API_KEY=<key> -e SIMLI_FACE_ID=<id> \
-  -e LATE_API_KEY=<key> \
-  -e ZERNIO_API_KEY=<key> \
-  -e ZERNIO_LINKEDIN_ACCOUNT_ID=<id> \
-  -e ZERNIO_FACEBOOK_ACCOUNT_ID=<id> \
-  -e ZERNIO_INSTAGRAM_ACCOUNT_ID=<id> \
-  -v /opt/social-poster/data:/app/data \
-  -l traefik.enable=true \
-  -l "traefik.http.routers.https-social-poster.rule=Host(\`social.maxpetrusenko.com\`) && PathPrefix(\`/\`)" \
-  -l traefik.http.routers.https-social-poster.entryPoints=https \
-  -l traefik.http.routers.https-social-poster.tls=true \
-  -l traefik.http.routers.https-social-poster.tls.certresolver=letsencrypt \
-  -l "traefik.http.routers.http-social-poster.rule=Host(\`social.maxpetrusenko.com\`) && PathPrefix(\`/\`)" \
-  -l traefik.http.routers.http-social-poster.entryPoints=http \
-  -l traefik.http.routers.http-social-poster.middlewares=redirect-to-https \
-  -l traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https \
-  -l traefik.http.routers.https-social-poster.middlewares=gzip \
-  -l traefik.http.middlewares.gzip.compress=true \
-  -l traefik.http.services.social-poster.loadbalancer.server.port=3000 \
-  -l traefik.http.routers.http-social-poster.service=social-poster \
-  social-poster:latest'
-
-# 6. Re-private repo
-gh repo edit --visibility private --accept-visibility-change-consequences
-
-# 7. Verify
+# 3. Verify
 curl -sk https://social.maxpetrusenko.com/api/health
-docker logs social-poster --tail 20
+curl -I -L https://social.maxpetrusenko.com/dashboard/calendar
+```
+
+Fallback only if Coolify is down:
+```bash
+ssh root@173.249.52.27 'docker logs social-poster --tail 20'
 ```
 
 ## Pipeline Architecture
@@ -119,6 +100,21 @@ docker logs social-poster --tail 20
 - Schedules stored in `schedules` table, loaded on boot
 - Timezone: `America/New_York`
 - Runs logged to `pipeline_runs` table with step-level detail
+- Schedule create/edit/delete reloads cron jobs immediately
+
+### Reply Pipeline (`reply_engine` jobs)
+1. bird mentions pull
+2. optional safe-topic search fallback
+3. risk scoring + manual-only account filter
+4. fallback draft generation in Max voice
+5. bird reply send on X
+6. reply event log in `reply_events`
+
+Guardrails:
+- daily limit `20`
+- weekly per-account limit `2`
+- manual-only list for large/high-risk accounts
+- blocked topics: politics / ratio / cancel / discourse lane
 
 ### Publishing
 - **Late/Zernio API** (`getlate.dev/api/v1/posts`): TikTok, LinkedIn, IG, Facebook
@@ -145,7 +141,7 @@ docker logs social-poster --tail 50
 # DB queries (inside container)
 docker exec social-poster node -e "
 const Database = require('better-sqlite3');
-const db = new Database('/app/data/social-poster.db');
+const db = new Database('/data/social-poster.db');
 console.log(db.prepare('SELECT * FROM pipeline_runs ORDER BY started_at DESC LIMIT 5').all());
 "
 
@@ -170,6 +166,9 @@ curl -sk https://social.maxpetrusenko.com/api/health
 | `src/lib/pipeline/script-writer.ts` | Voice script + caption generator |
 | `src/lib/pipeline/runners/avatar-video.ts` | Full video pipeline runner |
 | `src/lib/pipeline/runners/image-post.ts` | Text post runner |
+| `src/lib/pipeline/runners/reply-engine.ts` | X reply pipeline runner |
+| `src/lib/replies/bird.ts` | bird CLI bridge for mentions/search/reply |
+| `src/lib/replies/config.ts` | reply target rules + limits |
 | `src/remotion/` | Remotion composition (excluded from TS build) |
 | `src/instrumentation.ts` | Next.js boot hook (inits scheduler) |
 

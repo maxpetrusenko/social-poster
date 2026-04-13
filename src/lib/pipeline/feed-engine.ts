@@ -1,19 +1,23 @@
 import { db } from "@/db";
 import { dedupCache } from "@/db/schema";
-import { eq } from "drizzle-orm";
 import crypto from "node:crypto";
+import { cleanRichText, decodeHtmlEntities } from "./content-clean";
 
 export interface Story {
   title: string;
   link: string;
   summary: string;
   score: number;
+  imageUrl?: string;
+  publishedAt?: string;
+  sourceName?: string;
 }
 
 interface FeedItem {
   title?: string;
   link?: string;
   contentSnippet?: string;
+  imageUrl?: string;
   content?: string;
   pubDate?: string;
   isoDate?: string;
@@ -81,10 +85,12 @@ function parseRssXml(xml: string): FeedItem[] {
     const link = extractTag(block, "link") || extractAttr(block, "link", "href");
     const desc = extractTag(block, "description") || extractTag(block, "summary") || extractTag(block, "content");
     const pubDate = extractTag(block, "pubDate") || extractTag(block, "published") || extractTag(block, "updated");
+    const imageUrl = extractImageUrl(block, link);
     items.push({
-      title: title ? stripHtml(title) : undefined,
+      title: title ? cleanRichText(title) : undefined,
       link,
-      contentSnippet: desc ? stripHtml(desc).slice(0, 500) : undefined,
+      contentSnippet: desc ? cleanSummaryText(desc).slice(0, 500) : undefined,
+      imageUrl,
       pubDate,
     });
   }
@@ -98,20 +104,51 @@ function extractTag(xml: string, tag: string): string | undefined {
 }
 
 function extractAttr(xml: string, tag: string, attr: string): string | undefined {
-  const re = new RegExp(`<${tag}[^>]*${attr}="([^"]*)"`, "i");
+  const re = new RegExp(`<${tag}[^>]*${attr}=["']([^"']*)["']`, "i");
   const m = xml.match(re);
   return m?.[1];
 }
 
-function stripHtml(s: string): string {
-  return s
-    .replace(/<!--[\s\S]*?-->/g, " ")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
+function extractImageUrl(xml: string, baseUrl: string | undefined): string | undefined {
+  const candidates = [
+    extractAttr(xml, "enclosure", "url"),
+    extractAttr(xml, "media:content", "url"),
+    extractAttr(xml, "media:thumbnail", "url"),
+    extractAttr(xml, "itunes:image", "href"),
+    extractTag(xml, "media:content"),
+    extractFirstImageSrc(xml),
+  ];
+
+  for (const candidate of candidates) {
+    const normalized = normalizeUrl(candidate, baseUrl);
+    if (normalized) return normalized;
+  }
+
+  return undefined;
+}
+
+function extractFirstImageSrc(value: string): string | undefined {
+  const match = value.match(/<img[^>]*src=["']([^"']+)["']/i);
+  return match?.[1];
+}
+
+function normalizeUrl(value: string | undefined, baseUrl: string | undefined): string | undefined {
+  if (!value) return undefined;
+
+  try {
+    const decoded = decodeHtmlEntities(value);
+    const normalized = baseUrl ? new URL(decoded, baseUrl).toString() : new URL(decoded).toString();
+    return /\.(png|jpe?g|gif|webp|svg)(\?|$)/i.test(normalized) || normalized.includes("/image")
+      ? normalized
+      : normalized;
+  } catch {
+    return undefined;
+  }
+}
+
+function cleanSummaryText(value: string): string {
+  return cleanRichText(value)
+    .replace(/^https?:\/\/\S+\.(?:png|jpe?g|gif|webp|svg)\S*\s+/i, "")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -143,13 +180,13 @@ export async function getTopStories(count = 3): Promise<Story[]> {
   console.log(`[feed] pulling from ${FEEDS.length} feeds`);
 
   const results = await Promise.allSettled(
-    FEEDS.map(async (f) => {
-      const items = await fetchFeed(f);
-      return items.map((item) => ({ ...item, feedWeight: f.weight }));
+    FEEDS.map(async (feed) => {
+      const items = await fetchFeed(feed);
+      return items.map((item) => ({ ...item, feedWeight: feed.weight, feedName: feed.name }));
     })
   );
 
-  const allItems: (FeedItem & { feedWeight: number; computedScore: number })[] = [];
+  const allItems: (FeedItem & { feedWeight: number; computedScore: number; feedName: string })[] = [];
   for (const r of results) {
     if (r.status === "fulfilled") {
       for (const item of r.value) {
@@ -175,12 +212,77 @@ export async function getTopStories(count = 3): Promise<Story[]> {
       link: item.link,
       summary: item.contentSnippet || "",
       score: item.computedScore,
+      imageUrl: item.imageUrl,
+      publishedAt: item.pubDate,
+      sourceName: item.feedName,
     });
     if (stories.length >= count) break;
   }
 
   console.log(`[feed] returning ${stories.length} stories`);
   return stories;
+}
+
+export async function getCandidateStories({
+  count = 6,
+  maxAgeHours = 48,
+}: {
+  count?: number;
+  maxAgeHours?: number;
+} = {}): Promise<Story[]> {
+  console.log(`[feed] candidate pull from ${FEEDS.length} feeds`);
+
+  const results = await Promise.allSettled(
+    FEEDS.map(async (feed) => {
+      const items = await fetchFeed(feed);
+      return items.map((item) => ({
+        ...item,
+        feedWeight: feed.weight,
+        feedName: feed.name,
+        computedScore: scoreItem(item, feed.weight),
+      }));
+    })
+  );
+
+  const allItems: Array<FeedItem & { feedWeight: number; feedName: string; computedScore: number }> = [];
+  for (const result of results) {
+    if (result.status === "fulfilled") {
+      allItems.push(...result.value);
+    }
+  }
+
+  allItems.sort((a, b) => b.computedScore - a.computedScore);
+
+  const cached = await db.select({ key: dedupCache.key }).from(dedupCache);
+  const usedKeys = new Set(cached.map((row) => row.key));
+
+  const stories: Story[] = [];
+  for (const item of allItems) {
+    if (!item.link || !item.title) continue;
+    if (!isWithinWindow(item.pubDate, maxAgeHours)) continue;
+
+    const key = item.link.replace(/^https?:\/\//, "").replace(/\/+$/, "");
+    if (usedKeys.has(key)) continue;
+
+    stories.push({
+      title: item.title,
+      link: item.link,
+      summary: item.contentSnippet || "",
+      score: item.computedScore,
+      imageUrl: item.imageUrl,
+      publishedAt: item.pubDate,
+      sourceName: item.feedName,
+    });
+
+    if (stories.length >= count) break;
+  }
+
+  return stories;
+}
+function isWithinWindow(pubDate: string | undefined, maxAgeHours: number): boolean {
+  if (!pubDate) return true;
+  const ageMs = Date.now() - new Date(pubDate).getTime();
+  return ageMs <= maxAgeHours * 60 * 60 * 1000;
 }
 
 export async function markPosted(story: Story): Promise<void> {

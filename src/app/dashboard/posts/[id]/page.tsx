@@ -5,7 +5,7 @@ import { notFound, redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { formatDate } from "@/lib/utils";
 import Link from "next/link";
-import { ArrowLeft, Trash2, ExternalLink } from "lucide-react";
+import { ArrowLeft, ExternalLink } from "lucide-react";
 import { PostDeleteButton } from "@/components/post-delete-button";
 
 const STATUS_COLORS: Record<string, string> = {
@@ -13,6 +13,7 @@ const STATUS_COLORS: Record<string, string> = {
   scheduled: "bg-blue-100 text-blue-700",
   publishing: "bg-purple-100 text-purple-700",
   published: "bg-green-100 text-green-700",
+  partial_failure: "bg-amber-100 text-amber-700",
   failed: "bg-red-100 text-red-700",
 };
 
