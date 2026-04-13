@@ -24,7 +24,7 @@ ENV DATABASE_URL=/app/data/social-poster.db
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends chromium ffmpeg ca-certificates dumb-init \
+  && apt-get install -y --no-install-recommends chromium ffmpeg ca-certificates curl dumb-init \
   && rm -rf /var/lib/apt/lists/*
 
 RUN mkdir -p /app/data
@@ -36,4 +36,5 @@ COPY --from=builder /app/.next/static ./.next/static
 
 EXPOSE 3000
 
-CMD ["dumb-init", "node", "server.js"]
+# Coolify rollout containers may inject a different PORT, but the app healthcheck is fixed to 3000.
+CMD ["dumb-init", "sh", "-lc", "PORT=3000 exec node server.js"]
