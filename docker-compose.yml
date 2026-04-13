@@ -7,10 +7,10 @@ services:
       - .env
     environment:
       NODE_ENV: production
-      DATABASE_URL: /app/data/social-poster.db
+      DATABASE_URL: /data/social-poster.db
       TZ: ${TZ:-America/New_York}
     ports:
       - "3000:3000"
     volumes:
-      - ./data:/app/data
+      - ./data:/data
     restart: unless-stopped

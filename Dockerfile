@@ -20,21 +20,24 @@ ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV HOSTNAME=0.0.0.0
 ENV PORT=3000
-ENV DATABASE_URL=/app/data/social-poster.db
+ENV DATABASE_URL=/data/social-poster.db
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
 RUN apt-get update \
   && apt-get install -y --no-install-recommends chromium ffmpeg ca-certificates curl dumb-init \
   && rm -rf /var/lib/apt/lists/*
 
-RUN mkdir -p /app/data
+RUN mkdir -p /data
 
 # Next standalone already contains the production server and required packages.
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
+COPY --from=builder /app/scripts/container-entrypoint.sh ./container-entrypoint.sh
+
+RUN chmod +x ./container-entrypoint.sh
 
 EXPOSE 3000
 
-# Coolify rollout containers may inject a different PORT, but the app healthcheck is fixed to 3000.
-CMD ["dumb-init", "sh", "-lc", "PORT=3000 exec node server.js"]
+# Keep Next on 3000 for healthchecks, while bridging any injected rollout port.
+CMD ["dumb-init", "./container-entrypoint.sh"]
