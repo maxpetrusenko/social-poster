@@ -1,11 +1,16 @@
 import { Sidebar } from "@/components/sidebar";
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { getSession } from "@/lib/auth";
 
 export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const session = await getSession();
+  if (!session) redirect("/login");
+
   return (
     <div className="min-h-screen">
       <Sidebar />
@@ -15,9 +20,11 @@ export default async function DashboardLayout({
             {[
               ["/dashboard", "Overview"],
               ["/dashboard/calendar", "Calendar"],
-              ["/dashboard/platforms", "Platforms"],
+              ["/dashboard/platforms", "Connections"],
               ["/dashboard/schedules", "Schedules"],
+              ["/dashboard/categories", "Categories"],
               ["/dashboard/pipeline", "Pipeline"],
+              ["/dashboard/replies", "Replies"],
             ].map(([href, label]) => (
               <Link
                 key={href}
