@@ -1,0 +1,24 @@
+<svg width="1600" height="900" viewBox="0 0 1600 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1600" height="900" fill="#211A19"/>
+  <rect x="40" y="40" width="1520" height="820" rx="36" fill="#2D2421" stroke="#54433C" stroke-width="2"/>
+  <rect x="96" y="88" width="244" height="58" rx="29" fill="#D86A2D"/>
+  <text x="218" y="125" text-anchor="middle" fill="#FFF7F0" font-family="Fraunces, Georgia, serif" font-size="28" font-weight="700">Agent Persona</text>
+  <text x="96" y="252" fill="#FFF7F0" font-family="Fraunces, Georgia, serif" font-size="88" font-weight="700">Evening recap</text>
+  <text x="96" y="320" fill="#D8C2B6" font-family="Manrope, Arial, sans-serif" font-size="30" font-weight="600">Close the day with repo movement, proof, and narrative</text>
+  <rect x="96" y="394" width="520" height="292" rx="32" fill="#FFF7F0"/>
+  <text x="144" y="472" fill="#211A19" font-family="Fraunces, Georgia, serif" font-size="48" font-weight="700">Daily ship stack</text>
+  <text x="144" y="544" fill="#6E574B" font-family="Manrope, Arial, sans-serif" font-size="30">Pull requests</text>
+  <text x="144" y="596" fill="#6E574B" font-family="Manrope, Arial, sans-serif" font-size="30">Closed issues</text>
+  <text x="144" y="648" fill="#6E574B" font-family="Manrope, Arial, sans-serif" font-size="30">Site and blog proof</text>
+  <path d="M874 242C874 164.68 936.68 102 1014 102H1368C1445.32 102 1508 164.68 1508 242V596C1508 673.32 1445.32 736 1368 736H1014C936.68 736 874 673.32 874 596V242Z" fill="#D86A2D"/>
+  <rect x="932" y="164" width="518" height="164" rx="28" fill="#FFF2E5"/>
+  <text x="974" y="242" fill="#211A19" font-family="Fraunces, Georgia, serif" font-size="44" font-weight="700">Built for live rooms</text>
+  <text x="974" y="300" fill="#6E574B" font-family="Manrope, Arial, sans-serif" font-size="28">Continuity, tone, operator control</text>
+  <rect x="932" y="362" width="518" height="314" rx="28" fill="#211A19"/>
+  <text x="974" y="438" fill="#FFF7F0" font-family="Manrope, Arial, sans-serif" font-size="28" font-weight="700">CTA</text>
+  <text x="974" y="506" fill="#F1C39D" font-family="Manrope, Arial, sans-serif" font-size="34">See the site</text>
+  <text x="974" y="562" fill="#F1C39D" font-family="Manrope, Arial, sans-serif" font-size="34">Inspect the org</text>
+  <text x="974" y="618" fill="#F1C39D" font-family="Manrope, Arial, sans-serif" font-size="34">Track what shipped today</text>
+  <text x="96" y="808" fill="#D8C2B6" font-family="Manrope, Arial, sans-serif" font-size="24">social-poster campaign asset</text>
+  <text x="1424" y="808" text-anchor="end" fill="#D8C2B6" font-family="Manrope, Arial, sans-serif" font-size="24">Persona6 / Agent Persona</text>
+</svg>

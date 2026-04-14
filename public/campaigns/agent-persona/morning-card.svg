@@ -1,0 +1,21 @@
+<svg width="1600" height="900" viewBox="0 0 1600 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1600" height="900" fill="#F5EFE6"/>
+  <rect x="40" y="40" width="1520" height="820" rx="36" fill="#FFF9F2" stroke="#D9C9B4" stroke-width="2"/>
+  <rect x="96" y="88" width="196" height="58" rx="29" fill="#E06A2C"/>
+  <text x="194" y="125" text-anchor="middle" fill="#FFF9F2" font-family="Fraunces, Georgia, serif" font-size="28" font-weight="700">Persona6</text>
+  <text x="96" y="252" fill="#25170E" font-family="Fraunces, Georgia, serif" font-size="88" font-weight="700">Morning build log</text>
+  <text x="96" y="320" fill="#6F4D38" font-family="Manrope, Arial, sans-serif" font-size="30" font-weight="600">Agent Persona shipping pulse for X and LinkedIn</text>
+  <rect x="96" y="390" width="664" height="348" rx="28" fill="#25170E"/>
+  <text x="148" y="468" fill="#FFF9F2" font-family="Manrope, Arial, sans-serif" font-size="28" font-weight="700">What this card signals</text>
+  <text x="148" y="534" fill="#F2D8C2" font-family="Manrope, Arial, sans-serif" font-size="32">Recent repo movement</text>
+  <text x="148" y="592" fill="#F2D8C2" font-family="Manrope, Arial, sans-serif" font-size="32">Fresh site proof and blog narrative</text>
+  <text x="148" y="650" fill="#F2D8C2" font-family="Manrope, Arial, sans-serif" font-size="32">Daily operator-facing progress</text>
+  <circle cx="1168" cy="330" r="176" fill="#F4B27A"/>
+  <circle cx="1228" cy="330" r="132" fill="#E06A2C"/>
+  <circle cx="1288" cy="330" r="88" fill="#25170E"/>
+  <rect x="926" y="458" width="466" height="212" rx="32" fill="#FFF1E1" stroke="#E8D7C3" stroke-width="2"/>
+  <text x="970" y="528" fill="#25170E" font-family="Fraunces, Georgia, serif" font-size="44" font-weight="700">Grounded AI personas</text>
+  <text x="970" y="582" fill="#6F4D38" font-family="Manrope, Arial, sans-serif" font-size="28">Live products. Native tone. Inspectable evidence.</text>
+  <text x="96" y="808" fill="#6F4D38" font-family="Manrope, Arial, sans-serif" font-size="24">agent-persona.org</text>
+  <text x="1328" y="808" text-anchor="end" fill="#6F4D38" font-family="Manrope, Arial, sans-serif" font-size="24">github.com/agent-persona</text>
+</svg>

@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import crypto from "node:crypto";
 
 import { getTopStories, markPosted } from "../feed-engine";
+import { resolveAgentPersonaScheduleContent } from "../agent-persona-updates";
 import { resolveFixedScheduleContent } from "../fixed-schedule-post";
 import { writePostCaption } from "../script-writer";
 import { publishPlatformTargets } from "../publish-service";
@@ -47,24 +48,30 @@ export async function runImagePostJob(
   }
 
   try {
-    const fixedContent = resolveFixedScheduleContent(
+    const scheduledContent =
+      (await resolveAgentPersonaScheduleContent(
+        schedule.config,
+        targets.map((platform) => platform.type),
+        startedAt
+      )) ||
+      resolveFixedScheduleContent(
       schedule.config,
       targets.map((platform) => platform.type),
       priorRuns.length,
       startedAt
-    );
+      );
 
     // 1. Content source
     const s1: PipelineStep = {
-      name: fixedContent ? "content:load" : "feed:pull",
+      name: scheduledContent ? "content:load" : "feed:pull",
       status: "running",
       startedAt: new Date().toISOString(),
     };
     steps.push(s1);
-    const story = fixedContent
+    const story = scheduledContent
       ? {
-          title: fixedContent.title,
-          summary: fixedContent.summary,
+          title: scheduledContent.title,
+          summary: scheduledContent.summary,
           score: 100,
           link: "",
         }
@@ -75,11 +82,11 @@ export async function runImagePostJob(
         })();
     s1.status = "completed";
     s1.completedAt = new Date().toISOString();
-    s1.output = fixedContent
+    s1.output = scheduledContent
       ? {
-          title: fixedContent.title,
-          variantIndex: fixedContent.variantIndex,
-          mediaUrlByPlatform: fixedContent.mediaUrlByPlatform,
+          title: scheduledContent.title,
+          variantIndex: scheduledContent.variantIndex,
+          mediaUrlByPlatform: scheduledContent.mediaUrlByPlatform,
         }
       : { title: story.title, score: story.score };
 
@@ -88,18 +95,18 @@ export async function runImagePostJob(
     steps.push(s2);
     const publishTargets = targets.map((platform) => {
       const platformType = platform.type === "x" ? "twitter" : platform.type;
-      const mediaUrl = fixedContent?.mediaUrlByPlatform[platformType] ?? undefined;
+      const mediaUrl = scheduledContent?.mediaUrlByPlatform[platformType] ?? undefined;
 
       return {
         platform,
-        content: fixedContent
-          ? fixedContent.contentByPlatform[platformType] || fixedContent.title
+        content: scheduledContent
+          ? scheduledContent.contentByPlatform[platformType] || scheduledContent.title
           : writePostCaption(story, platform.type),
         mediaUrl,
         mediaType: mediaUrl ? ("image" as const) : undefined,
         instagramContentType:
           platform.type === "instagram"
-            ? fixedContent?.instagramContentTypeByPlatform.instagram
+            ? scheduledContent?.instagramContentTypeByPlatform.instagram
             : undefined,
       };
     });
@@ -135,7 +142,7 @@ export async function runImagePostJob(
       s3.error = failed.map((result) => `${result.platform}: ${result.error}`).join("; ");
     }
 
-    if (!fixedContent) {
+    if (!scheduledContent) {
       await markPosted(story);
     }
 
