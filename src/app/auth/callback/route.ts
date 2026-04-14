@@ -5,6 +5,7 @@ import {
   isSupabaseConfigured,
   isWorkspaceUserAllowed,
 } from "@/lib/supabase/config";
+import { getRequestAppUrl } from "@/lib/app-url";
 
 function sanitizeNextPath(candidate: string | null): string {
   if (!candidate || !candidate.startsWith("/")) {
@@ -17,11 +18,10 @@ function sanitizeNextPath(candidate: string | null): string {
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get("code");
   const nextPath = sanitizeNextPath(request.nextUrl.searchParams.get("next"));
+  const appUrl = getRequestAppUrl(request);
 
   if (!code || !isSupabaseConfigured()) {
-    const fallbackUrl = request.nextUrl.clone();
-    fallbackUrl.pathname = "/login";
-    fallbackUrl.search = "";
+    const fallbackUrl = new URL("/login", appUrl);
     fallbackUrl.searchParams.set(
       "error",
       isSupabaseConfigured() ? "oauth" : "missing-config"
@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
   }
 
   const { url, anonKey } = getSupabasePublicEnv();
-  let response = NextResponse.redirect(new URL(nextPath, request.url));
+  let response = NextResponse.redirect(new URL(nextPath, appUrl));
 
   const supabase = createServerClient(url, anonKey, {
     cookies: {
@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
         return request.cookies.getAll();
       },
       setAll(cookiesToSet) {
-        response = NextResponse.redirect(new URL(nextPath, request.url));
+        response = NextResponse.redirect(new URL(nextPath, appUrl));
         cookiesToSet.forEach(({ name, value, options }) => {
           response.cookies.set(name, value, options);
         });
@@ -59,17 +59,13 @@ export async function GET(request: NextRequest) {
 
     await supabase.auth.signOut();
 
-    const unauthorizedUrl = request.nextUrl.clone();
-    unauthorizedUrl.pathname = "/login";
-    unauthorizedUrl.search = "";
+    const unauthorizedUrl = new URL("/login", appUrl);
     unauthorizedUrl.searchParams.set("error", "unauthorized");
     unauthorizedUrl.searchParams.set("next", nextPath);
     return NextResponse.redirect(unauthorizedUrl);
   }
 
-  const fallbackUrl = request.nextUrl.clone();
-  fallbackUrl.pathname = "/login";
-  fallbackUrl.search = "";
+  const fallbackUrl = new URL("/login", appUrl);
   fallbackUrl.searchParams.set("error", "oauth");
   fallbackUrl.searchParams.set("next", nextPath);
   return NextResponse.redirect(fallbackUrl);
