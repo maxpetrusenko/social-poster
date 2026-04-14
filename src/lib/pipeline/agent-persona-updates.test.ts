@@ -79,8 +79,8 @@ test("resolveAgentPersonaScheduleContent builds x and linkedin copy from site an
         postMode: "agent_persona_updates",
         lookbackHours: 24,
         mediaUrlByPlatform: {
-          twitter: "/campaigns/agent-persona/morning-card.svg",
-          linkedin: "/campaigns/agent-persona/evening-card.svg",
+          twitter: "/campaigns/agent-persona/morning-card.png",
+          linkedin: "/campaigns/agent-persona/evening-card.png",
         },
       },
       ["twitter", "linkedin"],
@@ -103,11 +103,11 @@ test("resolveAgentPersonaScheduleContent builds x and linkedin copy from site an
     );
     assert.equal(
       content.mediaUrlByPlatform.twitter,
-      "https://social.maxpetrusenko.com/campaigns/agent-persona/morning-card.svg"
+      "https://social.maxpetrusenko.com/campaigns/agent-persona/morning-card.png"
     );
     assert.equal(
       content.mediaUrlByPlatform.linkedin,
-      "https://social.maxpetrusenko.com/campaigns/agent-persona/evening-card.svg"
+      "https://social.maxpetrusenko.com/campaigns/agent-persona/evening-card.png"
     );
   } finally {
     globalThis.fetch = originalFetch;

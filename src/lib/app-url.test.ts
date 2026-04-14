@@ -6,7 +6,18 @@ test("getAppUrlFromEnv prefers APP_URL", () => {
   assert.equal(
     getAppUrlFromEnv({
       APP_URL: "https://social.maxpetrusenko.com",
+      COOLIFY_URL: "https://coolify.example.com",
       NEXT_PUBLIC_APP_URL: "https://wrong.example.com",
+    } as unknown as NodeJS.ProcessEnv),
+    "https://social.maxpetrusenko.com"
+  );
+});
+
+test("getAppUrlFromEnv falls back to first COOLIFY_URL origin", () => {
+  assert.equal(
+    getAppUrlFromEnv({
+      COOLIFY_URL:
+        "https://social.maxpetrusenko.com,https://social-origin.maxpetrusenko.com",
     } as unknown as NodeJS.ProcessEnv),
     "https://social.maxpetrusenko.com"
   );

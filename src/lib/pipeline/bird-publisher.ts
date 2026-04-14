@@ -5,6 +5,7 @@ import path from "node:path";
 import { promisify } from "node:util";
 
 import { platforms } from "@/db/schema";
+import { getAppUrlFromEnv } from "@/lib/app-url";
 import { readStoredConnectionConfig } from "@/lib/connection-config";
 
 import type { PublishResult } from "./publisher";
@@ -107,7 +108,7 @@ async function runBird(args: string[], credentials: BirdCredentials) {
 async function downloadBirdMedia(url: string) {
   const resolvedUrl = /^https?:\/\//i.test(url)
     ? url
-    : new URL(url, process.env.APP_URL?.trim() || "http://localhost:3000").toString();
+    : new URL(url, getAppUrlFromEnv()).toString();
   const response = await fetch(resolvedUrl);
   if (!response.ok) {
     throw new Error(`Failed to fetch media: ${response.status}`);

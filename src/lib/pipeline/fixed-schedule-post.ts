@@ -1,3 +1,5 @@
+import { getAppUrlFromEnv } from "@/lib/app-url";
+
 function normalizePlatform(platform: string) {
   return platform === "x" ? "twitter" : platform.toLowerCase();
 }
@@ -12,10 +14,8 @@ function resolveAssetUrl(value: string | null) {
   if (/^https?:\/\//i.test(value)) return value;
   if (!value.startsWith("/")) return value;
 
-  const base = process.env.APP_URL?.trim() || "http://localhost:3000";
-
   try {
-    return new URL(value, base).toString();
+    return new URL(value, getAppUrlFromEnv()).toString();
   } catch {
     return value;
   }

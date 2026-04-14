@@ -1,6 +1,6 @@
-# Social Poster — Tasks & Status
+# Social Agent — Tasks & Status
 
-Last updated: 2026-04-13
+Last updated: 2026-04-14
 
 ## Current State
 
@@ -24,6 +24,7 @@ Deploys to `social.maxpetrusenko.com` on Contabo/Coolify.
 ### Database Schema (src/db/schema.ts)
 - [x] `sessions` — auth sessions
 - [x] `magic_links` — passwordless auth
+- [x] `users`, `organizations`, `workspaces`, `org_memberships`, `workspace_memberships`, `workspace_invitations`
 - [x] `platforms` — connected social accounts (X, LinkedIn, TikTok, IG, etc.)
 - [x] `profiles` — brand identity / voice / face settings
 - [x] `posts` — content items with status lifecycle
@@ -38,13 +39,20 @@ Deploys to `social.maxpetrusenko.com` on Contabo/Coolify.
 - [x] Session cookie management (30-day TTL)
 - [x] Single allowed email (AUTH_EMAIL env var)
 - [x] Google sign-in gate via Supabase (env-gated, allowlist-based)
+- [x] Tenant-aware auth allowlist now accepts existing members and pending invite emails
 - [x] Login page (src/app/login/page.tsx)
 - [x] Explicit auth mode resolution: bypass, Supabase, magic-link, or fail-closed misconfigured
 - [x] Production auth now fails closed if bypass is requested or Supabase env is missing
 
 ### Dashboard Pages (all under /dashboard)
 - [x] Layout with sidebar navigation
+- [x] Settings → General now manages org name, timezone, and deletion schedule
+- [x] Settings → Workspaces now supports create / open / archive / restore / delete
+- [x] Settings → Team Members now supports invite / resend / revoke / org role / workspace access / remove
+- [x] Workspace Settings → General and Approvals now persist real workspace values
+- [x] Invite accept page at `/invite/[token]`
 - [x] Dashboard home — live metrics for posting cadence, consistency, errors, schedules, and platform health
+- [x] Create Idea now routes through a canonical composer with idea/template/feed entry lanes and real draft/schedule/publish-now actions
 - [x] Schedule category presets via `schedules.config` — take/opinion, product update, source share, hype/future, hiring
 - [x] Platforms — list, create, edit, delete, per-platform skills/config editor
 - [x] Profiles — list, create, edit, delete (voice ID, face ID, tone)
@@ -52,12 +60,15 @@ Deploys to `social.maxpetrusenko.com` on Contabo/Coolify.
 - [x] Calendar — monthly grid view with schedule recurrences + actual pipeline runs
 - [x] Pipeline — run history with expandable step detail
 - [x] Schedules — list, create, edit, delete, manual "Run Now", success/error stats
+- [x] Recurrent Posts exposed in left navigation for recurring content buckets and slot planning
 - [x] Settings — read-only config display
 
 ### API Routes
 - [x] CRUD for platforms, profiles, posts, schedules
+- [x] Platform create/update/delete now respect active workspace
 - [x] Manual schedule run endpoint
 - [x] Post deletion cascades to targets
+- [x] Post create/update routes now accept explicit composer intent for draft vs schedule
 
 ### Legacy Restore
 - [x] Legacy import script (`npm run legacy:import`)
@@ -115,11 +126,15 @@ Deploys to `social.maxpetrusenko.com` on Contabo/Coolify.
 - [ ] Real-time status updates (polling or SSE on pipeline page)
 - [ ] Toast notifications for form actions
 - [ ] Mobile-responsive sidebar (hamburger on small screens)
+- [x] Missing `/dashboard/posts/[id]/edit` route now folds into the canonical composer
 - [x] Manual candidate caching in SQLite with stale-while-refresh reads
 - [x] Fixed schedules can now resolve per-platform media assets
 - [x] Fixed schedules can pin variant rotation to calendar weeks so retries/manual runs do not shift the campaign loop
 - [x] Referral story assets generated into `public/campaigns/referral/` for deploy-stable URLs
 - [x] Sharability scoring helper added via `HOOKS` framework (`src/lib/post-framework.ts`)
+- [x] Replies board can discover live X candidates through Bird, persist them to `reply_candidates`, and dispatch approved drafts from the dashboard
+- [x] Replies board and cron reply engine now generate drafts through an OpenAI-backed reply model, filtered to original posts only
+- [x] Sidebar now shows the current workspace and a switch entry into the workspace control plane
 
 ### Cutover Plan
 1. Deploy new social-poster to Coolify
@@ -161,10 +176,17 @@ social-poster/
 - Drizzle over Prisma: lighter, better SQLite support, no binary
 - Separate repo: different deploy cadence, different secrets, cleaner CI
 
+## Remaining Parity Gaps
+
+- [ ] Posts, schedules, calendar, and pipeline are still legacy-global instead of fully workspace-scoped
+- [ ] Workspace-scoped profiles and cross-workspace calendar parity still need the next schema/data migration pass
+
 ## Ops Notes
 - `/health` returns JSON health status for Coolify / load balancer probes
 - `/api/health` returns app + active scheduler state
 - `/api/health.schedules` now includes both `dbEnabledCount` and `runtimeRegisteredCount`
+- fixed schedule asset URLs now fall back to `COOLIFY_URL` when `APP_URL` is unset
+- Bird-backed X image posts should use raster assets (`.png`, `.jpg`, `.webp`) instead of SVG
 - Local restore command:
   `npm run legacy:import -- --legacy-dir ../social-agent --with-remote-runs --ssh-target max@173.249.52.27 --ssh-key ~/.ssh/contabo_vmi3203669_ed25519 --volume <coolify-volume>`
 - Imported schedules default to disabled, matching pre-cutover safety

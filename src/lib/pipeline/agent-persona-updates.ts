@@ -1,4 +1,5 @@
 import type { FixedScheduleContent } from "./fixed-schedule-post";
+import { getAppUrlFromEnv } from "@/lib/app-url";
 
 const GITHUB_API_BASE = "https://api.github.com";
 const GITHUB_HEADERS = {
@@ -77,10 +78,8 @@ function resolveAssetUrl(value: string | null) {
   if (/^https?:\/\//i.test(value)) return value;
   if (!value.startsWith("/")) return value;
 
-  const base = process.env.APP_URL?.trim() || "http://localhost:3000";
-
   try {
-    return new URL(value, base).toString();
+    return new URL(value, getAppUrlFromEnv()).toString();
   } catch {
     return value;
   }

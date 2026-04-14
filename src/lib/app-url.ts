@@ -1,8 +1,13 @@
 const DEFAULT_APP_URL = "http://localhost:3000";
 
 export function getAppUrlFromEnv(env: NodeJS.ProcessEnv = process.env): string {
+  const coolifyUrl = env.COOLIFY_URL?.split(",")
+    .map((value) => value.trim())
+    .find(Boolean);
+
   return (
     env.APP_URL?.trim() ||
+    coolifyUrl ||
     env.NEXT_PUBLIC_APP_URL?.trim() ||
     DEFAULT_APP_URL
   );
