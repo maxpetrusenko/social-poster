@@ -3,9 +3,9 @@ import { createServerClient } from "@supabase/ssr";
 import {
   getSupabasePublicEnv,
   isSupabaseConfigured,
-  isWorkspaceUserAllowed,
 } from "@/lib/supabase/config";
 import { getRequestAppUrl } from "@/lib/app-url";
+import { isEmailAllowedForAuth } from "@/lib/auth-allowlist";
 
 function sanitizeNextPath(candidate: string | null): string {
   if (!candidate || !candidate.startsWith("/")) {
@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
       data: { user },
     } = await supabase.auth.getUser();
 
-    if (isWorkspaceUserAllowed(user?.email)) {
+    if (await isEmailAllowedForAuth(user?.email)) {
       return response;
     }
 

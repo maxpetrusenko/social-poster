@@ -5,6 +5,9 @@ const nextConfig: NextConfig = {
   output: "standalone",
   outputFileTracingRoot: process.cwd(),
   serverExternalPackages: ["better-sqlite3", "node-cron"],
+  experimental: {
+    instrumentationHook: true,
+  },
 };
 
 export default nextConfig;

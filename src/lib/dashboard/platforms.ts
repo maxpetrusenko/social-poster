@@ -12,6 +12,7 @@ export const PLATFORM_META: Record<string, PlatformMeta> = {
   instagram: { label: "Instagram", shortLabel: "IG", accent: "#e4405f", glow: "rgba(228,64,95,0.18)" },
   tiktok: { label: "TikTok", shortLabel: "TT", accent: "#111111", glow: "rgba(17,17,17,0.12)" },
   facebook: { label: "Facebook", shortLabel: "FB", accent: "#1877f2", glow: "rgba(24,119,242,0.18)" },
+  pinterest: { label: "Pinterest", shortLabel: "PI", accent: "#e60023", glow: "rgba(230,0,35,0.14)" },
   reddit: { label: "Reddit", shortLabel: "r/", accent: "#ff4500", glow: "rgba(255,69,0,0.18)" },
   youtube: { label: "YouTube", shortLabel: "YT", accent: "#ff0000", glow: "rgba(255,0,0,0.16)" },
 };

@@ -5,8 +5,101 @@ import * as schema from "./schema";
 import path from "node:path";
 import fs from "node:fs";
 
+function columnExists(sqlite: Database.Database, table: string, column: string) {
+  const columns = sqlite
+    .prepare(`PRAGMA table_info(${table})`)
+    .all() as Array<{ name: string }>;
+
+  return columns.some((entry) => entry.name === column);
+}
+
+function addColumnIfMissing(
+  sqlite: Database.Database,
+  table: string,
+  column: string,
+  definition: string
+) {
+  if (!columnExists(sqlite, table, column)) {
+    sqlite.exec(`ALTER TABLE ${table} ADD COLUMN ${definition}`);
+  }
+}
+
 function ensureSchema(sqlite: Database.Database) {
   sqlite.exec(`
+    CREATE TABLE IF NOT EXISTS users (
+      id TEXT PRIMARY KEY NOT NULL,
+      email TEXT NOT NULL UNIQUE,
+      full_name TEXT,
+      avatar_url TEXT,
+      auth_provider TEXT NOT NULL DEFAULT 'magic_link',
+      provider_user_id TEXT,
+      last_workspace_id TEXT,
+      last_seen_at INTEGER,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS organizations (
+      id TEXT PRIMARY KEY NOT NULL,
+      name TEXT NOT NULL,
+      slug TEXT NOT NULL UNIQUE,
+      logo_url TEXT,
+      default_timezone TEXT NOT NULL DEFAULT 'UTC',
+      deletion_requested_at INTEGER,
+      deletion_scheduled_for INTEGER,
+      deleted_at INTEGER,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS workspaces (
+      id TEXT PRIMARY KEY NOT NULL,
+      organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      slug TEXT NOT NULL,
+      description TEXT NOT NULL DEFAULT '',
+      timezone TEXT NOT NULL DEFAULT '',
+      icon_url TEXT,
+      primary_color TEXT NOT NULL DEFAULT '',
+      secondary_color TEXT NOT NULL DEFAULT '',
+      default_hashtags TEXT,
+      default_first_comment TEXT NOT NULL DEFAULT '',
+      approval_workflow_mode TEXT NOT NULL DEFAULT 'none',
+      is_archived INTEGER NOT NULL DEFAULT 0,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS org_memberships (
+      id TEXT PRIMARY KEY NOT NULL,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+      org_role TEXT NOT NULL DEFAULT 'member',
+      invited_at INTEGER NOT NULL,
+      accepted_at INTEGER
+    );
+
+    CREATE TABLE IF NOT EXISTS workspace_memberships (
+      id TEXT PRIMARY KEY NOT NULL,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      workspace_id TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+      workspace_role TEXT NOT NULL DEFAULT 'viewer',
+      added_at INTEGER NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS workspace_invitations (
+      id TEXT PRIMARY KEY NOT NULL,
+      organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+      email TEXT NOT NULL,
+      org_role TEXT NOT NULL DEFAULT 'member',
+      workspace_assignments TEXT,
+      invited_by_user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+      token TEXT NOT NULL UNIQUE,
+      expires_at INTEGER NOT NULL,
+      accepted_at INTEGER,
+      created_at INTEGER NOT NULL
+    );
+
     CREATE TABLE IF NOT EXISTS sessions (
       id TEXT PRIMARY KEY NOT NULL,
       email TEXT NOT NULL,
@@ -26,6 +119,7 @@ function ensureSchema(sqlite: Database.Database) {
 
     CREATE TABLE IF NOT EXISTS platforms (
       id TEXT PRIMARY KEY NOT NULL,
+      workspace_id TEXT REFERENCES workspaces(id) ON DELETE SET NULL,
       name TEXT NOT NULL,
       type TEXT NOT NULL,
       handle TEXT,
@@ -126,6 +220,31 @@ function ensureSchema(sqlite: Database.Database) {
       created_at INTEGER NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS reply_candidates (
+      id TEXT PRIMARY KEY NOT NULL,
+      platform_id TEXT REFERENCES platforms(id) ON DELETE SET NULL,
+      tweet_id TEXT NOT NULL,
+      tweet_url TEXT NOT NULL UNIQUE,
+      reply_url TEXT,
+      author_handle TEXT NOT NULL,
+      author_name TEXT,
+      tweet_text TEXT NOT NULL,
+      hook TEXT,
+      status TEXT NOT NULL DEFAULT 'drafted',
+      risk_level TEXT NOT NULL DEFAULT 'low',
+      score INTEGER NOT NULL DEFAULT 0,
+      replies_scraped INTEGER NOT NULL DEFAULT 0,
+      tags TEXT,
+      popular_replies TEXT,
+      drafts TEXT,
+      selected_draft_index INTEGER NOT NULL DEFAULT 0,
+      posted_at_label TEXT,
+      metadata TEXT,
+      error TEXT,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
+
     CREATE TABLE IF NOT EXISTS dedup_cache (
       id TEXT PRIMARY KEY NOT NULL,
       key TEXT NOT NULL UNIQUE,
@@ -144,7 +263,15 @@ function ensureSchema(sqlite: Database.Database) {
       published_at INTEGER,
       fetched_at INTEGER NOT NULL
     );
+
+    CREATE UNIQUE INDEX IF NOT EXISTS users_email_idx ON users(email);
+    CREATE UNIQUE INDEX IF NOT EXISTS organizations_slug_idx ON organizations(slug);
+    CREATE UNIQUE INDEX IF NOT EXISTS workspaces_org_slug_idx ON workspaces(organization_id, slug);
+    CREATE UNIQUE INDEX IF NOT EXISTS org_memberships_user_org_idx ON org_memberships(user_id, organization_id);
+    CREATE UNIQUE INDEX IF NOT EXISTS workspace_memberships_user_workspace_idx ON workspace_memberships(user_id, workspace_id);
   `);
+
+  addColumnIfMissing(sqlite, "platforms", "workspace_id", "workspace_id TEXT");
 }
 
 const dbPath = process.env.DATABASE_URL ?? "./data/social-poster.db";

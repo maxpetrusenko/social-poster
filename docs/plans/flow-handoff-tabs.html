@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Social Agent Flow Handoff</title>
+    <style>
+      :root {
+        --bg: #071018;
+        --panel: rgba(10, 17, 28, 0.84);
+        --panel-2: rgba(14, 25, 40, 0.92);
+        --line: rgba(133, 214, 255, 0.16);
+        --text: #edf7ff;
+        --muted: #89a2ba;
+        --cyan: #67ddff;
+        --lime: #d7ff74;
+        --gold: #ffcc7a;
+        --rose: #ff9a8b;
+        --shadow: 0 28px 80px rgba(0, 0, 0, 0.34);
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: "Space Grotesk", "Avenir Next", sans-serif;
+        color: var(--text);
+        background:
+          radial-gradient(circle at top left, rgba(103, 221, 255, 0.14), transparent 22%),
+          radial-gradient(circle at bottom right, rgba(215, 255, 116, 0.1), transparent 20%),
+          linear-gradient(180deg, #030813 0%, #071018 45%, #091423 100%);
+      }
+      .wrap {
+        width: min(1600px, calc(100vw - 32px));
+        margin: 0 auto;
+        padding: 22px 0 56px;
+      }
+      .hero, .panel, .card {
+        border: 1px solid var(--line);
+        background: linear-gradient(180deg, var(--panel), var(--panel-2));
+        box-shadow: var(--shadow);
+      }
+      .hero {
+        border-radius: 28px;
+        padding: 24px;
+        margin-bottom: 18px;
+      }
+      .eyebrow {
+        margin: 0;
+        color: var(--cyan);
+        font-size: 11px;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+      }
+      h1 {
+        margin: 10px 0 0;
+        font-size: clamp(30px, 4vw, 52px);
+        line-height: 0.94;
+      }
+      .sub {
+        margin: 12px 0 0;
+        max-width: 1100px;
+        color: var(--muted);
+        line-height: 1.7;
+      }
+      .tabbar, .subtabs, .chips {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      .tabbar { margin-top: 18px; }
+      .tab, .subtab, .chip {
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 8px 12px;
+        font-size: 12px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        background: rgba(255, 255, 255, 0.03);
+        color: var(--muted);
+        cursor: pointer;
+      }
+      .tab.active, .subtab.active {
+        color: var(--text);
+        background: rgba(103, 221, 255, 0.09);
+      }
+      .chip.ok { color: var(--lime); background: rgba(215, 255, 116, 0.08); }
+      .chip.warn { color: var(--gold); background: rgba(255, 204, 122, 0.08); }
+      .chip.future { color: var(--rose); background: rgba(255, 154, 139, 0.08); }
+      .panel {
+        border-radius: 28px;
+        overflow: hidden;
+      }
+      .pane, .subpane { display: none; }
+      .pane.active, .subpane.active { display: block; }
+      .head {
+        padding: 18px 20px;
+        border-bottom: 1px solid var(--line);
+      }
+      .head h2 {
+        margin: 0;
+        font-size: 24px;
+      }
+      .head p {
+        margin: 8px 0 0;
+        color: var(--muted);
+        font-size: 14px;
+      }
+      .body {
+        padding: 18px;
+        display: grid;
+        gap: 16px;
+      }
+      .rail {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 12px;
+      }
+      .step, .card {
+        border-radius: 20px;
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.03);
+        padding: 16px;
+      }
+      .step { min-height: 118px; position: relative; }
+      .step:not(:last-child)::after {
+        content: "→";
+        position: absolute;
+        right: -10px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--cyan);
+        font-size: 22px;
+        font-weight: 700;
+      }
+      .num {
+        display: inline-flex;
+        width: 26px;
+        height: 26px;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+        border: 1px solid var(--line);
+        color: var(--cyan);
+        font-size: 12px;
+        font-weight: 700;
+      }
+      h3, h4 {
+        margin: 12px 0 0;
+      }
+      p, li { line-height: 1.6; }
+      .muted { color: var(--muted); }
+      .cols2, .cols3, .cards {
+        display: grid;
+        gap: 16px;
+      }
+      .cols2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .cols3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      ul { margin: 10px 0 0; padding-left: 18px; }
+      a { color: var(--cyan); text-decoration: none; }
+      .path {
+        margin: 10px 0 0;
+        color: var(--text);
+        font-size: 14px;
+      }
+      .footnote {
+        margin-top: 10px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+      @media (max-width: 1200px) {
+        .rail, .cols2, .cols3, .cards { grid-template-columns: 1fr; }
+        .step:not(:last-child)::after {
+          content: "↓";
+          right: auto;
+          left: 50%;
+          top: auto;
+          bottom: -16px;
+          transform: translateX(-50%);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <section class="hero">
+        <p class="eyebrow">Canonical Handoff</p>
+        <h1>One file. tabs. platform docs. page flows.</h1>
+        <p class="sub">
+          This is the single visual reference for coding. BrightBean IA is the shell target.
+          `social-poster` automation pages are merged into it. Official provider docs are linked per platform.
+        </p>
+        <div class="tabbar">
+          <button class="tab active" data-tab="platforms">Platforms</button>
+          <button class="tab" data-tab="pages">Pages</button>
+          <button class="tab" data-tab="handoff">Handoff</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div id="platforms" class="pane active">
+          <div class="head">
+            <h2>Platform Flows</h2>
+            <p>Connect path → verify → connected state → create-post variants → validation → publish actions.</p>
+          </div>
+          <div class="body">
+            <div class="subtabs">
+              <button class="subtab active" data-group="platform" data-subtab="instagram">Instagram</button>
+              <button class="subtab" data-group="platform" data-subtab="x">X</button>
+              <button class="subtab" data-group="platform" data-subtab="linkedin">LinkedIn</button>
+              <button class="subtab" data-group="platform" data-subtab="facebook">Facebook</button>
+              <button class="subtab" data-group="platform" data-subtab="tiktok">TikTok</button>
+              <button class="subtab" data-group="platform" data-subtab="youtube">YouTube</button>
+              <button class="subtab" data-group="platform" data-subtab="other">Pinterest / Reddit</button>
+              <button class="subtab" data-group="platform" data-subtab="paritylater">Parity Later</button>
+            </div>
+
+            <div id="instagram" class="subpane active" data-group="platform">
+              <div class="chips">
+                <span class="chip ok">post</span><span class="chip ok">story</span><span class="chip ok">reel</span><span class="chip ok">carousel</span>
+              </div>
+              <div class="rail">
+                <div class="step"><span class="num">1</span><h3>Add Channel</h3><p class="muted">Workspace → Channels or Workspace Settings → Social Accounts → Add Channel → Instagram.</p></div>
+                <div class="step"><span class="num">2</span><h3>Choose Method</h3><p class="muted">Default `Meta OAuth`. Advanced `manual token`. Fallback `relay`.</p></div>
+                <div class="step"><span class="num">3</span><h3>Authorize</h3><p class="muted">Meta flow or paste app ID, app secret, access token, optional business ID.</p></div>
+                <div class="step"><span class="num">4</span><h3>Verify</h3><p class="muted">Resolve handle, business account, capability set, token health.</p></div>
+                <div class="step"><span class="num">5</span><h3>Connected</h3><p class="muted">Show green icon, handle, capability badges, last verified, `Manage / Reconnect / Test`.</p></div>
+              </div>
+              <div class="cols2">
+                <div class="card">
+                  <h4>Create-post flow</h4>
+                  <ul>
+                    <li>Create Idea → Composer → select `Instagram`.</li>
+                    <li>Format tabs: `Post`, `Story`, `Reel`, `Carousel`.</li>
+                    <li>Upload or pick media.</li>
+                    <li>Preview in IG-specific mobile frame.</li>
+                    <li>Action bar: `Save Draft`, `Send for Approval`, `Schedule`, `Publish Now`.</li>
+                  </ul>
+                </div>
+                <div class="card">
+                  <h4>Validation + official docs</h4>
+                  <ul>
+                    <li>Aspect ratio and resolution by format.</li>
+                    <li>Video length and cover checks for Reels.</li>
+                    <li>Safe-area checks for Stories.</li>
+                    <li>Multi-slide validation for Carousel.</li>
+                  </ul>
+                  <p class="footnote">
+                    Docs:
+                    <a href="https://developers.facebook.com/docs/instagram-api/getting-started/">Getting started</a>,
+                    <a href="https://developers.facebook.com/docs/instagram-api/guides/content-publishing/">Content publishing</a>,
+                    <a href="https://developers.facebook.com/docs/facebook-login/facebook-login-for-business/">Facebook Login for Business</a>
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div id="x" class="subpane" data-group="platform">
+              <div class="chips">
+                <span class="chip ok">text</span><span class="chip ok">image</span><span class="chip warn">threading</span><span class="chip warn">bird fallback</span>
+              </div>
+              <div class="rail">
+                <div class="step"><span class="num">1</span><h3>Add Channel</h3><p class="muted">Choose `Twitter/X`.</p></div>
+                <div class="step"><span class="num">2</span><h3>Choose Method</h3><p class="muted">`X API`, `Bird session/cookies`, or `Managed relay`.</p></div>
+                <div class="step"><span class="num">3</span><h3>Configure</h3><p class="muted">Direct path needs API + user tokens. Bird path may use local session or explicit cookies.</p></div>
+                <div class="step"><span class="num">4</span><h3>Verify</h3><p class="muted">Handle, permission set, post capability, media support, thread rules.</p></div>
+                <div class="step"><span class="num">5</span><h3>Connected</h3><p class="muted">Show provider badge `direct / bird / relay`, threading policy, reconnect state.</p></div>
+              </div>
+              <div class="cols2">
+                <div class="card">
+                  <h4>Create-post flow</h4>
+                  <ul>
+                    <li>Select `X` in composer.</li>
+                    <li>Text-first flow with optional media.</li>
+                    <li>If long-post threading is enabled, preview thread numbering.</li>
+                    <li>Replies page stays separate until inbox parity lands.</li>
+                  </ul>
+                </div>
+                <div class="card">
+                  <h4>Validation + official docs</h4>
+                  <ul>
+                    <li>Character budget after numbering.</li>
+                    <li>Media-count and upload constraints.</li>
+                    <li>Fallback decision if direct fails and Bird exists.</li>
+                  </ul>
+                  <p class="footnote">
+                    Docs:
+                    <a href="https://docs.x.com/fundamentals/authentication/oauth-2-0/overview">OAuth overview</a>,
+                    <a href="https://docs.x.com/xdks/python/authentication">Authentication options</a>
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div id="linkedin" class="subpane" data-group="platform">
+              <div class="chips">
+                <span class="chip ok">text</span><span class="chip ok">image</span><span class="chip ok">video</span><span class="chip warn">member vs page</span>
+              </div>
+              <div class="cols2">
+                <div class="card">
+                  <h4>Connect flow</h4>
+                  <p class="path">Add Channel → LinkedIn → enter client ID, client secret, refresh token, optional URN → resolve member/profile or company page → verify scopes → connected.</p>
+                </div>
+                <div class="card">
+                  <h4>Create-post flow + docs</h4>
+                  <p class="path">Select `LinkedIn` in composer → choose text/image/video path → preview as profile or company page → validate owner type and scopes.</p>
+                  <p class="footnote">Docs: <a href="https://learn.microsoft.com/en-us/linkedin/shared/authentication/authentication">LinkedIn authentication</a></p>
+                </div>
+              </div>
+            </div>
+
+            <div id="facebook" class="subpane" data-group="platform">
+              <div class="chips">
+                <span class="chip ok">page posts</span><span class="chip warn">page only</span>
+              </div>
+              <div class="cols2">
+                <div class="card">
+                  <h4>Connect flow</h4>
+                  <p class="path">Add Channel → Facebook → Meta app ID, app secret, page access token, optional page ID → verify page ownership and token freshness → connected.</p>
+                </div>
+                <div class="card">
+                  <h4>Create-post flow + docs</h4>
+                  <p class="path">Select `Facebook` in composer → choose text/image/video page post → preview page card → validate page-only routing and media limits.</p>
+                  <p class="footnote">Docs: <a href="https://developers.facebook.com/docs/facebook-login/facebook-login-for-business/">Facebook Login for Business</a></p>
+                </div>
+              </div>
+            </div>
+
+            <div id="tiktok" class="subpane" data-group="platform">
+              <div class="chips">
+                <span class="chip ok">video</span><span class="chip ok">image</span><span class="chip warn">direct vs draft</span>
+              </div>
+              <div class="cols2">
+                <div class="card">
+                  <h4>Connect flow</h4>
+                  <p class="path">Add Channel → TikTok → client key, client secret, refresh token → choose posting mode in operator rules → verify creator access and privacy defaults → connected.</p>
+                </div>
+                <div class="card">
+                  <h4>Create-post flow + docs</h4>
+                  <p class="path">Select `TikTok` → video/image-first flow → preview cover/caption/privacy posture → validate duration, file size, and audited-vs-unaudited behavior before schedule/publish.</p>
+                  <p class="footnote">
+                    Docs:
+                    <a href="https://developers.tiktok.com/products/content-posting-api">Content Posting API</a>,
+                    <a href="https://developers.tiktok.com/doc/content-posting-api-get-started/">Get started</a>,
+                    <a href="https://developers.tiktok.com/doc/content-sharing-guidelines">Guidelines</a>
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div id="youtube" class="subpane" data-group="platform">
+              <div class="chips">
+                <span class="chip ok">video</span><span class="chip ok">shorts</span><span class="chip warn">oauth required</span>
+              </div>
+              <div class="cols2">
+                <div class="card">
+                  <h4>Connect flow</h4>
+                  <p class="path">Add Channel → YouTube → Google OAuth client, secret, refresh token, optional channel ID → resolve channel and privacy defaults → verify upload capability → connected.</p>
+                </div>
+                <div class="card">
+                  <h4>Create-post flow + docs</h4>
+                  <p class="path">Select `YouTube` → video upload flow → title, description, visibility, optional Shorts-only policy → validate upload constraints before schedule/publish.</p>
+                  <p class="footnote">
+                    Docs:
+                    <a href="https://developers.google.com/youtube/v3/guides/authentication">YouTube auth guide</a>,
+                    <a href="https://developers.google.com/youtube/registering_an_application">Credential setup</a>
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div id="other" class="subpane" data-group="platform">
+              <div class="cols2">
+                <div class="card">
+                  <h4>Pinterest</h4>
+                  <p class="path">Add Channel → Pinterest → client ID, client secret, refresh token → operator rules define board routing → composer asks for destination board → validate board/media rules.</p>
+                  <p class="footnote">Docs: <a href="https://developers.pinterest.com/docs/api/v5/">Pinterest API v5</a></p>
+                </div>
+                <div class="card">
+                  <h4>Reddit</h4>
+                  <p class="path">Add Channel → Reddit → client ID, client secret, refresh token → resolve subreddit and flair requirements → composer validates rules before approval/schedule/publish.</p>
+                  <p class="footnote">Docs: <a href="https://www.reddit.com/dev/api/">Classic Reddit API</a>, <a href="https://developers.reddit.com/docs/get-started">Reddit for Developers</a></p>
+                </div>
+              </div>
+            </div>
+
+            <div id="paritylater" class="subpane" data-group="platform">
+              <div class="chips">
+                <span class="chip future">threads</span><span class="chip future">bluesky</span><span class="chip future">google business</span><span class="chip future">mastodon</span>
+              </div>
+              <div class="cols2">
+                <div class="card">
+                  <h4>Doc rule</h4>
+                  <ul>
+                    <li>Every parity-later platform gets the same structure: connect → verify → compose variants → validation → publish.</li>
+                    <li>Do not expose UI format tabs until capability records exist.</li>
+                    <li>Treat provider docs as live references during implementation.</li>
+                  </ul>
+                </div>
+                <div class="card">
+                  <h4>Official docs</h4>
+                  <ul>
+                    <li><a href="https://developers.facebook.com/docs/threads">Threads API</a></li>
+                    <li><a href="https://docs.bsky.app/">Bluesky docs</a></li>
+                    <li><a href="https://developers.google.com/my-business">Google Business Profile APIs</a></li>
+                    <li><a href="https://developers.google.com/my-business/content/implement-oauth">GBP OAuth</a></li>
+                    <li><a href="https://docs.joinmastodon.org/methods/statuses/">Mastodon statuses API</a></li>
+                    <li><a href="https://docs.joinmastodon.org/api/rate-limits/">Mastodon rate limits</a></li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="pages" class="pane">
+          <div class="head">
+            <h2>Page Flows</h2>
+            <p>Shell → page → nested subflows. this is the menu/page reference for implementation.</p>
+          </div>
+          <div class="body">
+            <div class="cards">
+              <div class="card">
+                <h3>Workspace Shell</h3>
+                <p class="path">`Publish`, `Create Idea`, `Social Inbox`, `Replies`, `Notifications`, `Schedules`, `Categories`, dynamic `Channels`, footer actions `Manage Team / Settings / Log out`.</p>
+              </div>
+              <div class="card">
+                <h3>Publish</h3>
+                <p class="path">Workspace → Publish → switch `Calendar / List` → list tabs `Queue / Drafts / Approvals / Sent` → open post → edit / schedule / approve / publish / inspect publish log.</p>
+              </div>
+              <div class="card">
+                <h3>Create Idea</h3>
+                <p class="path">Workspace → Create Idea → `Ideas / Templates / Feeds` → full composer → channels → media → per-channel tweaks → `Save Draft / Submit for Approval / Add to Queue / Schedule / Publish Now`.</p>
+              </div>
+              <div class="card">
+                <h3>Social Inbox</h3>
+                <p class="path">Workspace → Social Inbox → `All / My Queue / Unassigned` → thread feed → open conversation → assign / label / saved reply / SLA handling / reply.</p>
+              </div>
+              <div class="card">
+                <h3>Replies</h3>
+                <p class="path">Keep current `Replies` as dedicated X engine/debug surface until inbox reply parity is complete.</p>
+              </div>
+              <div class="card">
+                <h3>Schedules + Categories</h3>
+                <p class="path">Keep current `Schedules` and `Categories` as first-class automation pages even though they are not BrightBean-primary pages.</p>
+              </div>
+              <div class="card">
+                <h3>Notifications</h3>
+                <p class="path">Global bell or page entry → drawer/history → mark read → open item → deep link into post, approval, inbox, failure, or account issue.</p>
+              </div>
+              <div class="card">
+                <h3>Channels</h3>
+                <p class="path">Sidebar account rows show connected/unhealthy accounts, queue pressure, reconnect state, and Add Channel entry.</p>
+              </div>
+            </div>
+
+            <div class="cols3">
+              <div class="card">
+                <h4>Publish nested flows</h4>
+                <ul>
+                  <li>Modes: `Calendar`, `List`.</li>
+                  <li>Calendar views: `Month`, later `Week`, `Day`.</li>
+                  <li>List tabs: `Queue`, `Drafts`, `Approvals`, `Sent`.</li>
+                  <li>Queue flows: `Publishing Queues`, `Queue Detail`, `Add to Queue`, `Prioritize`.</li>
+                  <li>Post drill-in: post content, approvals, versions, publish log, platform results.</li>
+                </ul>
+              </div>
+              <div class="card">
+                <h4>Create Idea nested flows</h4>
+                <ul>
+                  <li>Landing tabs: `Ideas`, `Templates`, `Feeds`.</li>
+                  <li>Idea board: create/edit/move/delete, convert to post.</li>
+                  <li>Template gallery: use template, save as template.</li>
+                  <li>Feeds: curated sources, add/delete feeds.</li>
+                  <li>Composer: channels, caption, media, preview, per-channel overrides.</li>
+                </ul>
+              </div>
+              <div class="card">
+                <h4>Settings + portal shells</h4>
+                <ul>
+                  <li>Org Settings: `Profile`, `Preferences`, `General`, `Workspaces`, `Team Members`, `All Calendars`, `Media Library`.</li>
+                  <li>Workspace Settings: `General`, `Social Accounts`, `Media Library`, `Approvals`, `Client Portal`.</li>
+                  <li>Client Portal: `Home`, `Approvals`, `Published`, `Activity`, optional `Reports` later.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="handoff" class="pane">
+          <div class="head">
+            <h2>Handoff Notes</h2>
+            <p>Implementation constraints and coding sequence.</p>
+          </div>
+          <div class="body">
+            <div class="cols2">
+              <div class="card">
+                <h3>Port rule</h3>
+                <ul>
+                  <li>Copy BrightBean IA, menus, tabs, flow order, CTA order.</li>
+                  <li>Do not paste Django views, HTMX endpoints, or Alpine runtime code.</li>
+                  <li>Rebuild inside Next.js, React, Drizzle, API routes, and server actions.</li>
+                  <li>Keep current schedule engine, runtime-vs-DB health, categories, pipeline run truth, and new connections method model.</li>
+                </ul>
+              </div>
+              <div class="card">
+                <h3>Current runtime truth</h3>
+                <ul>
+                  <li>`Bird` is the only provider with a true separate runtime publishing path today.</li>
+                  <li>Most non-Bird “direct” methods are currently UI/config shapes; runtime still collapses to Late/relay in many cases.</li>
+                  <li>Capability records must become explicit before exposing all format tabs in real UI.</li>
+                  <li>Validate before approval, schedule, and publish. never after.</li>
+                </ul>
+              </div>
+            </div>
+            <div class="cols3">
+              <div class="card">
+                <h4>Build order</h4>
+                <ul>
+                  <li>Tenancy shell and membership primitives.</li>
+                  <li>Workspace shell nav.</li>
+                  <li>`Publish` shell.</li>
+                  <li>`Create Idea` composer.</li>
+                  <li>Workspace settings + social accounts.</li>
+                  <li>Approvals + client portal.</li>
+                  <li>Inbox + notifications.</li>
+                </ul>
+              </div>
+              <div class="card">
+                <h4>What stays top-level</h4>
+                <ul>
+                  <li>`Replies` stays top-level for now.</li>
+                  <li>`Schedules` stays top-level.</li>
+                  <li>`Categories` stays top-level.</li>
+                  <li>`Dashboard` overview is optional, not required by shell parity.</li>
+                </ul>
+              </div>
+              <div class="card">
+                <h4>Official-doc rule</h4>
+                <ul>
+                  <li>Use official provider docs first when implementing any platform edge case.</li>
+                  <li>Re-check official docs during implementation for unstable provider rules.</li>
+                  <li>Treat parity-later platforms as gated until docs + capability mapping are confirmed.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <script>
+      const tabs = document.querySelectorAll(".tab");
+      const panes = document.querySelectorAll(".pane");
+      tabs.forEach((tab) => {
+        tab.addEventListener("click", () => {
+          tabs.forEach((item) => item.classList.remove("active"));
+          panes.forEach((item) => item.classList.remove("active"));
+          tab.classList.add("active");
+          document.getElementById(tab.dataset.tab).classList.add("active");
+        });
+      });
+
+      const subtabs = document.querySelectorAll(".subtab");
+      const subpanes = document.querySelectorAll(".subpane");
+      subtabs.forEach((tab) => {
+        tab.addEventListener("click", () => {
+          const group = tab.dataset.group;
+          subtabs.forEach((item) => {
+            if (item.dataset.group === group) item.classList.remove("active");
+          });
+          subpanes.forEach((item) => {
+            if (item.dataset.group === group) item.classList.remove("active");
+          });
+          tab.classList.add("active");
+          document.getElementById(tab.dataset.subtab).classList.add("active");
+        });
+      });
+    </script>
+  </body>
+</html>

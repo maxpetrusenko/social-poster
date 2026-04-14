@@ -1,0 +1,327 @@
+"use client";
+
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { RefreshCw, Send } from "lucide-react";
+import { RepliesDrawerView, RepliesKanbanView, ReplyReviewModal } from "@/components/dashboard/replies-mock-views";
+import { INITIAL_CARDS, type ReplyCard, type ReplyStatus, type ViewMode } from "@/components/dashboard/replies-mock-data";
+import { cn } from "@/lib/utils";
+import type { ReplyConnectionOption } from "@/lib/dashboard/replies-data";
+
+export function RepliesMockShowcase({
+  connections,
+  initialCards,
+}: {
+  connections: ReplyConnectionOption[];
+  initialCards: ReplyCard[];
+}) {
+  const hasLiveConnections = connections.length > 0;
+  const fallbackCards = hasLiveConnections ? initialCards : initialCards.length > 0 ? initialCards : INITIAL_CARDS;
+  const autoRefreshedConnectionIds = useRef(new Set<string>());
+  const [view, setView] = useState<ViewMode>("replies1");
+  const [cards, setCards] = useState(fallbackCards);
+  const [selectedId, setSelectedId] = useState(fallbackCards[0]?.id ?? "");
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [selectedConnectionId, setSelectedConnectionId] = useState(connections[0]?.id ?? "mock-x-main");
+  const [selectedTransport, setSelectedTransport] = useState(
+    connections[0]?.transportOptions[0]?.value ?? "bird"
+  );
+  const [error, setError] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+
+  const selected = cards.find((card) => card.id === selectedId) ?? cards[0] ?? null;
+  const selectedConnection =
+    connections.find((connection) => connection.id === selectedConnectionId) ?? null;
+
+  const counts = useMemo(() => {
+    const next = {
+      new: 0,
+      analyzed: 0,
+      drafted: 0,
+      ready: 0,
+      posted: 0,
+      skipped: 0,
+    } satisfies Record<ReplyStatus, number>;
+
+    for (const card of cards) next[card.status] += 1;
+
+    return next;
+  }, [cards]);
+
+  useEffect(() => {
+    if (!selectedConnectionId || selectedConnectionId === "mock-x-main") return;
+
+    startTransition(async () => {
+      try {
+        setError(null);
+        const response = await fetch(`/api/replies?platformId=${encodeURIComponent(selectedConnectionId)}`);
+        const body = (await response.json()) as { cards?: ReplyCard[]; error?: string };
+        if (!response.ok) throw new Error(body.error || "Failed to load replies");
+
+        let nextCards = body.cards ?? [];
+
+        const shouldAutoRefresh =
+          !autoRefreshedConnectionIds.current.has(selectedConnectionId) &&
+          (nextCards.length === 0 || nextCards.every((card) => !card.mediaUrl));
+
+        if (shouldAutoRefresh) {
+          autoRefreshedConnectionIds.current.add(selectedConnectionId);
+          const refreshResponse = await fetch("/api/replies", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ platformId: selectedConnectionId }),
+          });
+          const refreshBody = (await refreshResponse.json()) as { cards?: ReplyCard[]; error?: string };
+          if (!refreshResponse.ok) throw new Error(refreshBody.error || "Failed to refresh replies");
+          nextCards = refreshBody.cards ?? [];
+        }
+
+        setCards(nextCards);
+        setSelectedId((current) => nextCards.some((item) => item.id === current) ? current : nextCards[0]?.id || "");
+      } catch (fetchError) {
+        setError(fetchError instanceof Error ? fetchError.message : "Failed to load replies");
+      }
+    });
+  }, [selectedConnectionId]);
+
+  function moveCard(id: string, status: ReplyStatus) {
+    const previous = cards;
+    setCards((current) => current.map((card) => (card.id === id ? { ...card, status, updatedLabel: "just now" } : card)));
+
+    startTransition(async () => {
+      try {
+        setError(null);
+        const endpoint = status === "posted" ? `/api/replies/${id}/post` : `/api/replies/${id}`;
+        const response = await fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: status === "posted" ? JSON.stringify({}) : JSON.stringify({ status }),
+        });
+        const body = (await response.json()) as { error?: string };
+        if (!response.ok) throw new Error(body.error || "Failed to update reply");
+        if (selectedConnectionId && selectedConnectionId !== "mock-x-main") {
+          const next = await fetch(`/api/replies?platformId=${encodeURIComponent(selectedConnectionId)}`);
+          const nextBody = (await next.json()) as { cards?: ReplyCard[]; error?: string };
+          if (!next.ok) throw new Error(nextBody.error || "Failed to sync replies");
+          setCards(nextBody.cards ?? []);
+        }
+      } catch (updateError) {
+        setCards(previous);
+        setError(updateError instanceof Error ? updateError.message : "Failed to update reply");
+      }
+    });
+  }
+
+  function updateDraft(id: string, draftIndex: number, value: string) {
+    const previous = cards;
+    setCards((current) =>
+      current.map((card) =>
+        card.id === id
+          ? {
+              ...card,
+              drafts: card.drafts.map((draft, index) => (index === draftIndex ? value : draft)),
+              updatedLabel: "edited now",
+            }
+          : card
+      )
+    );
+
+    startTransition(async () => {
+      try {
+        setError(null);
+        const response = await fetch(`/api/replies/${id}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ draftIndex, draftText: value }),
+        });
+        const body = (await response.json()) as { error?: string };
+        if (!response.ok) throw new Error(body.error || "Failed to save draft");
+      } catch (updateError) {
+        setCards(previous);
+        setError(updateError instanceof Error ? updateError.message : "Failed to save draft");
+      }
+    });
+  }
+
+  function refreshLiveReplies() {
+    if (!selectedConnectionId || selectedConnectionId === "mock-x-main") {
+      setCards(INITIAL_CARDS);
+      return;
+    }
+
+    startTransition(async () => {
+      try {
+        setError(null);
+        const response = await fetch("/api/replies", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ platformId: selectedConnectionId }),
+        });
+        const body = (await response.json()) as { cards?: ReplyCard[]; error?: string };
+        if (!response.ok) throw new Error(body.error || "Failed to refresh replies");
+        setCards(body.cards ?? []);
+        setSelectedId((current) => body.cards?.some((item) => item.id === current) ? current : body.cards?.[0]?.id || "");
+      } catch (refreshError) {
+        setError(refreshError instanceof Error ? refreshError.message : "Failed to refresh replies");
+      }
+    });
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-end gap-2 px-1 py-2">
+        <details className="relative">
+          <summary className="list-none cursor-pointer rounded-full border border-[rgba(12,17,21,0.08)] bg-white px-4 py-2 text-sm font-semibold text-[var(--ink)]">
+            {selectedConnection?.label || "Select X connection"}
+          </summary>
+          <div className="absolute right-0 z-20 mt-2 w-[280px] rounded-[18px] border border-[rgba(12,17,21,0.08)] bg-white p-2 shadow-[0_18px_45px_rgba(12,17,21,0.12)]">
+            {(connections.length > 0 ? connections : [{
+              id: "mock-x-main",
+              label: "X Main",
+              handle: "@maxpetrusenko",
+              provider: "bird",
+              authMethod: "bird_cli",
+              transportOptions: [{ value: "bird" as const, label: "Bird" }],
+            }]).map((connection) => (
+              <button
+                key={connection.id}
+                type="button"
+                onClick={() => {
+                  setSelectedConnectionId(connection.id);
+                  setSelectedTransport(connection.transportOptions[0]?.value ?? "bird");
+                }}
+                className={cn(
+                  "flex w-full items-start justify-between rounded-[14px] px-3 py-3 text-left text-sm transition hover:bg-[rgba(12,17,21,0.03)]",
+                  selectedConnectionId === connection.id ? "bg-[rgba(15,126,169,0.08)]" : ""
+                )}
+              >
+                <span>
+                  <span className="block font-semibold text-[var(--ink)]">{connection.label}</span>
+                  <span className="mt-1 block text-xs text-[var(--muted)]">
+                    {connection.handle || "No handle"} · {connection.authMethod || connection.provider}
+                  </span>
+                </span>
+              </button>
+            ))}
+          </div>
+        </details>
+        <details className="relative">
+          <summary className="list-none cursor-pointer rounded-full border border-[rgba(12,17,21,0.08)] bg-white px-4 py-2 text-sm font-semibold text-[var(--ink)]">
+            {selectedTransport === "bird" ? "Bird" : "X API"}
+          </summary>
+          <div className="absolute right-0 z-20 mt-2 w-[200px] rounded-[18px] border border-[rgba(12,17,21,0.08)] bg-white p-2 shadow-[0_18px_45px_rgba(12,17,21,0.12)]">
+            {(selectedConnection?.transportOptions ?? [{ value: selectedTransport, label: selectedTransport === "bird" ? "Bird" : "X API" }]).map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => setSelectedTransport(option.value)}
+                className={cn(
+                  "flex w-full items-center justify-between rounded-[14px] px-3 py-3 text-left text-sm font-semibold transition hover:bg-[rgba(12,17,21,0.03)]",
+                  selectedTransport === option.value ? "bg-[rgba(15,126,169,0.08)] text-[var(--accent-tech)]" : "text-[var(--ink)]"
+                )}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </details>
+        <div className="inline-flex rounded-full border border-[rgba(12,17,21,0.08)] bg-white p-1">
+          <button
+            type="button"
+            onClick={() => setView("replies1")}
+            className={cn(
+              "rounded-full px-4 py-2 text-sm font-semibold transition",
+              view === "replies1" ? "bg-[var(--accent-tech)] text-white" : "text-[var(--muted)]"
+            )}
+          >
+            Kanban
+          </button>
+          <button
+            type="button"
+            onClick={() => setView("replies2")}
+            className={cn(
+              "rounded-full px-4 py-2 text-sm font-semibold transition",
+              view === "replies2" ? "bg-[var(--accent-tech)] text-white" : "text-[var(--muted)]"
+            )}
+          >
+            List
+          </button>
+        </div>
+        <button
+          type="button"
+          onClick={refreshLiveReplies}
+          disabled={isPending}
+          className="inline-flex items-center gap-2 rounded-full border border-[rgba(12,17,21,0.08)] bg-white px-4 py-2 text-sm font-semibold text-[var(--ink)] disabled:opacity-60"
+        >
+          <RefreshCw className="h-4 w-4" />
+          {isPending ? "Refreshing..." : "Refresh now"}
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            const ready = cards.find((card) => card.status === "ready");
+            if (ready) moveCard(ready.id, "posted");
+          }}
+          disabled={isPending || !cards.some((card) => card.status === "ready")}
+          className="inline-flex items-center gap-2 rounded-full border border-[rgba(37,99,235,0.16)] bg-[rgba(37,99,235,0.1)] px-4 py-2 text-sm font-semibold text-[#1d4ed8] disabled:opacity-60"
+        >
+          <Send className="h-4 w-4" />
+          Dispatch ready
+        </button>
+      </div>
+
+      {error ? (
+        <div className="mx-auto w-full max-w-[1720px] rounded-[18px] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
+        </div>
+      ) : null}
+
+      {cards.length === 0 ? (
+        <div className="mx-auto flex w-full max-w-[1720px] flex-col items-center justify-center rounded-[28px] border border-[rgba(12,17,21,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(243,247,249,0.94))] px-6 py-16 text-center shadow-[0_18px_45px_rgba(12,17,21,0.08)]">
+          <p className="section-eyebrow text-[var(--accent-tech)]">Live reply queue</p>
+          <h2 className="mt-3 font-serif text-[2rem] leading-none text-[var(--ink)]">No candidates yet</h2>
+          <p className="mt-4 max-w-[680px] text-sm leading-7 text-[var(--muted)]">
+            {hasLiveConnections
+              ? "Refresh now to pull live X posts through Bird search, score them, and drop reply drafts into the board."
+              : "Add an X connection first. Mock cards stay available only when no live connection exists."}
+          </p>
+        </div>
+      ) : view === "replies1" && selected ? (
+        <RepliesKanbanView
+          cards={cards}
+          counts={counts}
+          selected={selected}
+          onMove={moveCard}
+          onOpen={(id) => {
+            setSelectedId(id);
+            setEditingId(null);
+            setIsModalOpen(true);
+          }}
+        />
+      ) : (
+        selected ? (
+          <RepliesDrawerView
+            cards={cards}
+            selected={selected}
+            editingId={editingId}
+            onMove={moveCard}
+            onSelect={setSelectedId}
+            onEditToggle={setEditingId}
+            onUpdateDraft={updateDraft}
+          />
+        ) : null
+      )}
+
+      {view === "replies1" && selected && isModalOpen ? (
+        <ReplyReviewModal
+          card={selected}
+          onClose={() => {
+            setIsModalOpen(false);
+            setEditingId(null);
+          }}
+          onMove={moveCard}
+        />
+      ) : null}
+    </div>
+  );
+}

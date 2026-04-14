@@ -1,0 +1,104 @@
+<svg width="1200" height="1200" viewBox="0 0 1200 1200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="1200" fill="#111315"/>
+  <rect x="48" y="48" width="1104" height="1104" rx="34" fill="#181B1F" stroke="#2A2F36" stroke-width="2"/>
+
+  <rect x="88" y="84" width="10" height="54" rx="5" fill="#2AD39B"/>
+  <text x="118" y="130" fill="#F5F7FA" font-family="Arial, Helvetica, sans-serif" font-size="60" font-weight="700">How Agentic RAG Works</text>
+  <text x="949" y="130" fill="#B7C0CB" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="700">example square draft</text>
+
+  <rect x="150" y="300" width="170" height="170" rx="85" fill="#2A3138"/>
+  <rect x="198" y="355" width="74" height="52" rx="10" fill="#FFE08A" stroke="#121417" stroke-width="4"/>
+  <circle cx="235" cy="330" r="26" fill="#8EA7FF"/>
+  <rect x="217" y="314" width="36" height="16" rx="8" fill="#FFB86C"/>
+  <text x="192" y="505" fill="#FFFFFF" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="700">User</text>
+  <text x="146" y="545" fill="#C4CCD6" font-family="Arial, Helvetica, sans-serif" font-size="26">Prompt + query</text>
+
+  <rect x="340" y="220" width="470" height="185" rx="24" fill="#20252B" stroke="#6E737A" stroke-width="3"/>
+  <text x="482" y="270" fill="#F3F6FA" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="700">What can I help with?</text>
+  <rect x="375" y="302" width="400" height="54" rx="18" fill="#171A1E" stroke="#3A4047"/>
+  <text x="398" y="336" fill="#7F8894" font-family="Arial, Helvetica, sans-serif" font-size="22">Ask anything</text>
+  <text x="394" y="388" fill="#6FD7AE" font-family="Arial, Helvetica, sans-serif" font-size="18">Create image</text>
+  <text x="522" y="388" fill="#E8C36B" font-family="Arial, Helvetica, sans-serif" font-size="18">Brainstorm</text>
+  <text x="658" y="388" fill="#9B9AF8" font-family="Arial, Helvetica, sans-serif" font-size="18">Help me write</text>
+
+  <rect x="465" y="520" width="260" height="126" rx="22" fill="#3277FF"/>
+  <rect x="488" y="565" width="56" height="42" rx="14" fill="#FFB44C" stroke="#10244E" stroke-width="4"/>
+  <circle cx="516" cy="548" r="20" fill="#7DE4FF" stroke="#10244E" stroke-width="4"/>
+  <circle cx="508" cy="547" r="3" fill="#10244E"/>
+  <circle cx="524" cy="547" r="3" fill="#10244E"/>
+  <text x="562" y="576" fill="#F9FCFF" font-family="Arial, Helvetica, sans-serif" font-size="34" font-weight="700">Aggregator</text>
+  <text x="604" y="616" fill="#F9FCFF" font-family="Arial, Helvetica, sans-serif" font-size="34" font-weight="700">Agent</text>
+
+  <rect x="870" y="410" width="220" height="168" rx="20" fill="#3B195C" stroke="#B569FF" stroke-width="3" stroke-dasharray="10 10"/>
+  <rect x="900" y="455" width="110" height="34" rx="10" fill="#612A98"/>
+  <rect x="900" y="505" width="110" height="34" rx="10" fill="#612A98"/>
+  <text x="936" y="478" fill="#F7ECFF" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="700">Short term</text>
+  <text x="942" y="528" fill="#F7ECFF" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="700">Long term</text>
+  <text x="1016" y="506" fill="#FFFFFF" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="700">Memory</text>
+
+  <rect x="870" y="612" width="220" height="168" rx="20" fill="#3B195C" stroke="#B569FF" stroke-width="3" stroke-dasharray="10 10"/>
+  <rect x="900" y="657" width="88" height="34" rx="10" fill="#612A98"/>
+  <rect x="900" y="707" width="88" height="34" rx="10" fill="#612A98"/>
+  <text x="934" y="680" fill="#F7ECFF" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="700">ReAct</text>
+  <text x="948" y="730" fill="#F7ECFF" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="700">CoT</text>
+  <text x="1010" y="708" fill="#FFFFFF" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="700">Planning</text>
+
+  <text x="96" y="620" fill="#CFD8E2" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="700">Generative models</text>
+  <rect x="92" y="650" width="230" height="92" rx="18" fill="#11241C" stroke="#2AD39B" stroke-width="3" stroke-dasharray="8 8"/>
+  <circle cx="148" cy="696" r="24" fill="#FFFFFF"/>
+  <circle cx="202" cy="696" r="24" fill="#FFD43B"/>
+  <circle cx="256" cy="696" r="24" fill="#FF7A59"/>
+  <text x="132" y="733" fill="#FFFFFF" font-family="Arial, Helvetica, sans-serif" font-size="20">GPT</text>
+  <text x="176" y="733" fill="#FFFFFF" font-family="Arial, Helvetica, sans-serif" font-size="20">Gemini</text>
+  <text x="234" y="733" fill="#FFFFFF" font-family="Arial, Helvetica, sans-serif" font-size="20">Claude</text>
+
+  <rect x="120" y="890" width="960" height="190" rx="24" fill="#152D35" stroke="#55E5F5" stroke-width="3" stroke-dasharray="8 8"/>
+  <text x="470" y="948" fill="#DDF7FB" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="700">Tools and data layer</text>
+
+  <g>
+    <rect x="176" y="975" width="160" height="56" rx="14" fill="#EAF0F8"/>
+    <ellipse cx="224" cy="1003" rx="26" ry="16" fill="#9FB4C9"/>
+    <rect x="198" y="980" width="52" height="24" rx="8" fill="#D6E2EF"/>
+    <text x="172" y="1064" fill="#FFFFFF" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700">Local data</text>
+  </g>
+
+  <g>
+    <rect x="516" y="975" width="160" height="56" rx="14" fill="#F0EFFF"/>
+    <rect x="552" y="986" width="90" height="34" rx="10" fill="#D9D5FF"/>
+    <circle cx="628" cy="1004" r="9" fill="#7E73FF"/>
+    <text x="512" y="1064" fill="#FFFFFF" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700">Web search</text>
+  </g>
+
+  <g>
+    <rect x="856" y="975" width="160" height="56" rx="14" fill="#EDF5FF"/>
+    <path d="M908 1014C908 994 924 978 944 978C956 978 968 984 974 994C980 990 988 988 996 988C1014 988 1028 1001 1028 1019V1031H908V1014Z" fill="#B7DBFF"/>
+    <text x="844" y="1064" fill="#FFFFFF" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700">Cloud tools</text>
+  </g>
+
+  <text x="128" y="286" fill="#2AD39B" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="700">1</text>
+  <text x="785" y="432" fill="#2AD39B" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="700">2</text>
+  <text x="835" y="560" fill="#2AD39B" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="700">3</text>
+  <text x="694" y="840" fill="#2AD39B" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="700">4</text>
+  <text x="358" y="610" fill="#2AD39B" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="700">5</text>
+  <text x="552" y="470" fill="#2AD39B" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="700">6</text>
+
+  <line x1="320" y1="345" x2="340" y2="345" stroke="#D9DEE7" stroke-width="4" stroke-dasharray="10 10"/>
+  <polygon points="338,338 354,345 338,352" fill="#D9DEE7"/>
+
+  <line x1="592" y1="405" x2="592" y2="520" stroke="#D9DEE7" stroke-width="4" stroke-dasharray="10 10"/>
+  <polygon points="584,518 592,534 600,518" fill="#D9DEE7"/>
+
+  <line x1="725" y1="578" x2="870" y2="494" stroke="#D9DEE7" stroke-width="4" stroke-dasharray="10 10"/>
+  <polygon points="858,490 875,487 867,501" fill="#D9DEE7"/>
+
+  <line x1="725" y1="600" x2="870" y2="696" stroke="#D9DEE7" stroke-width="4" stroke-dasharray="10 10"/>
+  <polygon points="858,694 874,699 865,712" fill="#D9DEE7"/>
+
+  <line x1="596" y1="646" x2="596" y2="890" stroke="#D9DEE7" stroke-width="4" stroke-dasharray="10 10"/>
+  <polygon points="588,878 596,894 604,878" fill="#D9DEE7"/>
+
+  <line x1="465" y1="590" x2="322" y2="696" stroke="#D9DEE7" stroke-width="4" stroke-dasharray="10 10"/>
+  <polygon points="332,682 319,699 339,695" fill="#D9DEE7"/>
+
+  <text x="94" y="1122" fill="#9FA9B3" font-family="Arial, Helvetica, sans-serif" font-size="24">X-only draft idea: dark square, one concept, 3 to 6 blocks, low text density</text>
+</svg>

@@ -1,5 +1,95 @@
 import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
 
+export const users = sqliteTable("users", {
+  id: text("id").primaryKey(),
+  email: text("email").notNull().unique(),
+  fullName: text("full_name"),
+  avatarUrl: text("avatar_url"),
+  authProvider: text("auth_provider").notNull().default("magic_link"),
+  providerUserId: text("provider_user_id"),
+  lastWorkspaceId: text("last_workspace_id"),
+  lastSeenAt: integer("last_seen_at", { mode: "timestamp" }),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+});
+
+export const organizations = sqliteTable("organizations", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  slug: text("slug").notNull().unique(),
+  logoUrl: text("logo_url"),
+  defaultTimezone: text("default_timezone").notNull().default("UTC"),
+  deletionRequestedAt: integer("deletion_requested_at", { mode: "timestamp" }),
+  deletionScheduledFor: integer("deletion_scheduled_for", { mode: "timestamp" }),
+  deletedAt: integer("deleted_at", { mode: "timestamp" }),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+});
+
+export const workspaces = sqliteTable("workspaces", {
+  id: text("id").primaryKey(),
+  organizationId: text("organization_id")
+    .notNull()
+    .references(() => organizations.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  slug: text("slug").notNull(),
+  description: text("description").notNull().default(""),
+  timezone: text("timezone").notNull().default(""),
+  iconUrl: text("icon_url"),
+  primaryColor: text("primary_color").notNull().default(""),
+  secondaryColor: text("secondary_color").notNull().default(""),
+  defaultHashtags: text("default_hashtags", { mode: "json" }).$type<string[]>(),
+  defaultFirstComment: text("default_first_comment").notNull().default(""),
+  approvalWorkflowMode: text("approval_workflow_mode").notNull().default("none"),
+  isArchived: integer("is_archived", { mode: "boolean" }).notNull().default(false),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+});
+
+export const orgMemberships = sqliteTable("org_memberships", {
+  id: text("id").primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  organizationId: text("organization_id")
+    .notNull()
+    .references(() => organizations.id, { onDelete: "cascade" }),
+  orgRole: text("org_role").notNull().default("member"),
+  invitedAt: integer("invited_at", { mode: "timestamp" }).notNull(),
+  acceptedAt: integer("accepted_at", { mode: "timestamp" }),
+});
+
+export const workspaceMemberships = sqliteTable("workspace_memberships", {
+  id: text("id").primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  workspaceId: text("workspace_id")
+    .notNull()
+    .references(() => workspaces.id, { onDelete: "cascade" }),
+  workspaceRole: text("workspace_role").notNull().default("viewer"),
+  addedAt: integer("added_at", { mode: "timestamp" }).notNull(),
+});
+
+export const workspaceInvitations = sqliteTable("workspace_invitations", {
+  id: text("id").primaryKey(),
+  organizationId: text("organization_id")
+    .notNull()
+    .references(() => organizations.id, { onDelete: "cascade" }),
+  email: text("email").notNull(),
+  orgRole: text("org_role").notNull().default("member"),
+  workspaceAssignments: text("workspace_assignments", { mode: "json" }).$type<
+    Array<{ workspaceId: string; role: string }>
+  >(),
+  invitedByUserId: text("invited_by_user_id").references(() => users.id, {
+    onDelete: "set null",
+  }),
+  token: text("token").notNull().unique(),
+  expiresAt: integer("expires_at", { mode: "timestamp" }).notNull(),
+  acceptedAt: integer("accepted_at", { mode: "timestamp" }),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+});
+
 // ── Auth ──────────────────────────────────────────────────────────────
 export const sessions = sqliteTable("sessions", {
   id: text("id").primaryKey(),
@@ -22,6 +112,9 @@ export const magicLinks = sqliteTable("magic_links", {
 // Each connected social account (X, LinkedIn, TikTok, IG, etc.)
 export const platforms = sqliteTable("platforms", {
   id: text("id").primaryKey(),
+  workspaceId: text("workspace_id").references(() => workspaces.id, {
+    onDelete: "set null",
+  }),
   name: text("name").notNull(), // "X (Main)", "LinkedIn", etc.
   type: text("type").notNull(), // "twitter" | "linkedin" | "instagram" | "tiktok" | "facebook" | "reddit" | "youtube"
   handle: text("handle"), // @maxpetrusenko
@@ -128,6 +221,33 @@ export const replyEvents = sqliteTable("reply_events", {
   error: text("error"),
   metadata: text("metadata", { mode: "json" }).$type<Record<string, unknown>>(),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+});
+
+export const replyCandidates = sqliteTable("reply_candidates", {
+  id: text("id").primaryKey(),
+  platformId: text("platform_id").references(() => platforms.id, { onDelete: "set null" }),
+  tweetId: text("tweet_id").notNull(),
+  tweetUrl: text("tweet_url").notNull().unique(),
+  replyUrl: text("reply_url"),
+  authorHandle: text("author_handle").notNull(),
+  authorName: text("author_name"),
+  tweetText: text("tweet_text").notNull(),
+  hook: text("hook"),
+  status: text("status").notNull().default("drafted"),
+  riskLevel: text("risk_level").notNull().default("low"),
+  score: integer("score").notNull().default(0),
+  repliesScraped: integer("replies_scraped").notNull().default(0),
+  tags: text("tags", { mode: "json" }).$type<string[]>(),
+  popularReplies: text("popular_replies", { mode: "json" }).$type<
+    Array<{ author: string; handle: string; text: string; likes: number }>
+  >(),
+  drafts: text("drafts", { mode: "json" }).$type<string[]>(),
+  selectedDraftIndex: integer("selected_draft_index").notNull().default(0),
+  postedAtLabel: text("posted_at_label"),
+  metadata: text("metadata", { mode: "json" }).$type<Record<string, unknown>>(),
+  error: text("error"),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
 });
 
 // ── Dedup Cache ───────────────────────────────────────────────────────

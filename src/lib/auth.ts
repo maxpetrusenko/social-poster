@@ -14,9 +14,9 @@ import {
 } from "@/lib/auth-config";
 import {
   isSupabaseConfigured,
-  isWorkspaceUserAllowed,
 } from "@/lib/supabase/config";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { isEmailAllowedForAuth } from "@/lib/auth-allowlist";
 
 function id() {
   return crypto.randomUUID();
@@ -47,7 +47,7 @@ async function getSupabaseSession() {
     error,
   } = await supabase.auth.getUser();
 
-  if (error || !isWorkspaceUserAllowed(user?.email)) {
+  if (error || !(await isEmailAllowedForAuth(user?.email))) {
     return null;
   }
 
@@ -64,7 +64,7 @@ async function getSupabaseSession() {
 
 export async function createMagicLink(email: string): Promise<string | null> {
   if (AUTH_MODE !== "magic_link") return null;
-  if (email.toLowerCase() !== ALLOWED_EMAIL.toLowerCase()) return null;
+  if (!(await isEmailAllowedForAuth(email))) return null;
 
   const t = token();
   const now = new Date();

@@ -10,15 +10,16 @@ import {
   getRetweetCount,
   getTweetAuthor,
   getTweetUrl,
+  isReplyTweet,
   searchTweets,
-  sendBirdReply,
 } from "@/lib/replies/bird";
-import { generateReplyDrafts } from "@/lib/replies/drafts";
+import { generateAiReplyDraftsBatch } from "@/lib/replies/ai";
 import {
   filterUntriedReplyDrafts,
   isDuplicateReplyError,
   normalizeReplyText,
 } from "@/lib/replies/duplicate-guard";
+import { sendReplyViaPlatform } from "@/lib/replies/transport";
 
 type ScheduleRow = typeof schedules.$inferSelect;
 type TriggerKind = "cron" | "manual" | "api";
@@ -41,6 +42,8 @@ type ReplySendResult =
       skippedErrors: string[];
       skippedAttempts: SkippedReplyAttempt[];
     };
+
+type CandidateSeed = Omit<ReplyCandidate, "drafts">;
 
 export async function runReplyEngineJob(
   schedule: ScheduleRow,
@@ -100,7 +103,7 @@ export async function runReplyEngineJob(
     const sendStep = step("publish");
     steps.push(sendStep);
 
-    const sendResult = await sendFirstAvailableReply(candidates);
+    const sendResult = await sendFirstAvailableReply(candidates, targetPlatform);
 
     if (sendResult.kind === "skipped") {
       complete(sendStep, {
@@ -206,7 +209,10 @@ export async function runReplyEngineJob(
   }
 }
 
-async function sendFirstAvailableReply(candidates: ReplyCandidate[]): Promise<ReplySendResult> {
+async function sendFirstAvailableReply(
+  candidates: ReplyCandidate[],
+  targetPlatform: Pick<typeof platforms.$inferSelect, "provider" | "config" | "handle">
+): Promise<ReplySendResult> {
   const skippedErrors: string[] = [];
   const skippedAttempts: SkippedReplyAttempt[] = [];
 
@@ -223,10 +229,7 @@ async function sendFirstAvailableReply(candidates: ReplyCandidate[]): Promise<Re
 
     for (const draft of drafts) {
       try {
-        const replyUrl = await sendBirdReply(candidate.tweetUrl, draft);
-        if (!replyUrl) {
-          throw new Error("Reply sent but no URL returned");
-        }
+        const { replyUrl } = await sendReplyViaPlatform(targetPlatform, candidate.tweetUrl, draft);
 
         return {
           kind: "sent",
@@ -280,7 +283,7 @@ async function discoverCandidates(): Promise<ReplyCandidate[]> {
     return [];
   }
 
-  const candidates: ReplyCandidate[] = [];
+  const candidates: CandidateSeed[] = [];
   const mentions = await getMentions();
   for (const tweet of mentions.slice(0, 5)) {
     const candidate = await buildCandidate(tweet, "mentions", "Engaged with Max's post");
@@ -298,10 +301,27 @@ async function discoverCandidates(): Promise<ReplyCandidate[]> {
     }
   }
 
-  return candidates
+  const ranked = candidates
     .filter((candidate) => candidate.lane === "auto_draft")
     .sort((a, b) => a.riskScore - b.riskScore)
     .slice(0, REPLY_TARGETS.burstSize);
+
+  const aiDrafts = await generateAiReplyDraftsBatch(
+    ranked.map((candidate) => ({
+      tweetId: candidate.tweetId,
+      author: candidate.author,
+      text: candidate.tweetText,
+      tags: [candidate.category],
+      likes: 0,
+      views: "0",
+      contextLabel: candidate.reason,
+    }))
+  );
+
+  return ranked.flatMap((candidate) => {
+    const drafts = aiDrafts.get(candidate.tweetId) ?? [];
+    return drafts.length > 0 ? [{ ...candidate, drafts }] : [];
+  });
 }
 
 async function buildCandidate(
@@ -311,19 +331,22 @@ async function buildCandidate(
     createdAt?: string;
     author?: { username?: string; followersCount?: number };
     authorId?: string;
+    inReplyToStatusId?: string;
     replyCount?: number;
     retweetCount?: number;
     public_metrics?: { reply_count?: number; retweet_count?: number };
+    _raw?: Record<string, unknown>;
     url?: string;
   },
   category: string,
   reason: string
-): Promise<ReplyCandidate | null> {
+): Promise<CandidateSeed | null> {
   const author = getTweetAuthor(tweet);
   const tweetUrl = getTweetUrl(tweet);
   const tweetText = tweet.text || "";
 
   if (!tweet.id || !tweetText.trim()) return null;
+  if (isReplyTweet(tweet)) return null;
   if (!isFreshTweet(tweet.createdAt)) return null;
 
   const alreadyReplied = await db.query.replyEvents.findFirst({
@@ -348,7 +371,6 @@ async function buildCandidate(
     category,
     riskScore,
     lane,
-    drafts: generateReplyDrafts(tweetText, category),
     reason: isManualOnly ? `@${author} is manual-only` : reason,
   };
 }

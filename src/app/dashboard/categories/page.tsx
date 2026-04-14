@@ -1,141 +1,284 @@
 import Link from "next/link";
-import { ArrowUpRight, CalendarClock, Plus, Tags } from "lucide-react";
-import { SectionCard, StatusBadge } from "@/components/dashboard/ui";
-import { getDashboardInsights } from "@/lib/dashboard/insights";
+import { ArrowUpRight, CalendarClock } from "lucide-react";
+import { getDashboardInsights, type ScheduleInsight } from "@/lib/dashboard/insights";
+import { getCronOccurrences } from "@/lib/dashboard/cron";
 import { POST_CATEGORIES } from "@/lib/post-categories";
-import { formatDateInZone } from "@/lib/timezone";
+import { formatTimeInZone, getAppTimeZone, getZonedDateParts } from "@/lib/timezone";
 
 export const dynamic = "force-dynamic";
 
 const CATEGORY_ACCENTS: Record<string, string> = {
-  opinion_take: "#0f7ea9",
-  product_update: "#1f9d61",
-  source_share: "#d2a35d",
-  hype_future: "#ea6f66",
-  hiring_signal: "#6d5bd0",
+  opinion_take: "#2f9fb5",
+  product_update: "#2f9fb5",
+  source_share: "#ef6a67",
+  hype_future: "#8a69d8",
+  hiring_signal: "#8a69d8",
 };
+
+const CATEGORY_SURFACES: Record<string, string> = {
+  opinion_take: "#d9f4f4",
+  product_update: "#d9f4f4",
+  source_share: "#ffe1df",
+  hype_future: "#ece0ff",
+  hiring_signal: "#ece0ff",
+};
+
+const WEEK_DAYS = [
+  { index: 1, label: "Monday" },
+  { index: 2, label: "Tuesday" },
+  { index: 3, label: "Wednesday" },
+  { index: 4, label: "Thursday" },
+  { index: 5, label: "Friday" },
+  { index: 6, label: "Saturday" },
+  { index: 0, label: "Sunday" },
+] as const;
+
+type GridEvent = {
+  id: string;
+  label: string;
+  timeLabel: string;
+  dayIndex: number;
+  hour: number;
+  minute: number;
+  href: string;
+  accent: string;
+  surface: string;
+};
+
+function startOfWeek(date: Date) {
+  const value = new Date(date);
+  const day = value.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  value.setDate(value.getDate() + diff);
+  value.setHours(0, 0, 0, 0);
+  return value;
+}
+
+function endOfWeek(date: Date) {
+  const value = new Date(date);
+  value.setDate(value.getDate() + 6);
+  value.setHours(23, 59, 59, 999);
+  return value;
+}
+
+function hourLabel(hour: number) {
+  const suffix = hour >= 12 ? "PM" : "AM";
+  const value = hour % 12 || 12;
+  return `${value}:00 ${suffix}`;
+}
+
+function slotLabel(schedule: ScheduleInsight) {
+  return schedule.contentCategoryLabel || schedule.name;
+}
+
+function buildGridEvents(scheduleInsights: ScheduleInsight[]) {
+  const weekStart = startOfWeek(new Date());
+  const weekEnd = endOfWeek(weekStart);
+  const timeZone = getAppTimeZone();
+
+  return scheduleInsights
+    .filter((schedule) => schedule.enabled)
+    .flatMap((schedule) => {
+      const occurrences = getCronOccurrences(schedule.cron, weekStart, weekEnd, 64, timeZone);
+      const accent = CATEGORY_ACCENTS[schedule.contentCategory || ""] || "#7d8aa0";
+      const surface = CATEGORY_SURFACES[schedule.contentCategory || ""] || "#e7edf5";
+
+      return occurrences.map((at) => {
+        const parts = getZonedDateParts(at, timeZone);
+
+        return {
+          id: `${schedule.id}-${at.toISOString()}`,
+          label: slotLabel(schedule),
+          timeLabel: formatTimeInZone(at, timeZone),
+          dayIndex: parts.weekday,
+          hour: parts.hour,
+          minute: parts.minute,
+          href: `/dashboard/schedules/${schedule.id}`,
+          accent,
+          surface,
+        } satisfies GridEvent;
+      });
+    })
+    .sort((a, b) => {
+      if (a.dayIndex !== b.dayIndex) return a.dayIndex - b.dayIndex;
+      if (a.hour !== b.hour) return a.hour - b.hour;
+      if (a.minute !== b.minute) return a.minute - b.minute;
+      return a.label.localeCompare(b.label);
+    });
+}
 
 export default async function CategoriesPage() {
   const { scheduleInsights } = await getDashboardInsights();
+  const gridEvents = buildGridEvents(scheduleInsights);
 
-  const rows = POST_CATEGORIES.map((category) => {
+  const eventsByCell = gridEvents.reduce<Map<string, GridEvent[]>>((accumulator, event) => {
+    const key = `${event.dayIndex}-${event.hour}`;
+    const current = accumulator.get(key) ?? [];
+    current.push(event);
+    accumulator.set(key, current);
+    return accumulator;
+  }, new Map());
+
+  const minHour = gridEvents.length > 0 ? Math.min(7, ...gridEvents.map((event) => event.hour)) : 7;
+  const maxHour = gridEvents.length > 0 ? Math.max(15, ...gridEvents.map((event) => event.hour)) : 15;
+  const allHours = Array.from({ length: maxHour - minHour + 1 }, (_, index) => minHour + index);
+  const visibleHours = allHours;
+
+  const categoryStats = POST_CATEGORIES.map((category) => {
     const schedules = scheduleInsights.filter(
       (schedule) => schedule.contentCategory === category.value
     );
 
     return {
       ...category,
-      schedules,
-      total: schedules.length,
-      enabled: schedules.filter((schedule) => schedule.enabled).length,
+      count: schedules.length,
+      live: schedules.filter((schedule) => schedule.enabled).length,
+      accent: CATEGORY_ACCENTS[category.value] || "#7d8aa0",
+      surface: CATEGORY_SURFACES[category.value] || "#e7edf5",
     };
   });
 
   return (
-    <div className="space-y-6">
-      <section className="rounded-[24px] border border-[rgba(12,17,21,0.08)] bg-white/92 p-6 shadow-[0_18px_45px_rgba(12,17,21,0.08)]">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <div className="inline-flex items-center gap-2 rounded-full bg-[rgba(12,17,21,0.05)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">
-              <Tags className="h-3.5 w-3.5" />
-              Categories
-            </div>
-            <h1 className="mt-4 font-serif text-[2.4rem] leading-none text-[var(--ink)]">
-              Recurrent Post Categories
-            </h1>
-            <p className="mt-3 max-w-[760px] text-sm leading-7 text-[var(--muted)]">
-              Keep the mix weighted toward takes and product updates. Use source shares about weekly,
-              then layer hype and hiring when there is a real reason.
-            </p>
-          </div>
-
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,#fffdf7_0%,transparent_28%),linear-gradient(180deg,#f6efe4_0%,#efe5d7_100%)]">
+      <div className="mx-auto w-full max-w-[1500px] px-5 py-6 md:px-8 xl:px-10">
+        <div className="mb-4 flex justify-end">
           <Link
-            href="/dashboard/schedules/new"
-            className="inline-flex items-center gap-2 rounded-[12px] bg-[var(--ink)] px-4 py-3 text-sm font-semibold text-[var(--sand)]"
+            href="/dashboard/schedules"
+            className="inline-flex items-center gap-2 rounded-full bg-[#1777ff] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(23,119,255,0.24)] transition hover:bg-[#0f64dd]"
           >
-            <Plus className="h-4 w-4" />
-            New Schedule
+            Manage Categories
           </Link>
         </div>
-      </section>
 
-      <div className="grid gap-5 xl:grid-cols-2">
-        {rows.map((category) => (
-          <SectionCard
-            key={category.value}
-            title={category.label}
-            subtitle={category.description}
-            action={
-              <Link
-                href={`/dashboard/schedules/new?category=${encodeURIComponent(category.value)}`}
-                className="inline-flex items-center gap-2 text-sm font-semibold"
-                style={{ color: CATEGORY_ACCENTS[category.value] || "var(--accent-tech)" }}
-              >
-                Add slot
-                <ArrowUpRight className="h-4 w-4" />
-              </Link>
-            }
-            className="relative overflow-hidden"
-          >
-            <div
-              className="absolute left-0 top-0 h-full w-1 rounded-l-[24px]"
-              style={{ background: CATEGORY_ACCENTS[category.value] || "var(--accent-tech)" }}
-            />
-
-            <div className="space-y-4 pl-2">
-              <div className="flex flex-wrap items-center gap-2">
-                <StatusBadge tone="neutral">{category.cadenceHint}</StatusBadge>
-                <StatusBadge tone={category.enabled > 0 ? "good" : "warn"}>
-                  {category.enabled} live
-                </StatusBadge>
-                <StatusBadge tone="neutral">{category.total} total</StatusBadge>
+        <section className="overflow-hidden rounded-[30px] border border-[#d7cab9] bg-[rgba(255,252,247,0.94)] shadow-[0_22px_55px_rgba(23,23,23,0.05)]">
+          <div className="overflow-x-auto">
+            <div className="min-w-[1100px]">
+              <div className="grid grid-cols-[140px_repeat(7,minmax(0,1fr))] border-b border-[#ded4c7] bg-[#f6eee1]">
+                <div className="border-r border-[#ded4c7] px-5 py-4 text-xs font-semibold uppercase tracking-[0.14em] text-[#8d7c64]">
+                  Time
+                </div>
+                {WEEK_DAYS.map((day) => (
+                  <div
+                    key={day.label}
+                    className="border-r border-[#ded4c7] px-4 py-4 text-center text-sm font-semibold text-[#3f352a] last:border-r-0"
+                  >
+                    {day.label}
+                  </div>
+                ))}
               </div>
 
-              {category.schedules.length === 0 ? (
-                <div className="rounded-[18px] border border-[rgba(12,17,21,0.08)] bg-[rgba(12,17,21,0.03)] px-4 py-4 text-sm text-[var(--muted)]">
-                  No schedules in this category yet.
+              {visibleHours.length === 0 ? (
+                <div className="px-6 py-12 text-center text-sm text-[#6f614d]">
+                  No recurring slots in the current week.
                 </div>
               ) : (
-                <div className="space-y-3">
-                  {category.schedules.map((schedule) => (
-                    <Link
-                      key={schedule.id}
-                      href={`/dashboard/schedules/${schedule.id}`}
-                      className="block rounded-[18px] border border-[rgba(12,17,21,0.08)] bg-[rgba(12,17,21,0.03)] px-4 py-4 transition hover:border-[rgba(15,126,169,0.18)] hover:bg-white"
+                <div className="grid grid-cols-[140px_repeat(7,minmax(0,1fr))]">
+                  {visibleHours.flatMap((hour) => [
+                    <div
+                      key={`time-${hour}`}
+                      className="border-b border-r border-[#e6ddd0] bg-[#f8f2e8] px-5 py-5 text-xl font-medium text-[#3f352a]"
                     >
-                      <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div>
-                          <p className="text-sm font-semibold text-[var(--ink)]">{schedule.name}</p>
-                          <p className="mt-1 text-xs text-[var(--muted)]">
-                            {schedule.cronHuman || schedule.cron}
-                          </p>
-                        </div>
-                        <StatusBadge tone={schedule.enabled ? "good" : "neutral"}>
-                          {schedule.enabled ? "enabled" : "disabled"}
-                        </StatusBadge>
-                      </div>
+                      {hourLabel(hour)}
+                    </div>,
+                    ...WEEK_DAYS.map((day) => {
+                      const key = `${day.index}-${hour}`;
+                      const items = (eventsByCell.get(key) ?? []).sort((a, b) => a.minute - b.minute);
 
-                      <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-[var(--muted)]">
-                        <span>{schedule.jobType.replace(/_/g, " ")}</span>
-                        <span>•</span>
-                        <span>{schedule.targetCount} platform{schedule.targetCount === 1 ? "" : "s"}</span>
-                        {schedule.nextRunAt ? (
-                          <>
-                            <span>•</span>
-                            <span className="inline-flex items-center gap-1">
-                              <CalendarClock className="h-3.5 w-3.5" />
-                              {formatDateInZone(schedule.nextRunAt)}
-                            </span>
-                          </>
-                        ) : null}
-                      </div>
-                    </Link>
-                  ))}
+                      return (
+                        <div
+                          key={key}
+                          className="min-h-[82px] border-b border-r border-[#e6ddd0] bg-[#fffdf9] p-3 last:border-r-0"
+                        >
+                          {items.length === 0 ? null : (
+                            <div className="space-y-2">
+                              {items.map((item) => (
+                                <Link
+                                  key={item.id}
+                                  href={item.href}
+                                  className="block rounded-[10px] border px-3 py-2 text-center transition hover:-translate-y-0.5 hover:shadow-[0_10px_24px_rgba(23,23,23,0.10)]"
+                                  style={{
+                                    background: item.surface,
+                                    borderColor: `${item.accent}55`,
+                                    color: item.accent,
+                                  }}
+                                >
+                                  <span className="block truncate text-[11px] font-semibold leading-tight">
+                                    {item.label}
+                                  </span>
+                                  <span className="mt-1 block text-[10px] font-medium uppercase tracking-[0.08em] opacity-80">
+                                    {item.timeLabel}
+                                  </span>
+                                </Link>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    }),
+                  ])}
                 </div>
               )}
             </div>
-          </SectionCard>
-        ))}
+          </div>
+        </section>
+
+        <section className="mt-6 rounded-[30px] border border-[#d8cab5] bg-[rgba(255,250,242,0.92)] p-6 shadow-[0_22px_55px_rgba(23,23,23,0.05)]">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#8d7c64]">
+                Category Lanes
+              </p>
+              <p className="mt-2 text-sm text-[#6f614d]">
+                Each lane maps to schedule presets. Add a slot directly into the category you want.
+              </p>
+            </div>
+            <Link
+              href="/dashboard/schedules/new"
+              className="inline-flex items-center gap-2 rounded-[14px] border border-[#d8cab5] bg-white px-4 py-2.5 text-sm font-semibold text-[#171717] transition hover:bg-[#faf4ea]"
+            >
+              New Schedule
+            </Link>
+          </div>
+
+          <div className="mt-5 grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
+            {categoryStats.map((category) => (
+              <Link
+                key={category.value}
+                href={`/dashboard/schedules/new?category=${encodeURIComponent(category.value)}`}
+                className="rounded-[20px] border p-4 transition hover:-translate-y-0.5 hover:shadow-[0_16px_36px_rgba(23,23,23,0.08)]"
+                style={{
+                  background: category.surface,
+                  borderColor: `${category.accent}44`,
+                }}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-[#171717]">{category.label}</p>
+                    <p className="mt-1 text-sm leading-6 text-[#5e5242]">{category.description}</p>
+                  </div>
+                  <span
+                    className="inline-flex h-3.5 w-3.5 rounded-full"
+                    style={{ background: category.accent }}
+                  />
+                </div>
+
+                <div className="mt-4 flex flex-wrap items-center gap-3 text-xs font-semibold uppercase tracking-[0.12em] text-[#6f614d]">
+                  <span className="inline-flex items-center gap-1">
+                    <CalendarClock className="h-3.5 w-3.5" />
+                    {category.live} live
+                  </span>
+                  <span>{category.count} total</span>
+                  <span>{category.cadenceHint}</span>
+                </div>
+
+                <div className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-[#171717]">
+                  Add slot
+                  <ArrowUpRight className="h-4 w-4" />
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
       </div>
     </div>
   );

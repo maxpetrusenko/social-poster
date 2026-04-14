@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Platform Flow Reference</title>
+    <style>
+      :root {
+        --bg: #071018;
+        --panel: rgba(10, 17, 28, 0.84);
+        --panel-2: rgba(14, 25, 40, 0.92);
+        --line: rgba(133, 214, 255, 0.16);
+        --text: #edf7ff;
+        --muted: #89a2ba;
+        --cyan: #67ddff;
+        --lime: #d7ff74;
+        --gold: #ffcc7a;
+        --rose: #ff8d8d;
+        --shadow: 0 28px 80px rgba(0, 0, 0, 0.34);
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        font-family: "Space Grotesk", "Avenir Next", sans-serif;
+        color: var(--text);
+        background:
+          radial-gradient(circle at top left, rgba(103, 221, 255, 0.14), transparent 22%),
+          radial-gradient(circle at bottom right, rgba(215, 255, 116, 0.1), transparent 20%),
+          linear-gradient(180deg, #030813 0%, #071018 45%, #091423 100%);
+      }
+
+      .wrap {
+        width: min(1600px, calc(100vw - 32px));
+        margin: 0 auto;
+        padding: 22px 0 56px;
+      }
+
+      .hero,
+      .card {
+        border: 1px solid var(--line);
+        background: linear-gradient(180deg, var(--panel), var(--panel-2));
+        box-shadow: var(--shadow);
+      }
+
+      .hero {
+        border-radius: 28px;
+        padding: 24px;
+        margin-bottom: 18px;
+      }
+
+      .eyebrow {
+        margin: 0;
+        color: var(--cyan);
+        font-size: 11px;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        margin: 10px 0 0;
+        font-size: clamp(30px, 4vw, 52px);
+        line-height: 0.94;
+      }
+
+      .sub {
+        margin: 12px 0 0;
+        max-width: 1100px;
+        color: var(--muted);
+        line-height: 1.7;
+      }
+
+      .grid {
+        display: grid;
+        gap: 18px;
+      }
+
+      .card {
+        border-radius: 28px;
+        overflow: hidden;
+      }
+
+      .head {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        align-items: start;
+        padding: 18px 20px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .head h2 {
+        margin: 0;
+        font-size: 24px;
+      }
+
+      .head p {
+        margin: 7px 0 0;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .body {
+        padding: 18px;
+        display: grid;
+        gap: 16px;
+      }
+
+      .rail {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 12px;
+      }
+
+      .step {
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.03);
+        padding: 14px;
+        min-height: 120px;
+        position: relative;
+      }
+
+      .step:not(:last-child)::after {
+        content: "→";
+        position: absolute;
+        right: -10px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--cyan);
+        font-size: 22px;
+        font-weight: 700;
+      }
+
+      .num {
+        display: inline-flex;
+        width: 26px;
+        height: 26px;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+        border: 1px solid var(--line);
+        color: var(--cyan);
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .step h3 {
+        margin: 12px 0 0;
+        font-size: 16px;
+      }
+
+      .step p {
+        margin: 8px 0 0;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.6;
+      }
+
+      .cols {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+      }
+
+      .mini {
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.03);
+        padding: 16px;
+      }
+
+      .mini h4 {
+        margin: 0;
+        font-size: 15px;
+      }
+
+      .mini ul {
+        margin: 10px 0 0;
+        padding-left: 18px;
+        color: var(--muted);
+      }
+
+      .mini li {
+        margin: 6px 0;
+        line-height: 1.5;
+      }
+
+      .tags {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .tag {
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 6px 10px;
+        font-size: 11px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .ok { color: var(--lime); background: rgba(215, 255, 116, 0.08); }
+      .warn { color: var(--gold); background: rgba(255, 204, 122, 0.08); }
+      .future { color: var(--rose); background: rgba(255, 141, 141, 0.08); }
+
+      a { color: var(--cyan); text-decoration: none; }
+
+      @media (max-width: 1200px) {
+        .rail { grid-template-columns: 1fr; }
+        .step:not(:last-child)::after { content: "↓"; right: auto; left: 50%; top: auto; bottom: -16px; transform: translateX(-50%); }
+        .cols { grid-template-columns: 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <section class="hero">
+        <p class="eyebrow">Canonical Platform Reference</p>
+        <h1>Per-platform connect and publish flows.</h1>
+        <p class="sub">
+          Use this while coding connection setup, capability checks, validation, and composer behavior.
+          Structure: connect path → connected state → create-post path → validation → publish actions.
+        </p>
+      </section>
+
+      <div class="grid">
+        <section class="card">
+          <div class="head">
+            <div>
+              <h2>Instagram</h2>
+              <p>Primary path: Meta OAuth. Fallback: manual token. Relay supported.</p>
+            </div>
+            <div class="tags">
+              <span class="tag ok">post</span>
+              <span class="tag ok">story</span>
+              <span class="tag ok">reel</span>
+              <span class="tag ok">carousel</span>
+            </div>
+          </div>
+          <div class="body">
+            <div class="rail">
+              <div class="step"><span class="num">1</span><h3>Add channel</h3><p>Workspace → Channels or Workspace Settings → Social Accounts → Add Channel → Instagram.</p></div>
+              <div class="step"><span class="num">2</span><h3>Choose method</h3><p>`Connect with Meta` default. `Manual token` advanced. `Relay` fallback.</p></div>
+              <div class="step"><span class="num">3</span><h3>Authorize</h3><p>User completes Meta flow or pastes app ID, app secret, access token, optional business ID.</p></div>
+              <div class="step"><span class="num">4</span><h3>Verify</h3><p>Resolve handle, business account, capability set, token health, reconnect risk.</p></div>
+              <div class="step"><span class="num">5</span><h3>Connected state</h3><p>Show green IG icon, handle, capability badges, last verified, `Manage / Reconnect / Test`.</p></div>
+            </div>
+            <div class="cols">
+              <div class="mini">
+                <h4>Create post flow</h4>
+                <ul>
+                  <li>Create Idea → Composer → select `Instagram`.</li>
+                  <li>Choose format: `Post`, `Story`, `Reel`, `Carousel`.</li>
+                  <li>Upload or pick media from library.</li>
+                  <li>Preview in IG-specific mobile frame.</li>
+                  <li>Action bar: `Save Draft`, `Send for Approval`, `Schedule`, `Publish Now`.</li>
+                </ul>
+              </div>
+              <div class="mini">
+                <h4>Validation</h4>
+                <ul>
+                  <li>Aspect ratio and resolution by format.</li>
+                  <li>Video length and cover checks for Reels.</li>
+                  <li>Safe area checks for Stories.</li>
+                  <li>Multi-item ordering and per-slide validation for Carousel.</li>
+                  <li>Fail validation before schedule or publish.</li>
+                </ul>
+                <p><a href="https://developers.facebook.com/docs/instagram-api/getting-started/">Meta getting started</a></p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="head">
+            <div>
+              <h2>Twitter/X</h2>
+              <p>Primary paths: direct X API or Bird session. Relay supported.</p>
+            </div>
+            <div class="tags">
+              <span class="tag ok">text</span>
+              <span class="tag ok">image</span>
+              <span class="tag warn">video by workflow</span>
+              <span class="tag warn">threading</span>
+            </div>
+          </div>
+          <div class="body">
+            <div class="rail">
+              <div class="step"><span class="num">1</span><h3>Add channel</h3><p>Choose `Twitter/X` from Add Channel.</p></div>
+              <div class="step"><span class="num">2</span><h3>Choose method</h3><p>`X API keys + user tokens`, `Bird session or cookie tokens`, or `Managed relay`.</p></div>
+              <div class="step"><span class="num">3</span><h3>Configure</h3><p>Direct path needs API key, secret, access token, access token secret. Bird path may use local browser session or explicit cookies.</p></div>
+              <div class="step"><span class="num">4</span><h3>Verify</h3><p>Resolve handle, permission set, post capability, media support, thread rules.</p></div>
+              <div class="step"><span class="num">5</span><h3>Connected state</h3><p>Show provider badge `direct / bird / relay`, threading rule, reconnect status.</p></div>
+            </div>
+            <div class="cols">
+              <div class="mini">
+                <h4>Create post flow</h4>
+                <ul>
+                  <li>Select `X` in composer.</li>
+                  <li>Enter text, optional media, optional first comment equivalent disabled.</li>
+                  <li>Long-post behavior: single post if valid, thread if Bird/direct policy allows.</li>
+                  <li>Preview numbering if thread split is enabled.</li>
+                </ul>
+              </div>
+              <div class="mini">
+                <h4>Validation</h4>
+                <ul>
+                  <li>Character budget after numbering.</li>
+                  <li>Media-count and upload constraints.</li>
+                  <li>Thread chunk limit.</li>
+                  <li>Provider fallback decision if direct fails and Bird exists.</li>
+                </ul>
+                <p><a href="https://docs.x.com/fundamentals/authentication/oauth-2-0/overview">X OAuth overview</a></p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="head">
+            <div>
+              <h2>LinkedIn</h2>
+              <p>Direct OAuth app for profile or page/company publishing.</p>
+            </div>
+            <div class="tags">
+              <span class="tag ok">text</span>
+              <span class="tag ok">image</span>
+              <span class="tag ok">video</span>
+              <span class="tag warn">page vs member</span>
+            </div>
+          </div>
+          <div class="body">
+            <div class="rail">
+              <div class="step"><span class="num">1</span><h3>Add channel</h3><p>Select `LinkedIn`.</p></div>
+              <div class="step"><span class="num">2</span><h3>Enter app creds</h3><p>Client ID, client secret, refresh token, optional URN/account ID.</p></div>
+              <div class="step"><span class="num">3</span><h3>Resolve owner</h3><p>Determine whether posting is for a member profile or company page.</p></div>
+              <div class="step"><span class="num">4</span><h3>Verify perms</h3><p>Check scopes, page ownership, media upload rights.</p></div>
+              <div class="step"><span class="num">5</span><h3>Connected state</h3><p>Show account label, owner type, media support, reconnect action.</p></div>
+            </div>
+            <div class="cols">
+              <div class="mini">
+                <h4>Create post flow</h4>
+                <ul>
+                  <li>Select `LinkedIn` in composer.</li>
+                  <li>Choose text/image/video style as supported.</li>
+                  <li>Preview as profile or company card.</li>
+                </ul>
+              </div>
+              <div class="mini">
+                <h4>Validation</h4>
+                <ul>
+                  <li>Owner type determines allowed post variants.</li>
+                  <li>Document/article/poll can be later extension.</li>
+                  <li>Reject actions if required scopes are missing.</li>
+                </ul>
+                <p><a href="https://learn.microsoft.com/en-us/linkedin/shared/authentication/authentication">LinkedIn auth overview</a></p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="head">
+            <div>
+              <h2>Facebook</h2>
+              <p>Meta page token flow. Page-bound publishing.</p>
+            </div>
+            <div class="tags">
+              <span class="tag ok">page posts</span>
+              <span class="tag warn">page-only</span>
+            </div>
+          </div>
+          <div class="body">
+            <div class="rail">
+              <div class="step"><span class="num">1</span><h3>Add channel</h3><p>Select `Facebook`.</p></div>
+              <div class="step"><span class="num">2</span><h3>Configure Meta app</h3><p>App ID, app secret, page access token, optional page ID.</p></div>
+              <div class="step"><span class="num">3</span><h3>Resolve page</h3><p>Confirm page label and admin ownership.</p></div>
+              <div class="step"><span class="num">4</span><h3>Verify</h3><p>Page write capability, media support, token freshness.</p></div>
+              <div class="step"><span class="num">5</span><h3>Connected state</h3><p>Show page name, status, reconnect/test actions.</p></div>
+            </div>
+            <div class="cols">
+              <div class="mini">
+                <h4>Create post flow</h4>
+                <ul>
+                  <li>Select `Facebook` in composer.</li>
+                  <li>Choose text/image/video post shape.</li>
+                  <li>Preview page post card.</li>
+                </ul>
+              </div>
+              <div class="mini">
+                <h4>Validation</h4>
+                <ul>
+                  <li>Page-only routing.</li>
+                  <li>Media limitations differ from IG.</li>
+                  <li>Shared Meta app posture may be reused with Instagram.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="head">
+            <div>
+              <h2>TikTok</h2>
+              <p>Content Posting API. Direct post or draft-upload posture.</p>
+            </div>
+            <div class="tags">
+              <span class="tag ok">video</span>
+              <span class="tag warn">draft vs direct</span>
+            </div>
+          </div>
+          <div class="body">
+            <div class="rail">
+              <div class="step"><span class="num">1</span><h3>Add channel</h3><p>Select `TikTok`.</p></div>
+              <div class="step"><span class="num">2</span><h3>Enter app creds</h3><p>Client key, client secret, refresh token.</p></div>
+              <div class="step"><span class="num">3</span><h3>Choose posting mode</h3><p>Operator instructions decide direct post vs upload draft.</p></div>
+              <div class="step"><span class="num">4</span><h3>Verify</h3><p>Check creator access, upload capability, privacy defaults.</p></div>
+              <div class="step"><span class="num">5</span><h3>Connected state</h3><p>Show handle and posting mode.</p></div>
+            </div>
+            <div class="cols">
+              <div class="mini">
+                <h4>Create post flow</h4>
+                <ul>
+                  <li>Select `TikTok` in composer.</li>
+                  <li>Video-first compose path.</li>
+                  <li>Preview cover, title/caption, privacy options later.</li>
+                </ul>
+              </div>
+              <div class="mini">
+                <h4>Validation</h4>
+                <ul>
+                  <li>Video-only.</li>
+                  <li>Length and size constraints.</li>
+                  <li>Direct-vs-draft behavior must be explicit before publish.</li>
+                </ul>
+                <p><a href="https://developers.tiktok.com/products/content-posting-api">TikTok Content Posting API</a></p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="head">
+            <div>
+              <h2>YouTube</h2>
+              <p>Google OAuth app for channel video and Shorts management.</p>
+            </div>
+            <div class="tags">
+              <span class="tag ok">video</span>
+              <span class="tag ok">shorts</span>
+              <span class="tag warn">no API-key-only writes</span>
+            </div>
+          </div>
+          <div class="body">
+            <div class="rail">
+              <div class="step"><span class="num">1</span><h3>Add channel</h3><p>Select `YouTube`.</p></div>
+              <div class="step"><span class="num">2</span><h3>Enter OAuth creds</h3><p>Google client ID, client secret, refresh token, optional channel ID.</p></div>
+              <div class="step"><span class="num">3</span><h3>Resolve channel</h3><p>Determine target channel and privacy defaults.</p></div>
+              <div class="step"><span class="num">4</span><h3>Verify</h3><p>Upload capability, title rules, Shorts-only policy if configured.</p></div>
+              <div class="step"><span class="num">5</span><h3>Connected state</h3><p>Show channel label, upload mode, reconnect/test actions.</p></div>
+            </div>
+            <div class="cols">
+              <div class="mini">
+                <h4>Create post flow</h4>
+                <ul>
+                  <li>Select `YouTube` in composer.</li>
+                  <li>Video upload path with title, description, visibility.</li>
+                  <li>Shorts mode inferred or explicit later.</li>
+                </ul>
+              </div>
+              <div class="mini">
+                <h4>Validation</h4>
+                <ul>
+                  <li>Video required.</li>
+                  <li>Thumbnail, title, and length checks.</li>
+                  <li>Privacy default must be set before scheduling.</li>
+                </ul>
+                <p><a href="https://developers.google.com/youtube/v3/guides/authentication">YouTube auth guide</a></p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="head">
+            <div>
+              <h2>Pinterest + Reddit</h2>
+              <p>Custom OAuth / app-credential paths. Community-specific rules.</p>
+            </div>
+            <div class="tags">
+              <span class="tag warn">custom</span>
+              <span class="tag warn">rule-heavy</span>
+            </div>
+          </div>
+          <div class="body">
+            <div class="cols">
+              <div class="mini">
+                <h4>Pinterest flow</h4>
+                <ul>
+                  <li>Add Channel → Pinterest.</li>
+                  <li>Enter client ID, client secret, refresh token.</li>
+                  <li>Resolve board routing through operator instructions.</li>
+                  <li>Composer should ask for destination board before publish.</li>
+                </ul>
+              </div>
+              <div class="mini">
+                <h4>Reddit flow</h4>
+                <ul>
+                  <li>Add Channel → Reddit.</li>
+                  <li>Enter client ID, client secret, refresh token.</li>
+                  <li>Resolve subreddit and flair requirements.</li>
+                  <li>Composer must validate subreddit rules before schedule/publish.</li>
+                </ul>
+                <p><a href="https://www.reddit.com/dev/api/">Reddit API docs</a></p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="head">
+            <div>
+              <h2>Parity-Later Platforms</h2>
+              <p>In BrightBean spec, not yet in current `social-poster` connection catalog.</p>
+            </div>
+            <div class="tags">
+              <span class="tag future">threads</span>
+              <span class="tag future">bluesky</span>
+              <span class="tag future">google business</span>
+              <span class="tag future">mastodon</span>
+            </div>
+          </div>
+          <div class="body">
+            <div class="cols">
+              <div class="mini">
+                <h4>Doc rule</h4>
+                <ul>
+                  <li>Use same shape: connect → verify → compose variants → validate → publish actions.</li>
+                  <li>Add official-doc links once provider contract lands.</li>
+                  <li>Do not promise capabilities in UI before explicit capability records exist.</li>
+                </ul>
+              </div>
+              <div class="mini">
+                <h4>Implementation rule</h4>
+                <ul>
+                  <li>Every platform gets a capability matrix.</li>
+                  <li>Composer only exposes format tabs that the account actually supports.</li>
+                  <li>Validation happens before approval/schedule/publish.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </body>
+</html>

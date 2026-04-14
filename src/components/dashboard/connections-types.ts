@@ -14,6 +14,8 @@ export type PlatformRow = {
   provider: "zernio" | "bird" | "direct";
   config: Record<string, unknown> | null;
   enabled: boolean;
+  createdAt?: Date | null;
+  updatedAt?: Date | null;
 };
 
 export type PlatformInsight = {

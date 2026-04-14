@@ -16,6 +16,7 @@ export async function POST(request: NextRequest) {
       contentType,
       sourceUrl,
       scheduledAt,
+      intent,
       profileId,
       platformIds,
       mediaUrl,
@@ -30,9 +31,27 @@ export async function POST(request: NextRequest) {
 
     const postId = crypto.randomUUID();
     const now = new Date();
+    const normalizedIntent =
+      intent === "schedule" || intent === "publish" ? intent : "draft";
+    const nextScheduledAt = scheduledAt ? new Date(scheduledAt) : null;
 
-    const status =
-      scheduledAt && new Date(scheduledAt) > now ? "scheduled" : "draft";
+    if (normalizedIntent === "schedule") {
+      if (!nextScheduledAt || Number.isNaN(nextScheduledAt.getTime())) {
+        return NextResponse.json(
+          { error: "A valid schedule time is required" },
+          { status: 400 }
+        );
+      }
+
+      if (nextScheduledAt <= now) {
+        return NextResponse.json(
+          { error: "Schedule time must be in the future" },
+          { status: 400 }
+        );
+      }
+    }
+
+    const status = normalizedIntent === "schedule" ? "scheduled" : "draft";
 
     await db.insert(posts).values({
       id: postId,
@@ -44,7 +63,7 @@ export async function POST(request: NextRequest) {
       sourceTitle: null,
       profileId: profileId || null,
       status,
-      scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
+      scheduledAt: normalizedIntent === "schedule" ? nextScheduledAt : null,
       publishedAt: null,
       dedupKey: null,
       metadata: null,

@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BrightBean Merge Menu Flow</title>
+    <style>
+      :root {
+        --bg: #071018;
+        --panel: rgba(10, 17, 28, 0.84);
+        --panel-2: rgba(14, 25, 40, 0.92);
+        --line: rgba(133, 214, 255, 0.16);
+        --text: #edf7ff;
+        --muted: #89a2ba;
+        --cyan: #67ddff;
+        --lime: #d7ff74;
+        --coral: #ff8d7a;
+        --gold: #ffcc7a;
+        --shadow: 0 28px 80px rgba(0, 0, 0, 0.34);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Space Grotesk", "Avenir Next", sans-serif;
+        color: var(--text);
+        background:
+          radial-gradient(circle at top left, rgba(103, 221, 255, 0.14), transparent 22%),
+          radial-gradient(circle at bottom right, rgba(215, 255, 116, 0.1), transparent 20%),
+          linear-gradient(180deg, #030813 0%, #071018 45%, #091423 100%);
+      }
+
+      .wrap {
+        width: min(1540px, calc(100vw - 32px));
+        margin: 0 auto;
+        padding: 22px 0 56px;
+      }
+
+      .hero,
+      .shell,
+      .card {
+        border: 1px solid var(--line);
+        background: linear-gradient(180deg, var(--panel), var(--panel-2));
+        box-shadow: var(--shadow);
+      }
+
+      .hero {
+        border-radius: 28px;
+        padding: 24px;
+        margin-bottom: 18px;
+      }
+
+      .eyebrow {
+        margin: 0;
+        color: var(--cyan);
+        font-size: 11px;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        margin: 10px 0 0;
+        font-size: clamp(30px, 4vw, 52px);
+        line-height: 0.94;
+      }
+
+      .sub {
+        margin: 12px 0 0;
+        max-width: 980px;
+        color: var(--muted);
+        line-height: 1.7;
+      }
+
+      .legend {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-top: 18px;
+      }
+
+      .pill {
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 8px 12px;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      .keep { color: var(--lime); background: rgba(215, 255, 116, 0.08); }
+      .add { color: var(--cyan); background: rgba(103, 221, 255, 0.08); }
+      .merge { color: var(--gold); background: rgba(255, 204, 122, 0.08); }
+
+      .shell-grid {
+        display: grid;
+        gap: 18px;
+      }
+
+      .shell {
+        border-radius: 28px;
+        overflow: hidden;
+      }
+
+      .shell-head {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        align-items: center;
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .shell-head h2 {
+        margin: 0;
+        font-size: 22px;
+      }
+
+      .shell-head p {
+        margin: 6px 0 0;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .shell-body {
+        display: grid;
+        grid-template-columns: 240px 1fr;
+      }
+
+      .menu {
+        border-right: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.03);
+        padding: 16px;
+      }
+
+      .menu-item {
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 12px 14px;
+        margin-bottom: 10px;
+      }
+
+      .menu-item strong {
+        display: block;
+        font-size: 14px;
+      }
+
+      .menu-item span {
+        display: block;
+        margin-top: 5px;
+        font-size: 11px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+
+      .lanes {
+        padding: 16px;
+        display: grid;
+        gap: 14px;
+      }
+
+      .card {
+        border-radius: 22px;
+        padding: 18px;
+      }
+
+      .meta {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-bottom: 10px;
+      }
+
+      .tag {
+        border-radius: 999px;
+        padding: 6px 10px;
+        font-size: 11px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        border: 1px solid var(--line);
+      }
+
+      .card h3 {
+        margin: 0;
+        font-size: 18px;
+      }
+
+      .flow {
+        margin: 10px 0 0;
+        color: var(--text);
+        font-size: 14px;
+        line-height: 1.7;
+      }
+
+      .note {
+        margin: 10px 0 0;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.7;
+      }
+
+      @media (max-width: 1100px) {
+        .shell-body {
+          grid-template-columns: 1fr;
+        }
+
+        .menu {
+          border-right: 0;
+          border-bottom: 1px solid var(--line);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <section class="hero">
+        <p class="eyebrow">Merged Product Shell</p>
+        <h1>BrightBean core, Social Agent automation.</h1>
+        <p class="sub">
+          Target: keep BrightBean workspace, settings, and client-portal flows. Keep
+          Social Agent schedules, categories, replies, post truth, and connection-method depth.
+          This is the port map, not raw Django runtime code.
+        </p>
+        <div class="legend">
+          <span class="pill keep">keep from social-poster</span>
+          <span class="pill add">add from brightbean</span>
+          <span class="pill merge">merge both</span>
+        </div>
+      </section>
+
+      <div class="shell-grid">
+        <section class="shell">
+          <div class="shell-head">
+            <div>
+              <h2>Workspace Shell</h2>
+              <p>Daily operator shell. publish, compose, inbox, automation.</p>
+            </div>
+          </div>
+          <div class="shell-body">
+            <aside class="menu">
+              <div class="menu-item"><strong>Publish</strong><span>add + merge</span></div>
+              <div class="menu-item"><strong>Create Idea</strong><span>add</span></div>
+              <div class="menu-item"><strong>Social Inbox</strong><span>add</span></div>
+              <div class="menu-item"><strong>Replies</strong><span>keep</span></div>
+              <div class="menu-item"><strong>Schedules</strong><span>keep</span></div>
+              <div class="menu-item"><strong>Categories</strong><span>keep</span></div>
+              <div class="menu-item"><strong>Notifications</strong><span>add + merge</span></div>
+              <div class="menu-item"><strong>Channels</strong><span>add</span></div>
+            </aside>
+            <div class="lanes">
+              <article class="card">
+                <div class="meta">
+                  <span class="tag merge">publish</span>
+                  <span class="tag">calendar + list</span>
+                  <span class="tag">queue / drafts / approvals / sent</span>
+                </div>
+                <h3>Publish</h3>
+                <p class="flow">
+                  Workspace → Publish → switch Calendar or List → open Queue, Drafts,
+                  Approvals, Sent → open post → edit, schedule, approve, publish, inspect log.
+                </p>
+                <p class="note">
+                  Merge current Calendar, Posts, post detail, and pipeline publish truth here.
+                </p>
+              </article>
+
+              <article class="card">
+                <div class="meta">
+                  <span class="tag add">composer</span>
+                  <span class="tag">idea landing</span>
+                  <span class="tag">per-channel tweaks</span>
+                </div>
+                <h3>Create Idea</h3>
+                <p class="flow">
+                  Workspace → Create Idea → idea landing → full composer → pick channels →
+                  add media → tweak per channel → Save Draft, Submit for Approval, Schedule, Publish Now.
+                </p>
+                <p class="note">
+                  This becomes the canonical post creation flow. current simple post-create becomes secondary.
+                </p>
+              </article>
+
+              <article class="card">
+                <div class="meta">
+                  <span class="tag add">inbox</span>
+                  <span class="tag keep">replies log</span>
+                  <span class="tag">sla</span>
+                </div>
+                <h3>Social Inbox + Replies</h3>
+                <p class="flow">
+                  Workspace → Social Inbox → All, My Queue, Unassigned → open thread →
+                  assign, label, saved reply, reply, SLA handling. Separate Replies page stays
+                  for X engine/debug until inbox parity lands.
+                </p>
+              </article>
+
+              <article class="card">
+                <div class="meta">
+                  <span class="tag keep">schedules</span>
+                  <span class="tag keep">categories</span>
+                  <span class="tag add">notifications</span>
+                </div>
+                <h3>Automation lanes</h3>
+                <p class="flow">
+                  Workspace → Schedules for machine cadence and runtime drift.
+                  Workspace → Categories for recurring editorial buckets.
+                  Global Notifications for failures, approvals, inbox assignments, and publish results.
+                </p>
+              </article>
+
+              <article class="card">
+                <div class="meta">
+                  <span class="tag merge">channels</span>
+                  <span class="tag merge">connections</span>
+                </div>
+                <h3>Channels section</h3>
+                <p class="flow">
+                  Sidebar channel rows show connected and unhealthy accounts.
+                  Click row for social accounts management. Click plus for connect flow.
+                  Reuse the new connection-method drawer for direct API, Bird, relay, and custom instructions.
+                </p>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        <section class="shell">
+          <div class="shell-head">
+            <div>
+              <h2>Org Settings Shell</h2>
+              <p>Top-level admin shell. account, org, workspaces, team, shared media.</p>
+            </div>
+          </div>
+          <div class="shell-body">
+            <aside class="menu">
+              <div class="menu-item"><strong>Profile</strong><span>add</span></div>
+              <div class="menu-item"><strong>Preferences</strong><span>add</span></div>
+              <div class="menu-item"><strong>General</strong><span>add</span></div>
+              <div class="menu-item"><strong>Workspaces</strong><span>add</span></div>
+              <div class="menu-item"><strong>Team Members</strong><span>add</span></div>
+              <div class="menu-item"><strong>All Calendars</strong><span>add</span></div>
+              <div class="menu-item"><strong>Media Library</strong><span>add</span></div>
+            </aside>
+            <div class="lanes">
+              <article class="card">
+                <div class="meta">
+                  <span class="tag add">profile</span>
+                  <span class="tag add">preferences</span>
+                  <span class="tag add">org general</span>
+                </div>
+                <h3>Account and org admin</h3>
+                <p class="flow">
+                  Settings → Profile for avatar/name/account details.
+                  Settings → Preferences for personal defaults and notification rules.
+                  Settings → General for org name, logo, timezone, and org-wide defaults.
+                </p>
+              </article>
+
+              <article class="card">
+                <div class="meta">
+                  <span class="tag add">workspaces</span>
+                  <span class="tag add">team members</span>
+                  <span class="tag add">all calendars</span>
+                </div>
+                <h3>Tenancy and org-wide scheduling</h3>
+                <p class="flow">
+                  Settings → Workspaces to create, archive, and enter workspace settings.
+                  Settings → Team Members for invite, role, workspace access.
+                  Settings → All Calendars for the cross-workspace scheduled view.
+                </p>
+              </article>
+
+              <article class="card">
+                <div class="meta">
+                  <span class="tag add">shared media</span>
+                </div>
+                <h3>Shared Media Library</h3>
+                <p class="flow">
+                  Settings → Media Library for organization-wide assets, folders, reuse, and library governance.
+                </p>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        <section class="shell">
+          <div class="shell-head">
+            <div>
+              <h2>Workspace Settings Shell</h2>
+              <p>Client or brand configuration shell.</p>
+            </div>
+          </div>
+          <div class="shell-body">
+            <aside class="menu">
+              <div class="menu-item"><strong>General</strong><span>add</span></div>
+              <div class="menu-item"><strong>Social Accounts</strong><span>merge</span></div>
+              <div class="menu-item"><strong>Media Library</strong><span>add</span></div>
+              <div class="menu-item"><strong>Approvals</strong><span>add</span></div>
+              <div class="menu-item"><strong>Client Portal</strong><span>add</span></div>
+            </aside>
+            <div class="lanes">
+              <article class="card">
+                <div class="meta">
+                  <span class="tag add">general</span>
+                  <span class="tag merge">social accounts</span>
+                </div>
+                <h3>Brand and account control</h3>
+                <p class="flow">
+                  Workspace Settings → General for brand defaults, timezone, and workspace posture.
+                  Workspace Settings → Social Accounts for connect, reconnect, inspect account state, and invite client to connect.
+                </p>
+                <p class="note">
+                  This is where the current Connections page lands after the port.
+                </p>
+              </article>
+
+              <article class="card">
+                <div class="meta">
+                  <span class="tag add">media</span>
+                  <span class="tag add">approvals</span>
+                  <span class="tag add">client portal</span>
+                </div>
+                <h3>Workspace operations</h3>
+                <p class="flow">
+                  Workspace Settings → Media Library for workspace assets.
+                  Workspace Settings → Approvals for workflow mode, reminders, and rules.
+                  Workspace Settings → Client Portal for invites, portal links, and client access.
+                </p>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        <section class="shell">
+          <div class="shell-head">
+            <div>
+              <h2>Client Portal Shell</h2>
+              <p>Magic-link client-facing review shell.</p>
+            </div>
+          </div>
+          <div class="shell-body">
+            <aside class="menu">
+              <div class="menu-item"><strong>Home</strong><span>add</span></div>
+              <div class="menu-item"><strong>Approvals</strong><span>add</span></div>
+              <div class="menu-item"><strong>Published</strong><span>add</span></div>
+              <div class="menu-item"><strong>Activity</strong><span>add</span></div>
+            </aside>
+            <div class="lanes">
+              <article class="card">
+                <div class="meta">
+                  <span class="tag add">portal dashboard</span>
+                  <span class="tag add">approvals</span>
+                </div>
+                <h3>Client review flow</h3>
+                <p class="flow">
+                  Magic link → Home dashboard → jump into Approvals → approve, request changes, reject, comment.
+                </p>
+              </article>
+
+              <article class="card">
+                <div class="meta">
+                  <span class="tag add">published</span>
+                  <span class="tag add">activity</span>
+                </div>
+                <h3>Client visibility flow</h3>
+                <p class="flow">
+                  Client Portal → Published for live content and links.
+                  Client Portal → Activity for approval history and status trace.
+                </p>
+              </article>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </body>
+</html>

@@ -5,6 +5,7 @@ import { PLATFORM_TYPES } from "@/lib/platforms";
 import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { getTenantContext } from "@/lib/tenancy";
 
 const updatePlatformSchema = z.object({
   name: z.string().min(1, "Name is required").optional(),
@@ -27,13 +28,17 @@ export async function POST(
     const { id } = await params;
     const body = await request.json();
     const validated = updatePlatformSchema.parse(body);
+    const tenant = await getTenantContext();
+    if (!tenant) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
     // Check if platform exists
     const platform = await db.query.platforms.findFirst({
       where: eq(platforms.id, id),
     });
 
-    if (!platform) {
+    if (!platform || platform.workspaceId !== tenant.currentWorkspace.id) {
       return NextResponse.json(
         { error: "Platform not found" },
         { status: 404 }

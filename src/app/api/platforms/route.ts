@@ -5,6 +5,7 @@ import { PLATFORM_TYPES } from "@/lib/platforms";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import crypto from "node:crypto";
+import { getTenantContext } from "@/lib/tenancy";
 
 const createPlatformSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -23,12 +24,17 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const validated = createPlatformSchema.parse(body);
+    const tenant = await getTenantContext();
+    if (!tenant) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
     const now = new Date();
     const id = crypto.randomUUID();
 
     await db.insert(platforms).values({
       id,
+      workspaceId: tenant.currentWorkspace.id,
       name: validated.name,
       type: validated.type,
       handle: validated.handle || null,

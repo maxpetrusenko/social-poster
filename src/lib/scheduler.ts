@@ -80,6 +80,14 @@ export async function reloadSchedules(): Promise<void> {
   await reconcileSchedules("reload");
 }
 
+export async function ensureSchedulerReady(): Promise<void> {
+  await ensureRecoveredAbandonedRuns();
+
+  if (tasks.size === 0) {
+    await reconcileSchedules("ensure-ready");
+  }
+}
+
 export function getActiveScheduleIds(): string[] {
   return Array.from(tasks.keys());
 }

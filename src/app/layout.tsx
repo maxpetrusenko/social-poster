@@ -14,7 +14,7 @@ const serif = Cormorant_Garamond({
 });
 
 export const metadata: Metadata = {
-  title: "Social Poster",
+  title: "Social Agent",
   description: "Social automation dashboard",
 };
 

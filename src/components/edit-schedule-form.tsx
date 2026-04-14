@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ArrowLeft, Play, Trash2 } from "lucide-react";
+import { ScheduleDetailSummary } from "@/components/schedule-detail-summary";
 import { relativeTime } from "@/lib/utils";
 import { POST_CATEGORIES, getPostCategoryMeta } from "@/lib/post-categories";
 import {
@@ -43,6 +44,19 @@ type RunRecord = {
   error: string | null;
 };
 
+type SchedulePreview = {
+  title: string;
+  summary: string;
+  variantIndex: number;
+  platforms: Array<{
+    label: string;
+    handle: string | null;
+    content: string | null;
+    mediaUrl: string | null;
+    instagramContentType: "story" | "reel" | null;
+  }>;
+};
+
 const JOB_TYPES = [
   { value: "text_post", label: "Text Post" },
   { value: "image_post", label: "Image Post" },
@@ -62,11 +76,15 @@ export function EditScheduleForm({
   profiles,
   platforms,
   runs,
+  nextRunLabels,
+  preview,
 }: {
   schedule: ScheduleRecord;
   profiles: ProfileOption[];
   platforms: PlatformOption[];
   runs: RunRecord[];
+  nextRunLabels: string[];
+  preview: SchedulePreview | null;
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
@@ -451,6 +469,11 @@ export function EditScheduleForm({
         </div>
 
         <div className="space-y-4">
+          <ScheduleDetailSummary
+            nextRunLabels={nextRunLabels}
+            preview={preview}
+          />
+
           <div className="bg-white border border-gray-200 rounded-lg p-4">
             <p className="text-sm font-medium text-gray-900 mb-4">Actions</p>
             <div className="space-y-2">

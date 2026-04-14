@@ -6,9 +6,9 @@ import { LoginForm } from "@/components/login-form";
 import {
   getWorkspaceAuthErrorMessage,
   isSupabaseConfigured,
-  isWorkspaceUserAllowed,
 } from "@/lib/supabase/config";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { isEmailAllowedForAuth } from "@/lib/auth-allowlist";
 
 export const metadata = {
   title: "Dashboard Sign In",
@@ -52,7 +52,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
       data: { user },
     } = await supabase.auth.getUser();
 
-    if (isWorkspaceUserAllowed(user?.email)) {
+    if (await isEmailAllowedForAuth(user?.email)) {
       redirect(nextPath);
     }
 
@@ -72,7 +72,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
           {shouldResetSession ? <UnauthorizedSessionReset /> : null}
           <p className="section-eyebrow text-[#d2a35d]">Private Dashboard</p>
           <h1 className="mt-3 font-serif text-[2rem] leading-none text-[#f6ecdc]">
-            Social Poster
+            Social Agent
           </h1>
           <p className="mt-3 text-sm leading-7 text-[#cbbba7]">
             Google-gated admin for posting, schedules, pipeline, replies.

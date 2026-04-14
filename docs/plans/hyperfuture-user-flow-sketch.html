@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Social Agent Dashboard Flow Sketch</title>
+    <style>
+      :root {
+        --bg: #071018;
+        --panel: rgba(11, 19, 32, 0.82);
+        --panel-2: rgba(16, 29, 48, 0.9);
+        --line: rgba(136, 223, 255, 0.14);
+        --text: #edf6ff;
+        --muted: #8fa5be;
+        --cyan: #6ce7ff;
+        --lime: #dcff71;
+        --rose: #ff82db;
+        --orange: #ffab69;
+        --red: #ff6f7d;
+        --shadow: 0 30px 80px rgba(0, 0, 0, 0.42);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Space Grotesk", "Avenir Next", sans-serif;
+        color: var(--text);
+        background:
+          radial-gradient(circle at 0% 0%, rgba(108, 231, 255, 0.14), transparent 22%),
+          radial-gradient(circle at 100% 0%, rgba(255, 130, 219, 0.12), transparent 18%),
+          radial-gradient(circle at 50% 100%, rgba(220, 255, 113, 0.1), transparent 25%),
+          linear-gradient(180deg, #040912 0%, #071018 45%, #09121f 100%);
+      }
+
+      .wrap {
+        width: min(1520px, calc(100vw - 36px));
+        margin: 0 auto;
+        padding: 22px 0 72px;
+      }
+
+      .topbar {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        align-items: center;
+        margin-bottom: 16px;
+        padding: 18px 20px;
+        border: 1px solid var(--line);
+        border-radius: 24px;
+        background: linear-gradient(180deg, rgba(8, 16, 26, 0.96), rgba(11, 18, 29, 0.84));
+        box-shadow: var(--shadow);
+      }
+
+      .brand h1 {
+        margin: 8px 0 0;
+        font-size: clamp(28px, 4vw, 46px);
+        line-height: 0.96;
+      }
+
+      .eyebrow {
+        margin: 0;
+        font-size: 11px;
+        letter-spacing: 0.24em;
+        text-transform: uppercase;
+        color: var(--cyan);
+      }
+
+      .sub {
+        margin: 10px 0 0;
+        color: var(--muted);
+        max-width: 720px;
+        line-height: 1.6;
+      }
+
+      .switcher,
+      .actionstrip {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+
+      .pill,
+      .ghost {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 14px;
+        border-radius: 999px;
+        border: 1px solid var(--line);
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      .pill {
+        background: rgba(108, 231, 255, 0.08);
+        color: var(--cyan);
+      }
+
+      .ghost {
+        color: var(--muted);
+        background: rgba(255, 255, 255, 0.03);
+      }
+
+      .shell {
+        display: grid;
+        grid-template-columns: 260px 1fr;
+        gap: 16px;
+      }
+
+      .sidebar,
+      .panel {
+        border: 1px solid var(--line);
+        border-radius: 24px;
+        background: linear-gradient(180deg, var(--panel), var(--panel-2));
+        box-shadow: var(--shadow);
+      }
+
+      .sidebar {
+        padding: 16px;
+        height: fit-content;
+      }
+
+      .nav {
+        display: grid;
+        gap: 8px;
+        margin-top: 14px;
+      }
+
+      .nav a {
+        text-decoration: none;
+        color: var(--muted);
+        padding: 12px 14px;
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.03);
+      }
+
+      .nav a.active {
+        color: var(--text);
+        background: rgba(108, 231, 255, 0.09);
+        border: 1px solid rgba(108, 231, 255, 0.22);
+      }
+
+      .main {
+        display: grid;
+        gap: 16px;
+      }
+
+      .metrics {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 12px;
+      }
+
+      .metric,
+      .tile,
+      .lane,
+      .mini {
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.03);
+      }
+
+      .metric {
+        padding: 16px;
+      }
+
+      .metric .label {
+        margin: 0;
+        font-size: 11px;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+
+      .metric .value {
+        margin: 8px 0 4px;
+        font-size: 32px;
+        font-weight: 700;
+      }
+
+      .metric .note {
+        margin: 0;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .row {
+        display: grid;
+        gap: 16px;
+      }
+
+      .row-main {
+        grid-template-columns: 1.35fr 0.92fr;
+      }
+
+      .row-mid {
+        grid-template-columns: 1.08fr 1.19fr 0.73fr;
+      }
+
+      .row-low {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .panel-head {
+        display: flex;
+        justify-content: space-between;
+        gap: 14px;
+        align-items: center;
+        padding: 16px 18px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .panel-head h2 {
+        margin: 0 0 4px;
+        font-size: 18px;
+      }
+
+      .panel-head p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .body {
+        padding: 16px 18px 18px;
+      }
+
+      .stack {
+        display: grid;
+        gap: 12px;
+      }
+
+      .lane {
+        padding: 14px;
+      }
+
+      .lane .title,
+      .tile .title,
+      .mini .title {
+        margin: 0 0 4px;
+        font-size: 14px;
+        font-weight: 700;
+      }
+
+      .lane .meta,
+      .tile .meta,
+      .mini .meta {
+        margin: 0;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.45;
+      }
+
+      .tile {
+        padding: 14px;
+      }
+
+      .list {
+        display: grid;
+        gap: 10px;
+      }
+
+      .item {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 12px 14px;
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.025);
+      }
+
+      .item .right {
+        text-align: right;
+      }
+
+      .chipbar {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-top: 8px;
+      }
+
+      .chip {
+        padding: 7px 10px;
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(255, 255, 255, 0.05);
+        font-size: 11px;
+      }
+
+      .composer {
+        display: grid;
+        grid-template-columns: 1.06fr 0.94fr;
+        gap: 12px;
+      }
+
+      .editor,
+      .preview {
+        display: grid;
+        gap: 10px;
+      }
+
+      .field {
+        min-height: 76px;
+        padding: 14px;
+        border-radius: 16px;
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.035);
+      }
+
+      .calendar-strip {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 8px;
+      }
+
+      .day {
+        padding: 10px;
+        border-radius: 16px;
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.03);
+        min-height: 126px;
+      }
+
+      .day strong {
+        display: block;
+        margin-bottom: 8px;
+        font-size: 12px;
+      }
+
+      .mini {
+        padding: 10px;
+      }
+
+      .cyan { color: var(--cyan); }
+      .lime { color: var(--lime); }
+      .rose { color: var(--rose); }
+      .orange { color: var(--orange); }
+      .red { color: var(--red); }
+
+      @media (max-width: 1200px) {
+        .shell,
+        .row-main,
+        .row-mid,
+        .row-low,
+        .composer,
+        .metrics {
+          grid-template-columns: 1fr;
+        }
+
+        .calendar-strip {
+          grid-template-columns: repeat(2, 1fr);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <section class="topbar">
+        <div class="brand">
+          <p class="eyebrow">Hyperfuture Dashboard</p>
+          <h1>Social Agent Control Room</h1>
+          <p class="sub">
+            Dashboard first. Dense signal. Fast actions. Team context visible.
+            Composer docked into the dashboard, not hidden as a separate world.
+          </p>
+        </div>
+        <div>
+          <div class="switcher">
+            <span class="pill">Orbital Labs</span>
+            <span class="ghost">Main workspace</span>
+            <span class="ghost">Role: Admin</span>
+          </div>
+          <div class="actionstrip" style="margin-top: 10px;">
+            <span class="ghost">New draft</span>
+            <span class="ghost">Connect account</span>
+            <span class="ghost">Approve 4</span>
+            <span class="ghost">Run queue</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="shell">
+        <aside class="sidebar">
+          <div class="pill">Main nav</div>
+          <nav class="nav">
+            <a class="active" href="#">Overview</a>
+            <a href="#">Composer</a>
+            <a href="#">Calendar</a>
+            <a href="#">Accounts</a>
+            <a href="#">Approvals</a>
+            <a href="#">Inbox</a>
+            <a href="#">Audit</a>
+            <a href="#">Members</a>
+            <a href="#">Settings</a>
+          </nav>
+        </aside>
+
+        <main class="main">
+          <section class="metrics">
+            <article class="metric">
+              <p class="label">Delivery Today</p>
+              <p class="value cyan">38</p>
+              <p class="note">32 success, 4 queued, 2 failed</p>
+            </article>
+            <article class="metric">
+              <p class="label">Approval Queue</p>
+              <p class="value orange">7</p>
+              <p class="note">4 client, 3 internal</p>
+            </article>
+            <article class="metric">
+              <p class="label">Account Health</p>
+              <p class="value lime">12</p>
+              <p class="note">10 healthy, 2 reauth soon</p>
+            </article>
+            <article class="metric">
+              <p class="label">Scheduler Truth</p>
+              <p class="value">6/6</p>
+              <p class="note">DB enabled / runtime live</p>
+            </article>
+            <article class="metric">
+              <p class="label">Inbox Pressure</p>
+              <p class="value rose">19</p>
+              <p class="note">8 need reply today</p>
+            </article>
+          </section>
+
+          <section class="row row-main">
+            <article class="panel">
+              <div class="panel-head">
+                <div>
+                  <h2>Operations Feed</h2>
+                  <p>Single dashboard lane. Not separate screens fighting each other.</p>
+                </div>
+                <span class="pill">Live</span>
+              </div>
+              <div class="body stack">
+                <div class="lane">
+                  <p class="title">09:00 queue released <span class="lime">5/5 delivered</span></p>
+                  <p class="meta">X main queue. LinkedIn exec queue. No drift.</p>
+                </div>
+                <div class="lane">
+                  <p class="title">Client review waiting <span class="orange">2 posts blocked</span></p>
+                  <p class="meta">Orbit client workspace. Approval deadline in 2h.</p>
+                </div>
+                <div class="lane">
+                  <p class="title">Account degradation <span class="red">LinkedIn token stale</span></p>
+                  <p class="meta">Reconnect before next scheduled enterprise post.</p>
+                </div>
+                <div class="lane">
+                  <p class="title">Inbox surge <span class="rose">8 messages need routing</span></p>
+                  <p class="meta">Reply engine can pre-draft. Human must approve 3.</p>
+                </div>
+              </div>
+            </article>
+
+            <article class="panel">
+              <div class="panel-head">
+                <div>
+                  <h2>Account Radar</h2>
+                  <p>Capabilities + health + provider, visible together.</p>
+                </div>
+                <span class="ghost">M2 target</span>
+              </div>
+              <div class="body list">
+                <div class="item">
+                  <div>
+                    <p class="title">X / @maxpetrusenko</p>
+                    <p class="meta">direct_x. image, text, reply, schedule</p>
+                  </div>
+                  <div class="right">
+                    <p class="title lime">Healthy</p>
+                    <p class="meta">refresh 14d</p>
+                  </div>
+                </div>
+                <div class="item">
+                  <div>
+                    <p class="title">LinkedIn / Personal</p>
+                    <p class="meta">direct_linkedin. image, text, schedule</p>
+                  </div>
+                  <div class="right">
+                    <p class="title orange">Reauth soon</p>
+                    <p class="meta">next slot 16:00</p>
+                  </div>
+                </div>
+                <div class="item">
+                  <div>
+                    <p class="title">Instagram / Max Clips</p>
+                    <p class="meta">late. image, video. no reply</p>
+                  </div>
+                  <div class="right">
+                    <p class="title red">Video unstable</p>
+                    <p class="meta">2 recent fails</p>
+                  </div>
+                </div>
+              </div>
+            </article>
+          </section>
+
+          <section class="row row-mid">
+            <article class="panel">
+              <div class="panel-head">
+                <div>
+                  <h2>Queues</h2>
+                  <p>Editorial and scheduling center of gravity.</p>
+                </div>
+                <span class="ghost">M5 target</span>
+              </div>
+              <div class="body stack">
+                <div class="tile">
+                  <p class="title">X Main Queue</p>
+                  <p class="meta">14 ready. next slot 11:00. 2 high-priority.</p>
+                </div>
+                <div class="tile">
+                  <p class="title">LinkedIn Exec Queue</p>
+                  <p class="meta">6 ready. 3 waiting on approval.</p>
+                </div>
+                <div class="tile">
+                  <p class="title">Product Launch Queue</p>
+                  <p class="meta">8 drafts. heavy media mix. risk of crowding.</p>
+                </div>
+              </div>
+            </article>
+
+            <article class="panel">
+              <div class="panel-head">
+                <div>
+                  <h2>Composer Dock</h2>
+                  <p>Embedded in dashboard. Fast draft flow.</p>
+                </div>
+                <span class="pill">M3 target</span>
+              </div>
+              <div class="body composer">
+                <div class="editor">
+                  <div class="field">
+                    <p class="title">Canonical draft</p>
+                    <p class="meta">Angle. source. default body. category. tags.</p>
+                  </div>
+                  <div class="field">
+                    <p class="title">Account overrides</p>
+                    <p class="meta">Tabs: default, X main, LinkedIn personal, LinkedIn company.</p>
+                  </div>
+                  <div class="field">
+                    <p class="title">Release controls</p>
+                    <p class="meta">Save draft. send approval. assign slot. publish now.</p>
+                  </div>
+                </div>
+                <div class="preview">
+                  <div class="field">
+                    <p class="title">Preview rail</p>
+                    <p class="meta">X card, LinkedIn card, warnings, capability gate.</p>
+                  </div>
+                  <div class="field">
+                    <p class="title">Agent assist</p>
+                    <p class="meta">Rewrite hook. shorten for X. create thread. add alt text.</p>
+                  </div>
+                </div>
+              </div>
+            </article>
+
+            <article class="panel">
+              <div class="panel-head">
+                <div>
+                  <h2>Approvals</h2>
+                  <p>High-friction items surfaced here.</p>
+                </div>
+                <span class="ghost">M7 target</span>
+              </div>
+              <div class="body stack">
+                <div class="mini">
+                  <p class="title">Client A</p>
+                  <p class="meta">2 waiting. 1 overdue.</p>
+                </div>
+                <div class="mini">
+                  <p class="title">Internal review</p>
+                  <p class="meta">3 pending from editor lane.</p>
+                </div>
+                <div class="mini">
+                  <p class="title">Auto reminders</p>
+                  <p class="meta">off until approval system lands</p>
+                </div>
+              </div>
+            </article>
+          </section>
+
+          <section class="row row-low">
+            <article class="panel">
+              <div class="panel-head">
+                <div>
+                  <h2>Calendar Strip</h2>
+                  <p>Week glance. Queue pressure + run outcomes.</p>
+                </div>
+                <span class="ghost">M5 target</span>
+              </div>
+              <div class="body calendar-strip">
+                <div class="day">
+                  <strong>Mon</strong>
+                  <div class="mini"><p class="title">09:00 X Main</p><p class="meta">done</p></div>
+                </div>
+                <div class="day">
+                  <strong>Tue</strong>
+                  <div class="mini"><p class="title">11:00 LinkedIn</p><p class="meta">approval hold</p></div>
+                </div>
+                <div class="day">
+                  <strong>Wed</strong>
+                  <div class="mini"><p class="title">14:00 Product</p><p class="meta">8 queued</p></div>
+                </div>
+                <div class="day">
+                  <strong>Thu</strong>
+                  <div class="mini"><p class="title">09:00 X Main</p><p class="meta">draft gap</p></div>
+                </div>
+                <div class="day">
+                  <strong>Fri</strong>
+                  <div class="mini"><p class="title">12:00 LinkedIn</p><p class="meta">healthy</p></div>
+                </div>
+                <div class="day">
+                  <strong>Sat</strong>
+                  <div class="mini"><p class="title">Low volume</p><p class="meta">optional</p></div>
+                </div>
+                <div class="day">
+                  <strong>Sun</strong>
+                  <div class="mini"><p class="title">Low volume</p><p class="meta">optional</p></div>
+                </div>
+              </div>
+            </article>
+
+            <article class="panel">
+              <div class="panel-head">
+                <div>
+                  <h2>Audit / State Truth</h2>
+                  <p>Need one status language across app.</p>
+                </div>
+                <span class="pill">M6 target</span>
+              </div>
+              <div class="body stack">
+                <div class="lane">
+                  <p class="title">Editorial state <span class="cyan">approved</span></p>
+                  <p class="meta">draft → ready → in_review → approved</p>
+                </div>
+                <div class="lane">
+                  <p class="title">Scheduling state <span class="orange">queued</span></p>
+                  <p class="meta">unscheduled → queued → slotted → scheduled</p>
+                </div>
+                <div class="lane">
+                  <p class="title">Delivery state <span class="red">partial_failure</span></p>
+                  <p class="meta">pending → publishing → published → partial_failure → failed</p>
+                </div>
+              </div>
+            </article>
+          </section>
+        </main>
+      </section>
+    </div>
+  </body>
+</html>

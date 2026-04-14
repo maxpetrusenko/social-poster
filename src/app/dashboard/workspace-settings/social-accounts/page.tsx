@@ -1,0 +1,40 @@
+import { redirect } from "next/navigation";
+import { getSession } from "@/lib/auth";
+import { PLATFORM_TYPES } from "@/lib/platforms";
+import { ConnectionsPage } from "@/components/dashboard/connections-page";
+import { getConnectionsPageData } from "@/lib/dashboard/connections-data";
+import { getTenantContext } from "@/lib/tenancy";
+
+export const dynamic = "force-dynamic";
+
+export default async function WorkspaceSettingsSocialAccountsPage({
+  searchParams,
+}: {
+  searchParams?: Promise<Record<string, string>>;
+}) {
+  const session = await getSession();
+  if (!session) redirect("/login");
+
+  const params = searchParams ? await searchParams : {};
+  const tenant = await getTenantContext();
+  if (!tenant) redirect("/login");
+  const initialPlatformType = PLATFORM_TYPES.includes(
+    (params.platform as (typeof PLATFORM_TYPES)[number]) ?? "twitter"
+  )
+    ? ((params.platform as (typeof PLATFORM_TYPES)[number]) ?? null)
+    : null;
+
+  const data = await getConnectionsPageData(tenant.currentWorkspace.id);
+
+  return (
+    <ConnectionsPage
+      workspaceName={tenant.currentWorkspace.name}
+      organizationName={tenant.organization.name}
+      platforms={data.platforms}
+      profiles={data.profiles}
+      insights={data.insights}
+      initialDrawerOpen={params.connect === "1"}
+      initialPlatformType={initialPlatformType}
+    />
+  );
+}

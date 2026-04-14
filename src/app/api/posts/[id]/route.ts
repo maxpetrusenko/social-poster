@@ -21,6 +21,7 @@ export async function POST(
       contentType,
       sourceUrl,
       scheduledAt,
+      intent,
       profileId,
       platformIds,
       mediaUrl,
@@ -42,8 +43,27 @@ export async function POST(
     }
 
     const now = new Date();
-    const status =
-      scheduledAt && new Date(scheduledAt) > now ? "scheduled" : "draft";
+    const normalizedIntent =
+      intent === "schedule" || intent === "publish" ? intent : "draft";
+    const nextScheduledAt = scheduledAt ? new Date(scheduledAt) : null;
+
+    if (normalizedIntent === "schedule") {
+      if (!nextScheduledAt || Number.isNaN(nextScheduledAt.getTime())) {
+        return NextResponse.json(
+          { error: "A valid schedule time is required" },
+          { status: 400 }
+        );
+      }
+
+      if (nextScheduledAt <= now) {
+        return NextResponse.json(
+          { error: "Schedule time must be in the future" },
+          { status: 400 }
+        );
+      }
+    }
+
+    const status = normalizedIntent === "schedule" ? "scheduled" : "draft";
 
     await db
       .update(posts)
@@ -55,7 +75,7 @@ export async function POST(
         sourceUrl: sourceUrl || null,
         profileId: profileId || null,
         status,
-        scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
+        scheduledAt: normalizedIntent === "schedule" ? nextScheduledAt : null,
         updatedAt: now,
       })
       .where(eq(posts.id, id));

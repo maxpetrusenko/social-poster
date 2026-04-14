@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Page Flow Reference</title>
+    <style>
+      :root {
+        --bg: #071018;
+        --panel: rgba(10, 17, 28, 0.84);
+        --panel-2: rgba(14, 25, 40, 0.92);
+        --line: rgba(133, 214, 255, 0.16);
+        --text: #edf7ff;
+        --muted: #89a2ba;
+        --cyan: #67ddff;
+        --lime: #d7ff74;
+        --gold: #ffcc7a;
+        --shadow: 0 28px 80px rgba(0, 0, 0, 0.34);
+      }
+
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: "Space Grotesk", "Avenir Next", sans-serif;
+        color: var(--text);
+        background:
+          radial-gradient(circle at top left, rgba(103, 221, 255, 0.14), transparent 22%),
+          radial-gradient(circle at bottom right, rgba(215, 255, 116, 0.1), transparent 20%),
+          linear-gradient(180deg, #030813 0%, #071018 45%, #091423 100%);
+      }
+
+      .wrap {
+        width: min(1600px, calc(100vw - 32px));
+        margin: 0 auto;
+        padding: 22px 0 56px;
+      }
+
+      .hero,
+      .shell,
+      .flow,
+      .mini {
+        border: 1px solid var(--line);
+        background: linear-gradient(180deg, var(--panel), var(--panel-2));
+        box-shadow: var(--shadow);
+      }
+
+      .hero {
+        border-radius: 28px;
+        padding: 24px;
+        margin-bottom: 18px;
+      }
+
+      .eyebrow {
+        margin: 0;
+        color: var(--cyan);
+        font-size: 11px;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        margin: 10px 0 0;
+        font-size: clamp(30px, 4vw, 52px);
+        line-height: 0.94;
+      }
+
+      .sub {
+        margin: 12px 0 0;
+        max-width: 1100px;
+        color: var(--muted);
+        line-height: 1.7;
+      }
+
+      .stack { display: grid; gap: 18px; }
+
+      .shell {
+        border-radius: 28px;
+        overflow: hidden;
+      }
+
+      .head {
+        padding: 18px 20px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .head h2 {
+        margin: 0;
+        font-size: 24px;
+      }
+
+      .head p {
+        margin: 7px 0 0;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .body {
+        padding: 18px;
+        display: grid;
+        gap: 16px;
+      }
+
+      .flow-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+      }
+
+      .flow {
+        border-radius: 22px;
+        padding: 18px;
+      }
+
+      .flow h3 {
+        margin: 0;
+        font-size: 18px;
+      }
+
+      .path {
+        margin: 10px 0 0;
+        color: var(--text);
+        line-height: 1.7;
+        font-size: 14px;
+      }
+
+      .cols {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 14px;
+      }
+
+      .mini {
+        border-radius: 18px;
+        padding: 16px;
+      }
+
+      .mini h4 {
+        margin: 0;
+        font-size: 15px;
+      }
+
+      .mini ul {
+        margin: 10px 0 0;
+        padding-left: 18px;
+        color: var(--muted);
+      }
+
+      .mini li { margin: 6px 0; line-height: 1.5; }
+
+      .tags {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-top: 10px;
+      }
+
+      .tag {
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 6px 10px;
+        font-size: 11px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .keep { color: var(--lime); background: rgba(215, 255, 116, 0.08); }
+      .merge { color: var(--gold); background: rgba(255, 204, 122, 0.08); }
+      .add { color: var(--cyan); background: rgba(103, 221, 255, 0.08); }
+
+      @media (max-width: 1200px) {
+        .flow-grid, .cols { grid-template-columns: 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <section class="hero">
+        <p class="eyebrow">Canonical Page Reference</p>
+        <h1>Per-page flows and nested operator paths.</h1>
+        <p class="sub">
+          Use this while coding nav, shells, nested tabs, and page actions. Structure: shell → page → nested flow groups.
+        </p>
+      </section>
+
+      <div class="stack">
+        <section class="shell">
+          <div class="head">
+            <h2>Workspace Shell</h2>
+            <p>Daily operator shell. BrightBean IA plus your automation pages.</p>
+          </div>
+          <div class="body">
+            <div class="flow-grid">
+              <article class="flow">
+                <h3>Publish</h3>
+                <div class="tags">
+                  <span class="tag add">brightbean core</span>
+                  <span class="tag merge">calendar + list</span>
+                  <span class="tag merge">posts + approvals + sent</span>
+                </div>
+                <p class="path">Workspace → Publish → switch `Calendar` or `List` → list tabs `Queue / Drafts / Approvals / Sent` → open post → edit / schedule / approve / publish / inspect publish log.</p>
+              </article>
+              <article class="flow">
+                <h3>Create Idea</h3>
+                <div class="tags">
+                  <span class="tag add">composer core</span>
+                  <span class="tag merge">current create-post</span>
+                </div>
+                <p class="path">Workspace → Create Idea → idea landing / templates / feeds → full composer → channel select → media → per-channel tweaks → `Save Draft / Submit for Approval / Schedule / Publish Now`.</p>
+              </article>
+              <article class="flow">
+                <h3>Social Inbox</h3>
+                <div class="tags">
+                  <span class="tag add">brightbean core</span>
+                  <span class="tag keep">replies debug stays</span>
+                </div>
+                <p class="path">Workspace → Social Inbox → `All / My Queue / Unassigned` → open conversation → assign / label / saved reply / SLA state / reply.</p>
+              </article>
+              <article class="flow">
+                <h3>Replies</h3>
+                <div class="tags">
+                  <span class="tag keep">social-poster keep</span>
+                </div>
+                <p class="path">Workspace → Replies → X reply-engine log → sent/failed metrics → event detail → open reply URL. Keep until inbox parity fully replaces debug need.</p>
+              </article>
+              <article class="flow">
+                <h3>Schedules</h3>
+                <div class="tags">
+                  <span class="tag keep">social-poster keep</span>
+                </div>
+                <p class="path">Workspace → Schedules → list cadence → enable/disable → inspect next fire, drift, success rate → open schedule detail → run now / edit / delete.</p>
+              </article>
+              <article class="flow">
+                <h3>Categories</h3>
+                <div class="tags">
+                  <span class="tag keep">social-poster keep</span>
+                </div>
+                <p class="path">Workspace → Categories → inspect content buckets → see live schedule count → add slot → jump into schedule creation.</p>
+              </article>
+              <article class="flow">
+                <h3>Notifications</h3>
+                <div class="tags">
+                  <span class="tag add">brightbean core</span>
+                  <span class="tag merge">activity sources</span>
+                </div>
+                <p class="path">Workspace/global bell → notification drawer/history → mark read → open item → deep link to publish error, approval, inbox assignment, or account issue.</p>
+              </article>
+              <article class="flow">
+                <h3>Channels</h3>
+                <div class="tags">
+                  <span class="tag add">brightbean shell</span>
+                  <span class="tag merge">connections drawer</span>
+                </div>
+                <p class="path">Sidebar channel section → healthy/unhealthy account rows → open Social Accounts or reconnect → Add Channel → method picker → connect → verify → visible connected icon.</p>
+              </article>
+            </div>
+
+            <div class="cols">
+              <div class="mini">
+                <h4>Publish nested flows</h4>
+                <ul>
+                  <li>Calendar mode: planned + actual runs.</li>
+                  <li>List mode Queue: next-up content lanes.</li>
+                  <li>Drafts: saved, not scheduled.</li>
+                  <li>Approvals: pending internal/client states.</li>
+                  <li>Sent: published posts plus publish log.</li>
+                </ul>
+              </div>
+              <div class="mini">
+                <h4>Create Idea nested flows</h4>
+                <ul>
+                  <li>Idea landing.</li>
+                  <li>Template or feed seed.</li>
+                  <li>Composer body.</li>
+                  <li>Channel-specific variants.</li>
+                  <li>Validation and preview.</li>
+                </ul>
+              </div>
+              <div class="mini">
+                <h4>Connection nested flows</h4>
+                <ul>
+                  <li>Add channel.</li>
+                  <li>Pick platform.</li>
+                  <li>Pick connect method.</li>
+                  <li>Verify capabilities.</li>
+                  <li>Jump straight into composer.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="shell">
+          <div class="head">
+            <h2>Org Settings Shell</h2>
+            <p>Top-level admin shell above any single workspace.</p>
+          </div>
+          <div class="body">
+            <div class="flow-grid">
+              <article class="flow"><h3>Profile</h3><p class="path">Settings → Profile → avatar / name / account details / password / session controls later.</p></article>
+              <article class="flow"><h3>Preferences</h3><p class="path">Settings → Preferences → timezone, density, notification delivery, personal defaults.</p></article>
+              <article class="flow"><h3>General</h3><p class="path">Settings → General → org name / logo / timezone / branding / defaults / deletion flow.</p></article>
+              <article class="flow"><h3>Workspaces</h3><p class="path">Settings → Workspaces → create / archive / restore / open workspace settings / switch context.</p></article>
+              <article class="flow"><h3>Team Members</h3><p class="path">Settings → Team Members → invite / org role / workspace access / remove / manage assignments.</p></article>
+              <article class="flow"><h3>All Calendars</h3><p class="path">Settings → All Calendars → cross-workspace scheduled view, grouped by workspace.</p></article>
+              <article class="flow"><h3>Media Library</h3><p class="path">Settings → Media Library → shared org assets, folders, reuse, lifecycle control.</p></article>
+            </div>
+          </div>
+        </section>
+
+        <section class="shell">
+          <div class="head">
+            <h2>Workspace Settings Shell</h2>
+            <p>Brand/client-specific control plane.</p>
+          </div>
+          <div class="body">
+            <div class="flow-grid">
+              <article class="flow"><h3>General</h3><p class="path">Workspace Settings → General → brand colors, timezone, workspace defaults, archive state.</p></article>
+              <article class="flow"><h3>Social Accounts</h3><p class="path">Workspace Settings → Social Accounts → connected grid/list → add, reconnect, test, disconnect, invite client to connect.</p></article>
+              <article class="flow"><h3>Media Library</h3><p class="path">Workspace Settings → Media Library → workspace assets, folders, search, reuse in composer.</p></article>
+              <article class="flow"><h3>Approvals</h3><p class="path">Workspace Settings → Approvals → mode, reminders, routing, approver policy, client review requirements.</p></article>
+              <article class="flow"><h3>Client Portal</h3><p class="path">Workspace Settings → Client Portal → invite client, portal links, pending invites, access rules, published visibility.</p></article>
+            </div>
+          </div>
+        </section>
+
+        <section class="shell">
+          <div class="head">
+            <h2>Client Portal Shell</h2>
+            <p>Magic-link review surface for clients.</p>
+          </div>
+          <div class="body">
+            <div class="flow-grid">
+              <article class="flow"><h3>Home</h3><p class="path">Magic link → Home → summary cards → jump into Approvals, Published, Activity.</p></article>
+              <article class="flow"><h3>Approvals</h3><p class="path">Portal → Approvals → open pending post → preview media/caption → approve / request changes / reject / comment.</p></article>
+              <article class="flow"><h3>Published</h3><p class="path">Portal → Published → see live content, links, timestamps, and later reports.</p></article>
+              <article class="flow"><h3>Activity</h3><p class="path">Portal → Activity → client-visible approval history and decision trail.</p></article>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </body>
+</html>

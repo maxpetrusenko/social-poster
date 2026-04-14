@@ -1,5 +1,8 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import { readStoredConnectionConfig } from "@/lib/connection-config";
+import { platforms } from "@/db/schema";
+import { buildBirdEnv, resolveBirdCredentialsFromSource } from "@/lib/pipeline/bird-publisher-core";
 
 const execFileAsync = promisify(execFile);
 
@@ -11,48 +14,111 @@ type BirdTweet = {
   url?: string;
   text?: string;
   createdAt?: string;
+  likeCount?: number;
+  favoriteCount?: number;
+  viewCount?: number;
+  created_at?: string;
+  favorite_count?: number;
+  view_count?: number;
   author?: {
     username?: string;
     name?: string;
     followersCount?: number;
   };
   authorId?: string;
+  inReplyToStatusId?: string;
   replyCount?: number;
   retweetCount?: number;
   public_metrics?: {
     reply_count?: number;
     retweet_count?: number;
+    like_count?: number;
+    impression_count?: number;
   };
+  _raw?: Record<string, unknown>;
 };
 
-function getBirdAuth(): { authToken: string; ct0: string } {
+type PlatformRow = typeof platforms.$inferSelect;
+
+function getBirdAuthFromEnv(): { authToken: string; ct0: string } {
   const authToken = process.env.X_AUTH_TOKEN || process.env.AUTH_TOKEN;
   const ct0 = process.env.X_CT0 || process.env.CT0;
-
   if (!authToken || !ct0) {
     throw new Error("Missing X auth env vars");
   }
-
   return { authToken, ct0 };
 }
 
-async function runBird(args: string[], expectJson = true): Promise<unknown> {
-  const { authToken, ct0 } = getBirdAuth();
-  const commandArgs = ["--auth-token", authToken, "--ct0", ct0, ...args];
-  const runnerArgs =
-    BIRD_RUNNER === "npx"
-      ? ["-y", BIRD_PACKAGE, ...commandArgs]
-      : commandArgs;
+function buildBirdArgsFromPlatform(
+  platform?: Pick<PlatformRow, "config">
+) {
+  if (!platform) {
+    const { authToken, ct0 } = getBirdAuthFromEnv();
+    return {
+      args: ["--auth-token", authToken, "--ct0", ct0] as string[],
+      env: process.env,
+    };
+  }
+
+  const stored = readStoredConnectionConfig(platform.config);
+  const credentials = resolveBirdCredentialsFromSource(stored.credentials ?? {});
+  const args: string[] = [];
+
+  if (credentials.authToken && credentials.ct0) {
+    args.push("--auth-token", credentials.authToken, "--ct0", credentials.ct0);
+    return {
+      args,
+      env: buildBirdEnv(credentials),
+    };
+  }
+
+  if (credentials.chromeProfileDir) {
+    args.push("--chrome-profile-dir", credentials.chromeProfileDir);
+  } else if (credentials.chromeProfile) {
+    args.push("--chrome-profile", credentials.chromeProfile);
+  }
+
+  if (credentials.firefoxProfile) {
+    args.push("--firefox-profile", credentials.firefoxProfile);
+  }
+
+  return {
+    args,
+    env: process.env,
+  };
+}
+
+async function runBird(args: string[], expectJson = true, platform?: Pick<PlatformRow, "config">): Promise<unknown> {
+  const auth = buildBirdArgsFromPlatform(platform);
+  const commandArgs = [...auth.args, ...args];
+  const runnerArgs = BIRD_RUNNER === "npx" ? ["-y", BIRD_PACKAGE, ...commandArgs] : commandArgs;
 
   const { stdout } = await execFileAsync(BIRD_RUNNER, runnerArgs, {
     timeout: 30_000,
-    env: process.env,
+    env: auth.env,
     maxBuffer: 8 * 1024 * 1024,
   });
 
   const output = stdout.trim();
   if (!expectJson) return output;
-  return JSON.parse(output);
+  return parseBirdJson(output);
+}
+
+function parseBirdJson(output: string) {
+  if (!output) {
+    throw new Error("Bird returned empty JSON output");
+  }
+
+  const objectIndex = output.indexOf("{");
+  const arrayIndex = output.indexOf("[");
+  const startIndex =
+    objectIndex === -1 ? arrayIndex : arrayIndex === -1 ? objectIndex : Math.min(objectIndex, arrayIndex);
+
+  if (startIndex === -1) {
+    throw new Error(`Bird did not return JSON. Output: ${output}`);
+  }
+
+  return JSON.parse(output.slice(startIndex));
 }
 
 function coerceTweets(payload: unknown): BirdTweet[] {
@@ -60,6 +126,7 @@ function coerceTweets(payload: unknown): BirdTweet[] {
   if (payload && typeof payload === "object") {
     const record = payload as Record<string, unknown>;
     if (Array.isArray(record.tweets)) return record.tweets as BirdTweet[];
+    if (record.tweet && typeof record.tweet === "object") return [record.tweet as BirdTweet];
   }
   return [];
 }
@@ -81,12 +148,135 @@ export function getRetweetCount(tweet: BirdTweet): number {
   return tweet.retweetCount || tweet.public_metrics?.retweet_count || 0;
 }
 
+export function getLikeCount(tweet: BirdTweet): number {
+  return tweet.likeCount || tweet.favoriteCount || tweet.favorite_count || tweet.public_metrics?.like_count || 0;
+}
+
+export function getViewCount(tweet: BirdTweet): number {
+  const rawViews = tweet._raw?.views;
+  const rawCount =
+    rawViews && typeof rawViews === "object" && typeof (rawViews as { count?: unknown }).count === "string"
+      ? Number((rawViews as { count: string }).count)
+      : 0;
+
+  return rawCount || tweet.viewCount || tweet.view_count || tweet.public_metrics?.impression_count || 0;
+}
+
+export function getTweetText(tweet: BirdTweet): string {
+  return tweet.text || "";
+}
+
+export function getTweetCreatedAt(tweet: BirdTweet): string | undefined {
+  return tweet.createdAt || tweet.created_at;
+}
+
+export function getTweetAuthorName(tweet: BirdTweet): string {
+  return tweet.author?.name || getTweetAuthor(tweet);
+}
+
+export function getTweetImageUrl(tweet: BirdTweet): string | null {
+  const raw = tweet._raw;
+  if (!raw || typeof raw !== "object") return null;
+
+  const card = (raw as { card?: unknown }).card;
+  if (card && typeof card === "object") {
+    const legacy = (card as { legacy?: unknown }).legacy;
+    if (legacy && typeof legacy === "object") {
+      const bindingValues = (legacy as { binding_values?: unknown }).binding_values;
+      if (Array.isArray(bindingValues)) {
+        const imageBinding = bindingValues.find((entry) => {
+          if (!entry || typeof entry !== "object") return false;
+          const key = (entry as { key?: unknown }).key;
+          return typeof key === "string" && /(photo|summary|thumbnail)_image.*(original|x_large|large)$/.test(key);
+        });
+
+        if (imageBinding && typeof imageBinding === "object") {
+          const value = (imageBinding as { value?: unknown }).value;
+          const imageValue =
+            value && typeof value === "object" ? (value as { image_value?: unknown }).image_value : null;
+          const url =
+            imageValue && typeof imageValue === "object"
+              ? (imageValue as { url?: unknown }).url
+              : null;
+          if (typeof url === "string" && url.length > 0) {
+            return url;
+          }
+        }
+      }
+    }
+  }
+
+  const legacy = (raw as { legacy?: unknown }).legacy;
+  if (!legacy || typeof legacy !== "object") return null;
+
+  const mediaSources = [
+    (legacy as { extended_entities?: unknown }).extended_entities,
+    (legacy as { entities?: unknown }).entities,
+  ];
+
+  for (const source of mediaSources) {
+    if (!source || typeof source !== "object") continue;
+    const media = (source as { media?: unknown }).media;
+    if (!Array.isArray(media)) continue;
+
+    for (const entry of media) {
+      if (!entry || typeof entry !== "object") continue;
+      const mediaUrlHttps = (entry as { media_url_https?: unknown }).media_url_https;
+      if (typeof mediaUrlHttps === "string" && mediaUrlHttps.length > 0) return mediaUrlHttps;
+      const mediaUrl = (entry as { media_url?: unknown }).media_url;
+      if (typeof mediaUrl === "string" && mediaUrl.length > 0) return mediaUrl;
+    }
+  }
+
+  return null;
+}
+
+export function isReplyTweet(tweet: BirdTweet): boolean {
+  if (tweet.inReplyToStatusId) return true;
+
+  const raw = tweet._raw;
+  if (!raw || typeof raw !== "object") return false;
+
+  const legacy = (raw as { legacy?: unknown }).legacy;
+  if (!legacy || typeof legacy !== "object") return false;
+
+  const replyId = (legacy as { in_reply_to_status_id_str?: unknown }).in_reply_to_status_id_str;
+  return typeof replyId === "string" && replyId.length > 0;
+}
+
 export async function getMentions(): Promise<BirdTweet[]> {
   return coerceTweets(await runBird(["mentions", "--json"]));
 }
 
 export async function searchTweets(query: string, count = 20): Promise<BirdTweet[]> {
   return coerceTweets(await runBird(["search", query, "--json", "--count", String(count)]));
+}
+
+export async function getMentionsForPlatform(platform: Pick<PlatformRow, "config">): Promise<BirdTweet[]> {
+  return coerceTweets(await runBird(["mentions", "--json"], true, platform));
+}
+
+export async function searchTweetsForPlatform(
+  platform: Pick<PlatformRow, "config">,
+  query: string,
+  count = 20
+): Promise<BirdTweet[]> {
+  return coerceTweets(await runBird(["search", query, "--json-full", "--count", String(count)], true, platform));
+}
+
+export async function readTweetForPlatform(
+  platform: Pick<PlatformRow, "config">,
+  tweetUrl: string
+): Promise<BirdTweet | null> {
+  const tweets = coerceTweets(await runBird(["read", tweetUrl, "--json"], true, platform));
+  return tweets[0] ?? null;
+}
+
+export async function getThreadForPlatform(
+  platform: Pick<PlatformRow, "config">,
+  tweetUrl: string
+): Promise<BirdTweet[]> {
+  return coerceTweets(await runBird(["thread", tweetUrl, "--json"], true, platform));
 }
 
 export async function sendBirdReply(tweetUrl: string, text: string): Promise<string | null> {
