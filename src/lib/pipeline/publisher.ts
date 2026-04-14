@@ -10,6 +10,7 @@ const ACCOUNT_IDS: Record<string, string> = {
 
 export type PublishClassification =
   | "success"
+  | "disabled"
   | "duplicate"
   | "rate_limited"
   | "validation_error"

@@ -62,6 +62,17 @@ function createValidationFailure(
   };
 }
 
+function createDisabledSkip(target: PublishPlatformInput): PublishResult {
+  return {
+    platform: target.platform.type,
+    provider: target.platform.provider === "bird" ? "bird" : "late",
+    accountId: target.platform.accountId,
+    success: false,
+    classification: "disabled",
+    error: "Target platform is disabled. Ignoring publish for this account.",
+  };
+}
+
 export async function publishPlatformTargets(
   targets: PublishPlatformInput[]
 ): Promise<PublishExecutionSummary> {
@@ -69,9 +80,7 @@ export async function publishPlatformTargets(
 
   for (const target of targets) {
     if (!target.platform.enabled) {
-      outcomes.push(
-        createValidationFailure(target, "Target platform is disabled.")
-      );
+      outcomes.push(createDisabledSkip(target));
       continue;
     }
 
@@ -115,7 +124,9 @@ export async function publishPlatformTargets(
       .filter((outcome) => outcome.success)
       .map((outcome) => outcome.platform),
     errors: outcomes
-      .filter((outcome) => !outcome.success)
+      .filter(
+        (outcome) => !outcome.success && outcome.classification !== "disabled"
+      )
       .map((outcome) => ({
         platform: outcome.platform,
         error: outcome.error ?? "Unknown error",

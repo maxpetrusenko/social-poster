@@ -29,12 +29,26 @@ test("resolvePipelineRunStatus preserves clean completed runs", () => {
 test("resolvePublishResultsStatus requires full success", () => {
   assert.equal(resolvePublishResultsStatus([{ success: true }, { success: true }]), "completed");
   assert.equal(resolvePublishResultsStatus([{ success: true }, { success: false }]), "failed");
+  assert.equal(
+    resolvePublishResultsStatus([
+      { success: true },
+      { success: false, classification: "disabled" },
+    ]),
+    "completed"
+  );
 });
 
 test("resolvePostStatusFromTargetResults marks mixed delivery as partial failure", () => {
   assert.equal(
     resolvePostStatusFromTargetResults([{ success: true }, { success: false }]),
     "partial_failure"
+  );
+  assert.equal(
+    resolvePostStatusFromTargetResults([
+      { success: true },
+      { success: false, classification: "disabled" },
+    ]),
+    "published"
   );
   assert.equal(
     resolvePostStatusFromTargetResults([{ success: false }, { success: false }]),

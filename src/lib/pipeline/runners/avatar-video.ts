@@ -114,7 +114,12 @@ export async function runAvatarVideoJob(
     );
     const results = summary.outcomes;
     const ok = results.filter((r) => r.success).map((r) => r.platform);
-    const failed = results.filter((r) => !r.success);
+    const failed = results.filter(
+      (result) => !result.success && result.classification !== "disabled"
+    );
+    const skipped = results.filter(
+      (result) => result.classification === "disabled"
+    );
     complete(s7, {
       outcomes: results,
       published: summary.published,
@@ -123,6 +128,8 @@ export async function runAvatarVideoJob(
     if (failed.length > 0) {
       s7.status = "failed";
       s7.error = failed.map((result) => `${result.platform}: ${result.error}`).join("; ");
+    } else if (skipped.length > 0) {
+      s7.status = "skipped";
     }
 
     // Dedup

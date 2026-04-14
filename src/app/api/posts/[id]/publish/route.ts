@@ -77,12 +77,17 @@ export async function POST(
     const stepEnd = new Date();
     const step: PipelineStep = {
       name: stepName,
-      status: result.success ? "completed" : "failed",
+      status: result.success
+        ? "completed"
+        : result.classification === "disabled" || result.classification === "duplicate"
+          ? "skipped"
+          : "failed",
       startedAt: stepStart.toISOString(),
       completedAt: stepEnd.toISOString(),
       durationMs: stepEnd.getTime() - stepStart.getTime(),
       output: result,
-      error: result.error,
+      error:
+        result.classification === "disabled" ? undefined : result.error,
     };
     steps.push(step);
 
@@ -90,19 +95,28 @@ export async function POST(
     await db.update(postTargets).set({
       status: result.success
         ? "published"
-        : result.classification === "duplicate"
+        : result.classification === "duplicate" ||
+            result.classification === "disabled"
           ? "skipped"
           : "failed",
       publishedUrl: result.postUrl ?? null,
       platformPostId: result.postId ?? null,
-      error: result.error ?? null,
+      error:
+        result.classification === "disabled" ? null : result.error ?? null,
       publishedAt: result.success ? stepEnd : null,
     }).where(eq(postTargets.id, target.id));
   }
 
   const completedAt = new Date();
   const runStatus = resolvePublishResultsStatus(results);
-  const postStatus = resolvePostStatusFromTargetResults(results);
+  const hasActionableResults = results.some(
+    (result) => result.classification !== "disabled"
+  );
+  const postStatus = hasActionableResults
+    ? resolvePostStatusFromTargetResults(results)
+    : post.scheduledAt && post.scheduledAt > completedAt
+      ? "scheduled"
+      : "draft";
 
   // Update pipeline run
   await db.update(pipelineRuns).set({

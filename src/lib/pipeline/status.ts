@@ -12,6 +12,15 @@ type PipelineStepLike = {
   error?: string;
 };
 
+type PublishResultLike = {
+  success: boolean;
+  classification?: string;
+};
+
+function getActionableResults(results: PublishResultLike[]) {
+  return results.filter((result) => result.classification !== "disabled");
+}
+
 export function resolvePipelineRunStatus(input: {
   status: string;
   steps?: PipelineStepLike[] | null;
@@ -33,22 +42,25 @@ export function resolvePipelineRunStatus(input: {
 }
 
 export function resolvePublishResultsStatus(
-  results: Array<{ success: boolean }>
+  results: PublishResultLike[]
 ): Exclude<RunStatus, "running"> {
-  return results.length > 0 && results.every((result) => result.success)
+  const actionable = getActionableResults(results);
+  return actionable.length > 0 && actionable.every((result) => result.success)
     ? "completed"
     : "failed";
 }
 
 export function resolvePostStatusFromTargetResults(
-  results: Array<{ success: boolean }>
+  results: PublishResultLike[]
 ): PostStatus {
-  if (results.length === 0) {
+  const actionable = getActionableResults(results);
+
+  if (actionable.length === 0) {
     return "failed";
   }
 
-  const successCount = results.filter((result) => result.success).length;
-  if (successCount === results.length) {
+  const successCount = actionable.filter((result) => result.success).length;
+  if (successCount === actionable.length) {
     return "published";
   }
 

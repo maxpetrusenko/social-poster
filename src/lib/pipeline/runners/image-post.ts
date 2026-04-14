@@ -118,8 +118,13 @@ export async function runImagePostJob(
     const summary = await publishPlatformTargets(publishTargets);
     const results = summary.outcomes;
     const ok = results.filter((r) => r.success).map((r) => r.platform);
-    const failed = results.filter((result) => !result.success);
-    s3.status = failed.length > 0 ? "failed" : "completed";
+    const failed = results.filter(
+      (result) => !result.success && result.classification !== "disabled"
+    );
+    const skipped = results.filter(
+      (result) => result.classification === "disabled"
+    );
+    s3.status = failed.length > 0 ? "failed" : skipped.length > 0 ? "skipped" : "completed";
     s3.completedAt = new Date().toISOString();
     s3.output = {
       outcomes: results,
