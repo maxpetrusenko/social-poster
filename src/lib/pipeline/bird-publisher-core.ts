@@ -30,6 +30,22 @@ export type BirdCredentials = {
   threadChunkLimit: number;
 };
 
+export function buildBirdEnv(
+  credentials: Pick<BirdCredentials, "authToken" | "ct0">,
+  env: NodeJS.ProcessEnv = process.env
+) {
+  const nextEnv = { ...env };
+
+  if (credentials.authToken && credentials.ct0) {
+    nextEnv.AUTH_TOKEN = credentials.authToken;
+    nextEnv.CT0 = credentials.ct0;
+    nextEnv.X_AUTH_TOKEN = credentials.authToken;
+    nextEnv.X_CT0 = credentials.ct0;
+  }
+
+  return nextEnv;
+}
+
 function readCredentialString(
   credentials: BirdCredentialSource,
   ...keys: Array<keyof BirdCredentialSource>

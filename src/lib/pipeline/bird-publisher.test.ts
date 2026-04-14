@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  buildBirdEnv,
   classifyBirdError,
   resolveBirdCredentialsFromSource,
   splitBirdThreadContent,
@@ -100,4 +101,20 @@ test("classifyBirdError maps tweet-too-long to validation error", () => {
     classifyBirdError("Authorization: Tweet needs to be a bit shorter. (186)"),
     "validation_error"
   );
+});
+
+test("buildBirdEnv injects explicit credentials without CLI args", () => {
+  const env = buildBirdEnv(
+    {
+      authToken: "cfg-auth",
+      ct0: "cfg-ct0",
+    },
+    { ...process.env, PATH: "/usr/bin" }
+  );
+
+  assert.equal(env.AUTH_TOKEN, "cfg-auth");
+  assert.equal(env.CT0, "cfg-ct0");
+  assert.equal(env.X_AUTH_TOKEN, "cfg-auth");
+  assert.equal(env.X_CT0, "cfg-ct0");
+  assert.equal(env.PATH, "/usr/bin");
 });

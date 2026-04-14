@@ -9,6 +9,7 @@ import { readStoredConnectionConfig } from "@/lib/connection-config";
 
 import type { PublishResult } from "./publisher";
 import {
+  buildBirdEnv,
   classifyBirdError,
   resolveBirdCredentialsFromSource,
   splitBirdThreadContent,
@@ -47,9 +48,7 @@ function extractBirdPostId(url: string | null) {
 function buildBirdBaseArgs(credentials: BirdCredentials) {
   const args: string[] = [];
 
-  if (credentials.authToken && credentials.ct0) {
-    args.push("--auth-token", credentials.authToken, "--ct0", credentials.ct0);
-  } else if (!credentials.useInstalledBirdSession) {
+  if (!credentials.authToken && !credentials.ct0 && !credentials.useInstalledBirdSession) {
     throw new Error(
       "Missing Bird auth credentials. Add authToken and ct0 or enable installed Bird session."
     );
@@ -85,7 +84,7 @@ async function runBird(args: string[], credentials: BirdCredentials) {
   try {
     const { stdout, stderr } = await execFileAsync(runner, runnerArgs, {
       timeout: 60_000,
-      env: process.env,
+      env: buildBirdEnv(credentials),
       maxBuffer: 8 * 1024 * 1024,
     });
 
