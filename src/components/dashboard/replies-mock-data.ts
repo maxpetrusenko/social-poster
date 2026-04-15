@@ -4,6 +4,7 @@ export type ViewMode = "replies1" | "replies2";
 export type ReplyCard = {
   id: string;
   profileName: string;
+  replyProfileLabel?: string | null;
   author: string;
   tweetUrl: string;
   replyUrl: string;
@@ -15,6 +16,8 @@ export type ReplyCard = {
   risk: "low" | "medium";
   repliesScraped: number;
   updatedLabel: string;
+  readyAtLabel?: string | null;
+  publishStateLabel?: string | null;
   tags: string[];
   bestAngle: string;
   why: string;

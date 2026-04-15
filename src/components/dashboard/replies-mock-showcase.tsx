@@ -1,22 +1,25 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { RefreshCw, Send } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { ChevronDown, RefreshCw } from "lucide-react";
 import { RepliesDrawerView, RepliesKanbanView, ReplyReviewModal } from "@/components/dashboard/replies-mock-views";
 import { INITIAL_CARDS, type ReplyCard, type ReplyStatus, type ViewMode } from "@/components/dashboard/replies-mock-data";
 import { cn } from "@/lib/utils";
-import type { ReplyConnectionOption } from "@/lib/dashboard/replies-data";
+import type { ReplyConnectionOption, ReplyProfileOption } from "@/lib/dashboard/replies-data";
+import { DEFAULT_REPLY_PROFILE_ID } from "@/lib/replies/profiles";
 
 export function RepliesMockShowcase({
   connections,
+  profiles,
   initialCards,
 }: {
   connections: ReplyConnectionOption[];
+  profiles: ReplyProfileOption[];
   initialCards: ReplyCard[];
 }) {
   const hasLiveConnections = connections.length > 0;
   const fallbackCards = hasLiveConnections ? initialCards : initialCards.length > 0 ? initialCards : INITIAL_CARDS;
-  const autoRefreshedConnectionIds = useRef(new Set<string>());
+  const autoRefillAtByKey = useRef(new Map<string, number>());
   const [view, setView] = useState<ViewMode>("replies1");
   const [cards, setCards] = useState(fallbackCards);
   const [selectedId, setSelectedId] = useState(fallbackCards[0]?.id ?? "");
@@ -26,12 +29,22 @@ export function RepliesMockShowcase({
   const [selectedTransport, setSelectedTransport] = useState(
     connections[0]?.transportOptions[0]?.value ?? "bird"
   );
+  const [selectedProfileId, setSelectedProfileId] = useState(
+    profiles.find((profile) => profile.id === DEFAULT_REPLY_PROFILE_ID)?.id ??
+      profiles[0]?.id ??
+      DEFAULT_REPLY_PROFILE_ID
+  );
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   const selected = cards.find((card) => card.id === selectedId) ?? cards[0] ?? null;
   const selectedConnection =
     connections.find((connection) => connection.id === selectedConnectionId) ?? null;
+  const selectedProfile =
+    profiles.find((profile) => profile.id === selectedProfileId) ?? profiles[0] ?? null;
+  const reviewCount = cards.filter(
+    (card) => card.status === "new" || card.status === "analyzed" || card.status === "drafted"
+  ).length;
 
   const counts = useMemo(() => {
     const next = {
@@ -48,28 +61,64 @@ export function RepliesMockShowcase({
     return next;
   }, [cards]);
 
+  const refreshLiveReplies = useCallback((mode: "auto" | "manual" = "manual") => {
+    if (!selectedConnectionId || selectedConnectionId === "mock-x-main") {
+      setCards(INITIAL_CARDS);
+      return;
+    }
+
+    startTransition(async () => {
+      try {
+        setError(null);
+        const response = await fetch("/api/replies", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            platformId: selectedConnectionId,
+            profileId: selectedProfileId,
+            mode,
+          }),
+        });
+        const body = (await response.json()) as { cards?: ReplyCard[]; error?: string };
+        if (!response.ok) throw new Error(body.error || "Failed to refresh replies");
+        setCards(body.cards ?? []);
+        setSelectedId((current) => body.cards?.some((item) => item.id === current) ? current : body.cards?.[0]?.id || "");
+      } catch (refreshError) {
+        setError(refreshError instanceof Error ? refreshError.message : "Failed to refresh replies");
+      }
+    });
+  }, [selectedConnectionId, selectedProfileId]);
+
   useEffect(() => {
     if (!selectedConnectionId || selectedConnectionId === "mock-x-main") return;
 
     startTransition(async () => {
       try {
         setError(null);
-        const response = await fetch(`/api/replies?platformId=${encodeURIComponent(selectedConnectionId)}`);
+        const response = await fetch(
+          `/api/replies?platformId=${encodeURIComponent(selectedConnectionId)}&profileId=${encodeURIComponent(selectedProfileId)}`
+        );
         const body = (await response.json()) as { cards?: ReplyCard[]; error?: string };
         if (!response.ok) throw new Error(body.error || "Failed to load replies");
 
         let nextCards = body.cards ?? [];
 
+        const refreshKey = `${selectedConnectionId}:${selectedProfileId}`;
         const shouldAutoRefresh =
-          !autoRefreshedConnectionIds.current.has(selectedConnectionId) &&
-          (nextCards.length === 0 || nextCards.every((card) => !card.mediaUrl));
+          !nextCards.some(
+            (card) => card.status === "new" || card.status === "analyzed" || card.status === "drafted"
+          ) && shouldAutoRefill(refreshKey, autoRefillAtByKey.current);
 
         if (shouldAutoRefresh) {
-          autoRefreshedConnectionIds.current.add(selectedConnectionId);
+          autoRefillAtByKey.current.set(refreshKey, Date.now());
           const refreshResponse = await fetch("/api/replies", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ platformId: selectedConnectionId }),
+            body: JSON.stringify({
+              platformId: selectedConnectionId,
+              profileId: selectedProfileId,
+              mode: "manual",
+            }),
           });
           const refreshBody = (await refreshResponse.json()) as { cards?: ReplyCard[]; error?: string };
           if (!refreshResponse.ok) throw new Error(refreshBody.error || "Failed to refresh replies");
@@ -82,9 +131,47 @@ export function RepliesMockShowcase({
         setError(fetchError instanceof Error ? fetchError.message : "Failed to load replies");
       }
     });
-  }, [selectedConnectionId]);
+  }, [selectedConnectionId, selectedProfile?.label, selectedProfileId]);
 
-  function moveCard(id: string, status: ReplyStatus) {
+  useEffect(() => {
+    if (!selectedConnectionId || selectedConnectionId === "mock-x-main") return;
+    if (!cards.some((card) => card.status === "ready")) return;
+
+    const interval = window.setInterval(() => {
+      startTransition(async () => {
+        try {
+          const response = await fetch(
+            `/api/replies?platformId=${encodeURIComponent(selectedConnectionId)}&profileId=${encodeURIComponent(selectedProfileId)}`
+          );
+          const body = (await response.json()) as { cards?: ReplyCard[]; error?: string };
+          if (!response.ok) throw new Error(body.error || "Failed to sync replies");
+          const nextCards = body.cards ?? [];
+          setCards(nextCards);
+          setSelectedId((current) =>
+            nextCards.some((item) => item.id === current) ? current : nextCards[0]?.id || ""
+          );
+          setError(null);
+        } catch (syncError) {
+          setError(syncError instanceof Error ? syncError.message : "Failed to sync replies");
+        }
+      });
+    }, 30_000);
+
+    return () => window.clearInterval(interval);
+  }, [cards, selectedConnectionId, selectedProfileId]);
+
+  useEffect(() => {
+    if (!selectedConnectionId || selectedConnectionId === "mock-x-main") return;
+    if (reviewCount > 0 || isPending) return;
+
+    const refreshKey = `${selectedConnectionId}:${selectedProfileId}`;
+    if (!shouldAutoRefill(refreshKey, autoRefillAtByKey.current)) return;
+
+    autoRefillAtByKey.current.set(refreshKey, Date.now());
+    refreshLiveReplies("manual");
+  }, [isPending, refreshLiveReplies, reviewCount, selectedConnectionId, selectedProfileId]);
+
+  function moveCard(id: string, status: ReplyStatus, selectedDraftIndex?: number) {
     const previous = cards;
     setCards((current) => current.map((card) => (card.id === id ? { ...card, status, updatedLabel: "just now" } : card)));
 
@@ -95,12 +182,21 @@ export function RepliesMockShowcase({
         const response = await fetch(endpoint, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: status === "posted" ? JSON.stringify({}) : JSON.stringify({ status }),
+          body:
+            status === "posted"
+              ? JSON.stringify({})
+              : JSON.stringify({
+                  status,
+                  selectedDraftIndex:
+                    typeof selectedDraftIndex === "number" ? selectedDraftIndex : undefined,
+                }),
         });
         const body = (await response.json()) as { error?: string };
         if (!response.ok) throw new Error(body.error || "Failed to update reply");
         if (selectedConnectionId && selectedConnectionId !== "mock-x-main") {
-          const next = await fetch(`/api/replies?platformId=${encodeURIComponent(selectedConnectionId)}`);
+          const next = await fetch(
+            `/api/replies?platformId=${encodeURIComponent(selectedConnectionId)}&profileId=${encodeURIComponent(selectedProfileId)}`
+          );
           const nextBody = (await next.json()) as { cards?: ReplyCard[]; error?: string };
           if (!next.ok) throw new Error(nextBody.error || "Failed to sync replies");
           setCards(nextBody.cards ?? []);
@@ -143,33 +239,55 @@ export function RepliesMockShowcase({
     });
   }
 
-  function refreshLiveReplies() {
-    if (!selectedConnectionId || selectedConnectionId === "mock-x-main") {
-      setCards(INITIAL_CARDS);
-      return;
-    }
-
-    startTransition(async () => {
-      try {
-        setError(null);
-        const response = await fetch("/api/replies", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ platformId: selectedConnectionId }),
-        });
-        const body = (await response.json()) as { cards?: ReplyCard[]; error?: string };
-        if (!response.ok) throw new Error(body.error || "Failed to refresh replies");
-        setCards(body.cards ?? []);
-        setSelectedId((current) => body.cards?.some((item) => item.id === current) ? current : body.cards?.[0]?.id || "");
-      } catch (refreshError) {
-        setError(refreshError instanceof Error ? refreshError.message : "Failed to refresh replies");
-      }
-    });
-  }
-
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-end gap-2 px-1 py-2">
+        {profiles.length <= 1 ? (
+          <div className="rounded-full border border-[rgba(12,17,21,0.08)] bg-white px-4 py-2 text-left text-sm text-[var(--ink)]">
+            <span className="block text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
+              Profile
+            </span>
+            <span className="block truncate font-semibold text-[var(--ink)]">
+              {selectedProfile?.label || "Agent Persona"}
+            </span>
+          </div>
+        ) : (
+          <details className="relative">
+            <summary className="list-none cursor-pointer rounded-full border border-[rgba(12,17,21,0.08)] bg-white px-4 py-2 text-left text-sm text-[var(--ink)]">
+              <span className="flex items-center gap-3">
+                <span className="min-w-0">
+                  <span className="block text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
+                    Profile
+                  </span>
+                  <span className="block truncate font-semibold text-[var(--ink)]">
+                    {selectedProfile?.label || "Agent Persona"}
+                  </span>
+                </span>
+                <ChevronDown className="h-4 w-4 text-[var(--muted)]" />
+              </span>
+            </summary>
+            <div className="absolute right-0 z-20 mt-2 w-[320px] rounded-[18px] border border-[rgba(12,17,21,0.08)] bg-white p-2 shadow-[0_18px_45px_rgba(12,17,21,0.12)]">
+              {profiles.map((profile) => (
+                <button
+                  key={profile.id}
+                  type="button"
+                  onClick={() => setSelectedProfileId(profile.id)}
+                  className={cn(
+                    "flex w-full items-start justify-between rounded-[14px] px-3 py-3 text-left text-sm transition hover:bg-[rgba(12,17,21,0.03)]",
+                    selectedProfileId === profile.id ? "bg-[rgba(15,126,169,0.08)]" : ""
+                  )}
+                >
+                  <span>
+                    <span className="block font-semibold text-[var(--ink)]">{profile.label}</span>
+                    <span className="mt-1 block text-xs text-[var(--muted)]">
+                      {profile.summary} · {profile.destination}
+                    </span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          </details>
+        )}
         <details className="relative">
           <summary className="list-none cursor-pointer rounded-full border border-[rgba(12,17,21,0.08)] bg-white px-4 py-2 text-sm font-semibold text-[var(--ink)]">
             {selectedConnection?.label || "Select X connection"}
@@ -249,24 +367,12 @@ export function RepliesMockShowcase({
         </div>
         <button
           type="button"
-          onClick={refreshLiveReplies}
+          onClick={() => refreshLiveReplies("manual")}
           disabled={isPending}
           className="inline-flex items-center gap-2 rounded-full border border-[rgba(12,17,21,0.08)] bg-white px-4 py-2 text-sm font-semibold text-[var(--ink)] disabled:opacity-60"
         >
           <RefreshCw className="h-4 w-4" />
           {isPending ? "Refreshing..." : "Refresh now"}
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            const ready = cards.find((card) => card.status === "ready");
-            if (ready) moveCard(ready.id, "posted");
-          }}
-          disabled={isPending || !cards.some((card) => card.status === "ready")}
-          className="inline-flex items-center gap-2 rounded-full border border-[rgba(37,99,235,0.16)] bg-[rgba(37,99,235,0.1)] px-4 py-2 text-sm font-semibold text-[#1d4ed8] disabled:opacity-60"
-        >
-          <Send className="h-4 w-4" />
-          Dispatch ready
         </button>
       </div>
 
@@ -279,37 +385,39 @@ export function RepliesMockShowcase({
       {cards.length === 0 ? (
         <div className="mx-auto flex w-full max-w-[1720px] flex-col items-center justify-center rounded-[28px] border border-[rgba(12,17,21,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(243,247,249,0.94))] px-6 py-16 text-center shadow-[0_18px_45px_rgba(12,17,21,0.08)]">
           <p className="section-eyebrow text-[var(--accent-tech)]">Live reply queue</p>
-          <h2 className="mt-3 font-serif text-[2rem] leading-none text-[var(--ink)]">No candidates yet</h2>
+          <h2 className="mt-3 font-serif text-[2rem] leading-none text-[var(--ink)]">No active queue yet</h2>
           <p className="mt-4 max-w-[680px] text-sm leading-7 text-[var(--muted)]">
             {hasLiveConnections
-              ? "Refresh now to pull live X posts through Bird search, score them, and drop reply drafts into the board."
+              ? "Open the page to auto-backfill a small review batch, or hit Refresh now for a broader manual pull."
               : "Add an X connection first. Mock cards stay available only when no live connection exists."}
           </p>
         </div>
-      ) : view === "replies1" && selected ? (
-        <RepliesKanbanView
-          cards={cards}
-          counts={counts}
-          selected={selected}
-          onMove={moveCard}
-          onOpen={(id) => {
-            setSelectedId(id);
-            setEditingId(null);
-            setIsModalOpen(true);
-          }}
-        />
       ) : (
-        selected ? (
-          <RepliesDrawerView
-            cards={cards}
-            selected={selected}
-            editingId={editingId}
-            onMove={moveCard}
-            onSelect={setSelectedId}
-            onEditToggle={setEditingId}
-            onUpdateDraft={updateDraft}
-          />
-        ) : null
+        <>
+          {view === "replies1" && selected ? (
+            <RepliesKanbanView
+              cards={cards}
+              counts={counts}
+              selected={selected}
+              onMove={moveCard}
+              onOpen={(id) => {
+                setSelectedId(id);
+                setEditingId(null);
+                setIsModalOpen(true);
+              }}
+            />
+          ) : selected ? (
+            <RepliesDrawerView
+              cards={cards}
+              selected={selected}
+              editingId={editingId}
+              onMove={moveCard}
+              onSelect={setSelectedId}
+              onEditToggle={setEditingId}
+              onUpdateDraft={updateDraft}
+            />
+          ) : null}
+        </>
       )}
 
       {view === "replies1" && selected && isModalOpen ? (
@@ -324,4 +432,9 @@ export function RepliesMockShowcase({
       ) : null}
     </div>
   );
+}
+
+function shouldAutoRefill(key: string, state: Map<string, number>) {
+  const lastTriggeredAt = state.get(key) ?? 0;
+  return Date.now() - lastTriggeredAt >= 10 * 60_000;
 }

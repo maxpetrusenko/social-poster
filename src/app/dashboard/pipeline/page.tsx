@@ -1,9 +1,11 @@
 import { db } from "@/db";
 import { pipelineRuns, schedules } from "@/db/schema";
-import { desc, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { CheckCircle2, Clock, XCircle } from "lucide-react";
 import { relativeTime } from "@/lib/utils";
 import { resolvePipelineRunStatus } from "@/lib/pipeline/status";
+import { getTenantContext } from "@/lib/tenancy";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
@@ -41,9 +43,13 @@ function getDuration(run: {
 }
 
 export default async function PipelinePage() {
+  const tenant = await getTenantContext();
+  if (!tenant) redirect("/login");
+
   const runs = await db
     .select()
     .from(pipelineRuns)
+    .where(eq(pipelineRuns.workspaceId, tenant.currentWorkspace.id))
     .orderBy(desc(pipelineRuns.startedAt))
     .limit(50);
 
@@ -52,7 +58,15 @@ export default async function PipelinePage() {
   ) as string[];
   const scheduleRows =
     scheduleIds.length > 0
-      ? await db.select().from(schedules).where(inArray(schedules.id, scheduleIds))
+      ? await db
+          .select()
+          .from(schedules)
+          .where(
+            and(
+              inArray(schedules.id, scheduleIds),
+              eq(schedules.workspaceId, tenant.currentWorkspace.id)
+            )
+          )
       : [];
   const scheduleMap = new Map(scheduleRows.map((schedule) => [schedule.id, schedule]));
 

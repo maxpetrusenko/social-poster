@@ -17,8 +17,48 @@ function formatDateLabel(value: Date) {
   }).format(value);
 }
 
-export default async function SettingsTeamMembersPage() {
+function getTeamMembersNotice(status: string | null) {
+  switch (status) {
+    case "invite-sent":
+      return {
+        tone: "good" as const,
+        title: "invite sent",
+        description: "Provider accepted the invite email.",
+      };
+    case "invite-delivery-failed":
+      return {
+        tone: "warn" as const,
+        title: "invite saved; email blocked",
+        description:
+          "The pending invite still exists below. Copy the accept link while Resend or SMTP is being fixed.",
+      };
+    case "invite-resent":
+      return {
+        tone: "good" as const,
+        title: "invite resent",
+        description: "A fresh invite email was submitted to the provider.",
+      };
+    case "invite-resend-delivery-failed":
+      return {
+        tone: "warn" as const,
+        title: "invite refreshed; email blocked",
+        description:
+          "The pending invite token was rotated. Copy the updated accept link below while delivery is unavailable.",
+      };
+    default:
+      return null;
+  }
+}
+
+export default async function SettingsTeamMembersPage({
+  searchParams,
+}: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+}) {
   try {
+    const params = searchParams ? await searchParams : {};
+    const rawStatus = params.status;
+    const status = typeof rawStatus === "string" ? rawStatus : null;
     const { context, members, workspaces, workspaceMemberships, invitations } =
       await getOrgMembersData();
     const appUrl = getAppUrlFromEnv();
@@ -83,6 +123,7 @@ export default async function SettingsTeamMembersPage() {
             })
           ),
         }))}
+        notice={getTeamMembersNotice(status)}
       />
     );
   } catch {

@@ -2,11 +2,20 @@ import { db } from "@/db";
 import { profiles } from "@/db/schema";
 import Link from "next/link";
 import { Plus } from "lucide-react";
+import { getTenantContext } from "@/lib/tenancy";
+import { eq } from "drizzle-orm";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
 export default async function ProfilesPage() {
-  const allProfiles = await db.select().from(profiles);
+  const tenant = await getTenantContext();
+  if (!tenant) redirect("/login");
+
+  const allProfiles = await db
+    .select()
+    .from(profiles)
+    .where(eq(profiles.workspaceId, tenant.currentWorkspace.id));
 
   return (
     <div className="min-h-screen bg-white p-8">

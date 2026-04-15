@@ -1,9 +1,10 @@
 import { db } from "@/db";
-import { posts, postTargets } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { platforms, posts, postTargets, profiles } from "@/db/schema";
+import { and, eq, inArray } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { requireApiSession } from "@/lib/auth";
 import crypto from "node:crypto";
+import { getTenantContext } from "@/lib/tenancy";
 
 export async function POST(
   request: NextRequest,
@@ -13,6 +14,11 @@ export async function POST(
   if (session instanceof NextResponse) return session;
 
   try {
+    const tenant = await getTenantContext();
+    if (!tenant) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { id } = await params;
     const body = await request.json();
     const {
@@ -35,7 +41,7 @@ export async function POST(
     }
 
     const post = await db.query.posts.findFirst({
-      where: eq(posts.id, id),
+      where: and(eq(posts.id, id), eq(posts.workspaceId, tenant.currentWorkspace.id)),
     });
 
     if (!post) {
@@ -64,6 +70,51 @@ export async function POST(
     }
 
     const status = normalizedIntent === "schedule" ? "scheduled" : "draft";
+    const normalizedProfileId =
+      typeof profileId === "string" && profileId.trim() ? profileId.trim() : null;
+    const normalizedPlatformIds = Array.isArray(platformIds)
+      ? Array.from(new Set(platformIds.filter((value: unknown): value is string => typeof value === "string")))
+      : null;
+
+    if (normalizedProfileId) {
+      const matchingProfile = await db
+        .select({ id: profiles.id })
+        .from(profiles)
+        .where(
+          and(
+            eq(profiles.id, normalizedProfileId),
+            eq(profiles.workspaceId, tenant.currentWorkspace.id)
+          )
+        )
+        .get();
+
+      if (!matchingProfile) {
+        return NextResponse.json(
+          { error: "Selected profile is outside the current workspace." },
+          { status: 400 }
+        );
+      }
+    }
+
+    if (normalizedPlatformIds && normalizedPlatformIds.length > 0) {
+      const matchingPlatforms = await db
+        .select({ id: platforms.id, workspaceId: platforms.workspaceId })
+        .from(platforms)
+        .where(inArray(platforms.id, normalizedPlatformIds));
+
+      const allowedIds = new Set(
+        matchingPlatforms
+          .filter((platform) => platform.workspaceId === tenant.currentWorkspace.id)
+          .map((platform) => platform.id)
+      );
+
+      if (allowedIds.size !== normalizedPlatformIds.length) {
+        return NextResponse.json(
+          { error: "One or more selected channels are outside the current workspace." },
+          { status: 400 }
+        );
+      }
+    }
 
     await db
       .update(posts)
@@ -73,20 +124,20 @@ export async function POST(
         contentType: contentType || "text",
         mediaUrl: mediaUrl || null,
         sourceUrl: sourceUrl || null,
-        profileId: profileId || null,
+        profileId: normalizedProfileId,
         status,
         scheduledAt: normalizedIntent === "schedule" ? nextScheduledAt : null,
         updatedAt: now,
       })
       .where(eq(posts.id, id));
 
-    if (platformIds) {
+    if (normalizedPlatformIds !== null) {
       await db
         .delete(postTargets)
         .where(eq(postTargets.postId, id));
 
-      if (platformIds.length > 0) {
-        const targetEntries = platformIds.map((platformId: string) => ({
+      if (normalizedPlatformIds.length > 0) {
+        const targetEntries = normalizedPlatformIds.map((platformId: string) => ({
           id: crypto.randomUUID(),
           postId: id,
           platformId,

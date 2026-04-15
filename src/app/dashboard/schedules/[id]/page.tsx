@@ -1,13 +1,14 @@
 import { EditScheduleForm } from "@/components/edit-schedule-form";
 import { db } from "@/db";
 import { pipelineRuns, platforms, profiles, schedules } from "@/db/schema";
-import { desc, eq } from "drizzle-orm";
-import { notFound } from "next/navigation";
+import { and, desc, eq } from "drizzle-orm";
+import { notFound, redirect } from "next/navigation";
 import { getCronOccurrences } from "@/lib/dashboard/cron";
 import { getPlatformLabel } from "@/lib/dashboard/platforms";
 import { resolveFixedScheduleContent } from "@/lib/pipeline/fixed-schedule-post";
 import { resolvePipelineRunStatus } from "@/lib/pipeline/status";
 import { formatDateInZone, getAppTimeZone } from "@/lib/timezone";
+import { getTenantContext } from "@/lib/tenancy";
 
 function normalizePlatformKey(value: string) {
   const normalized = (value || "").trim().toLowerCase();
@@ -20,10 +21,17 @@ export default async function ScheduleDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const tenant = await getTenantContext();
+  if (!tenant) redirect("/login");
 
   const [schedule, profileRows, platformRows, runRows] = await Promise.all([
-    db.query.schedules.findFirst({ where: eq(schedules.id, id) }),
-    db.select({ id: profiles.id, name: profiles.name }).from(profiles),
+    db.query.schedules.findFirst({
+      where: and(eq(schedules.id, id), eq(schedules.workspaceId, tenant.currentWorkspace.id)),
+    }),
+    db
+      .select({ id: profiles.id, name: profiles.name })
+      .from(profiles)
+      .where(eq(profiles.workspaceId, tenant.currentWorkspace.id)),
     db
       .select({
         id: platforms.id,
@@ -31,7 +39,8 @@ export default async function ScheduleDetailPage({
         type: platforms.type,
         handle: platforms.handle,
       })
-      .from(platforms),
+      .from(platforms)
+      .where(eq(platforms.workspaceId, tenant.currentWorkspace.id)),
     db
       .select({
         id: pipelineRuns.id,
@@ -41,7 +50,12 @@ export default async function ScheduleDetailPage({
         error: pipelineRuns.error,
       })
       .from(pipelineRuns)
-      .where(eq(pipelineRuns.scheduleId, id))
+      .where(
+        and(
+          eq(pipelineRuns.scheduleId, id),
+          eq(pipelineRuns.workspaceId, tenant.currentWorkspace.id)
+        )
+      )
       .orderBy(desc(pipelineRuns.startedAt))
       .limit(20),
   ]);

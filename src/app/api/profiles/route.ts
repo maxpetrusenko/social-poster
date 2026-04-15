@@ -2,6 +2,7 @@ import { db } from "@/db";
 import { profiles } from "@/db/schema";
 import { requireApiSession } from "@/lib/auth";
 import { eq } from "drizzle-orm";
+import { getTenantContext } from "@/lib/tenancy";
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "node:crypto";
 
@@ -10,6 +11,11 @@ export async function POST(request: NextRequest) {
   if (session instanceof NextResponse) return session;
 
   try {
+    const tenant = await getTenantContext();
+    if (!tenant) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const body = await request.json();
 
     const {
@@ -34,11 +40,15 @@ export async function POST(request: NextRequest) {
 
     // If this profile is set as default, unset other defaults
     if (isDefault) {
-      await db.update(profiles).set({ isDefault: false });
+      await db
+        .update(profiles)
+        .set({ isDefault: false, updatedAt: now })
+        .where(eq(profiles.workspaceId, tenant.currentWorkspace.id));
     }
 
     await db.insert(profiles).values({
       id,
+      workspaceId: tenant.currentWorkspace.id,
       name,
       bio: bio || null,
       avatarUrl: avatarUrl || null,

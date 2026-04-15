@@ -28,6 +28,7 @@ export async function runAvatarVideoJob(
   // Create pipeline run
   await db.insert(pipelineRuns).values({
     id: runId,
+    workspaceId: schedule.workspaceId,
     scheduleId: schedule.id,
     postId: null,
     trigger,

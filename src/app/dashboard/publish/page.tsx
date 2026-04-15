@@ -3,11 +3,12 @@ import { db } from "@/db";
 import { posts, postTargets } from "@/db/schema";
 import { DashboardHero, HeroButton, SectionCard, StatusBadge } from "@/components/dashboard/ui";
 import { getCalendarInsights, getDashboardInsights } from "@/lib/dashboard/insights";
+import { getDashboardWorkspaceScope } from "@/lib/dashboard/workspace-scope";
 import { formatDate } from "@/lib/utils";
 import { formatTimeInZone } from "@/lib/timezone";
-import { getSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
+import { getTenantContext } from "@/lib/tenancy";
 
 export const dynamic = "force-dynamic";
 
@@ -37,24 +38,37 @@ const listTabs = [
   { id: "sent", label: "Sent" },
 ] as const;
 
-async function loadTabPosts(tab: (typeof listTabs)[number]["id"]) {
+async function loadTabPosts(tab: (typeof listTabs)[number]["id"], postIds: string[]) {
+  if (postIds.length === 0 || tab === "approvals") {
+    return [];
+  }
+
   if (tab === "queue") {
     return db
       .select()
       .from(posts)
-      .where(inArray(posts.status, ["scheduled", "publishing"]))
+      .where(and(inArray(posts.id, postIds), inArray(posts.status, ["scheduled", "publishing"])))
       .orderBy(desc(posts.updatedAt));
   }
 
   if (tab === "drafts") {
-    return db.select().from(posts).where(eq(posts.status, "draft")).orderBy(desc(posts.updatedAt));
+    return db
+      .select()
+      .from(posts)
+      .where(and(inArray(posts.id, postIds), eq(posts.status, "draft")))
+      .orderBy(desc(posts.updatedAt));
   }
 
   if (tab === "sent") {
     return db
       .select()
       .from(posts)
-      .where(inArray(posts.status, ["published", "partial_failure", "failed"]))
+      .where(
+        and(
+          inArray(posts.id, postIds),
+          inArray(posts.status, ["published", "partial_failure", "failed"])
+        )
+      )
       .orderBy(desc(posts.updatedAt));
   }
 
@@ -66,8 +80,8 @@ export default async function PublishPage({
 }: {
   searchParams?: Promise<Record<string, string>>;
 }) {
-  const session = await getSession();
-  if (!session) redirect("/login");
+  const tenant = await getTenantContext();
+  if (!tenant) redirect("/login");
 
   const params = searchParams ? await searchParams : {};
   const mode = params.mode === "list" ? "list" : "calendar";
@@ -76,20 +90,40 @@ export default async function PublishPage({
     : "queue";
 
   const monthParam = params.month || new Date().toISOString().slice(0, 7);
+  const workspaceScope = await getDashboardWorkspaceScope(tenant.currentWorkspace.id);
   const [dashboard, calendar, queueCount, draftCount, sentCount, tabPosts] =
     await Promise.all([
-      getDashboardInsights(),
-      getCalendarInsights(monthParam),
-      db
-        .select({ id: posts.id })
-        .from(posts)
-        .where(inArray(posts.status, ["scheduled", "publishing"])),
-      db.select({ id: posts.id }).from(posts).where(eq(posts.status, "draft")),
-      db
-        .select({ id: posts.id })
-        .from(posts)
-        .where(inArray(posts.status, ["published", "partial_failure", "failed"])),
-      loadTabPosts(tab),
+      getDashboardInsights(tenant.currentWorkspace.id),
+      getCalendarInsights(monthParam, tenant.currentWorkspace.id),
+      workspaceScope.postIds.length > 0
+        ? db
+            .select({ id: posts.id })
+            .from(posts)
+            .where(
+              and(
+                inArray(posts.id, workspaceScope.postIds),
+                inArray(posts.status, ["scheduled", "publishing"])
+              )
+            )
+        : Promise.resolve([] as Array<{ id: string }>),
+      workspaceScope.postIds.length > 0
+        ? db
+            .select({ id: posts.id })
+            .from(posts)
+            .where(and(inArray(posts.id, workspaceScope.postIds), eq(posts.status, "draft")))
+        : Promise.resolve([] as Array<{ id: string }>),
+      workspaceScope.postIds.length > 0
+        ? db
+            .select({ id: posts.id })
+            .from(posts)
+            .where(
+              and(
+                inArray(posts.id, workspaceScope.postIds),
+                inArray(posts.status, ["published", "partial_failure", "failed"])
+              )
+            )
+        : Promise.resolve([] as Array<{ id: string }>),
+      loadTabPosts(tab, workspaceScope.postIds),
     ]);
 
   const [yearStr, monthStr] = monthParam.split("-");
@@ -101,12 +135,18 @@ export default async function PublishPage({
 
   const postTargetCounts = new Map<string, number>();
   if (tabPosts.length > 0) {
-    const targets = await Promise.all(
-      tabPosts.map((post) =>
-        db.select({ id: postTargets.id }).from(postTargets).where(eq(postTargets.postId, post.id))
-      )
-    );
-    tabPosts.forEach((post, index) => postTargetCounts.set(post.id, targets[index].length));
+    const targetRows = await db
+      .select({ postId: postTargets.postId })
+      .from(postTargets)
+      .where(
+        and(
+          inArray(postTargets.postId, tabPosts.map((post) => post.id)),
+          inArray(postTargets.platformId, workspaceScope.platformIds)
+        )
+      );
+    targetRows.forEach((target) => {
+      postTargetCounts.set(target.postId, (postTargetCounts.get(target.postId) ?? 0) + 1);
+    });
   }
 
   return (

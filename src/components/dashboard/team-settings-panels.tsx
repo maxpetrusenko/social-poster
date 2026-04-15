@@ -99,6 +99,12 @@ type InvitationSurface = {
   assignments: Array<{ workspaceId: string; workspaceName: string; role: WorkspaceRole }>;
 };
 
+type TeamMembersNotice = {
+  tone: "good" | "warn";
+  title: string;
+  description: string;
+};
+
 export function OrganizationSettingsPanel({
   organizationName,
   defaultTimezone,
@@ -324,10 +330,12 @@ export function TeamMembersPanel({
   members,
   invitations,
   workspaces,
+  notice,
 }: {
   members: MemberSurface[];
   invitations: InvitationSurface[];
   workspaces: Array<{ id: string; name: string }>;
+  notice?: TeamMembersNotice | null;
 }) {
   return (
     <div className="space-y-6">
@@ -346,6 +354,21 @@ export function TeamMembersPanel({
           </>
         }
       />
+
+      {notice ? (
+        <section
+          className={`rounded-[24px] border px-5 py-4 shadow-[0_18px_45px_rgba(12,17,21,0.08)] ${
+            notice.tone === "good"
+              ? "border-emerald-200 bg-emerald-50/90"
+              : "border-amber-200 bg-amber-50/90"
+          }`}
+        >
+          <div className="flex flex-wrap items-center gap-3">
+            <StatusBadge tone={notice.tone}>{notice.title}</StatusBadge>
+            <p className="text-sm text-[var(--ink)]">{notice.description}</p>
+          </div>
+        </section>
+      ) : null}
 
       <SectionCard title="Invite Member" subtitle="Org role plus per-workspace access in one submission.">
         <form action={inviteMemberAction} className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_220px]">

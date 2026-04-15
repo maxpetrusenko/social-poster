@@ -1,7 +1,8 @@
 "use client";
 
+import { LoaderCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 
 export type OverviewPlatformRow = {
   id: string;
@@ -44,17 +45,39 @@ export function OverviewPlatformTable({
   };
 }) {
   const router = useRouter();
+  const [localRows, setLocalRows] = useState(rows);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [, startTransition] = useTransition();
 
-  function handleToggle(row: OverviewPlatformRow) {
+  useEffect(() => {
+    setLocalRows(rows);
+  }, [rows]);
+
+  const enabledCount = localRows.filter((row) => row.enabled).length;
+
+  function handleToggle(rowId: string) {
+    const row = localRows.find((item) => item.id === rowId);
+    if (!row) {
+      return;
+    }
+
+    const nextEnabled = !row.enabled;
+
     startTransition(async () => {
       setPendingId(row.id);
+      setLocalRows((currentRows) =>
+        currentRows.map((currentRow) =>
+          currentRow.id === row.id
+            ? { ...currentRow, enabled: nextEnabled }
+            : currentRow
+        )
+      );
+
       try {
         const response = await fetch(`/api/platforms/${row.id}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ enabled: !row.enabled }),
+          body: JSON.stringify({ enabled: nextEnabled }),
         });
 
         if (!response.ok) {
@@ -67,6 +90,13 @@ export function OverviewPlatformTable({
           error instanceof Error
             ? error.message
             : "Failed to update connection status."
+        );
+        setLocalRows((currentRows) =>
+          currentRows.map((currentRow) =>
+            currentRow.id === row.id
+              ? { ...currentRow, enabled: row.enabled }
+              : currentRow
+          )
         );
       } finally {
         setPendingId(null);
@@ -89,7 +119,7 @@ export function OverviewPlatformTable({
         </div>
 
         <div className="divide-y divide-[rgba(23,23,23,0.05)]">
-          {rows.map((row, index) => (
+          {localRows.map((row, index) => (
             <div
               key={row.id}
               className={`grid grid-cols-[1.45fr_1.1fr_0.9fr_0.75fr_0.8fr_0.8fr_0.95fr_0.9fr] items-center ${
@@ -119,7 +149,7 @@ export function OverviewPlatformTable({
               <div className="px-5 py-4 text-right">
                 <button
                   type="button"
-                  onClick={() => handleToggle(row)}
+                  onClick={() => handleToggle(row.id)}
                   disabled={pendingId === row.id}
                   className={`inline-flex min-w-24 items-center justify-center rounded-full px-4 py-2 text-sm font-semibold transition ${
                     row.enabled
@@ -127,7 +157,16 @@ export function OverviewPlatformTable({
                       : "border border-[#d3c4ae] bg-[#fbf7f0] text-[#171717] hover:border-[#af987b]"
                   } disabled:cursor-wait disabled:opacity-60`}
                 >
-                  {pendingId === row.id ? "Saving..." : row.enabled ? "Disable" : "Enable"}
+                  {pendingId === row.id ? (
+                    <span className="inline-flex items-center gap-2">
+                      <LoaderCircle className="h-4 w-4 animate-spin" />
+                      Saving
+                    </span>
+                  ) : row.enabled ? (
+                    "Disable"
+                  ) : (
+                    "Enable"
+                  )}
                 </button>
               </div>
             </div>
@@ -136,7 +175,7 @@ export function OverviewPlatformTable({
 
         <div className="grid grid-cols-[1.45fr_1.1fr_0.9fr_0.75fr_0.8fr_0.8fr_0.95fr_0.9fr] items-center border-t border-[rgba(23,23,23,0.06)] bg-[#f7f1e7] py-5 text-[1.05rem] font-semibold text-[#171717]">
           <div className="px-5">Totals</div>
-          <div className="px-5 text-[#7b6b56]">{totals.enabledCount} enabled</div>
+          <div className="px-5 text-[#7b6b56]">{enabledCount} enabled</div>
           <div className="px-5 text-[#7b6b56]">{totals.accountCount} accounts</div>
           <div className="px-5 text-right">{totals.scheduleCount}</div>
           <div className="px-5 text-right">{totals.deliveryCount30d}</div>

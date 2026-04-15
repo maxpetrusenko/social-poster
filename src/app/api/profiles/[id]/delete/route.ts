@@ -1,7 +1,8 @@
 import { db } from "@/db";
 import { profiles } from "@/db/schema";
 import { requireApiSession } from "@/lib/auth";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
+import { getTenantContext } from "@/lib/tenancy";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(
@@ -12,13 +13,18 @@ export async function POST(
   if (session instanceof NextResponse) return session;
 
   try {
+    const tenant = await getTenantContext();
+    if (!tenant) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { id } = await params;
 
     // Check if profile exists
     const profile = await db
       .select()
       .from(profiles)
-      .where(eq(profiles.id, id))
+      .where(and(eq(profiles.id, id), eq(profiles.workspaceId, tenant.currentWorkspace.id)))
       .then((rows) => rows[0]);
 
     if (!profile) {
@@ -29,7 +35,9 @@ export async function POST(
     }
 
     // Delete the profile
-    await db.delete(profiles).where(eq(profiles.id, id));
+    await db
+      .delete(profiles)
+      .where(and(eq(profiles.id, id), eq(profiles.workspaceId, tenant.currentWorkspace.id)));
 
     return NextResponse.json(
       { message: "Profile deleted successfully" },

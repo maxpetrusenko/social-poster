@@ -1,7 +1,8 @@
 import { db } from "@/db";
 import { profiles } from "@/db/schema";
 import { requireApiSession } from "@/lib/auth";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
+import { getTenantContext } from "@/lib/tenancy";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(
@@ -12,12 +13,17 @@ export async function GET(
   if (session instanceof NextResponse) return session;
 
   try {
+    const tenant = await getTenantContext();
+    if (!tenant) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { id } = await params;
 
     const profile = await db
       .select()
       .from(profiles)
-      .where(eq(profiles.id, id))
+      .where(and(eq(profiles.id, id), eq(profiles.workspaceId, tenant.currentWorkspace.id)))
       .then((rows) => rows[0]);
 
     if (!profile) {
@@ -45,6 +51,11 @@ export async function POST(
   if (session instanceof NextResponse) return session;
 
   try {
+    const tenant = await getTenantContext();
+    if (!tenant) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { id } = await params;
     const body = await request.json();
 
@@ -67,7 +78,10 @@ export async function POST(
 
     // If this profile is set as default, unset other defaults
     if (isDefault) {
-      await db.update(profiles).set({ isDefault: false });
+      await db
+        .update(profiles)
+        .set({ isDefault: false, updatedAt: new Date() })
+        .where(eq(profiles.workspaceId, tenant.currentWorkspace.id));
     }
 
     const now = new Date();
@@ -84,12 +98,12 @@ export async function POST(
         isDefault: isDefault || false,
         updatedAt: now,
       })
-      .where(eq(profiles.id, id));
+      .where(and(eq(profiles.id, id), eq(profiles.workspaceId, tenant.currentWorkspace.id)));
 
     const updatedProfile = await db
       .select()
       .from(profiles)
-      .where(eq(profiles.id, id))
+      .where(and(eq(profiles.id, id), eq(profiles.workspaceId, tenant.currentWorkspace.id)))
       .then((rows) => rows[0]);
 
     if (!updatedProfile) {

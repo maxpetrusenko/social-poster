@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { platforms, posts, postTargets, profiles } from "@/db/schema";
 import { NewPostForm } from "@/components/new-post-form";
 import { DashboardHero, HeroButton } from "@/components/dashboard/ui";
-import { getSession } from "@/lib/auth";
 import { mapComposerPlatforms } from "@/lib/dashboard/composer";
+import { getTenantContext } from "@/lib/tenancy";
 
 function toDateTimeLocalValue(value: Date | null) {
   if (!value) return "";
@@ -21,15 +21,19 @@ export default async function EditPostPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const session = await getSession();
-  if (!session) redirect("/login");
-
   const { id } = await params;
+  const tenant = await getTenantContext();
+  if (!tenant) redirect("/login");
   const [post, targetRows, allProfiles, allPlatforms] = await Promise.all([
-    db.query.posts.findFirst({ where: eq(posts.id, id) }),
+    db.query.posts.findFirst({
+      where: and(eq(posts.id, id), eq(posts.workspaceId, tenant.currentWorkspace.id)),
+    }),
     db.select().from(postTargets).where(eq(postTargets.postId, id)),
-    db.select().from(profiles),
-    db.select().from(platforms),
+    db.select().from(profiles).where(eq(profiles.workspaceId, tenant.currentWorkspace.id)),
+    db
+      .select()
+      .from(platforms)
+      .where(eq(platforms.workspaceId, tenant.currentWorkspace.id)),
   ]);
 
   if (!post) {

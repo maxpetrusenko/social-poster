@@ -3,7 +3,7 @@ import { candidateCache } from "@/db/schema";
 import { getCandidateStories, type Story } from "@/lib/pipeline/feed-engine";
 import { desc } from "drizzle-orm";
 import { shouldRefreshCandidateCache } from "./candidate-cache-policy";
-import { decodeHtmlEntities } from "@/lib/pipeline/content-clean";
+import { fetchOpenGraphImage } from "@/lib/open-graph-image";
 
 export type DashboardCandidate = Story & {
   ogImageUrl: string | null;
@@ -107,50 +107,9 @@ async function refreshCandidateCache(): Promise<void> {
   return refreshInFlight;
 }
 
-async function fetchOpenGraphImage(url: string): Promise<string | null> {
-  try {
-    const res = await fetch(url, {
-      signal: AbortSignal.timeout(8000),
-      headers: { "User-Agent": "social-poster/1.0" },
-      cache: "no-store",
-    });
-    if (!res.ok) return null;
-
-    const html = await res.text();
-    const image =
-      matchMetaContent(html, "property", "og:image") ||
-      matchMetaContent(html, "property", "og:image:secure_url") ||
-      matchMetaContent(html, "name", "twitter:image") ||
-      matchMetaContent(html, "property", "og:image:url");
-
-    if (!image) return null;
-    return new URL(decodeHtmlEntities(image), url).toString();
-  } catch {
-    return null;
-  }
-}
-
 function getImagePreviewUrl(url: string | null): string | null {
   if (!url) return null;
   return `/api/og-image?${new URLSearchParams({ url }).toString()}`;
-}
-
-function matchMetaContent(html: string, attr: "property" | "name", value: string): string | null {
-  const patterns = [
-    new RegExp(`<meta[^>]*${attr}=["']${escapeRegex(value)}["'][^>]*content=["']([^"']+)["'][^>]*>`, "i"),
-    new RegExp(`<meta[^>]*content=["']([^"']+)["'][^>]*${attr}=["']${escapeRegex(value)}["'][^>]*>`, "i"),
-  ];
-
-  for (const pattern of patterns) {
-    const match = html.match(pattern);
-    if (match?.[1]) return match[1].trim();
-  }
-
-  return null;
-}
-
-function escapeRegex(value: string) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function getSourceHost(url: string): string {

@@ -35,6 +35,10 @@ export function buildBirdEnv(
   env: NodeJS.ProcessEnv = process.env
 ) {
   const nextEnv = { ...env };
+  delete nextEnv.AUTH_TOKEN;
+  delete nextEnv.CT0;
+  delete nextEnv.X_AUTH_TOKEN;
+  delete nextEnv.X_CT0;
 
   if (credentials.authToken && credentials.ct0) {
     nextEnv.AUTH_TOKEN = credentials.authToken;
@@ -108,22 +112,32 @@ export function resolveBirdCredentialsFromSource(
   credentials: BirdCredentialSource,
   env: NodeJS.ProcessEnv = process.env
 ): BirdCredentials {
+  const useInstalledBirdSession = readCredentialBoolean(
+    credentials,
+    "useInstalledBirdSession",
+    true
+  );
+  const explicitAuthToken = readCredentialString(
+    credentials,
+    "authToken",
+    "accessToken"
+  );
+  const explicitCt0 = readCredentialString(
+    credentials,
+    "ct0",
+    "accessTokenSecret"
+  );
+  const allowEnvAuthFallback =
+    env.BIRD_FORCE_ENV_AUTH === "true" || !useInstalledBirdSession;
+
   return {
     authToken:
-      readCredentialString(credentials, "authToken", "accessToken") ||
-      env.X_AUTH_TOKEN ||
-      env.AUTH_TOKEN ||
-      null,
+      explicitAuthToken ||
+      (allowEnvAuthFallback ? env.X_AUTH_TOKEN || env.AUTH_TOKEN || null : null),
     ct0:
-      readCredentialString(credentials, "ct0", "accessTokenSecret") ||
-      env.X_CT0 ||
-      env.CT0 ||
-      null,
-    useInstalledBirdSession: readCredentialBoolean(
-      credentials,
-      "useInstalledBirdSession",
-      true
-    ),
+      explicitCt0 ||
+      (allowEnvAuthFallback ? env.X_CT0 || env.CT0 || null : null),
+    useInstalledBirdSession,
     chromeProfile: readCredentialString(credentials, "chromeProfile"),
     chromeProfileDir:
       readCredentialString(credentials, "chromeProfileDir", "birdProfilePath") ||

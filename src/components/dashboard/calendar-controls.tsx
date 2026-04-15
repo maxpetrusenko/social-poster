@@ -35,7 +35,6 @@ function ControlSelect({
 
 export function CalendarControls({
   monthLabel,
-  currentMonth,
   prevMonth,
   nextMonth,
   todayMonth,
@@ -50,7 +49,6 @@ export function CalendarControls({
   tagOptions,
 }: {
   monthLabel: string;
-  currentMonth: string;
   prevMonth: string;
   nextMonth: string;
   todayMonth: string;
@@ -109,7 +107,6 @@ export function CalendarControls({
           </button>
           <div className="rounded-[14px] border border-[rgba(12,17,21,0.08)] bg-white px-4 py-2 text-right shadow-[0_8px_24px_rgba(12,17,21,0.05)]">
             <p className="text-sm font-semibold text-[var(--ink)]">{monthLabel}</p>
-            <p className="text-[11px] uppercase tracking-[0.14em] text-[var(--muted)]">{currentMonth}</p>
           </div>
           <button
             type="button"

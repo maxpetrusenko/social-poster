@@ -10,6 +10,31 @@ import { resolveFixedScheduleContent } from "../fixed-schedule-post";
 import { writePostCaption } from "../script-writer";
 import { publishPlatformTargets } from "../publish-service";
 import { resolvePublishResultsStatus } from "../status";
+import type { Story } from "../feed-engine";
+import { fetchOpenGraphImage } from "@/lib/open-graph-image";
+
+export function selectFeedStoryForSchedule(
+  stories: Story[],
+  options: { requireImage: boolean }
+) {
+  if (!stories.length) return null;
+  if (!options.requireImage) return stories[0];
+  return stories.find((story) => Boolean(story.imageUrl)) ?? null;
+}
+
+async function resolveStoryImages(
+  stories: Story[],
+  options: { requireImage: boolean }
+) {
+  if (!options.requireImage) return stories;
+
+  return Promise.all(
+    stories.map(async (story) => ({
+      ...story,
+      imageUrl: story.imageUrl ?? (await fetchOpenGraphImage(story.link)) ?? undefined,
+    }))
+  );
+}
 
 export async function runImagePostJob(
   schedule: typeof schedules.$inferSelect,
@@ -28,6 +53,7 @@ export async function runImagePostJob(
 
   await db.insert(pipelineRuns).values({
     id: runId,
+    workspaceId: schedule.workspaceId,
     scheduleId: schedule.id,
     postId: null,
     trigger,
@@ -76,26 +102,50 @@ export async function runImagePostJob(
           link: "",
         }
       : await (async () => {
-          const stories = await getTopStories(1);
-          if (stories.length === 0) throw new Error("No stories");
-          return stories[0];
+          const stories = await getTopStories(schedule.jobType === "image_post" ? 8 : 1);
+          const resolvedStories = await resolveStoryImages(stories, {
+            requireImage: schedule.jobType === "image_post",
+          });
+          const selectedStory = selectFeedStoryForSchedule(resolvedStories, {
+            requireImage: schedule.jobType === "image_post",
+          });
+          if (!selectedStory) {
+            throw new Error(
+              schedule.jobType === "image_post" ? "No stories with image" : "No stories"
+            );
+          }
+          return selectedStory;
         })();
     s1.status = "completed";
     s1.completedAt = new Date().toISOString();
     s1.output = scheduledContent
       ? {
           title: scheduledContent.title,
+          summary: scheduledContent.summary,
           variantIndex: scheduledContent.variantIndex,
+          contentByPlatform: scheduledContent.contentByPlatform,
           mediaUrlByPlatform: scheduledContent.mediaUrlByPlatform,
+          instagramContentTypeByPlatform:
+            scheduledContent.instagramContentTypeByPlatform,
         }
-      : { title: story.title, score: story.score };
+      : {
+          title: story.title,
+          summary: story.summary,
+          link: story.link,
+          score: story.score,
+          imageUrl: story.imageUrl ?? null,
+          sourceName: story.sourceName ?? null,
+        };
 
     // 2. Caption
     const s2: PipelineStep = { name: "caption:write", status: "running", startedAt: new Date().toISOString() };
     steps.push(s2);
     const publishTargets = targets.map((platform) => {
       const platformType = platform.type === "x" ? "twitter" : platform.type;
-      const mediaUrl = scheduledContent?.mediaUrlByPlatform[platformType] ?? undefined;
+      const mediaUrl =
+        scheduledContent?.mediaUrlByPlatform[platformType] ??
+        story.imageUrl ??
+        undefined;
 
       return {
         platform,
@@ -116,6 +166,10 @@ export async function runImagePostJob(
       captions: publishTargets.map((target) => ({
         platform: target.platform.type,
         chars: target.content.length,
+        content: target.content,
+        mediaUrl: target.mediaUrl ?? null,
+        mediaType: target.mediaType ?? null,
+        instagramContentType: target.instagramContentType ?? null,
       })),
     };
 

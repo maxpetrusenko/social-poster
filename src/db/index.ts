@@ -133,6 +133,7 @@ function ensureSchema(sqlite: Database.Database) {
 
     CREATE TABLE IF NOT EXISTS profiles (
       id TEXT PRIMARY KEY NOT NULL,
+      workspace_id TEXT REFERENCES workspaces(id) ON DELETE SET NULL,
       name TEXT NOT NULL,
       avatar_url TEXT,
       bio TEXT,
@@ -147,6 +148,7 @@ function ensureSchema(sqlite: Database.Database) {
 
     CREATE TABLE IF NOT EXISTS posts (
       id TEXT PRIMARY KEY NOT NULL,
+      workspace_id TEXT REFERENCES workspaces(id) ON DELETE SET NULL,
       profile_id TEXT REFERENCES profiles(id),
       title TEXT,
       content TEXT NOT NULL,
@@ -177,6 +179,7 @@ function ensureSchema(sqlite: Database.Database) {
 
     CREATE TABLE IF NOT EXISTS schedules (
       id TEXT PRIMARY KEY NOT NULL,
+      workspace_id TEXT REFERENCES workspaces(id) ON DELETE SET NULL,
       name TEXT NOT NULL,
       description TEXT,
       cron TEXT NOT NULL,
@@ -192,6 +195,7 @@ function ensureSchema(sqlite: Database.Database) {
 
     CREATE TABLE IF NOT EXISTS pipeline_runs (
       id TEXT PRIMARY KEY NOT NULL,
+      workspace_id TEXT REFERENCES workspaces(id) ON DELETE SET NULL,
       schedule_id TEXT REFERENCES schedules(id),
       post_id TEXT REFERENCES posts(id),
       trigger TEXT NOT NULL,
@@ -205,6 +209,7 @@ function ensureSchema(sqlite: Database.Database) {
 
     CREATE TABLE IF NOT EXISTS reply_events (
       id TEXT PRIMARY KEY NOT NULL,
+      workspace_id TEXT REFERENCES workspaces(id) ON DELETE SET NULL,
       run_id TEXT REFERENCES pipeline_runs(id) ON DELETE SET NULL,
       schedule_id TEXT REFERENCES schedules(id) ON DELETE SET NULL,
       platform_id TEXT REFERENCES platforms(id) ON DELETE SET NULL,
@@ -222,6 +227,7 @@ function ensureSchema(sqlite: Database.Database) {
 
     CREATE TABLE IF NOT EXISTS reply_candidates (
       id TEXT PRIMARY KEY NOT NULL,
+      workspace_id TEXT REFERENCES workspaces(id) ON DELETE SET NULL,
       platform_id TEXT REFERENCES platforms(id) ON DELETE SET NULL,
       tweet_id TEXT NOT NULL,
       tweet_url TEXT NOT NULL UNIQUE,
@@ -272,6 +278,12 @@ function ensureSchema(sqlite: Database.Database) {
   `);
 
   addColumnIfMissing(sqlite, "platforms", "workspace_id", "workspace_id TEXT");
+  addColumnIfMissing(sqlite, "profiles", "workspace_id", "workspace_id TEXT");
+  addColumnIfMissing(sqlite, "posts", "workspace_id", "workspace_id TEXT");
+  addColumnIfMissing(sqlite, "schedules", "workspace_id", "workspace_id TEXT");
+  addColumnIfMissing(sqlite, "pipeline_runs", "workspace_id", "workspace_id TEXT");
+  addColumnIfMissing(sqlite, "reply_events", "workspace_id", "workspace_id TEXT");
+  addColumnIfMissing(sqlite, "reply_candidates", "workspace_id", "workspace_id TEXT");
 }
 
 const dbPath = process.env.DATABASE_URL ?? "./data/social-poster.db";

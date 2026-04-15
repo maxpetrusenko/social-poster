@@ -1,8 +1,9 @@
 import { db } from "@/db";
 import { schedules } from "@/db/schema";
 import { requireApiSession } from "@/lib/auth";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { runScheduleJob } from "@/lib/schedule-jobs";
+import { getTenantContext } from "@/lib/tenancy";
 
 export async function POST(
   request: Request,
@@ -12,9 +13,17 @@ export async function POST(
   if (session instanceof Response) return session;
 
   try {
+    const tenant = await getTenantContext();
+    if (!tenant) {
+      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { id: scheduleId } = await params;
     const schedule = await db.query.schedules.findFirst({
-      where: eq(schedules.id, scheduleId),
+      where: and(
+        eq(schedules.id, scheduleId),
+        eq(schedules.workspaceId, tenant.currentWorkspace.id)
+      ),
     });
 
     if (!schedule) {

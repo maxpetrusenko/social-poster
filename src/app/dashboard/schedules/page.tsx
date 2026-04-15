@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Plus } from "lucide-react";
 import { DashboardHero, HeroButton, MetricCard, PlatformChip, SectionCard, StatusBadge } from "@/components/dashboard/ui";
 import { ScheduleEnabledToggle } from "@/components/schedule-enabled-toggle";
@@ -6,12 +7,16 @@ import { getDashboardInsights } from "@/lib/dashboard/insights";
 import { relativeTime } from "@/lib/utils";
 import { getPlatformMeta } from "@/lib/dashboard/platforms";
 import { formatDateInZone } from "@/lib/timezone";
+import { getTenantContext } from "@/lib/tenancy";
 
 export const dynamic = "force-dynamic";
 
 export default async function SchedulesPage() {
+  const tenant = await getTenantContext();
+  if (!tenant) redirect("/login");
+
   const { scheduleInsights, runtimeScheduleCount, scheduleRuntimeDrift } =
-    await getDashboardInsights();
+    await getDashboardInsights(tenant.currentWorkspace.id);
   const activeCount = scheduleInsights.filter((schedule) => schedule.enabled).length;
   const failedCount = scheduleInsights.filter((schedule) => schedule.lastStatus === "failed").length;
   const nextRun = scheduleInsights

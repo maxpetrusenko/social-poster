@@ -2,6 +2,7 @@ import cron from "node-cron";
 import { db } from "@/db";
 import { pipelineRuns, schedules } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { processReadyReplyQueue } from "./replies/live";
 import { runScheduleJob } from "./schedule-jobs";
 import { finalizeAbandonedSteps } from "./pipeline/recovery";
 
@@ -14,10 +15,12 @@ type RegisteredScheduleTask = {
 const tasks = new Map<string, RegisteredScheduleTask>();
 const ABANDONED_RUN_ERROR = "Run interrupted by app restart before completion";
 let didRecoverAbandonedRuns = false;
+let readyQueueInterval: NodeJS.Timeout | null = null;
 
 export async function initScheduler(): Promise<void> {
   console.log("[scheduler] init");
   await ensureRecoveredAbandonedRuns();
+  ensureReadyQueueWorker();
   await reconcileSchedules("init");
 
   console.log("[scheduler] ready");
@@ -82,6 +85,7 @@ export async function reloadSchedules(): Promise<void> {
 
 export async function ensureSchedulerReady(): Promise<void> {
   await ensureRecoveredAbandonedRuns();
+  ensureReadyQueueWorker();
 
   if (tasks.size === 0) {
     await reconcileSchedules("ensure-ready");
@@ -162,4 +166,22 @@ async function recoverAbandonedRuns(): Promise<void> {
       })
       .where(eq(pipelineRuns.id, run.id));
   }
+}
+
+function ensureReadyQueueWorker() {
+  if (readyQueueInterval) return;
+
+  const runSweep = async () => {
+    try {
+      await processReadyReplyQueue();
+    } catch (error) {
+      console.error("[scheduler] ready queue sweep failed:", error);
+    }
+  };
+
+  void runSweep();
+  readyQueueInterval = setInterval(() => {
+    void runSweep();
+  }, 60_000);
+  readyQueueInterval.unref?.();
 }

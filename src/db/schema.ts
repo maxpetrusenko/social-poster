@@ -130,6 +130,9 @@ export const platforms = sqliteTable("platforms", {
 // Your brand identity / voice settings
 export const profiles = sqliteTable("profiles", {
   id: text("id").primaryKey(),
+  workspaceId: text("workspace_id").references(() => workspaces.id, {
+    onDelete: "set null",
+  }),
   name: text("name").notNull(), // "Max Petrusenko" or "AI News Bot"
   avatarUrl: text("avatar_url"),
   bio: text("bio"),
@@ -145,6 +148,8 @@ export const profiles = sqliteTable("profiles", {
 // ── Posts ──────────────────────────────────────────────────────────────
 export const posts = sqliteTable("posts", {
   id: text("id").primaryKey(),
+  workspaceId: text("workspace_id")
+    .references(() => workspaces.id, { onDelete: "set null" }),
   profileId: text("profile_id").references(() => profiles.id),
   title: text("title"),
   content: text("content").notNull(),
@@ -178,6 +183,8 @@ export const postTargets = sqliteTable("post_targets", {
 // ── Schedule (cron jobs config) ───────────────────────────────────────
 export const schedules = sqliteTable("schedules", {
   id: text("id").primaryKey(),
+  workspaceId: text("workspace_id")
+    .references(() => workspaces.id, { onDelete: "set null" }),
   name: text("name").notNull(),
   description: text("description"),
   cron: text("cron").notNull(), // "0 9 * * *"
@@ -194,6 +201,8 @@ export const schedules = sqliteTable("schedules", {
 // ── Pipeline Runs ─────────────────────────────────────────────────────
 export const pipelineRuns = sqliteTable("pipeline_runs", {
   id: text("id").primaryKey(),
+  workspaceId: text("workspace_id")
+    .references(() => workspaces.id, { onDelete: "set null" }),
   scheduleId: text("schedule_id").references(() => schedules.id),
   postId: text("post_id").references(() => posts.id),
   trigger: text("trigger").notNull(), // "cron" | "manual" | "api"
@@ -208,6 +217,8 @@ export const pipelineRuns = sqliteTable("pipeline_runs", {
 // ── Reply Events ──────────────────────────────────────────────────────
 export const replyEvents = sqliteTable("reply_events", {
   id: text("id").primaryKey(),
+  workspaceId: text("workspace_id")
+    .references(() => workspaces.id, { onDelete: "set null" }),
   runId: text("run_id").references(() => pipelineRuns.id, { onDelete: "set null" }),
   scheduleId: text("schedule_id").references(() => schedules.id, { onDelete: "set null" }),
   platformId: text("platform_id").references(() => platforms.id, { onDelete: "set null" }),
@@ -225,6 +236,8 @@ export const replyEvents = sqliteTable("reply_events", {
 
 export const replyCandidates = sqliteTable("reply_candidates", {
   id: text("id").primaryKey(),
+  workspaceId: text("workspace_id")
+    .references(() => workspaces.id, { onDelete: "set null" }),
   platformId: text("platform_id").references(() => platforms.id, { onDelete: "set null" }),
   tweetId: text("tweet_id").notNull(),
   tweetUrl: text("tweet_url").notNull().unique(),

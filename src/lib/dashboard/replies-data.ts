@@ -1,8 +1,14 @@
 import { db } from "@/db";
 import { platforms } from "@/db/schema";
+import { eq } from "drizzle-orm";
 import { readStoredConnectionConfig } from "@/lib/connection-config";
 import { getPlatformMeta } from "@/lib/dashboard/platforms";
 import { listReplyCandidates } from "@/lib/replies/live";
+import {
+  DEFAULT_REPLY_PROFILE_ID,
+  getReplyProfiles,
+  type ReplyProfileId,
+} from "@/lib/replies/profiles";
 import { resolveReplyTransport, type ReplyTransport } from "@/lib/replies/transport";
 
 export type ReplyConnectionOption = {
@@ -17,8 +23,19 @@ export type ReplyConnectionOption = {
   }>;
 };
 
-export async function getRepliesPageData() {
-  const rows = await db.select().from(platforms);
+export type ReplyProfileOption = {
+  id: ReplyProfileId;
+  label: string;
+  summary: string;
+  directionsLabel: string;
+  destination: string;
+};
+
+export async function getRepliesPageData(workspaceId: string) {
+  const rows = await db
+    .select()
+    .from(platforms)
+    .where(eq(platforms.workspaceId, workspaceId));
   const xRows = rows.filter((platform) => ["twitter", "x"].includes(platform.type));
 
   const connections: ReplyConnectionOption[] = xRows.flatMap((platform) => {
@@ -47,8 +64,18 @@ export async function getRepliesPageData() {
     }
   });
 
-  const initialPlatformId = connections[0]?.id;
-  const candidates = initialPlatformId ? await listReplyCandidates(initialPlatformId) : [];
+  const profiles: ReplyProfileOption[] = getReplyProfiles().map((profile) => ({
+    id: profile.id,
+    label: profile.label,
+    summary: profile.summary,
+    directionsLabel: profile.directions.join(" / "),
+    destination: profile.destination,
+  }));
 
-  return { connections, candidates };
+  const initialPlatformId = connections[0]?.id;
+  const candidates = initialPlatformId
+    ? await listReplyCandidates(initialPlatformId, DEFAULT_REPLY_PROFILE_ID, workspaceId)
+    : [];
+
+  return { connections, profiles, candidates };
 }

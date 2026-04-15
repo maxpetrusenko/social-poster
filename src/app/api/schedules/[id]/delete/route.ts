@@ -2,7 +2,8 @@ import { db } from "@/db";
 import { schedules } from "@/db/schema";
 import { requireApiSession } from "@/lib/auth";
 import { reconcileSchedules } from "@/lib/scheduler";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
+import { getTenantContext } from "@/lib/tenancy";
 
 export async function POST(
   request: Request,
@@ -12,9 +13,22 @@ export async function POST(
   if (session instanceof Response) return session;
 
   try {
+    const tenant = await getTenantContext();
+    if (!tenant) {
+      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { id: scheduleId } = await params;
 
-    const result = await db.delete(schedules).where(eq(schedules.id, scheduleId)).returning();
+    const result = await db
+      .delete(schedules)
+      .where(
+        and(
+          eq(schedules.id, scheduleId),
+          eq(schedules.workspaceId, tenant.currentWorkspace.id)
+        )
+      )
+      .returning();
 
     if (result.length === 0) {
       return Response.json({ error: "Schedule not found" }, { status: 404 });

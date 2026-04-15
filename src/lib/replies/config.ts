@@ -1,3 +1,5 @@
+import { REPLY_AUTO_DRAFT_SEARCH_QUERIES, type ReplyDirection } from "@/lib/replies/strategy";
+
 export const REPLY_TARGETS = {
   manualOnlyAccounts: [
     "karpathy",
@@ -20,23 +22,7 @@ export const REPLY_TARGETS = {
     "techcrunch",
     "arstechnica",
   ],
-  autoDraftSearchQueries: [
-    "mindfulness practice",
-    "breathwork",
-    "embodied cognition",
-    "somatic practice",
-    "contemplative",
-    "movement practice",
-    "philosophy of mind",
-    "stoicism",
-    "fitness routine",
-    "biohacking",
-    "psychology of learning",
-    "consciousness",
-    "meditation",
-    "nature philosophy",
-    "art theory",
-  ],
+  autoDraftSearchQueries: REPLY_AUTO_DRAFT_SEARCH_QUERIES,
   blockedTopics: [
     "politics",
     "election",
@@ -47,10 +33,10 @@ export const REPLY_TARGETS = {
     "dunk on",
     "cancel",
   ],
-  dailyLimit: 20,
+  dailyLimit: 60,
   weeklyPerAccountLimit: 2,
   burstSize: 3,
-  cooldownMinutes: 90,
+  cooldownMinutes: 10,
   maxTweetAgeMinutes: 30,
 } as const;
 
@@ -63,6 +49,7 @@ export type ReplyCandidate = {
   author: string;
   authorFollowers: number;
   category: string;
+  direction: ReplyDirection;
   riskScore: number;
   lane: ReplyLane;
   drafts: string[];

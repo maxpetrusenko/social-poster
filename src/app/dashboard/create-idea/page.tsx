@@ -1,11 +1,6 @@
-import { redirect } from "next/navigation";
-import { getSession } from "@/lib/auth";
 import { ShellScaffoldPage } from "@/components/dashboard/shell-scaffold-page";
 
 export default async function CreateIdeaPage() {
-  const session = await getSession();
-  if (!session) redirect("/login");
-
   return (
     <ShellScaffoldPage
       eyebrow="Create Idea"

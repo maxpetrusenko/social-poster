@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ArrowRight, ExternalLink, Eye, GripVertical, MessageSquareText, Pencil, RefreshCw, Send, Sparkles, SplitSquareVertical, X, Zap } from "lucide-react";
+import { ArrowRight, ExternalLink, Eye, GripVertical, MessageSquareText, Pencil, RefreshCw, Send, Sparkles, X, Zap } from "lucide-react";
 import { SectionCard, StatusBadge } from "@/components/dashboard/ui";
 import { cn } from "@/lib/utils";
 import { STATUS_ACCENTS, STATUS_LABELS, type ReplyCard, type ReplyStatus } from "@/components/dashboard/replies-mock-data";
@@ -16,7 +16,7 @@ export function RepliesKanbanView({
   cards: ReplyCard[];
   counts: Record<ReplyStatus, number>;
   selected: ReplyCard;
-  onMove: (id: string, status: ReplyStatus) => void;
+  onMove: (id: string, status: ReplyStatus, selectedDraftIndex?: number) => void;
   onOpen: (id: string) => void;
 }) {
   const [draggedId, setDraggedId] = useState<string | null>(null);
@@ -117,6 +117,11 @@ export function RepliesKanbanView({
                         <div className="flex items-center gap-2">
                           <GripVertical className="h-4 w-4 text-[var(--muted)]" />
                           <p className="text-sm font-semibold text-[var(--ink)]">{card.author}</p>
+                          {card.replyProfileLabel ? (
+                            <span className="rounded-full border border-[rgba(15,126,169,0.12)] bg-[rgba(15,126,169,0.08)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--accent-tech)]">
+                              {card.replyProfileLabel}
+                            </span>
+                          ) : null}
                         </div>
                         {card.mediaUrl ? (
                           <div className="mt-3 overflow-hidden rounded-[14px] border border-[rgba(12,17,21,0.08)] bg-[rgba(12,17,21,0.03)]">
@@ -150,8 +155,8 @@ export function RepliesKanbanView({
                       </div>
                     </div>
                     <div className="mt-4 flex items-center justify-between gap-3 text-xs text-[var(--muted)]">
-                      <span>score {card.score}</span>
-                      <span>{card.engagement.views} views</span>
+                      <span>{card.publishStateLabel || `score ${card.score}`}</span>
+                      <span>{card.readyAtLabel || `${card.engagement.views} views`}</span>
                     </div>
                   </div>
                 ))}
@@ -159,24 +164,6 @@ export function RepliesKanbanView({
           </section>
         ))}
       </div>
-
-      <SectionCard
-        title="Replies 1"
-        subtitle="Kanban-first. Click a post to open review in a modal, then move it through review, ready, and posted."
-        className="mx-auto w-full max-w-[1720px]"
-        action={
-          <div className="flex flex-wrap items-center gap-2">
-            <button className="inline-flex items-center gap-2 rounded-full border border-[rgba(12,17,21,0.08)] bg-white px-4 py-2 text-sm font-semibold text-[var(--ink)]">
-              <SplitSquareVertical className="h-4 w-4" />
-              Hourly view
-            </button>
-          </div>
-        }
-      >
-        <div className="rounded-[18px] border border-[rgba(12,17,21,0.08)] bg-[rgba(12,17,21,0.03)] px-4 py-4 text-sm text-[var(--muted)]">
-          Click any card in the board above to open the full review modal with original post, media, and draft actions.
-        </div>
-      </SectionCard>
     </div>
   );
 }
@@ -193,7 +180,7 @@ export function RepliesDrawerView({
   cards: ReplyCard[];
   selected: ReplyCard;
   editingId: string | null;
-  onMove: (id: string, status: ReplyStatus) => void;
+  onMove: (id: string, status: ReplyStatus, selectedDraftIndex?: number) => void;
   onSelect: (id: string) => void;
   onEditToggle: (id: string | null) => void;
   onUpdateDraft: (id: string, draftIndex: number, value: string) => void;
@@ -248,8 +235,8 @@ export function RepliesDrawerView({
                         <ExternalLink className="h-4 w-4" />
                       </a>
                       <div className="text-right text-xs text-[var(--muted)]">
-                        <p>score {card.score}</p>
-                        <p className="mt-1">{card.updatedLabel}</p>
+                        <p>{card.publishStateLabel || `score ${card.score}`}</p>
+                        <p className="mt-1">{card.readyAtLabel || card.updatedLabel}</p>
                       </div>
                     </div>
                   </div>
@@ -287,7 +274,7 @@ export function ReplyReviewModal({
 }: {
   card: ReplyCard;
   onClose: () => void;
-  onMove: (id: string, status: ReplyStatus) => void;
+  onMove: (id: string, status: ReplyStatus, selectedDraftIndex?: number) => void;
 }) {
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -343,7 +330,7 @@ function ReplyReviewContent({
   onMove,
 }: {
   card: ReplyCard;
-  onMove: (id: string, status: ReplyStatus) => void;
+  onMove: (id: string, status: ReplyStatus, selectedDraftIndex?: number) => void;
 }) {
   return (
     <div className="grid gap-5 py-1 xl:grid-cols-[minmax(0,1.2fr)_420px]">
@@ -351,6 +338,9 @@ function ReplyReviewContent({
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2">
             <p className="section-eyebrow text-[var(--accent-tech)]">{card.author}</p>
+            {card.replyProfileLabel ? (
+              <StatusBadge tone="neutral">{card.replyProfileLabel}</StatusBadge>
+            ) : null}
             <span
               title={card.risk === "low" ? "Low risk" : "Medium risk"}
               className={cn(
@@ -390,6 +380,20 @@ function ReplyReviewContent({
                 </div>
               ) : null}
               <p className="mt-4 text-sm leading-7 text-[#a9b8c6]">{card.hook}</p>
+              {card.status === "ready" ? (
+                <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-[#c5d1dc]">
+                  {card.readyAtLabel ? (
+                    <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1">
+                      {card.readyAtLabel}
+                    </span>
+                  ) : null}
+                  {card.publishStateLabel ? (
+                    <span className="rounded-full border border-[#2f7ea4] bg-[rgba(15,126,169,0.18)] px-3 py-1 text-[#d8eef8]">
+                      {card.publishStateLabel}
+                    </span>
+                  ) : null}
+                </div>
+              ) : null}
               <div className="mt-5 flex flex-wrap items-center gap-4 text-sm text-[#8b98a5]">
                 <span>{card.engagement.likes} likes</span>
                 <span>{card.engagement.views} views</span>
@@ -445,7 +449,7 @@ function ReplyReviewContent({
                 </div>
               ) : (
                 <div className="mt-4 flex flex-wrap gap-2">
-                  <ActionButton label="Approve" icon={ArrowRight} tone="primary" onClick={() => onMove(card.id, "ready")} />
+                  <ActionButton label="Approve" icon={ArrowRight} tone="primary" onClick={() => onMove(card.id, "ready", index)} />
                   <ActionButton label="Edit" icon={Pencil} onClick={() => onMove(card.id, "drafted")} />
                   <ActionButton label="Skip" icon={Eye} onClick={() => onMove(card.id, "skipped")} />
                 </div>
@@ -468,6 +472,12 @@ function ReplyReviewContent({
           </div>
         ) : card.status === "ready" ? (
           <div className="mt-5 flex flex-wrap gap-2 border-t border-[rgba(12,17,21,0.08)] pt-5">
+            {card.publishStateLabel ? (
+              <div className="w-full text-xs font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">
+                {card.publishStateLabel}
+                {card.readyAtLabel ? ` · ${card.readyAtLabel}` : ""}
+              </div>
+            ) : null}
             <ActionButton label="Post now" icon={Send} tone="primary" onClick={() => onMove(card.id, "posted")} />
             <a
               href={card.replyUrl}
@@ -483,7 +493,7 @@ function ReplyReviewContent({
         ) : (
           <div className="mt-5 flex flex-wrap gap-2 border-t border-[rgba(12,17,21,0.08)] pt-5">
             <ActionButton label="Move to Drafted" icon={Pencil} onClick={() => onMove(card.id, "drafted")} />
-            <ActionButton label="Ready to Post" icon={ArrowRight} tone="primary" onClick={() => onMove(card.id, "ready")} />
+            <ActionButton label="Ready to Post" icon={ArrowRight} tone="primary" onClick={() => onMove(card.id, "ready", 0)} />
             <ActionButton label="Regenerate" icon={RefreshCw} onClick={() => onMove(card.id, "drafted")} />
           </div>
         )}

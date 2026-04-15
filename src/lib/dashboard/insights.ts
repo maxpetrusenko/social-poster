@@ -1,11 +1,15 @@
 import { db } from "@/db";
 import { pipelineRuns, platforms, posts, replyEvents, schedules } from "@/db/schema";
-import { and, desc, eq, gte, lt } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, lt, or } from "drizzle-orm";
 import { getCronOccurrences, getNextCronOccurrence } from "./cron";
 import { getPlatformLabel, getPlatformMeta, normalizePlatformType } from "./platforms";
 import { resolvePipelineRunStatus } from "@/lib/pipeline/status";
 import { getSchedulerSnapshot } from "@/lib/scheduler";
 import { getPostCategoryMeta } from "@/lib/post-categories";
+import {
+  getDashboardWorkspaceScope,
+  runTargetsWorkspace,
+} from "./workspace-scope";
 
 type RunRow = typeof pipelineRuns.$inferSelect;
 type ScheduleRow = typeof schedules.$inferSelect;
@@ -52,6 +56,7 @@ export type PlatformInsight = {
   type: string;
   name: string;
   handle: string | null;
+  provider: string;
   enabled: boolean;
   scheduleCount: number;
   deliveryCount30d: number;
@@ -326,19 +331,19 @@ function buildPlatformInsights(
 ): PlatformInsight[] {
   const start30d = startOfDay(new Date());
   start30d.setDate(start30d.getDate() - 29);
+  const matchingRuns30d = runRows.filter((run) => new Date(run.startedAt) >= start30d);
 
   return platformRows.map((platform) => {
     const normalized = normalizePlatformType(platform.type);
-    const matchingRuns = runRows.filter((run) => new Date(run.startedAt) >= start30d);
-    const deliveryCount30d = matchingRuns.reduce(
+    const deliveryCount30d = matchingRuns30d.reduce(
       (sum, run) => sum + run.publish.publishedPlatforms.filter((item) => item === normalized).length,
       0
     );
-    const failureCount30d = matchingRuns.reduce(
+    const failureCount30d = matchingRuns30d.reduce(
       (sum, run) => sum + run.publish.failedPlatforms.filter((item) => item.platform === normalized).length,
       0
     );
-    const lastDelivered = matchingRuns.find((run) =>
+    const lastDelivered = matchingRuns30d.find((run) =>
       run.publish.publishedPlatforms.includes(normalized)
     );
     const scheduleCount = scheduleRows.filter((schedule) =>
@@ -352,6 +357,7 @@ function buildPlatformInsights(
       type: normalized,
       name: platform.name,
       handle: platform.handle,
+      provider: platform.provider,
       enabled: platform.enabled,
       scheduleCount,
       deliveryCount30d,
@@ -364,14 +370,84 @@ function buildPlatformInsights(
   });
 }
 
-export async function getDashboardInsights(): Promise<DashboardInsights> {
-  const [platformRows, scheduleRows, runRowsRaw, postRows, replyRows] = await Promise.all([
-    db.select().from(platforms),
-    db.select().from(schedules).orderBy(schedules.createdAt),
-    db.select().from(pipelineRuns).orderBy(desc(pipelineRuns.startedAt)),
-    db.select().from(posts).orderBy(desc(posts.createdAt)).limit(8),
-    db.select().from(replyEvents).orderBy(desc(replyEvents.createdAt)),
+async function getScopedRunRows({
+  workspaceId,
+  scheduleIds,
+  postIds,
+  startedAtGte,
+  startedAtLt,
+}: {
+  workspaceId: string;
+  scheduleIds: string[];
+  postIds: string[];
+  startedAtGte?: Date;
+  startedAtLt?: Date;
+}): Promise<RunRow[]> {
+  const scopeFilters = [eq(pipelineRuns.workspaceId, workspaceId)];
+  const timeFilters = [];
+
+  if (scheduleIds.length > 0) {
+    scopeFilters.push(inArray(pipelineRuns.scheduleId, scheduleIds));
+  }
+
+  if (postIds.length > 0) {
+    scopeFilters.push(inArray(pipelineRuns.postId, postIds));
+  }
+
+  if (scopeFilters.length === 0) {
+    return [];
+  }
+
+  if (startedAtGte) {
+    timeFilters.push(gte(pipelineRuns.startedAt, startedAtGte));
+  }
+
+  if (startedAtLt) {
+    timeFilters.push(lt(pipelineRuns.startedAt, startedAtLt));
+  }
+
+  const scopeWhere =
+    scopeFilters.length === 1 ? scopeFilters[0] : or(...scopeFilters);
+  const where =
+    timeFilters.length === 0 ? scopeWhere : and(...timeFilters, scopeWhere);
+
+  return db
+    .select()
+    .from(pipelineRuns)
+    .where(where)
+    .orderBy(desc(pipelineRuns.startedAt));
+}
+
+export async function getDashboardInsights(
+  workspaceId: string
+): Promise<DashboardInsights> {
+  const {
+    platformRows,
+    platformIds,
+    scheduleRows,
+    scheduleIdSet,
+    postIds,
+    postIdSet,
+  } = await getDashboardWorkspaceScope(workspaceId);
+  const scheduleIds = scheduleRows.map((schedule) => schedule.id);
+
+  const [allRunRows, postRows, replyRows] = await Promise.all([
+    getScopedRunRows({ workspaceId, scheduleIds, postIds }),
+    postIds.length > 0
+      ? db.select().from(posts).where(inArray(posts.id, postIds)).orderBy(desc(posts.createdAt))
+      : Promise.resolve([] as PostRow[]),
+    platformIds.length > 0
+      ? db
+          .select()
+          .from(replyEvents)
+          .where(inArray(replyEvents.platformId, platformIds))
+          .orderBy(desc(replyEvents.createdAt))
+      : Promise.resolve([] as ReplyEventRow[]),
   ]);
+
+  const runRowsRaw = allRunRows.filter((run) =>
+    runTargetsWorkspace(run, workspaceId, scheduleIdSet, postIdSet)
+  );
 
   const runRows = runRowsRaw.map((run) => ({
     ...run,
@@ -400,6 +476,9 @@ export async function getDashboardInsights(): Promise<DashboardInsights> {
 
   const enabledSchedules = scheduleRows.filter((schedule) => schedule.enabled);
   const scheduler = getSchedulerSnapshot();
+  const runtimeScheduleCount = scheduler.runtimeRegisteredScheduleIds.filter((scheduleId) =>
+    scheduleIdSet.has(scheduleId)
+  ).length;
   const end30d = endOfDay(new Date());
   const expectedSlots30d = enabledSchedules.reduce(
     (sum, schedule) => sum + getCronOccurrences(schedule.cron, start30d, end30d, 300).length,
@@ -420,9 +499,8 @@ export async function getDashboardInsights(): Promise<DashboardInsights> {
     streakDays: getStreakDays(runRows),
     enabledPlatformCount: platformRows.filter((platform) => platform.enabled).length,
     activeScheduleCount: enabledSchedules.length,
-    runtimeScheduleCount: scheduler.runtimeRegisteredCount,
-    scheduleRuntimeDrift:
-      enabledSchedules.length - scheduler.runtimeRegisteredCount,
+    runtimeScheduleCount,
+    scheduleRuntimeDrift: enabledSchedules.length - runtimeScheduleCount,
     lastPublishedAt:
       runRows.find((run) => run.status === "completed" || run.publish.publishedPlatforms.length > 0)?.startedAt ??
       null,
@@ -433,29 +511,40 @@ export async function getDashboardInsights(): Promise<DashboardInsights> {
       ...run,
       scheduleName: scheduleRows.find((schedule) => schedule.id === run.scheduleId)?.name ?? null,
     })),
-    recentPosts: postRows,
+    recentPosts: postRows.slice(0, 8),
     recentReplies: replyRows,
   };
 }
 
-export async function getCalendarInsights(monthValue: string): Promise<CalendarInsights> {
+export async function getCalendarInsights(
+  monthValue: string,
+  workspaceId: string
+): Promise<CalendarInsights> {
   const [year, month] = monthValue.split("-").map((value) => Number.parseInt(value, 10));
   const monthStart = new Date(year, month - 1, 1);
   const monthEnd = new Date(year, month, 0, 23, 59, 59, 999);
 
-  const [scheduleRows, runRowsRaw] = await Promise.all([
-    db.select().from(schedules).where(eq(schedules.enabled, true)),
-    db
-      .select()
-      .from(pipelineRuns)
-      .where(and(gte(pipelineRuns.startedAt, monthStart), lt(pipelineRuns.startedAt, monthEnd)))
-      .orderBy(desc(pipelineRuns.startedAt)),
-  ]);
+  const { scheduleRows, scheduleIdSet, postIdSet } =
+    await getDashboardWorkspaceScope(workspaceId);
+  const scheduleIds = scheduleRows.map((schedule) => schedule.id);
+  const postIds = Array.from(postIdSet);
+
+  const enabledScheduleRows = scheduleRows.filter((schedule) => schedule.enabled);
+  const allRunRows = await getScopedRunRows({
+    workspaceId,
+    scheduleIds,
+    postIds,
+    startedAtGte: monthStart,
+    startedAtLt: monthEnd,
+  });
+  const runRowsRaw = allRunRows.filter((run) =>
+    runTargetsWorkspace(run, workspaceId, scheduleIdSet, postIdSet)
+  );
 
   const events: CalendarEvent[] = [];
-  const scheduleMap = new Map(scheduleRows.map((schedule) => [schedule.id, schedule]));
+  const scheduleMap = new Map(enabledScheduleRows.map((schedule) => [schedule.id, schedule]));
 
-  for (const schedule of scheduleRows) {
+  for (const schedule of enabledScheduleRows) {
     const occurrences = getCronOccurrences(schedule.cron, monthStart, monthEnd, 120);
     for (const at of occurrences) {
       events.push({

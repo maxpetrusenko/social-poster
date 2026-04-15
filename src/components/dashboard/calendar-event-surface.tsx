@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { ChevronRight, X } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { PlatformIconMarker } from "@/components/dashboard/platform-icon";
 import { StatusBadge } from "@/components/dashboard/ui";
@@ -15,6 +16,7 @@ export type CalendarSurfaceEvent = {
   preview: string | null;
   content: string | null;
   mediaUrl: string | null;
+  error: string | null;
   tone: "planned" | "completed" | "failed" | "running" | "blocked";
   kind: "schedule" | "run" | "post";
   href: string | null;
@@ -25,12 +27,24 @@ export type CalendarSurfaceEvent = {
     label: string;
     shortLabel: string;
     formatCode: "P" | "S" | "R" | "C" | "L" | "T" | null;
+    status: "planned" | "success" | "failed" | "skipped" | "running";
   }>;
   media: Array<{
     code: "T" | "I" | "V";
     label: string;
   }>;
   tags: string[];
+  debug: {
+    eventId: string;
+    runId: string | null;
+    scheduleId: string | null;
+    postId: string | null;
+    attemptCount: number;
+    forecast: boolean;
+    sourceUrl: string | null;
+    sourceHost: string | null;
+    imageUrl: string | null;
+  };
 };
 
 function toneClass(event: CalendarSurfaceEvent) {
@@ -88,15 +102,38 @@ function firstLine(value: string | null | undefined) {
   return line ?? "";
 }
 
+function displayLead(event: CalendarSurfaceEvent) {
+  if (event.debug.forecast) return event.label;
+  return firstLine(event.content || event.preview || event.label);
+}
+
+function hasExpandableContent(event: CalendarSurfaceEvent) {
+  if (event.debug.forecast || !event.content) return false;
+  return firstLine(event.content) !== event.content.trim();
+}
+
+function hasDebugInfo(event: CalendarSurfaceEvent) {
+  return Boolean(
+    event.debug.runId ||
+      event.debug.scheduleId ||
+      event.debug.postId ||
+      event.debug.sourceUrl ||
+      event.debug.imageUrl ||
+      event.debug.forecast
+  );
+}
+
 function mediaBadgeCode(event: CalendarSurfaceEvent) {
   const order = { T: 0, I: 1, V: 2 } as const;
+  const codes = event.media
+    .map((media) => media.code)
+    .sort((left, right) => order[left] - order[right]);
 
-  return (
-    event.media
-      .map((media) => media.code)
-      .sort((left, right) => order[left] - order[right])
-      .join("") || "T"
-  );
+  if (codes.length === 1 && codes[0] === "T") {
+    return null;
+  }
+
+  return codes.join("") || null;
 }
 
 function platformBadgeCode(
@@ -107,6 +144,14 @@ function platformBadgeCode(
   if (platform.formatCode === "T") return "Th";
   if (platform.formatCode) return platform.formatCode;
   return mediaBadgeCode(event);
+}
+
+function visibleMedia(event: CalendarSurfaceEvent) {
+  if (event.media.length === 1 && event.media[0]?.code === "T") {
+    return [];
+  }
+
+  return event.media;
 }
 
 function formatDayLabel(value: string) {
@@ -129,10 +174,11 @@ function EventRow({
   onToggleExpand: () => void;
   onOpenPreview: () => void;
 }) {
-  const lead = firstLine(event.content || event.preview || event.label);
+  const lead = displayLead(event);
   const hasVideo = event.media.some((media) => media.code === "V");
-  const canExpand = Boolean(event.content && firstLine(event.content) !== event.content.trim());
+  const canExpand = hasExpandableContent(event);
   const rowPlatforms = event.platforms.slice(0, 3);
+  const badgeCode = mediaBadgeCode(event);
 
   return (
     <div className={`rounded-[10px] border transition hover:shadow-[0_10px_24px_rgba(12,17,21,0.08)] ${toneClass(event)}`}>
@@ -151,13 +197,14 @@ function EventRow({
                   type={platform.type}
                   badgeLabel={platformBadgeCode(event, platform)}
                   label={platform.label}
+                  status={platform.status}
                   className="ring-2 ring-white"
                 />
               ))}
             </span>
           ) : null}
           <span className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.08em] opacity-80">
-            {formatTimeInZone(event.at)} {mediaBadgeCode(event)}
+            {formatTimeInZone(event.at)} {badgeCode ? ` ${badgeCode}` : ""}
           </span>
           <span className="min-w-0 flex-1 truncate text-[11px] font-semibold">
             {lead || event.label}
@@ -194,7 +241,7 @@ function EventDetailRow({
   onOpenPreview: () => void;
 }) {
   const hasVideo = event.media.some((media) => media.code === "V");
-  const lead = firstLine(event.content || event.preview || event.label);
+  const lead = displayLead(event);
 
   return (
     <button
@@ -241,9 +288,11 @@ export function CalendarEventSurface({
   groupedDayKeys: string[];
   todayKey: string;
 }) {
+  const router = useRouter();
   const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
   const [expandedDays, setExpandedDays] = useState<Record<string, boolean>>({});
   const [previewId, setPreviewId] = useState<string | null>(null);
+  const [actionState, setActionState] = useState<"retry" | "draft" | null>(null);
 
   const allEvents = useMemo(
     () => Object.values(eventsByDay).flat(),
@@ -253,6 +302,55 @@ export function CalendarEventSurface({
   const previewEvent = previewId
     ? allEvents.find((event) => event.id === previewId) ?? null
     : null;
+  const previewMedia = previewEvent ? visibleMedia(previewEvent) : [];
+
+  async function createDraftFromRun(runId: string) {
+    const response = await fetch(`/api/pipeline-runs/${runId}/draft`, {
+      method: "POST",
+    });
+    const body = (await response.json()) as { id?: string; error?: string };
+    if (!response.ok || !body.id) {
+      throw new Error(body.error || "Failed to create draft");
+    }
+    return body.id;
+  }
+
+  async function handleRetryNow() {
+    if (!previewEvent) return;
+
+    setActionState("retry");
+    try {
+      const publishResponse = await fetch(`/api/pipeline-runs/${previewEvent.id}/retry`, {
+        method: "POST",
+      });
+      const publishBody = (await publishResponse.json()) as { error?: string; runId?: string };
+      if (!publishResponse.ok) {
+        throw new Error(publishBody.error || "Failed to retry recovered run");
+      }
+      setPreviewId(null);
+      router.refresh();
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Failed to retry post");
+    } finally {
+      setActionState(null);
+    }
+  }
+
+  async function handleReschedule() {
+    if (!previewEvent) return;
+
+    setActionState("draft");
+    try {
+      const postId = await createDraftFromRun(previewEvent.id);
+      setPreviewId(null);
+      router.push(`/dashboard/posts/${postId}/edit`);
+      router.refresh();
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Failed to create draft");
+    } finally {
+      setActionState(null);
+    }
+  }
 
   return (
     <>
@@ -430,15 +528,16 @@ export function CalendarEventSurface({
 
             <div className="space-y-4">
               <div className="flex flex-wrap items-center gap-2">
-              {previewEvent.platforms.map((platform) => (
+                {previewEvent.platforms.map((platform) => (
                   <PlatformIconMarker
                     key={`${previewEvent.id}-${platform.id}-preview`}
                     type={platform.type}
                     badgeLabel={platformBadgeCode(previewEvent, platform)}
                     label={platform.label}
+                    status={platform.status}
                   />
                 ))}
-                {previewEvent.media.map((media) => (
+                {previewMedia.map((media) => (
                   <span
                     key={`${previewEvent.id}-${media.code}-preview`}
                     className="rounded-full border border-current/15 bg-white/80 px-2.5 py-1.5 text-xs font-semibold"
@@ -447,6 +546,41 @@ export function CalendarEventSurface({
                   </span>
                 ))}
               </div>
+
+              {previewEvent.tone === "failed" && previewEvent.error ? (
+                <div className="rounded-[18px] border border-red-200 bg-red-50 px-4 py-3 text-sm leading-6 text-red-700">
+                  {previewEvent.error}
+                </div>
+              ) : null}
+
+              {previewEvent.debug.forecast ? (
+                <div className="rounded-[18px] border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-700">
+                    Predicted from candidate pool
+                  </p>
+                  {previewEvent.debug.sourceUrl ? (
+                    <a
+                      href={previewEvent.debug.sourceUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-2 inline-flex text-sm font-semibold text-sky-900 underline decoration-sky-300 underline-offset-4"
+                    >
+                      {previewEvent.debug.sourceHost || previewEvent.debug.sourceUrl}
+                    </a>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {!previewEvent.debug.forecast && previewEvent.debug.attemptCount > 1 ? (
+                <div className="rounded-[18px] border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-amber-700">
+                    Collapsed Attempts
+                  </p>
+                  <p className="mt-1">
+                    {previewEvent.debug.attemptCount} runs merged for this schedule slot.
+                  </p>
+                </div>
+              ) : null}
 
               {previewEvent.mediaUrl ? (
                 <div className="overflow-hidden rounded-[18px] border border-current/10 bg-white/70">
@@ -488,14 +622,101 @@ export function CalendarEventSurface({
                 </div>
               ) : null}
 
+              {hasDebugInfo(previewEvent) ? (
+                <details className="rounded-[18px] border border-[rgba(12,17,21,0.08)] bg-[rgba(12,17,21,0.03)] px-4 py-3">
+                  <summary className="cursor-pointer text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
+                    Debug
+                  </summary>
+                  <div className="mt-3 space-y-2 text-xs leading-5">
+                    <p><span className="font-semibold">Event</span>: <code>{previewEvent.debug.eventId}</code></p>
+                    {previewEvent.debug.runId ? (
+                      <p><span className="font-semibold">Run</span>: <code>{previewEvent.debug.runId}</code></p>
+                    ) : null}
+                    {previewEvent.debug.scheduleId ? (
+                      <p><span className="font-semibold">Schedule</span>: <code>{previewEvent.debug.scheduleId}</code></p>
+                    ) : null}
+                    {previewEvent.debug.postId ? (
+                      <p><span className="font-semibold">Post</span>: <code>{previewEvent.debug.postId}</code></p>
+                    ) : null}
+                    <p><span className="font-semibold">Attempts</span>: {previewEvent.debug.attemptCount}</p>
+                    <p><span className="font-semibold">Forecast</span>: {previewEvent.debug.forecast ? "yes" : "no"}</p>
+                    {previewEvent.debug.sourceUrl ? (
+                      <p>
+                        <span className="font-semibold">Source</span>:{" "}
+                        <a
+                          href={previewEvent.debug.sourceUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="underline decoration-current/30 underline-offset-4"
+                        >
+                          {previewEvent.debug.sourceHost || previewEvent.debug.sourceUrl}
+                        </a>
+                      </p>
+                    ) : null}
+                    {previewEvent.debug.imageUrl ? (
+                      <p>
+                        <span className="font-semibold">Image</span>:{" "}
+                        <a
+                          href={previewEvent.debug.imageUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="break-all underline decoration-current/30 underline-offset-4"
+                        >
+                          {previewEvent.debug.imageUrl}
+                        </a>
+                      </p>
+                    ) : null}
+                  </div>
+                </details>
+              ) : null}
+
               {previewEvent.href ? (
-                <div className="pt-2">
+                <div className="flex flex-wrap gap-2 pt-2">
                   <Link
                     href={previewEvent.href}
                     className="inline-flex rounded-[12px] border border-current/15 bg-white/80 px-4 py-2 text-sm font-semibold"
                   >
                     Open source
                   </Link>
+                  {previewEvent.kind === "run" && previewEvent.tone === "failed" ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={handleRetryNow}
+                        disabled={actionState !== null}
+                        className="inline-flex rounded-[12px] border border-[rgba(12,17,21,0.12)] bg-[var(--ink)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+                      >
+                        {actionState === "retry" ? "Posting…" : "Post Now"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleReschedule}
+                        disabled={actionState !== null}
+                        className="inline-flex rounded-[12px] border border-current/15 bg-white/80 px-4 py-2 text-sm font-semibold disabled:opacity-60"
+                      >
+                        {actionState === "draft" ? "Opening…" : "Reschedule"}
+                      </button>
+                    </>
+                  ) : null}
+                </div>
+              ) : previewEvent.kind === "run" && previewEvent.tone === "failed" ? (
+                <div className="flex flex-wrap gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={handleRetryNow}
+                    disabled={actionState !== null}
+                    className="inline-flex rounded-[12px] border border-[rgba(12,17,21,0.12)] bg-[var(--ink)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+                  >
+                    {actionState === "retry" ? "Posting…" : "Post Now"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleReschedule}
+                    disabled={actionState !== null}
+                    className="inline-flex rounded-[12px] border border-current/15 bg-white/80 px-4 py-2 text-sm font-semibold disabled:opacity-60"
+                  >
+                    {actionState === "draft" ? "Opening…" : "Reschedule"}
+                  </button>
                 </div>
               ) : null}
             </div>

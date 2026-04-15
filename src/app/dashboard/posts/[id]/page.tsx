@@ -1,12 +1,12 @@
 import { db } from "@/db";
 import { posts, postTargets, platforms, profiles } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { notFound, redirect } from "next/navigation";
-import { getSession } from "@/lib/auth";
 import { formatDate } from "@/lib/utils";
 import Link from "next/link";
 import { ArrowLeft, ExternalLink } from "lucide-react";
 import { PostDeleteButton } from "@/components/post-delete-button";
+import { getTenantContext } from "@/lib/tenancy";
 
 const STATUS_COLORS: Record<string, string> = {
   draft: "bg-gray-100 text-gray-700",
@@ -37,12 +37,11 @@ export default async function PostDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const session = await getSession();
-  if (!session) redirect("/login");
-
   const { id } = await params;
+  const tenant = await getTenantContext();
+  if (!tenant) redirect("/login");
   const post = await db.query.posts.findFirst({
-    where: eq(posts.id, id),
+    where: and(eq(posts.id, id), eq(posts.workspaceId, tenant.currentWorkspace.id)),
   });
 
   if (!post) {
@@ -65,7 +64,10 @@ export default async function PostDetailPage({
 
   const profile = post.profileId
     ? await db.query.profiles.findFirst({
-        where: eq(profiles.id, post.profileId),
+        where: and(
+          eq(profiles.id, post.profileId),
+          eq(profiles.workspaceId, tenant.currentWorkspace.id)
+        ),
       })
     : null;
 

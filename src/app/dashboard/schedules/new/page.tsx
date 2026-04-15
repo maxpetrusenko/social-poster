@@ -1,7 +1,9 @@
 import { db } from "@/db";
 import { platforms, profiles } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { NewScheduleForm } from "@/components/new-schedule-form";
+import { getTenantContext } from "@/lib/tenancy";
+import { redirect } from "next/navigation";
 
 export default async function NewSchedulePage({
   searchParams,
@@ -13,9 +15,14 @@ export default async function NewSchedulePage({
     typeof params.category === "string" && params.category.trim()
       ? params.category
       : "opinion_take";
+  const tenant = await getTenantContext();
+  if (!tenant) redirect("/login");
 
   const [profileRows, platformRows] = await Promise.all([
-    db.select({ id: profiles.id, name: profiles.name }).from(profiles),
+    db
+      .select({ id: profiles.id, name: profiles.name })
+      .from(profiles)
+      .where(eq(profiles.workspaceId, tenant.currentWorkspace.id)),
     db
       .select({
         id: platforms.id,
@@ -23,7 +30,12 @@ export default async function NewSchedulePage({
         handle: platforms.handle,
       })
       .from(platforms)
-      .where(eq(platforms.enabled, true)),
+      .where(
+        and(
+          eq(platforms.workspaceId, tenant.currentWorkspace.id),
+          eq(platforms.enabled, true)
+        )
+      ),
   ]);
 
   return (

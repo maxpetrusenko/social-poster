@@ -3,13 +3,14 @@ import { posts, postTargets, platforms, pipelineRuns } from "@/db/schema";
 import type { PipelineStep } from "@/db/schema";
 import { requireApiSession } from "@/lib/auth";
 import { publishPlatformTargets } from "@/lib/pipeline/publish-service";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import crypto from "node:crypto";
 import { NextResponse } from "next/server";
 import {
   resolvePostStatusFromTargetResults,
   resolvePublishResultsStatus,
 } from "@/lib/pipeline/status";
+import { getTenantContext } from "@/lib/tenancy";
 
 export async function POST(
   _request: Request,
@@ -17,9 +18,15 @@ export async function POST(
 ) {
   const session = await requireApiSession();
   if (session instanceof NextResponse) return session;
+  const tenant = await getTenantContext();
+  if (!tenant) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   const { id: postId } = await params;
-  const post = await db.query.posts.findFirst({ where: eq(posts.id, postId) });
+  const post = await db.query.posts.findFirst({
+    where: and(eq(posts.id, postId), eq(posts.workspaceId, tenant.currentWorkspace.id)),
+  });
   if (!post) {
     return NextResponse.json({ error: "Post not found" }, { status: 404 });
   }
@@ -42,6 +49,7 @@ export async function POST(
 
   await db.insert(pipelineRuns).values({
     id: runId,
+    workspaceId: tenant.currentWorkspace.id,
     scheduleId: null,
     postId,
     trigger: "api",

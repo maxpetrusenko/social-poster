@@ -10,8 +10,8 @@ import type {
 export async function getConnectionsPageData(workspaceId: string) {
   const [platformRows, profileRows, dashboard] = await Promise.all([
     db.select().from(platforms).where(eq(platforms.workspaceId, workspaceId)),
-    db.select().from(profiles),
-    getDashboardInsights(),
+    db.select().from(profiles).where(eq(profiles.workspaceId, workspaceId)),
+    getDashboardInsights(workspaceId),
   ]);
 
   return {

@@ -35,7 +35,8 @@ Deploys to `social.maxpetrusenko.com` on Contabo/Coolify.
 - [x] `candidate_cache` — manual candidate snapshot + OG-image cache
 
 ### Auth
-- [x] Magic link email flow (src/lib/auth.ts, src/lib/mail.ts)
+- [x] Magic link + workspace invite email flow (Resend-first, SMTP fallback, preview URL fallback)
+- [x] Team invite delivery failures now degrade to a visible pending invite + copy link instead of a 500
 - [x] Session cookie management (30-day TTL)
 - [x] Single allowed email (AUTH_EMAIL env var)
 - [x] Google sign-in gate via Supabase (env-gated, allowlist-based)
@@ -58,6 +59,7 @@ Deploys to `social.maxpetrusenko.com` on Contabo/Coolify.
 - [x] Profiles — list, create, edit, delete (voice ID, face ID, tone)
 - [x] Posts — list with status filters, create with platform targeting, detail view
 - [x] Calendar — monthly grid view with schedule recurrences + actual pipeline runs
+- [x] Calendar recurring forecast cards now show source-title/image predictions with a debug panel instead of synthetic generated captions
 - [x] Pipeline — run history with expandable step detail
 - [x] Schedules — list, create, edit, delete, manual "Run Now", success/error stats
 - [x] Recurrent Posts exposed in left navigation for recurring content buckets and slot planning
@@ -65,10 +67,11 @@ Deploys to `social.maxpetrusenko.com` on Contabo/Coolify.
 
 ### API Routes
 - [x] CRUD for platforms, profiles, posts, schedules
-- [x] Platform create/update/delete now respect active workspace
+- [x] Platform/profile create/update/delete now respect active workspace
 - [x] Manual schedule run endpoint
 - [x] Post deletion cascades to targets
 - [x] Post create/update routes now accept explicit composer intent for draft vs schedule
+- [x] Posts, schedules, pipeline runs, replies, calendar, and profiles now read/write against the active workspace
 
 ### Legacy Restore
 - [x] Legacy import script (`npm run legacy:import`)
@@ -134,6 +137,10 @@ Deploys to `social.maxpetrusenko.com` on Contabo/Coolify.
 - [x] Sharability scoring helper added via `HOOKS` framework (`src/lib/post-framework.ts`)
 - [x] Replies board can discover live X candidates through Bird, persist them to `reply_candidates`, and dispatch approved drafts from the dashboard
 - [x] Replies board and cron reply engine now generate drafts through an OpenAI-backed reply model, filtered to original posts only
+- [x] Reply generation now routes across `product`, `dev`, and `github` directions with lane-specific prompts and discovery queries
+- [x] Replies board now supports Agent Persona-only reply profiles so discovery and drafts can target product, build, or OSS goals explicitly
+- [x] Ready replies now run through an automatic queue dispatcher with visible queued-for timestamps and a higher-throughput cadence for operator queues
+- [x] Empty review queues now auto-refill slowly with a small 3-post batch, manual refresh expands to 5 posts, and thread-style posts pull same-author thread context before draft generation
 - [x] Sidebar now shows the current workspace and a switch entry into the workspace control plane
 
 ### Cutover Plan
@@ -178,8 +185,8 @@ social-poster/
 
 ## Remaining Parity Gaps
 
-- [ ] Posts, schedules, calendar, and pipeline are still legacy-global instead of fully workspace-scoped
-- [ ] Workspace-scoped profiles and cross-workspace calendar parity still need the next schema/data migration pass
+- [ ] Placeholder client portal / approvals-adjacent surfaces still need real product parity beyond the workspace control plane
+- [ ] Cross-workspace aggregate reporting views are not implemented yet
 
 ## Ops Notes
 - `/health` returns JSON health status for Coolify / load balancer probes

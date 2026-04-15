@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireApiSession } from "@/lib/auth";
 import { updateReplyCandidateDraft, updateReplyCandidateStatus } from "@/lib/replies/live";
 import { z } from "zod";
+import { getTenantContext } from "@/lib/tenancy";
 
 const bodySchema = z.object({
   status: z.enum(["new", "analyzed", "drafted", "ready", "posted", "skipped"]).optional(),
@@ -18,11 +19,21 @@ export async function POST(
   if (session instanceof NextResponse) return session;
 
   try {
+    const tenant = await getTenantContext();
+    if (!tenant) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { id } = await params;
     const body = bodySchema.parse(await request.json());
 
     if (typeof body.draftIndex === "number" && typeof body.draftText === "string") {
-      const row = await updateReplyCandidateDraft(id, body.draftIndex, body.draftText);
+      const row = await updateReplyCandidateDraft(
+        id,
+        body.draftIndex,
+        body.draftText,
+        tenant.currentWorkspace.id
+      );
       return NextResponse.json({ row });
     }
 
@@ -30,7 +41,12 @@ export async function POST(
       return NextResponse.json({ error: "Missing status update" }, { status: 400 });
     }
 
-    const row = await updateReplyCandidateStatus(id, body.status, body.selectedDraftIndex);
+    const row = await updateReplyCandidateStatus(
+      id,
+      body.status,
+      body.selectedDraftIndex,
+      tenant.currentWorkspace.id
+    );
     return NextResponse.json({ row });
   } catch (error) {
     if (error instanceof z.ZodError) {

@@ -58,6 +58,11 @@ type HeaderConfig = {
 
 const headerCopy: HeaderConfig[] = [
   {
+    match: "/dashboard/calendar",
+    title: "Calendar",
+    description: "See monthly cadence, live runs, and posting history.",
+  },
+  {
     match: "/dashboard/workspace-settings/general",
     title: "Workspace Settings",
     description: "Brand defaults, timezone, approval posture, and local rules.",
@@ -125,7 +130,14 @@ function NavSection({
               aria-label={item.label}
               title={compact ? item.label : undefined}
             >
-              <span className={cn("mt-0.5 flex h-9 w-9 items-center justify-center rounded-full border", active ? "border-[#d3c2a8] bg-[#171717] text-[#f6efe3]" : "border-[#dfd1bc] bg-white text-[#7f6c54]")}>
+              <span
+                className={cn(
+                  "mt-0.5 flex h-9 w-9 items-center justify-center rounded-full border",
+                  active
+                    ? "border-[#d3c2a8] bg-[#171717] text-[#f6efe3]"
+                    : "border-[#dfd1bc] bg-white text-[#7f6c54]"
+                )}
+              >
                 <Icon className="h-4 w-4" />
               </span>
               <span className={cn("min-w-0", compact && "lg:hidden")}>

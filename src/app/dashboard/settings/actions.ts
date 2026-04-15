@@ -2,7 +2,9 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { sendWorkspaceInvitationEmail } from "@/lib/mail";
+import { getRequestAppUrl } from "@/lib/app-url";
 import {
   acceptInvitationByToken,
   cancelOrganizationDeletion,
@@ -61,6 +63,16 @@ function revalidateSettingsSurfaces() {
   revalidatePath("/dashboard/workspace-settings/approvals");
   revalidatePath("/dashboard/workspace-settings/social-accounts");
   revalidatePath("/dashboard");
+}
+
+function redirectToTeamMembers(status: string) {
+  redirect(`/dashboard/settings/team-members?status=${encodeURIComponent(status)}`);
+}
+
+async function getActionAppUrl() {
+  return getRequestAppUrl({
+    headers: await headers(),
+  });
 }
 
 export async function updateOrganizationGeneralAction(formData: FormData) {
@@ -132,6 +144,7 @@ export async function updateCurrentWorkspaceGeneralAction(formData: FormData) {
 
 export async function inviteMemberAction(formData: FormData) {
   const context = await requireTenantContext();
+  const baseUrl = await getActionAppUrl();
   const workspaceIds = context.accessibleWorkspaces.map((entry) => entry.workspace.id);
   const orgRoleValue = String(formData.get("orgRole") ?? "member");
   const orgRole = ORG_ROLE_OPTIONS.includes(orgRoleValue as OrgRole)
@@ -144,28 +157,43 @@ export async function inviteMemberAction(formData: FormData) {
     workspaceAssignments: parseAssignments(formData, workspaceIds),
   });
 
-  await sendWorkspaceInvitationEmail({
-    email: invite.email,
-    token: invite.token,
-    organizationName: context.organization.name,
-    inviterName: context.user.fullName ?? context.user.email,
-  });
-
+  let status = "invite-sent";
+  try {
+    await sendWorkspaceInvitationEmail({
+      email: invite.email,
+      token: invite.token,
+      organizationName: context.organization.name,
+      inviterName: context.user.fullName ?? context.user.email,
+      baseUrl,
+    });
+  } catch (error) {
+    status = "invite-delivery-failed";
+    console.error("Failed to deliver workspace invitation email", error);
+  }
   revalidateSettingsSurfaces();
+  redirectToTeamMembers(status);
 }
 
 export async function resendInvitationAction(formData: FormData) {
   const context = await requireTenantContext();
+  const baseUrl = await getActionAppUrl();
   const invitation = await resendInvitation(String(formData.get("invitationId") ?? ""));
 
-  await sendWorkspaceInvitationEmail({
-    email: invitation.email,
-    token: invitation.token,
-    organizationName: context.organization.name,
-    inviterName: context.user.fullName ?? context.user.email,
-  });
-
+  let status = "invite-resent";
+  try {
+    await sendWorkspaceInvitationEmail({
+      email: invitation.email,
+      token: invitation.token,
+      organizationName: context.organization.name,
+      inviterName: context.user.fullName ?? context.user.email,
+      baseUrl,
+    });
+  } catch (error) {
+    status = "invite-resend-delivery-failed";
+    console.error("Failed to resend workspace invitation email", error);
+  }
   revalidateSettingsSurfaces();
+  redirectToTeamMembers(status);
 }
 
 export async function revokeInvitationAction(formData: FormData) {

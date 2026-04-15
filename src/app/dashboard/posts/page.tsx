@@ -3,9 +3,9 @@ import { posts, postTargets } from "@/db/schema";
 import Link from "next/link";
 import { Plus, ArrowRight } from "lucide-react";
 import { formatDate } from "@/lib/utils";
-import { eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
+import { getTenantContext } from "@/lib/tenancy";
 import { redirect } from "next/navigation";
-import { getSession } from "@/lib/auth";
 
 const STATUS_COLORS: Record<string, string> = {
   draft: "bg-gray-100 text-gray-700",
@@ -28,21 +28,29 @@ export default async function PostsPage({
 }: {
   searchParams: Promise<Record<string, string>>;
 }) {
-  const session = await getSession();
-  if (!session) redirect("/login");
-
   const params = await searchParams;
   const statusFilter = params.status || "all";
+  const tenant = await getTenantContext();
+  if (!tenant) redirect("/login");
 
   let allPosts;
   if (statusFilter !== "all") {
     allPosts = await db
       .select()
       .from(posts)
-      .where(eq(posts.status, statusFilter))
-      .orderBy(posts.createdAt);
+      .where(
+        and(
+          eq(posts.workspaceId, tenant.currentWorkspace.id),
+          eq(posts.status, statusFilter)
+        )
+      )
+      .orderBy(desc(posts.createdAt));
   } else {
-    allPosts = await db.select().from(posts).orderBy(posts.createdAt);
+    allPosts = await db
+      .select()
+      .from(posts)
+      .where(eq(posts.workspaceId, tenant.currentWorkspace.id))
+      .orderBy(desc(posts.createdAt));
   }
 
   const postStatuses = await Promise.all(

@@ -1,13 +1,15 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getSession } from "@/lib/auth";
 import { CalendarControls } from "@/components/dashboard/calendar-controls";
 import {
   CalendarEventSurface,
   type CalendarSurfaceEvent,
 } from "@/components/dashboard/calendar-event-surface";
-import { SectionCard, StatusBadge } from "@/components/dashboard/ui";
+import { SectionCard } from "@/components/dashboard/ui";
 import { getCalendarInsights } from "@/lib/dashboard/calendar";
 import { getZonedDateParts } from "@/lib/timezone";
+import { getTenantContext } from "@/lib/tenancy";
+import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -84,13 +86,34 @@ function serializeEvent(event: Awaited<ReturnType<typeof getCalendarInsights>>["
   };
 }
 
+function buildQueryString(
+  params: Record<string, string>,
+  updates: Record<string, string | null>
+) {
+  const next = new URLSearchParams();
+
+  Object.entries(params).forEach(([key, value]) => {
+    if (value) next.set(key, value);
+  });
+
+  Object.entries(updates).forEach(([key, value]) => {
+    if (!value || value === "all") {
+      next.delete(key);
+    } else {
+      next.set(key, value);
+    }
+  });
+
+  return next.toString();
+}
+
 export default async function CalendarPage({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string>>;
 }) {
-  const session = await getSession();
-  if (!session) redirect("/login");
+  const tenant = await getTenantContext();
+  if (!tenant) redirect("/login");
 
   const params = await searchParams;
   const monthParam = params.month || new Date().toISOString().slice(0, 7);
@@ -109,7 +132,7 @@ export default async function CalendarPage({
   const nextMonthStr = new Date(year, monthIndex + 1, 1).toISOString().slice(0, 7);
   const todayMonth = new Date().toISOString().slice(0, 7);
 
-  const calendar = await getCalendarInsights(monthParam);
+  const calendar = await getCalendarInsights(monthParam, tenant.currentWorkspace.id);
   const rawEvents = Object.values(calendar.eventsByDay)
     .flat()
     .map(serializeEvent);
@@ -177,19 +200,11 @@ export default async function CalendarPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-4">
-        <h1 className="font-serif text-[2.4rem] leading-none tracking-[-0.04em] text-[var(--ink)]">
-          Calendar
-        </h1>
-      </div>
-
       <SectionCard
         title={view === "calendar" ? "Month View" : "List View"}
-        subtitle="Grey scheduled. green posted. red failed. yellow running."
         action={
           <CalendarControls
             monthLabel={calendar.monthLabel}
-            currentMonth={monthParam}
             prevMonth={prevMonthStr}
             nextMonth={nextMonthStr}
             todayMonth={todayMonth}
@@ -206,15 +221,46 @@ export default async function CalendarPage({
         }
       >
         <div className="mb-4 flex flex-wrap gap-2">
-          <StatusBadge tone="neutral">scheduled manual</StatusBadge>
-          <span className="inline-flex rounded-full border border-sky-200 bg-sky-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-800">
-            recurring
-          </span>
-          <StatusBadge tone="blocked">paused</StatusBadge>
-          <StatusBadge tone="neutral">scheduled</StatusBadge>
-          <StatusBadge tone="good">posted</StatusBadge>
-          <StatusBadge tone="bad">failed</StatusBadge>
-          <StatusBadge tone="warn">running</StatusBadge>
+          {statusOptions.map((option) => {
+            const active =
+              (filters.status === "all" && option.value === "all")
+              || filters.status === option.value;
+            const tone =
+              option.value === "paused"
+                ? "blocked"
+                : option.value === "posted"
+                  ? "good"
+                  : option.value === "failed"
+                    ? "bad"
+                    : option.value === "running"
+                      ? "warn"
+                      : "neutral";
+
+            return (
+              <Link
+                key={option.value}
+                href={`/dashboard/calendar?${buildQueryString(params, {
+                  status: option.value === "all" ? null : option.value,
+                })}`}
+                className={cn(
+                  "inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em]",
+                  active
+                    ? tone === "blocked"
+                      ? "border-stone-100 bg-stone-50/70 text-stone-500"
+                      : tone === "good"
+                        ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                        : tone === "bad"
+                          ? "border-red-200 bg-red-50 text-red-700"
+                          : tone === "warn"
+                            ? "border-amber-200 bg-amber-50 text-amber-700"
+                            : "border-slate-300 bg-slate-100 text-slate-700"
+                    : "border-[rgba(12,17,21,0.08)] bg-white text-[var(--muted)] hover:border-[rgba(12,17,21,0.16)] hover:text-[var(--ink)]"
+                )}
+              >
+                {option.label}
+              </Link>
+            );
+          })}
         </div>
 
         <CalendarEventSurface

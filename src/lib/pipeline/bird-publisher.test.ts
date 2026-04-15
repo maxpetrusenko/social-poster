@@ -47,7 +47,7 @@ test("resolveBirdCredentials prefers dashboard credentials over env", () => {
   }
 });
 
-test("resolveBirdCredentials falls back to env when dashboard creds are absent", () => {
+test("resolveBirdCredentials prefers installed Bird session over env fallback", () => {
   const previousAuthToken = process.env.X_AUTH_TOKEN;
   const previousCt0 = process.env.X_CT0;
   process.env.X_AUTH_TOKEN = "env-auth";
@@ -59,10 +59,39 @@ test("resolveBirdCredentials falls back to env when dashboard creds are absent",
       birdProfilePath: "/tmp/chrome-profile",
     });
 
-    assert.equal(resolved.authToken, "env-auth");
-    assert.equal(resolved.ct0, "env-ct0");
+    assert.equal(resolved.authToken, null);
+    assert.equal(resolved.ct0, null);
     assert.equal(resolved.chromeProfileDir, "/tmp/chrome-profile");
     assert.equal(resolved.threadLongPosts, true);
+  } finally {
+    if (previousAuthToken === undefined) {
+      delete process.env.X_AUTH_TOKEN;
+    } else {
+      process.env.X_AUTH_TOKEN = previousAuthToken;
+    }
+
+    if (previousCt0 === undefined) {
+      delete process.env.X_CT0;
+    } else {
+      process.env.X_CT0 = previousCt0;
+    }
+  }
+});
+
+test("resolveBirdCredentials falls back to env when installed Bird session is disabled", () => {
+  const previousAuthToken = process.env.X_AUTH_TOKEN;
+  const previousCt0 = process.env.X_CT0;
+  process.env.X_AUTH_TOKEN = "env-auth";
+  process.env.X_CT0 = "env-ct0";
+
+  try {
+    const resolved = resolveBirdCredentialsFromSource({
+      useInstalledBirdSession: false,
+    });
+
+    assert.equal(resolved.authToken, "env-auth");
+    assert.equal(resolved.ct0, "env-ct0");
+    assert.equal(resolved.useInstalledBirdSession, false);
   } finally {
     if (previousAuthToken === undefined) {
       delete process.env.X_AUTH_TOKEN;
@@ -116,5 +145,28 @@ test("buildBirdEnv injects explicit credentials without CLI args", () => {
   assert.equal(env.CT0, "cfg-ct0");
   assert.equal(env.X_AUTH_TOKEN, "cfg-auth");
   assert.equal(env.X_CT0, "cfg-ct0");
+  assert.equal(env.PATH, "/usr/bin");
+});
+
+test("buildBirdEnv strips inherited env auth when explicit Bird credentials are absent", () => {
+  const env = buildBirdEnv(
+    {
+      authToken: null,
+      ct0: null,
+    },
+    {
+      ...process.env,
+      AUTH_TOKEN: "env-auth",
+      CT0: "env-ct0",
+      X_AUTH_TOKEN: "x-env-auth",
+      X_CT0: "x-env-ct0",
+      PATH: "/usr/bin",
+    }
+  );
+
+  assert.equal(env.AUTH_TOKEN, undefined);
+  assert.equal(env.CT0, undefined);
+  assert.equal(env.X_AUTH_TOKEN, undefined);
+  assert.equal(env.X_CT0, undefined);
   assert.equal(env.PATH, "/usr/bin");
 });

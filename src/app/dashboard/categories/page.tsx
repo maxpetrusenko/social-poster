@@ -1,26 +1,28 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { ArrowUpRight, CalendarClock } from "lucide-react";
 import { getDashboardInsights, type ScheduleInsight } from "@/lib/dashboard/insights";
 import { getCronOccurrences } from "@/lib/dashboard/cron";
 import { POST_CATEGORIES } from "@/lib/post-categories";
 import { formatTimeInZone, getAppTimeZone, getZonedDateParts } from "@/lib/timezone";
+import { getTenantContext } from "@/lib/tenancy";
 
 export const dynamic = "force-dynamic";
 
 const CATEGORY_ACCENTS: Record<string, string> = {
   opinion_take: "#2f9fb5",
-  product_update: "#2f9fb5",
+  product_update: "#3f8cff",
   source_share: "#ef6a67",
   hype_future: "#8a69d8",
-  hiring_signal: "#8a69d8",
+  hiring_signal: "#d28a1d",
 };
 
 const CATEGORY_SURFACES: Record<string, string> = {
   opinion_take: "#d9f4f4",
-  product_update: "#d9f4f4",
+  product_update: "#e1ebff",
   source_share: "#ffe1df",
   hype_future: "#ece0ff",
-  hiring_signal: "#ece0ff",
+  hiring_signal: "#fff1cf",
 };
 
 const WEEK_DAYS = [
@@ -108,7 +110,10 @@ function buildGridEvents(scheduleInsights: ScheduleInsight[]) {
 }
 
 export default async function CategoriesPage() {
-  const { scheduleInsights } = await getDashboardInsights();
+  const tenant = await getTenantContext();
+  if (!tenant) redirect("/login");
+
+  const { scheduleInsights } = await getDashboardInsights(tenant.currentWorkspace.id);
   const gridEvents = buildGridEvents(scheduleInsights);
 
   const eventsByCell = gridEvents.reduce<Map<string, GridEvent[]>>((accumulator, event) => {
@@ -143,7 +148,7 @@ export default async function CategoriesPage() {
       <div className="mx-auto w-full max-w-[1500px] px-5 py-6 md:px-8 xl:px-10">
         <div className="mb-4 flex justify-end">
           <Link
-            href="/dashboard/schedules"
+            href="/dashboard/categories/manage"
             className="inline-flex items-center gap-2 rounded-full bg-[#1777ff] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(23,119,255,0.24)] transition hover:bg-[#0f64dd]"
           >
             Manage Categories

@@ -1,10 +1,11 @@
 import { db } from "@/db";
 import { platforms } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import EditPlatformForm from "./edit-form";
+import { getTenantContext } from "@/lib/tenancy";
 
 export default async function PlatformDetailPage({
   params,
@@ -12,8 +13,10 @@ export default async function PlatformDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const tenant = await getTenantContext();
+  if (!tenant) redirect("/login");
   const platform = await db.query.platforms.findFirst({
-    where: eq(platforms.id, id),
+    where: and(eq(platforms.id, id), eq(platforms.workspaceId, tenant.currentWorkspace.id)),
   });
 
   if (!platform) {

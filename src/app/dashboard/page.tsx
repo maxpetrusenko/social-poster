@@ -1,9 +1,5 @@
-import { desc, eq } from "drizzle-orm";
-import { db } from "@/db";
-import { platforms } from "@/db/schema";
 import { OverviewPlatformTable } from "@/components/dashboard/overview-platform-table";
 import { getDashboardInsights } from "@/lib/dashboard/insights";
-import { getPlatformMeta } from "@/lib/dashboard/platforms";
 import { relativeTime } from "@/lib/utils";
 import { getTenantContext } from "@/lib/tenancy";
 
@@ -88,16 +84,8 @@ export default async function DashboardPage() {
     return null;
   }
 
-  const [dashboard, platformRows] = await Promise.all([
-    getDashboardInsights(),
-    db
-      .select()
-      .from(platforms)
-      .where(eq(platforms.workspaceId, tenant.currentWorkspace.id))
-      .orderBy(desc(platforms.createdAt)),
-  ]);
-
-  const insightById = new Map(dashboard.platformInsights.map((item) => [item.id, item]));
+  const dashboard = await getDashboardInsights(tenant.currentWorkspace.id);
+  const platformRows = [...dashboard.platformInsights];
   const enabledCount = platformRows.filter((platform) => platform.enabled).length;
   const disabledCount = platformRows.length - enabledCount;
 
@@ -114,16 +102,16 @@ export default async function DashboardPage() {
     {
       title: "Scheduled channels",
       value: String(
-        platformRows.filter((platform) => (insightById.get(platform.id)?.scheduleCount ?? 0) > 0).length
+        platformRows.filter((platform) => platform.scheduleCount > 0).length
       ),
-      sub: `${platformRows.reduce((sum, platform) => sum + (insightById.get(platform.id)?.scheduleCount ?? 0), 0)} scheduled targets`,
+      sub: `${platformRows.reduce((sum, platform) => sum + platform.scheduleCount, 0)} scheduled targets`,
       donut: buildDonut([
         {
-          value: platformRows.filter((platform) => (insightById.get(platform.id)?.scheduleCount ?? 0) > 0).length,
+          value: platformRows.filter((platform) => platform.scheduleCount > 0).length,
           color: "#171717",
         },
         {
-          value: platformRows.filter((platform) => (insightById.get(platform.id)?.scheduleCount ?? 0) === 0).length,
+          value: platformRows.filter((platform) => platform.scheduleCount === 0).length,
           color: "#8e7556",
         },
       ]),
@@ -132,21 +120,18 @@ export default async function DashboardPage() {
 
   const rows = platformRows
     .map((platform) => {
-      const insight = insightById.get(platform.id);
-      const meta = getPlatformMeta(platform.type);
-
       return {
         id: platform.id,
         name: platform.name,
         handle: platform.handle,
         provider: formatProviderLabel(platform.provider),
         enabled: platform.enabled,
-        scheduleCount: insight?.scheduleCount ?? 0,
-        deliveryCount30d: insight?.deliveryCount30d ?? 0,
-        failureCount30d: insight?.failureCount30d ?? 0,
-        lastDeliveredAtLabel: insight?.lastDeliveredAt ? relativeTime(insight.lastDeliveredAt) : "No deliveries yet",
-        shortLabel: meta.shortLabel,
-        accent: meta.accent,
+        scheduleCount: platform.scheduleCount,
+        deliveryCount30d: platform.deliveryCount30d,
+        failureCount30d: platform.failureCount30d,
+        lastDeliveredAtLabel: platform.lastDeliveredAt ? relativeTime(platform.lastDeliveredAt) : "No deliveries yet",
+        shortLabel: platform.shortLabel,
+        accent: platform.accent,
       };
     })
     .sort((left, right) => {
@@ -230,7 +215,7 @@ export default async function DashboardPage() {
               rows={rows}
               totals={{
                 enabledCount,
-                accountCount: platformRows.length,
+                accountCount: rows.length,
                 scheduleCount,
                 deliveryCount30d,
                 failureCount30d,

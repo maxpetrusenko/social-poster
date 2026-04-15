@@ -1,14 +1,21 @@
 import { db } from "@/db";
-import { posts, postTargets } from "@/db/schema";
+import { platforms, posts, postTargets, profiles } from "@/db/schema";
 import { NextRequest, NextResponse } from "next/server";
 import { requireApiSession } from "@/lib/auth";
 import crypto from "node:crypto";
+import { getTenantContext } from "@/lib/tenancy";
+import { and, eq, inArray } from "drizzle-orm";
 
 export async function POST(request: NextRequest) {
   const session = await requireApiSession();
   if (session instanceof NextResponse) return session;
 
   try {
+    const tenant = await getTenantContext();
+    if (!tenant) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const body = await request.json();
     const {
       title,
@@ -52,16 +59,63 @@ export async function POST(request: NextRequest) {
     }
 
     const status = normalizedIntent === "schedule" ? "scheduled" : "draft";
+    const normalizedProfileId =
+      typeof profileId === "string" && profileId.trim() ? profileId.trim() : null;
+
+    const normalizedPlatformIds = Array.isArray(platformIds)
+      ? Array.from(new Set(platformIds.filter((value: unknown): value is string => typeof value === "string")))
+      : [];
+
+    if (normalizedProfileId) {
+      const matchingProfile = await db
+        .select({ id: profiles.id })
+        .from(profiles)
+        .where(
+          and(
+            eq(profiles.id, normalizedProfileId),
+            eq(profiles.workspaceId, tenant.currentWorkspace.id)
+          )
+        )
+        .get();
+
+      if (!matchingProfile) {
+        return NextResponse.json(
+          { error: "Selected profile is outside the current workspace." },
+          { status: 400 }
+        );
+      }
+    }
+
+    if (normalizedPlatformIds.length > 0) {
+      const matchingPlatforms = await db
+        .select({ id: platforms.id, workspaceId: platforms.workspaceId })
+        .from(platforms)
+        .where(inArray(platforms.id, normalizedPlatformIds));
+
+      const allowedIds = new Set(
+        matchingPlatforms
+          .filter((platform) => platform.workspaceId === tenant.currentWorkspace.id)
+          .map((platform) => platform.id)
+      );
+
+      if (allowedIds.size !== normalizedPlatformIds.length) {
+        return NextResponse.json(
+          { error: "One or more selected channels are outside the current workspace." },
+          { status: 400 }
+        );
+      }
+    }
 
     await db.insert(posts).values({
       id: postId,
+      workspaceId: tenant.currentWorkspace.id,
       title: title || null,
       content,
       contentType: contentType || "text",
       mediaUrl: mediaUrl || null,
       sourceUrl: sourceUrl || null,
       sourceTitle: null,
-      profileId: profileId || null,
+      profileId: normalizedProfileId,
       status,
       scheduledAt: normalizedIntent === "schedule" ? nextScheduledAt : null,
       publishedAt: null,
@@ -71,8 +125,8 @@ export async function POST(request: NextRequest) {
       updatedAt: now,
     });
 
-    if (platformIds && platformIds.length > 0) {
-      const targetEntries = platformIds.map((platformId: string) => ({
+    if (normalizedPlatformIds.length > 0) {
+      const targetEntries = normalizedPlatformIds.map((platformId: string) => ({
         id: crypto.randomUUID(),
         postId,
         platformId,

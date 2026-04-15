@@ -19,6 +19,7 @@ import {
   isDuplicateReplyError,
   normalizeReplyText,
 } from "@/lib/replies/duplicate-guard";
+import { inferReplyDirection } from "@/lib/replies/strategy";
 import { sendReplyViaPlatform } from "@/lib/replies/transport";
 
 type ScheduleRow = typeof schedules.$inferSelect;
@@ -57,6 +58,7 @@ export async function runReplyEngineJob(
 
   await db.insert(pipelineRuns).values({
     id: runId,
+    workspaceId: schedule.workspaceId,
     scheduleId: schedule.id,
     postId: null,
     trigger,
@@ -122,6 +124,7 @@ export async function runReplyEngineJob(
         await db.insert(replyEvents).values(
           sendResult.skippedAttempts.map((attempt) => ({
             id: crypto.randomUUID(),
+            workspaceId: schedule.workspaceId,
             runId,
             scheduleId: schedule.id,
             platformId: targetPlatformId,
@@ -174,6 +177,7 @@ export async function runReplyEngineJob(
 
     await db.insert(replyEvents).values({
       id: crypto.randomUUID(),
+      workspaceId: schedule.workspaceId,
       runId,
       scheduleId: schedule.id,
       platformId: targetPlatformId,
@@ -205,7 +209,17 @@ export async function runReplyEngineJob(
     console.log(`[reply-engine] run ${runId} done`);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    await fail(runId, steps, startedAt, message, schedule.id, targetPlatformId, selectedCandidate, selectedReplyText);
+    await fail(
+      runId,
+      steps,
+      startedAt,
+      message,
+      schedule.id,
+      schedule.workspaceId,
+      targetPlatformId,
+      selectedCandidate,
+      selectedReplyText
+    );
   }
 }
 
@@ -311,7 +325,8 @@ async function discoverCandidates(): Promise<ReplyCandidate[]> {
       tweetId: candidate.tweetId,
       author: candidate.author,
       text: candidate.tweetText,
-      tags: [candidate.category],
+      tags: [candidate.category, candidate.direction],
+      direction: candidate.direction,
       likes: 0,
       views: "0",
       contextLabel: candidate.reason,
@@ -360,6 +375,11 @@ async function buildCandidate(
   const accountReplyCount = await getWeeklyAccountReplies(author);
   const riskScore = calculateRiskScore(tweetText, category, tweet, accountReplyCount);
   const lane = isManualOnly || riskScore >= 5 ? "manual_lock" : "auto_draft";
+  const direction = inferReplyDirection({
+    text: tweetText,
+    category,
+    tags: [category],
+  });
   if (accountReplyCount >= REPLY_TARGETS.weeklyPerAccountLimit) return null;
 
   return {
@@ -369,6 +389,7 @@ async function buildCandidate(
     author,
     authorFollowers: tweet.author?.followersCount || 0,
     category,
+    direction,
     riskScore,
     lane,
     reason: isManualOnly ? `@${author} is manual-only` : reason,
@@ -472,6 +493,7 @@ async function fail(
   startedAt: Date,
   error: string,
   scheduleId: string,
+  workspaceId: string | null,
   platformId: string | null,
   candidate: ReplyCandidate | null,
   replyText: string | null
@@ -497,6 +519,7 @@ async function fail(
   if (candidate) {
     await db.insert(replyEvents).values({
       id: crypto.randomUUID(),
+      workspaceId,
       runId,
       scheduleId,
       platformId,

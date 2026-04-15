@@ -36,7 +36,7 @@ export async function sendReplyViaPlatform(
   const transport = resolveReplyTransport(platform);
 
   if (transport === "bird") {
-    const replyUrl = await sendBirdReply(tweetUrl, text);
+    const replyUrl = await sendBirdReply(tweetUrl, text, platform);
     if (!replyUrl) {
       throw new Error("Bird reply sent but no URL returned");
     }

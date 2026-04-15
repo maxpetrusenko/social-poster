@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   CONNECTION_PLATFORM_DEFINITIONS,
@@ -44,6 +44,7 @@ export function ConnectionsPage({
 }) {
   const router = useRouter();
   const [drawerOpen, setDrawerOpen] = useState(initialDrawerOpen);
+  const [localPlatforms, setLocalPlatforms] = useState(platforms);
   const [selectedPlatformType, setSelectedPlatformType] = useState<PlatformType>(
     initialPlatformType ?? CONNECTION_PLATFORM_DEFINITIONS[0].type
   );
@@ -67,6 +68,10 @@ export function ConnectionsPage({
     [insights]
   );
 
+  useEffect(() => {
+    setLocalPlatforms(platforms);
+  }, [platforms]);
+
   const profileNameById = useMemo(
     () => new Map(profiles.map((profile) => [profile.id, profile.name])),
     [profiles]
@@ -81,7 +86,7 @@ export function ConnectionsPage({
     selectedDefinition.methods[0];
 
   const filteredPlatforms = useMemo(() => {
-    return platforms.filter((platform) => {
+    return localPlatforms.filter((platform) => {
       if (selectedStatus === "enabled" && !platform.enabled) {
         return false;
       }
@@ -101,17 +106,17 @@ export function ConnectionsPage({
       const stored = summarizeCredentialState(platform.config);
       return stored.profileId === selectedProfileId;
     });
-  }, [platforms, selectedPlatformFilter, selectedProfileId, selectedStatus]);
+  }, [localPlatforms, selectedPlatformFilter, selectedProfileId, selectedStatus]);
 
   const totals = useMemo(() => {
-    const connected = platforms.length;
-    const enabled = platforms.filter((platform) => platform.enabled).length;
+    const connected = localPlatforms.length;
+    const enabled = localPlatforms.filter((platform) => platform.enabled).length;
     const deliveries = insights.reduce(
       (sum, item) => sum + item.deliveryCount30d,
       0
     );
     return { connected, enabled, deliveries };
-  }, [insights, platforms]);
+  }, [insights, localPlatforms]);
 
   const cardItems = useMemo<ConnectionCardItem[]>(() => {
     return filteredPlatforms
@@ -134,9 +139,11 @@ export function ConnectionsPage({
 
         return {
           id: platform.id,
+          platformType: platform.type,
           accountLabel,
           secondaryLabel,
           platformLabel: definition?.label ?? platform.name,
+          handle: platform.handle,
           accent: meta.accent,
           glow: meta.glow,
           shortLabel: meta.shortLabel,
@@ -285,12 +292,22 @@ export function ConnectionsPage({
   }
 
   async function handleToggleEnabled(platform: PlatformRow) {
+    const nextEnabled = !platform.enabled;
+
     setTogglingId(platform.id);
+    setLocalPlatforms((currentPlatforms) =>
+      currentPlatforms.map((currentPlatform) =>
+        currentPlatform.id === platform.id
+          ? { ...currentPlatform, enabled: nextEnabled }
+          : currentPlatform
+      )
+    );
+
     try {
       const response = await fetch(`/api/platforms/${platform.id}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ enabled: !platform.enabled }),
+        body: JSON.stringify({ enabled: nextEnabled }),
       });
 
       if (!response.ok) {
@@ -299,6 +316,13 @@ export function ConnectionsPage({
 
       router.refresh();
     } catch (toggleError) {
+      setLocalPlatforms((currentPlatforms) =>
+        currentPlatforms.map((currentPlatform) =>
+          currentPlatform.id === platform.id
+            ? { ...currentPlatform, enabled: platform.enabled }
+            : currentPlatform
+        )
+      );
       alert(
         toggleError instanceof Error
           ? toggleError.message
