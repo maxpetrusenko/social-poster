@@ -446,6 +446,12 @@ function getPostTags(post: PostRow | null | undefined) {
   return readTagsFromMetadata(post.metadata);
 }
 
+function readSourceScheduleId(post: PostRow | null | undefined) {
+  return typeof post?.metadata?.sourceScheduleId === "string"
+    ? post.metadata.sourceScheduleId
+    : null;
+}
+
 function getScheduleContentType(schedule: ScheduleRow) {
   if (schedule.jobType === "avatar_video") return "avatar_video";
   if (schedule.jobType === "image_post") return "image";
@@ -646,6 +652,7 @@ export async function getCalendarInsights(
   const platformMap = new Map(platformRows.map((platform) => [platform.id, platform]));
   const scheduleMap = new Map(scheduleRows.map((schedule) => [schedule.id, schedule]));
   const postMap = new Map(relatedPostRows.map((post) => [post.id, post]));
+  const now = new Date();
   const priorRunCountsByScheduleId = priorRunRows.reduce<Map<string, number>>(
     (accumulator, run) => {
       if (!run.scheduleId) return accumulator;
@@ -669,6 +676,19 @@ export async function getCalendarInsights(
     accumulator.set(target.postId, existing);
     return accumulator;
   }, new Map());
+  const handledScheduleSlots = new Set<string>();
+
+  for (const run of runRowsRaw) {
+    if (!run.scheduleId) continue;
+    handledScheduleSlots.add(`${run.scheduleId}:${dayKey(new Date(run.startedAt))}`);
+  }
+
+  for (const post of [...scheduledPostRows, ...publishedPostRows]) {
+    const sourceScheduleId = readSourceScheduleId(post);
+    const at = post.scheduledAt ?? post.publishedAt;
+    if (!sourceScheduleId || !at) continue;
+    handledScheduleSlots.add(`${sourceScheduleId}:${dayKey(new Date(at))}`);
+  }
 
   const events: CalendarEvent[] = [];
 
@@ -677,6 +697,14 @@ export async function getCalendarInsights(
     const occurrences = getCronOccurrences(schedule.cron, monthStart, monthEnd, 120);
 
     occurrences.forEach((at, index) => {
+      if (at.getTime() < now.getTime()) {
+        return;
+      }
+
+      if (handledScheduleSlots.has(`${schedule.id}:${dayKey(at)}`)) {
+        return;
+      }
+
       const presentation = buildSchedulePresentation(
         schedule,
         targetPlatforms,
@@ -762,18 +790,15 @@ export async function getCalendarInsights(
       platforms: platformsForEvent,
       media,
       tags: getPostTags(post),
-        debug: {
-          eventId: post.id,
-          runId: null,
-          scheduleId:
-            typeof post.metadata?.sourceScheduleId === "string"
-              ? post.metadata.sourceScheduleId
-              : null,
-          postId: post.id,
-          attemptCount: 1,
-          forecast: false,
-          sourceUrl: post.sourceUrl ?? null,
-          sourceHost: getUrlHost(post.sourceUrl),
+      debug: {
+        eventId: post.id,
+        runId: null,
+        scheduleId: readSourceScheduleId(post),
+        postId: post.id,
+        attemptCount: 1,
+        forecast: false,
+        sourceUrl: post.sourceUrl ?? null,
+        sourceHost: getUrlHost(post.sourceUrl),
         imageUrl: post.mediaUrl ?? null,
       },
     };
@@ -824,18 +849,15 @@ export async function getCalendarInsights(
       platforms: platformsForEvent,
       media,
       tags: getPostTags(post),
-        debug: {
-          eventId: `${post.id}-published`,
-          runId: null,
-          scheduleId:
-            typeof post.metadata?.sourceScheduleId === "string"
-              ? post.metadata.sourceScheduleId
-              : null,
-          postId: post.id,
-          attemptCount: 1,
-          forecast: false,
-          sourceUrl: post.sourceUrl ?? null,
-          sourceHost: getUrlHost(post.sourceUrl),
+      debug: {
+        eventId: `${post.id}-published`,
+        runId: null,
+        scheduleId: readSourceScheduleId(post),
+        postId: post.id,
+        attemptCount: 1,
+        forecast: false,
+        sourceUrl: post.sourceUrl ?? null,
+        sourceHost: getUrlHost(post.sourceUrl),
         imageUrl: post.mediaUrl ?? null,
       },
     };

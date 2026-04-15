@@ -1,4 +1,5 @@
 const APP_TIME_ZONE = process.env.TZ?.trim() || "America/New_York";
+const SCHEDULE_CRON_TIME_ZONE = "UTC";
 
 type ZonedDateParts = {
   year: number;
@@ -77,6 +78,10 @@ function parsePart(parts: Intl.DateTimeFormatPart[], type: string): number {
 
 export function getAppTimeZone() {
   return APP_TIME_ZONE;
+}
+
+export function getScheduleCronTimeZone() {
+  return SCHEDULE_CRON_TIME_ZONE;
 }
 
 export function getZonedDateParts(

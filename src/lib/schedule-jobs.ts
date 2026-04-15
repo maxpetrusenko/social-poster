@@ -1,7 +1,9 @@
-import { schedules } from "@/db/schema";
+import { db } from "@/db";
+import { pipelineRuns, schedules } from "@/db/schema";
 import { runAvatarVideoJob } from "@/lib/pipeline/runners/avatar-video";
 import { runImagePostJob } from "@/lib/pipeline/runners/image-post";
 import { runReplyEngineJob } from "@/lib/pipeline/runners/reply-engine";
+import { and, eq, gte, lt } from "drizzle-orm";
 
 type ScheduleRow = typeof schedules.$inferSelect;
 type TriggerKind = "cron" | "manual" | "api";
@@ -10,6 +12,11 @@ export async function runScheduleJob(
   schedule: ScheduleRow,
   trigger: TriggerKind = "cron"
 ): Promise<void> {
+  if (trigger === "cron" && await hasCronRunForCurrentMinute(schedule.id)) {
+    console.warn(`[scheduler] duplicate cron suppressed for ${schedule.id}`);
+    return;
+  }
+
   if (schedule.jobType === "avatar_video") {
     await runAvatarVideoJob(schedule, trigger);
     return;
@@ -31,4 +38,22 @@ export async function runScheduleJob(
   }
 
   throw new Error(`Unknown job type: ${schedule.jobType}`);
+}
+
+async function hasCronRunForCurrentMinute(scheduleId: string) {
+  const minuteStart = new Date();
+  minuteStart.setSeconds(0, 0);
+  const minuteEnd = new Date(minuteStart);
+  minuteEnd.setMinutes(minuteEnd.getMinutes() + 1);
+
+  const existing = await db.query.pipelineRuns.findFirst({
+    where: and(
+      eq(pipelineRuns.scheduleId, scheduleId),
+      eq(pipelineRuns.trigger, "cron"),
+      gte(pipelineRuns.startedAt, minuteStart),
+      lt(pipelineRuns.startedAt, minuteEnd)
+    ),
+  });
+
+  return Boolean(existing);
 }

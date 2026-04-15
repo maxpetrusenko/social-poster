@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { processReadyReplyQueue } from "./replies/live";
 import { runScheduleJob } from "./schedule-jobs";
 import { finalizeAbandonedSteps } from "./pipeline/recovery";
+import { getScheduleCronTimeZone } from "./timezone";
 
 type RegisteredScheduleTask = {
   cron: string;
@@ -114,7 +115,7 @@ function registerSchedule(schedule: typeof schedules.$inferSelect) {
         console.error(`[scheduler] job error for ${schedule.name}:`, err);
       }
     },
-    { timezone: "America/New_York" }
+    { timezone: getScheduleCronTimeZone() }
   );
 
   tasks.set(schedule.id, {

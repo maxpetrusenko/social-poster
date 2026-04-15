@@ -1,4 +1,4 @@
-import { getAppTimeZone, getZonedDateParts } from "@/lib/timezone";
+import { getScheduleCronTimeZone, getZonedDateParts } from "@/lib/timezone";
 
 const FIELD_RANGES = [
   { min: 0, max: 59 },
@@ -115,7 +115,7 @@ export function getCronOccurrences(
   start: Date,
   end: Date,
   limit = 500,
-  timeZone = getAppTimeZone()
+  timeZone = getScheduleCronTimeZone()
 ): Date[] {
   const parsed = parseCron(expression);
   if (!parsed) return [];
@@ -137,7 +137,7 @@ export function getNextCronOccurrence(
   expression: string,
   from: Date,
   lookaheadDays = 60,
-  timeZone = getAppTimeZone()
+  timeZone = getScheduleCronTimeZone()
 ): Date | null {
   const end = new Date(from);
   end.setDate(end.getDate() + lookaheadDays);

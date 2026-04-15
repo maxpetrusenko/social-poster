@@ -4,7 +4,12 @@ import { ArrowUpRight, CalendarClock } from "lucide-react";
 import { getDashboardInsights, type ScheduleInsight } from "@/lib/dashboard/insights";
 import { getCronOccurrences } from "@/lib/dashboard/cron";
 import { POST_CATEGORIES } from "@/lib/post-categories";
-import { formatTimeInZone, getAppTimeZone, getZonedDateParts } from "@/lib/timezone";
+import {
+  formatTimeInZone,
+  getAppTimeZone,
+  getScheduleCronTimeZone,
+  getZonedDateParts,
+} from "@/lib/timezone";
 import { getTenantContext } from "@/lib/tenancy";
 
 export const dynamic = "force-dynamic";
@@ -76,22 +81,29 @@ function slotLabel(schedule: ScheduleInsight) {
 function buildGridEvents(scheduleInsights: ScheduleInsight[]) {
   const weekStart = startOfWeek(new Date());
   const weekEnd = endOfWeek(weekStart);
-  const timeZone = getAppTimeZone();
+  const displayTimeZone = getAppTimeZone();
+  const cronTimeZone = getScheduleCronTimeZone();
 
   return scheduleInsights
     .filter((schedule) => schedule.enabled)
     .flatMap((schedule) => {
-      const occurrences = getCronOccurrences(schedule.cron, weekStart, weekEnd, 64, timeZone);
+      const occurrences = getCronOccurrences(
+        schedule.cron,
+        weekStart,
+        weekEnd,
+        64,
+        cronTimeZone
+      );
       const accent = CATEGORY_ACCENTS[schedule.contentCategory || ""] || "#7d8aa0";
       const surface = CATEGORY_SURFACES[schedule.contentCategory || ""] || "#e7edf5";
 
       return occurrences.map((at) => {
-        const parts = getZonedDateParts(at, timeZone);
+        const parts = getZonedDateParts(at, displayTimeZone);
 
         return {
           id: `${schedule.id}-${at.toISOString()}`,
           label: slotLabel(schedule),
-          timeLabel: formatTimeInZone(at, timeZone),
+          timeLabel: formatTimeInZone(at, displayTimeZone),
           dayIndex: parts.weekday,
           hour: parts.hour,
           minute: parts.minute,

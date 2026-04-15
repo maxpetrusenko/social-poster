@@ -7,7 +7,11 @@ import { getCronOccurrences } from "@/lib/dashboard/cron";
 import { getPlatformLabel } from "@/lib/dashboard/platforms";
 import { resolveFixedScheduleContent } from "@/lib/pipeline/fixed-schedule-post";
 import { resolvePipelineRunStatus } from "@/lib/pipeline/status";
-import { formatDateInZone, getAppTimeZone } from "@/lib/timezone";
+import {
+  formatDateInZone,
+  getAppTimeZone,
+  getScheduleCronTimeZone,
+} from "@/lib/timezone";
 import { getTenantContext } from "@/lib/tenancy";
 
 function normalizePlatformKey(value: string) {
@@ -89,7 +93,7 @@ export default async function ScheduleDetailPage({
     new Date(),
     end,
     3,
-    getAppTimeZone()
+    getScheduleCronTimeZone()
   );
   const nextRunLabels = nextRuns.map((date) =>
     formatDateInZone(
