@@ -1,11 +1,9 @@
 "use client";
-
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   CONNECTION_PLATFORM_DEFINITIONS,
   getConnectionPlatformDefinition,
-  type ConnectionMethod,
 } from "@/lib/connection-catalog";
 import { getPlatformMeta } from "@/lib/dashboard/platforms";
 import {
@@ -26,7 +24,8 @@ import type {
 } from "./connections-types";
 import { ConnectionsDrawer } from "./connections-drawer";
 import type { PlatformType } from "@/lib/platforms";
-
+import type { NativeConnectionAvailability } from "@/lib/providers/env-availability";
+import { formatMethodLabel, formatProviderLabel, getAvailableMethodModes, getConnectionMethodMode, getManageLabel } from "./connections-page-utils";
 export function ConnectionsPage({
   workspaceName,
   organizationName,
@@ -35,6 +34,7 @@ export function ConnectionsPage({
   insights,
   initialDrawerOpen,
   initialPlatformType,
+  nativeAvailabilityByPlatform,
 }: {
   workspaceName: string;
   organizationName: string;
@@ -43,6 +43,7 @@ export function ConnectionsPage({
   insights: PlatformInsight[];
   initialDrawerOpen: boolean;
   initialPlatformType: PlatformType | null;
+  nativeAvailabilityByPlatform: Record<PlatformType, NativeConnectionAvailability>;
 }) {
   const router = useRouter();
   const [drawerOpen, setDrawerOpen] = useState(initialDrawerOpen);
@@ -234,16 +235,73 @@ export function ConnectionsPage({
     setError(null);
   }
 
+  async function startOAuthConnection(
+    platformType: PlatformType,
+    methodId: string,
+    credentials?: { clientId?: string; clientSecret?: string }
+  ) {
+    const definition = getConnectionPlatformDefinition(platformType);
+    const method = definition?.methods.find((item) => item.id === methodId);
+
+    if (!definition || !method || method.authType !== "oauth") {
+      setDrawerOpen(true);
+      setSelectedPlatformType(platformType);
+      setSelectedMethodId(methodId);
+      setRequestedMethodMode("native");
+      setError("This connection method does not support OAuth.");
+      return;
+    }
+
+    const nativeAvailability = nativeAvailabilityByPlatform[platformType];
+
+    if (
+      nativeAvailability &&
+      !nativeAvailability.configured &&
+      (!credentials?.clientId || !credentials?.clientSecret)
+    ) {
+      setDrawerOpen(true);
+      setSelectedPlatformType(platformType);
+      setSelectedMethodId(methodId);
+      setRequestedMethodMode("native");
+      setError(`Deactivated: configure ${nativeAvailability.missing.join("; ")}.`);
+      return;
+    }
+
+    const params = new URLSearchParams({
+      methodId,
+      next: "/dashboard/platforms",
+    });
+    if (selectedProfileId !== "all") {
+      params.set("profileId", selectedProfileId);
+    }
+
+    if (credentials?.clientId && credentials.clientSecret) {
+      const response = await fetch(
+        getOAuthStartUrl(platformType, params),
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(credentials),
+        }
+      );
+      const body = (await response.json().catch(() => ({}))) as {
+        authUrl?: string;
+        error?: string;
+      };
+      if (!response.ok || !body.authUrl) {
+        setError(body.error ?? "Failed to start OAuth.");
+        return;
+      }
+      window.location.href = body.authUrl;
+      return;
+    }
+
+    window.location.href = getOAuthStartUrl(platformType, params);
+  }
+
   async function handleCreateConnection() {
     if (selectedMethod.authType === "oauth") {
-      const params = new URLSearchParams({
-        methodId: selectedMethod.id,
-        next: "/dashboard/platforms",
-      });
-      if (selectedProfileId !== "all") {
-        params.set("profileId", selectedProfileId);
-      }
-      window.location.href = `/api/auth/${selectedDefinition.type.replace(/_/g, "-")}?${params.toString()}`;
+      startOAuthConnection(selectedDefinition.type, selectedMethod.id);
       return;
     }
 
@@ -436,64 +494,35 @@ export function ConnectionsPage({
         onMethodChange={setSelectedMethodId}
         selectedMethodMode={selectedMethodMode}
         availableMethodModes={availableMethodModes}
+        nativeAvailabilityByPlatform={nativeAvailabilityByPlatform}
         onMethodModeChange={(mode) => {
           setRequestedMethodMode(mode);
           setSelectedMethodId(null);
         }}
         onFieldChange={updateField}
         onSubmit={handleCreateConnection}
+        onOAuthConnect={startOAuthConnection}
       />
     </div>
   );
 }
 
-function formatMethodLabel(method: string | null | undefined) {
-  if (!method) return "Not set";
-  return method
-    .replace(/_/g, " ")
-    .replace(/\b\w/g, (char) => char.toUpperCase());
+function getOAuthStartUrl(platformType: PlatformType, params: URLSearchParams) {
+  const route = `/api/auth/${platformType.replace(/_/g, "-")}?${params.toString()}`;
+  const callbackUrl = getPinnedOAuthCallbackUrl(platformType);
+  if (!callbackUrl || typeof window === "undefined") return route;
+
+  const callbackOrigin = new URL(callbackUrl).origin;
+  if (callbackOrigin === window.location.origin) return route;
+
+  return new URL(route, callbackOrigin).toString();
 }
 
-function formatProviderLabel(provider: PlatformRow["provider"]) {
-  return {
-    direct: "Direct",
-    bird: "Bird",
-    zernio: "Late",
-  }[provider];
-}
-
-function getConnectionMethodMode(method: ConnectionMethod) {
-  return method.provider === "direct" ? "native" : "proxy";
-}
-
-function getAvailableMethodModes(methods: ConnectionMethod[]) {
-  const modes: Array<"native" | "proxy"> = [];
-  if (methods.some((method) => getConnectionMethodMode(method) === "native")) {
-    modes.push("native");
+function getPinnedOAuthCallbackUrl(platformType: PlatformType) {
+  switch (platformType) {
+    case "twitter":
+      return "https://social.maxpetrusenko.com/api/auth/twitter/callback";
+    default:
+      return null;
   }
-  if (methods.some((method) => getConnectionMethodMode(method) === "proxy")) {
-    modes.push("proxy");
-  }
-  return modes;
-}
-
-function getManageLabel(platformType: PlatformType) {
-  return {
-    bluesky: "Manage Account",
-    facebook: "Manage Pages",
-    google_business: "Manage Locations",
-    instagram: "Manage Account",
-    instagram_personal: "Manage Account",
-    linkedin: "Manage Account",
-    linkedin_personal: "Manage Account",
-    linkedin_company: "Manage Page",
-    mastodon: "Manage Instance",
-    pinterest: "Manage Boards",
-    reddit: "Manage Subreddit",
-    threads: "Manage Account",
-    tiktok: "Manage Account",
-    twitter: "Manage Account",
-    whatsapp: "Manage Channel",
-    youtube: "Manage Channel",
-  }[platformType];
 }

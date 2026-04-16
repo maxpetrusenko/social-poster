@@ -9,6 +9,7 @@ import {
   getReplyProfiles,
   type ReplyProfileId,
 } from "@/lib/replies/profiles";
+import type { ReplyLanguage } from "@/lib/replies/language";
 import { resolveReplyTransport, type ReplyTransport } from "@/lib/replies/transport";
 
 export type ReplyConnectionOption = {
@@ -30,6 +31,8 @@ export type ReplyProfileOption = {
   directionsLabel: string;
   destination: string;
 };
+
+export const DEFAULT_REPLY_LANGUAGE: ReplyLanguage = "en";
 
 export async function getRepliesPageData(workspaceId: string) {
   const rows = await db
@@ -74,8 +77,18 @@ export async function getRepliesPageData(workspaceId: string) {
 
   const initialPlatformId = connections[0]?.id;
   const candidates = initialPlatformId
-    ? await listReplyCandidates(initialPlatformId, DEFAULT_REPLY_PROFILE_ID, workspaceId)
+    ? await listReplyCandidates(
+        initialPlatformId,
+        DEFAULT_REPLY_PROFILE_ID,
+        workspaceId,
+        DEFAULT_REPLY_LANGUAGE
+      )
     : [];
 
-  return { connections, profiles, candidates };
+  return {
+    connections,
+    profiles,
+    candidates,
+    defaultLanguage: DEFAULT_REPLY_LANGUAGE,
+  };
 }

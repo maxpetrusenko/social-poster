@@ -2,7 +2,7 @@ export type ShellNavItem = {
   label: string;
   href: string;
   blurb: string;
-  icon: "publish" | "create" | "inbox" | "replies" | "notifications" | "schedules" | "categories" | "accounts" | "profiles" | "overview" | "pipeline" | "team" | "settings";
+  icon: "publish" | "create" | "inbox" | "replies" | "notifications" | "schedules" | "categories" | "rss" | "accounts" | "profiles" | "overview" | "pipeline" | "team" | "settings";
 };
 
 export const workspaceShellNav: ShellNavItem[] = [
@@ -47,6 +47,12 @@ export const workspaceShellNav: ShellNavItem[] = [
     href: "/dashboard/categories",
     blurb: "Recurring slots and content buckets.",
     icon: "categories",
+  },
+  {
+    label: "RSS",
+    href: "/dashboard/rss",
+    blurb: "Feeds, scoring, rewrite rules.",
+    icon: "rss",
   },
 ];
 

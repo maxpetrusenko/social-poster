@@ -270,11 +270,39 @@ function ensureSchema(sqlite: Database.Database) {
       fetched_at INTEGER NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS rss_sources (
+      id TEXT PRIMARY KEY NOT NULL,
+      workspace_id TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      url TEXT NOT NULL,
+      weight INTEGER NOT NULL DEFAULT 10,
+      enabled INTEGER NOT NULL DEFAULT 1,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS rss_settings (
+      workspace_id TEXT PRIMARY KEY NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+      candidate_window_hours INTEGER NOT NULL DEFAULT 48,
+      candidate_pool_size INTEGER NOT NULL DEFAULT 24,
+      minimum_score INTEGER NOT NULL DEFAULT 0,
+      traction_weight INTEGER NOT NULL DEFAULT 35,
+      keyword_boost_terms TEXT,
+      x_template TEXT NOT NULL,
+      linkedin_template TEXT NOT NULL,
+      transformation_prompt TEXT NOT NULL DEFAULT '',
+      image_selection_mode TEXT NOT NULL DEFAULT 'prefer_feed',
+      image_selection_notes TEXT NOT NULL DEFAULT '',
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
+
     CREATE UNIQUE INDEX IF NOT EXISTS users_email_idx ON users(email);
     CREATE UNIQUE INDEX IF NOT EXISTS organizations_slug_idx ON organizations(slug);
     CREATE UNIQUE INDEX IF NOT EXISTS workspaces_org_slug_idx ON workspaces(organization_id, slug);
     CREATE UNIQUE INDEX IF NOT EXISTS org_memberships_user_org_idx ON org_memberships(user_id, organization_id);
     CREATE UNIQUE INDEX IF NOT EXISTS workspace_memberships_user_workspace_idx ON workspace_memberships(user_id, workspace_id);
+    CREATE UNIQUE INDEX IF NOT EXISTS rss_sources_workspace_url_idx ON rss_sources(workspace_id, url);
   `);
 
   addColumnIfMissing(sqlite, "platforms", "workspace_id", "workspace_id TEXT");
@@ -284,6 +312,52 @@ function ensureSchema(sqlite: Database.Database) {
   addColumnIfMissing(sqlite, "pipeline_runs", "workspace_id", "workspace_id TEXT");
   addColumnIfMissing(sqlite, "reply_events", "workspace_id", "workspace_id TEXT");
   addColumnIfMissing(sqlite, "reply_candidates", "workspace_id", "workspace_id TEXT");
+  addColumnIfMissing(sqlite, "rss_settings", "traction_weight", "traction_weight INTEGER NOT NULL DEFAULT 35");
+  addColumnIfMissing(sqlite, "rss_settings", "transformation_prompt", "transformation_prompt TEXT NOT NULL DEFAULT ''");
+}
+
+function checkIntegrity(sqlite: Database.Database): {
+  ok: boolean;
+  errors: string[];
+} {
+  const rows = sqlite
+    .prepare("PRAGMA integrity_check")
+    .all() as Array<{ integrity_check: string }>;
+
+  const errors = rows
+    .map((r) => r.integrity_check)
+    .filter((msg) => msg !== "ok");
+
+  return { ok: errors.length === 0, errors };
+}
+
+function checkCoreTables(sqlite: Database.Database): {
+  ok: boolean;
+  missing: string[];
+} {
+  const required = [
+    "users",
+    "organizations",
+    "workspaces",
+    "org_memberships",
+    "workspace_memberships",
+    "platforms",
+    "posts",
+    "schedules",
+    "pipeline_runs",
+  ];
+
+  const missing: string[] = [];
+
+  for (const table of required) {
+    try {
+      sqlite.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get();
+    } catch {
+      missing.push(table);
+    }
+  }
+
+  return { ok: missing.length === 0, missing };
 }
 
 const dbPath = process.env.DATABASE_URL ?? "./data/social-poster.db";
@@ -303,5 +377,19 @@ try {
 }
 ensureSchema(sqlite);
 
+const integrity = checkIntegrity(sqlite);
+if (!integrity.ok) {
+  console.error(
+    "[db] ⚠ integrity check failed:",
+    integrity.errors.slice(0, 5).join("; ")
+  );
+}
+
+const tables = checkCoreTables(sqlite);
+if (!tables.ok) {
+  console.error("[db] ⚠ unreadable tables:", tables.missing.join(", "));
+}
+
 export const db = drizzle(sqlite, { schema });
 export type Db = typeof db;
+export { checkIntegrity, checkCoreTables, sqlite };

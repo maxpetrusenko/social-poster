@@ -88,6 +88,8 @@ export type FixedScheduleContent = {
   instagramContentTypeByPlatform: Partial<
     Record<string, "story" | "reel">
   >;
+  /** Keys to insert into dedup_cache after successful publish (e.g. gh-event:{id}) */
+  dedupKeys?: string[];
 };
 
 function positiveModulo(value: number, size: number) {

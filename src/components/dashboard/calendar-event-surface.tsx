@@ -4,6 +4,10 @@ import Link from "next/link";
 import { ChevronRight, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
+import {
+  CollapsiblePlatformPreview,
+  OgLinkCard,
+} from "@/components/dashboard/platform-preview-cards";
 import { PlatformIconMarker } from "@/components/dashboard/platform-icon";
 import { StatusBadge } from "@/components/dashboard/ui";
 import { formatTimeInZone } from "@/lib/timezone";
@@ -28,6 +32,15 @@ export type CalendarSurfaceEvent = {
     shortLabel: string;
     formatCode: "P" | "S" | "R" | "C" | "L" | "T" | null;
     status: "planned" | "success" | "failed" | "skipped" | "running";
+    handle: string | null;
+    content: string | null;
+    mediaUrl: string | null;
+    contentType: "text" | "image" | "video" | "avatar_video" | null;
+    publishedUrl: string | null;
+    sourceUrl: string | null;
+    sourceHost: string | null;
+    firstComment: string | null;
+    error: string | null;
   }>;
   media: Array<{
     code: "T" | "I" | "V";
@@ -87,10 +100,16 @@ function eventStatusLabel(tone: CalendarSurfaceEvent["tone"]) {
   return "Scheduled";
 }
 
-function eventKindLabel(kind: CalendarSurfaceEvent["kind"]) {
-  if (kind === "post") return "Post";
-  if (kind === "run") return "Run";
-  return "Auto";
+function eventKindLabel(event: CalendarSurfaceEvent) {
+  if (event.debug.forecast) return "Forecast";
+  if (event.kind === "post") return "Post";
+  if (event.kind === "run") return "Attempt";
+  return "Schedule";
+}
+
+function primaryActionLabel(event: CalendarSurfaceEvent) {
+  if (event.kind === "post" || event.debug.postId) return "Open post";
+  return "Open schedule";
 }
 
 function firstLine(value: string | null | undefined) {
@@ -256,7 +275,7 @@ function EventDetailRow({
               {eventStatusLabel(event.tone)}
             </StatusBadge>
             <span className="text-xs font-semibold uppercase tracking-[0.14em] opacity-70">
-              {eventKindLabel(event.kind)}
+              {eventKindLabel(event)}
             </span>
             <span className="text-xs opacity-70">{formatTimeInZone(event.at)}</span>
           </div>
@@ -508,7 +527,7 @@ export function CalendarEventSurface({
                     {eventStatusLabel(previewEvent.tone)}
                   </StatusBadge>
                   <span className="text-xs font-semibold uppercase tracking-[0.14em] opacity-70">
-                    {eventKindLabel(previewEvent.kind)}
+                    {eventKindLabel(previewEvent)}
                   </span>
                   <span className="text-xs opacity-70">{formatTimeInZone(previewEvent.at)}</span>
                 </div>
@@ -556,7 +575,14 @@ export function CalendarEventSurface({
               {previewEvent.debug.forecast ? (
                 <div className="rounded-[18px] border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-700">
-                    Predicted from candidate pool
+                    Forecast preview
+                  </p>
+                  <p className="mt-1 leading-6">
+                    Estimated post copy from the current candidate pool and RSS templates.
+                  </p>
+                  <p className="mt-1 leading-6 text-sky-800/80">
+                    Real post record is created when the schedule runs, so source and copy can
+                    still change before publish.
                   </p>
                   {previewEvent.debug.sourceUrl ? (
                     <a
@@ -565,7 +591,7 @@ export function CalendarEventSurface({
                       rel="noreferrer"
                       className="mt-2 inline-flex text-sm font-semibold text-sky-900 underline decoration-sky-300 underline-offset-4"
                     >
-                      {previewEvent.debug.sourceHost || previewEvent.debug.sourceUrl}
+                      Open candidate: {previewEvent.debug.sourceHost || previewEvent.debug.sourceUrl}
                     </a>
                   ) : null}
                 </div>
@@ -582,31 +608,55 @@ export function CalendarEventSurface({
                 </div>
               ) : null}
 
-              {previewEvent.mediaUrl ? (
-                <div className="overflow-hidden rounded-[18px] border border-current/10 bg-white/70">
-                  {previewEvent.media.some((media) => media.code === "V") ? (
-                    <video
-                      src={previewEvent.mediaUrl}
-                      controls
-                      className="max-h-[420px] w-full bg-black object-contain"
+              {previewEvent.platforms.length > 0 ? (
+                <div className="space-y-3">
+                  {previewEvent.platforms.map((platform, index) => (
+                    <CollapsiblePlatformPreview
+                      key={`${previewEvent.id}-${platform.id}-preview-card`}
+                      data={platform}
+                      fallbackContent={previewEvent.content ?? previewEvent.preview}
+                      fallbackMediaUrl={previewEvent.mediaUrl}
+                      fallbackSourceUrl={previewEvent.debug.sourceUrl}
+                      defaultOpen={index === 0}
                     />
-                  ) : (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={previewEvent.mediaUrl}
-                      alt={previewEvent.label}
-                      className="max-h-[420px] w-full object-contain"
-                    />
-                  )}
+                  ))}
                 </div>
-              ) : null}
-
-              {previewEvent.content ? (
-                <p className="whitespace-pre-wrap text-sm leading-6 opacity-90">
-                  {previewEvent.content}
-                </p>
-              ) : previewEvent.preview ? (
-                <p className="text-sm leading-6 opacity-90">{previewEvent.preview}</p>
+              ) : previewEvent.mediaUrl || previewEvent.content || previewEvent.preview ? (
+                <div className="space-y-3">
+                  {previewEvent.mediaUrl ? (
+                    <div className="overflow-hidden rounded-[18px] border border-current/10 bg-white/70">
+                      {previewEvent.media.some((media) => media.code === "V") ? (
+                        <video
+                          src={previewEvent.mediaUrl}
+                          controls
+                          className="max-h-[420px] w-full bg-black object-contain"
+                        />
+                      ) : (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={previewEvent.mediaUrl}
+                          alt={previewEvent.label}
+                          className="max-h-[420px] w-full object-contain"
+                        />
+                      )}
+                    </div>
+                  ) : null}
+                  {previewEvent.content ? (
+                    <p className="whitespace-pre-wrap text-sm leading-6 opacity-90">
+                      {previewEvent.content}
+                    </p>
+                  ) : previewEvent.preview ? (
+                    <p className="text-sm leading-6 opacity-90">{previewEvent.preview}</p>
+                  ) : null}
+                  {previewEvent.debug.sourceUrl ? (
+                    <OgLinkCard
+                      sourceUrl={previewEvent.debug.sourceUrl}
+                      sourceHost={previewEvent.debug.sourceHost}
+                      imageUrl={null}
+                      compact
+                    />
+                  ) : null}
+                </div>
               ) : null}
 
               {previewEvent.tags.length > 0 ? (
@@ -676,8 +726,18 @@ export function CalendarEventSurface({
                     href={previewEvent.href}
                     className="inline-flex rounded-[12px] border border-current/15 bg-white/80 px-4 py-2 text-sm font-semibold"
                   >
-                    Open source
+                    {primaryActionLabel(previewEvent)}
                   </Link>
+                  {previewEvent.debug.forecast && previewEvent.debug.sourceUrl ? (
+                    <a
+                      href={previewEvent.debug.sourceUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex rounded-[12px] border border-current/15 bg-white/80 px-4 py-2 text-sm font-semibold"
+                    >
+                      Open candidate
+                    </a>
+                  ) : null}
                   {previewEvent.kind === "run" && previewEvent.tone === "failed" ? (
                     <>
                       <button

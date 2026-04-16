@@ -16,6 +16,7 @@ export default async function RepliesPage() {
         connections={data.connections}
         profiles={data.profiles}
         initialCards={data.candidates}
+        initialLanguage={data.defaultLanguage}
       />
     </div>
   );

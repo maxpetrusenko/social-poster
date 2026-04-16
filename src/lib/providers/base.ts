@@ -36,15 +36,25 @@ export abstract class SocialProvider {
     };
   }
 
-  getAuthUrl(_redirectUri: string, _state: string): string {
+  getAuthUrl(
+    _redirectUri: string,
+    _state: string,
+    _codeVerifier?: string
+  ): string {
     void _redirectUri;
     void _state;
+    void _codeVerifier;
     throw new Error(`${this.platformName} does not implement getAuthUrl`);
   }
 
-  async exchangeCode(_code: string, _redirectUri: string): Promise<OAuthTokens> {
+  async exchangeCode(
+    _code: string,
+    _redirectUri: string,
+    _codeVerifier?: string
+  ): Promise<OAuthTokens> {
     void _code;
     void _redirectUri;
+    void _codeVerifier;
     throw new Error(`${this.platformName} does not implement exchangeCode`);
   }
 

@@ -6,6 +6,7 @@ import Link from "next/link";
 import { PauseCircle, PlayCircle, Unplug } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { PlatformType } from "@/lib/platforms";
+import { PlatformBrandIcon } from "./platform-brand-icon";
 
 type ConnectionStatus = "all" | "enabled" | "disabled";
 export type ConnectionViewMode = "native" | "proxy";
@@ -418,83 +419,4 @@ function getInitials(label: string, fallback: string) {
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase() ?? "")
     .join("");
-}
-
-function PlatformBrandIcon({
-  type,
-  className,
-}: {
-  type: PlatformType;
-  className?: string;
-}) {
-  const commonProps = {
-    className,
-    viewBox: "0 0 24 24",
-    fill: "currentColor",
-    "aria-hidden": true,
-  };
-
-  switch (type) {
-    case "twitter":
-      return (
-        <svg {...commonProps}>
-          <path d="M18.901 1.153h3.68l-8.04 9.19L24 22.847h-7.406l-5.8-7.584-6.639 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932zM17.61 20.644h2.039L6.486 3.241H4.298z" />
-        </svg>
-      );
-    case "linkedin":
-    case "linkedin_personal":
-    case "linkedin_company":
-      return (
-        <svg {...commonProps}>
-          <path d="M20.447 20.452h-3.554V14.87c0-1.332-.027-3.045-1.854-3.045-1.854 0-2.137 1.445-2.137 2.947v5.68H9.35V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455zM5.337 7.433a2.062 2.062 0 1 1 0-4.124 2.062 2.062 0 0 1 0 4.124M7.119 20.452H3.555V9h3.564z" />
-        </svg>
-      );
-    case "instagram":
-    case "instagram_personal":
-      return (
-        <svg {...commonProps}>
-          <path d="M7.75 2h8.5A5.75 5.75 0 0 1 22 7.75v8.5A5.75 5.75 0 0 1 16.25 22h-8.5A5.75 5.75 0 0 1 2 16.25v-8.5A5.75 5.75 0 0 1 7.75 2m0 1.8A3.95 3.95 0 0 0 3.8 7.75v8.5a3.95 3.95 0 0 0 3.95 3.95h8.5a3.95 3.95 0 0 0 3.95-3.95v-8.5a3.95 3.95 0 0 0-3.95-3.95zm8.95 1.35a1.2 1.2 0 1 1-1.2 1.2 1.2 1.2 0 0 1 1.2-1.2M12 6.86A5.14 5.14 0 1 1 6.86 12 5.14 5.14 0 0 1 12 6.86m0 1.8A3.34 3.34 0 1 0 15.34 12 3.34 3.34 0 0 0 12 8.66" />
-        </svg>
-      );
-    case "tiktok":
-      return (
-        <svg {...commonProps}>
-          <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.35h-3.13v12.98a2.67 2.67 0 1 1-1.83-2.54V9.59a5.82 5.82 0 1 0 5.96 5.81V8.91a7.93 7.93 0 0 0 4.77 1.6z" />
-        </svg>
-      );
-    case "facebook":
-      return (
-        <svg {...commonProps}>
-          <path d="M13.5 22v-8h2.7l.4-3h-3.1V9.1c0-.9.3-1.5 1.6-1.5H17V4.9c-.3 0-1.2-.1-2.4-.1-2.4 0-4 1.5-4 4.2V11H8v3h2.2v8z" />
-        </svg>
-      );
-    case "reddit":
-      return (
-        <svg {...commonProps}>
-          <path d="M14.47 15.08a1 1 0 0 1-1.41 1.41 1.98 1.98 0 0 1-2.83 0 1 1 0 1 1-1.41-1.41 3.98 3.98 0 0 0 5.65 0M9 13a1 1 0 1 0 0-2 1 1 0 0 0 0 2m6-2a1 1 0 1 0 .001-2.001A1 1 0 0 0 15 11m7-1a2 2 0 0 1-3.29 1.52c.05.32.08.65.08.98 0 3.31-3.13 6-7 6s-7-2.69-7-6c0-.34.03-.67.08-.99A2 2 0 1 1 6.7 8.6a12.1 12.1 0 0 1 4.85-1.31L12.7 3.9a1 1 0 0 1 .97-.72l3.6.3a2 2 0 1 1-.16 1.4l-2.93-.24-.93 2.72A12.13 12.13 0 0 1 17.3 8.6 2 2 0 0 1 22 10" />
-        </svg>
-      );
-    case "pinterest":
-      return (
-        <svg {...commonProps}>
-          <path d="M12 2a10 10 0 0 0-3.64 19.32c-.05-1.47 0-3.24.39-4.83l1.53-6.47s-.38-.76-.38-1.88c0-1.76 1.02-3.07 2.29-3.07 1.08 0 1.6.81 1.6 1.78 0 1.08-.69 2.7-1.05 4.2-.3 1.26.64 2.29 1.88 2.29 2.25 0 3.98-2.37 3.98-5.79 0-3.03-2.18-5.15-5.29-5.15-3.6 0-5.72 2.7-5.72 5.5 0 1.09.42 2.26.95 2.89a.38.38 0 0 1 .09.36l-.36 1.49c-.06.24-.2.3-.46.18-1.71-.79-2.78-3.27-2.78-5.26 0-4.28 3.11-8.21 8.96-8.21 4.7 0 8.35 3.35 8.35 7.83 0 4.67-2.94 8.43-7.02 8.43-1.37 0-2.66-.71-3.1-1.56l-.84 3.2c-.3 1.17-1.13 2.64-1.68 3.54A10 10 0 1 0 12 2" />
-        </svg>
-      );
-    case "youtube":
-      return (
-        <svg {...commonProps}>
-          <path d="M23.5 6.2a3 3 0 0 0-2.1-2.12C19.53 3.5 12 3.5 12 3.5s-7.53 0-9.4.58A3 3 0 0 0 .5 6.2 31.3 31.3 0 0 0 0 12a31.3 31.3 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.12c1.87.58 9.4.58 9.4.58s7.53 0 9.4-.58a3 3 0 0 0 2.1-2.12A31.3 31.3 0 0 0 24 12a31.3 31.3 0 0 0-.5-5.8M9.75 15.62V8.38L16.02 12z" />
-        </svg>
-      );
-    case "threads":
-    case "bluesky":
-    case "google_business":
-    case "mastodon":
-    case "whatsapp":
-      return (
-        <svg {...commonProps}>
-          <circle cx="12" cy="12" r="10" />
-        </svg>
-      );
-  }
 }

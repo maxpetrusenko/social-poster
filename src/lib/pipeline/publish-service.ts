@@ -141,7 +141,9 @@ export async function publishPlatformTargets(
   };
 }
 
-function getPublishProviderLabel(platform: Pick<PlatformRow, "provider" | "type">) {
+function getPublishProviderLabel(
+  platform: Pick<PlatformRow, "provider" | "type" | "config">
+) {
   if (shouldPublishViaNativeProvider(platform)) return "direct";
   return shouldPublishViaBird(platform) ? "bird" : "late";
 }

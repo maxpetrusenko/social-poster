@@ -132,7 +132,31 @@ export default async function CalendarPage({
   const nextMonthStr = new Date(year, monthIndex + 1, 1).toISOString().slice(0, 7);
   const todayMonth = new Date().toISOString().slice(0, 7);
 
-  const calendar = await getCalendarInsights(monthParam, tenant.currentWorkspace.id);
+  let calendar: Awaited<ReturnType<typeof getCalendarInsights>>;
+  try {
+    calendar = await getCalendarInsights(monthParam, tenant.currentWorkspace.id);
+  } catch (calError) {
+    const { writeFileSync } = await import("node:fs");
+    writeFileSync("/tmp/calendar-debug.json", JSON.stringify({
+      error: calError instanceof Error ? calError.message : String(calError),
+      stack: calError instanceof Error ? calError.stack : null,
+      workspace: tenant.currentWorkspace.id,
+      month: monthParam,
+    }, null, 2));
+    throw calError;
+  }
+  {
+    const { writeFileSync } = await import("node:fs");
+    const dayKeys = Object.keys(calendar.eventsByDay);
+    const total = Object.values(calendar.eventsByDay).flat().length;
+    const sample = Object.values(calendar.eventsByDay).flat().slice(0, 3).map(e => ({
+      id: e.id, dayKey: e.dayKey, tone: e.tone, kind: e.kind, label: e.label,
+    }));
+    writeFileSync("/tmp/calendar-debug.json", JSON.stringify({
+      workspace: tenant.currentWorkspace.id, month: monthParam,
+      dayKeys, total, sample, filters,
+    }, null, 2));
+  }
   const rawEvents = Object.values(calendar.eventsByDay)
     .flat()
     .map(serializeEvent);

@@ -1,9 +1,10 @@
 import { db } from "@/db";
-import { pipelineRuns, schedules } from "@/db/schema";
+import { dedupCache, pipelineRuns, schedules } from "@/db/schema";
 import { runAvatarVideoJob } from "@/lib/pipeline/runners/avatar-video";
 import { runImagePostJob } from "@/lib/pipeline/runners/image-post";
 import { runReplyEngineJob } from "@/lib/pipeline/runners/reply-engine";
 import { and, eq, gte, lt } from "drizzle-orm";
+import crypto from "node:crypto";
 
 type ScheduleRow = typeof schedules.$inferSelect;
 type TriggerKind = "cron" | "manual" | "api";
@@ -12,9 +13,17 @@ export async function runScheduleJob(
   schedule: ScheduleRow,
   trigger: TriggerKind = "cron"
 ): Promise<void> {
-  if (trigger === "cron" && await hasCronRunForCurrentMinute(schedule.id)) {
-    console.warn(`[scheduler] duplicate cron suppressed for ${schedule.id}`);
-    return;
+  if (trigger === "cron") {
+    const lock = await acquireCronRunLock(schedule.id);
+    if (!lock.acquired) {
+      console.warn(`[scheduler] duplicate cron suppressed for ${schedule.id}`);
+      return;
+    }
+
+    if (await hasCronRunForCurrentMinute(schedule.id, lock.minuteStart)) {
+      console.warn(`[scheduler] duplicate cron suppressed for ${schedule.id}`);
+      return;
+    }
   }
 
   if (schedule.jobType === "avatar_video") {
@@ -40,9 +49,29 @@ export async function runScheduleJob(
   throw new Error(`Unknown job type: ${schedule.jobType}`);
 }
 
-async function hasCronRunForCurrentMinute(scheduleId: string) {
+async function acquireCronRunLock(scheduleId: string) {
   const minuteStart = new Date();
   minuteStart.setSeconds(0, 0);
+  const key = `cron:${scheduleId}:${minuteStart.toISOString()}`;
+
+  try {
+    await db.insert(dedupCache).values({
+      id: crypto.randomUUID(),
+      key,
+      source: "scheduler",
+      createdAt: new Date(),
+    });
+    return { acquired: true, minuteStart };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (message.includes("UNIQUE") || message.includes("constraint")) {
+      return { acquired: false, minuteStart };
+    }
+    throw error;
+  }
+}
+
+async function hasCronRunForCurrentMinute(scheduleId: string, minuteStart: Date) {
   const minuteEnd = new Date(minuteStart);
   minuteEnd.setMinutes(minuteEnd.getMinutes() + 1);
 

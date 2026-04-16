@@ -14,6 +14,7 @@ import {
   MessageSquareReply,
   PenSquare,
   Plus,
+  Rss,
   Search,
   Settings,
   Share2,
@@ -23,6 +24,7 @@ import {
   X,
 } from "lucide-react";
 import { LogoutButton } from "@/components/logout-button";
+import { SocialAgentWidget } from "@/components/dashboard/social-agent-widget";
 import { cn } from "@/lib/utils";
 import {
   channelShellNav,
@@ -40,6 +42,7 @@ const iconMap = {
   notifications: Bell,
   schedules: Workflow,
   categories: Workflow,
+  rss: Rss,
   accounts: Share2,
   profiles: UserCircle,
   overview: Activity,
@@ -90,6 +93,7 @@ const headerCopy: HeaderConfig[] = [
   { match: "/dashboard/notifications", title: "Notifications", description: "See alerts, failures, approvals, and watch items." },
   { match: "/dashboard/schedules", title: "Schedules", description: "Control cadence, timing, and scheduled runs." },
   { match: "/dashboard/categories", title: "Recurrent Posts", description: "Review recurring slots, themes, and content buckets." },
+  { match: "/dashboard/rss", title: "RSS", description: "Manage feed sources, candidate scoring, rewrite templates, and image selection." },
   { match: "/dashboard/pipeline", title: "Pipeline", description: "Inspect run history, logs, and execution status." },
   { match: "/dashboard", title: "Dashboard", description: "See the main board, current metrics, and workspace status." },
 ];
@@ -371,6 +375,7 @@ export function DashboardDrawerShell({
         />
 
         <main>{children}</main>
+        <SocialAgentWidget />
       </div>
     </div>
   );

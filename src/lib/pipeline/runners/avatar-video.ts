@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { pipelineRuns, schedules, platforms } from "@/db/schema";
+import { pipelineRuns, posts, postTargets, schedules, platforms } from "@/db/schema";
 import type { PipelineStep } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import crypto from "node:crypto";
@@ -13,7 +13,11 @@ import { generateAvatar } from "../avatar";
 import { renderVideo } from "../video-render";
 import { uploadToCatbox } from "../upload";
 import { publishPlatformTargets } from "../publish-service";
-import { resolvePublishResultsStatus } from "../status";
+import {
+  resolvePostStatusFromTargetResults,
+  resolvePublishResultsStatus,
+} from "../status";
+import { getWorkspaceRssSettings } from "@/lib/rss-config";
 
 export async function runAvatarVideoJob(
   schedule: typeof schedules.$inferSelect,
@@ -51,10 +55,13 @@ export async function runAvatarVideoJob(
   }
 
   try {
+    const rssSettings = schedule.workspaceId
+      ? await getWorkspaceRssSettings(schedule.workspaceId)
+      : null;
     // 1. Feed
     const s1 = step("feed:pull");
     steps.push(s1);
-    const stories = await getTopStories(1);
+    const stories = await getTopStories(1, { workspaceId: schedule.workspaceId });
     if (stories.length === 0) throw new Error("No stories");
     const story = stories[0];
     complete(s1, { title: story.title, score: story.score });
@@ -106,7 +113,7 @@ export async function runAvatarVideoJob(
     const summary = await publishPlatformTargets(
       targets.map((platform) => ({
         platform,
-        content: writePostCaption(story, platform.type),
+        content: writePostCaption(story, platform.type, rssSettings ?? undefined),
         mediaUrl: videoUrl,
         mediaType: "video" as const,
         instagramContentType:
@@ -140,16 +147,78 @@ export async function runAvatarVideoJob(
     try { unlinkSync(audioPath); } catch {}
     try { unlinkSync(avatarPath); } catch {}
 
-    // Done
+    // Persist post + per-platform targets
+    const postId = crypto.randomUUID();
     const now = new Date();
+    const publishInputs = targets.map((platform) => ({
+      platform,
+      content: writePostCaption(story, platform.type, rssSettings ?? undefined),
+      mediaUrl: videoUrl,
+    }));
+    const firstContent =
+      publishInputs.find((t) =>
+        results.find((r) => r.platform === t.platform.type && r.success)
+      )?.content ?? publishInputs[0]?.content ?? story.title ?? "";
+    const postStatus = resolvePostStatusFromTargetResults(results);
+
+    await db.insert(posts).values({
+      id: postId,
+      workspaceId: schedule.workspaceId,
+      title: story.title,
+      content: firstContent,
+      contentType: "avatar_video",
+      mediaUrl: videoUrl,
+      sourceUrl: story.link || null,
+      sourceTitle: story.title ?? null,
+      status: postStatus,
+      publishedAt:
+        postStatus === "published" || postStatus === "partial_failure"
+          ? now
+          : null,
+      metadata: {
+        sourceScheduleId: schedule.id,
+        runId,
+      },
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    for (const target of targets) {
+      const result = results.find(
+        (r) => r.platform === target.type
+      );
+      const targetStatus = result?.success
+        ? "published"
+        : result?.classification === "disabled" ||
+            result?.classification === "duplicate"
+          ? "skipped"
+          : "failed";
+
+      await db.insert(postTargets).values({
+        id: crypto.randomUUID(),
+        postId,
+        platformId: target.id,
+        status: targetStatus,
+        publishedUrl: result?.postUrl ?? null,
+        platformPostId: result?.postId ?? null,
+        error:
+          result?.classification === "disabled"
+            ? null
+            : result?.error ?? null,
+        publishedAt: result?.success ? now : null,
+        createdAt: now,
+      });
+    }
+
     await db.update(pipelineRuns).set({
       status: resolvePublishResultsStatus(results),
+      postId,
       steps,
       durationMs: now.getTime() - startedAt.getTime(),
       completedAt: now,
     }).where(eq(pipelineRuns.id, runId));
 
-    console.log(`[avatar-video] run ${runId} done — ${ok.length}/${results.length} platforms`);
+    console.log(`[avatar-video] run ${runId} done — ${ok.length}/${results.length} → post ${postId}`);
   } catch (err) {
     await fail(runId, steps, startedAt, err instanceof Error ? err.message : String(err));
   }

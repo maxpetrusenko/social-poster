@@ -45,9 +45,13 @@ type RunRecord = {
 };
 
 type SchedulePreview = {
+  mode: "fixed" | "agent-persona" | "feed";
   title: string;
   summary: string;
   variantIndex: number;
+  sourceUrl: string | null;
+  sourceLabel: string | null;
+  sourceScore: number | null;
   platforms: Array<{
     label: string;
     handle: string | null;

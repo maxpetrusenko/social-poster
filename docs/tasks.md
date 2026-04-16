@@ -1,6 +1,6 @@
 # Social Agent — Tasks & Status
 
-Last updated: 2026-04-14
+Last updated: 2026-04-16
 
 ## Current State
 
@@ -51,17 +51,24 @@ Deploys to `social.maxpetrusenko.com` on Contabo/Coolify.
 - [x] Settings → Workspaces now supports create / open / archive / restore / delete
 - [x] Settings → Team Members now supports invite / resend / revoke / org role / workspace access / remove
 - [x] Workspace Settings → General and Approvals now persist real workspace values
+- [x] Connection OAuth info buttons now open in-app setup guides with platform docs, callback URI copy, missing env warnings, and X-specific tutorial/use-case text
 - [x] Invite accept page at `/invite/[token]`
 - [x] Dashboard home — live metrics for posting cadence, consistency, errors, schedules, and platform health
 - [x] Create Idea now routes through a canonical composer with idea/template/feed entry lanes and real draft/schedule/publish-now actions
 - [x] Schedule category presets via `schedules.config` — take/opinion, product update, source share, hype/future, hiring
 - [x] Platforms — list, create, edit, delete, per-platform skills/config editor
+- [x] Platforms native connection flow starts configured OAuth providers directly and exposes credential setup docs from each method
 - [x] Profiles — list, create, edit, delete (voice ID, face ID, tone)
 - [x] Posts — list with status filters, create with platform targeting, detail view
 - [x] Calendar — monthly grid view with schedule recurrences + actual pipeline runs
 - [x] Calendar recurring forecast cards now show source-title/image predictions with a debug panel instead of synthetic generated captions
+- [x] Calendar recurring cron slots now resolve in UTC, suppress past forecast shells, and label predictions as candidate-only without implying a draft exists
+- [x] Calendar recurring slots now reuse `agent_persona_updates` content generation, so Agent Persona schedule previews match pipeline-specific copy instead of generic feed candidates
 - [x] Pipeline — run history with expandable step detail
 - [x] Schedules — list, create, edit, delete, manual "Run Now", success/error stats
+- [x] Schedule detail preview now shows fixed, Agent Persona, or RSS-candidate mode with source visibility and per-platform generated copy
+- [x] RSS page now uses a tabbed operator UI: compact editable source table with per-source drilldowns, traction-aware candidate scoring, visible selection pipeline, editable transformation prompt/templates/image rules, and regenerateable X/LinkedIn previews for a chosen candidate
+- [x] Social Agent chat widget now answers from sanitized workspace context, including connected platforms, reply review/ready queues, recent reply events, post targets, pipeline runs, RSS setup, and current page hints
 - [x] Recurrent Posts exposed in left navigation for recurring content buckets and slot planning
 - [x] Settings — read-only config display
 
@@ -99,11 +106,13 @@ Deploys to `social.maxpetrusenko.com` on Contabo/Coolify.
 - [x] Cron scheduler that reads from `schedules` table
 - [x] Pipeline orchestrator: feed → dedup → render → publish → log
 - [x] Reply engine duplicate guard skips already-attempted drafts before calling X again
+- [x] Reply discovery defaults to English-only candidates, exposes a language selector, and skips low-engagement tweets below 3 replies and 10 likes
 - [x] Boot recovery marks interrupted `running` pipeline rows failed after app restarts
 - [x] Schedule runtime now reconciles by diff instead of full reload
 - [x] `/api/health` and dashboard expose DB-enabled vs runtime-registered schedule counts
 - [x] Manual and scheduled publishing now share one normalized publish service
 - [x] Mixed manual post delivery can resolve to `partial_failure`
+- [x] Cron schedule execution now uses a SQLite-backed minute lock to suppress duplicate scheduler fires across processes
 - [x] X publish now routes through Bird when the platform provider is `bird`, with dashboard credentials first and env fallback second
 - [ ] Idempotency keys on every publish attempt
 

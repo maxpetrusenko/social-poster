@@ -8,6 +8,7 @@ const GITHUB_HEADERS = {
 };
 
 type GithubOrgEvent = {
+  id?: string;
   type?: string;
   created_at?: string;
   repo?: {
@@ -48,17 +49,33 @@ type AgentPersonaPostConfig = {
   githubOrg?: unknown;
   repoName?: unknown;
   ctaUrl?: unknown;
+  transformationPrompt?: unknown;
 };
 
 type AgentPersonaSnapshot = {
   title: string;
   description: string;
   blogTitles: string[];
-  activityLines: string[];
+  activities: SummarizedActivity[];
   repoName: string;
   repoUrl: string;
   repoStars: number | null;
   ctaUrl: string;
+};
+
+export type AgentPersonaScheduleContext = {
+  titleOverride: string | null;
+  summaryOverride: string | null;
+  lookbackHours: number;
+  siteUrl: string;
+  githubOrg: string;
+  repoName: string;
+  ctaUrl: string;
+  mediaSource: Record<string, unknown> | null;
+  mediaUrl: string | null;
+  siteSnapshot: ReturnType<typeof parseSiteSnapshot>;
+  orgEvents: GithubOrgEvent[];
+  repo: GithubRepo | null;
 };
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -117,6 +134,20 @@ function titleCaseWords(value: string) {
 
 function uniq<T>(items: T[]) {
   return Array.from(new Set(items));
+}
+
+function parseBannedPhrases(prompt: string | null): string[] {
+  if (!prompt) return [];
+  const line = prompt
+    .toLowerCase()
+    .split("\n")
+    .find((l) => l.trim().startsWith("ban_phrases:"));
+  if (!line) return [];
+  return line
+    .replace("ban_phrases:", "")
+    .split("|")
+    .map((s) => s.trim())
+    .filter(Boolean);
 }
 
 async function fetchJson<T>(url: string): Promise<T | null> {
@@ -194,8 +225,15 @@ function withinLookback(
   return runAt.getTime() - createdTime <= lookbackHours * 60 * 60 * 1000;
 }
 
-function describeEvent(event: GithubOrgEvent) {
+type DescribedEvent = {
+  priority: number;
+  text: string;
+  url: string | null;
+};
+
+function describeEvent(event: GithubOrgEvent): DescribedEvent | null {
   const repoName = formatRepoName(event.repo?.name || "repo");
+  const repoFullName = event.repo?.name || "repo";
   const payload = event.payload || {};
 
   if (event.type === "PullRequestEvent") {
@@ -205,12 +243,14 @@ function describeEvent(event: GithubOrgEvent) {
       return {
         priority: 4,
         text: `opened PR in ${repoName}: ${title}`,
+        url: pickString(pr?.html_url),
       };
     }
     if (payload.action === "closed" && pr?.merged_at && title) {
       return {
         priority: 4,
         text: `merged PR in ${repoName}: ${title}`,
+        url: pickString(pr?.html_url),
       };
     }
   }
@@ -222,6 +262,7 @@ function describeEvent(event: GithubOrgEvent) {
       return {
         priority: 3,
         text: `closed issue in ${repoName}: ${title}`,
+        url: pickString(issue?.html_url),
       };
     }
   }
@@ -230,32 +271,46 @@ function describeEvent(event: GithubOrgEvent) {
     return {
       priority: 2,
       text: `cut branch in ${repoName}: ${String(payload.ref)}`,
+      url: `https://github.com/${repoFullName}/tree/${String(payload.ref)}`,
     };
   }
 
   if (event.type === "WatchEvent") {
     return {
       priority: 1,
-      text: `picked up new repo watchers on ${repoName}`,
+      text: `new stargazers on ${repoName}`,
+      url: `https://github.com/${repoFullName}/stargazers`,
     };
   }
 
   return null;
 }
 
+type SummarizedActivity = {
+  text: string;
+  url: string | null;
+  eventId: string | null;
+};
+
 function summarizeEvents(
   events: GithubOrgEvent[],
   runAt: Date,
-  lookbackHours: number
-) {
-  const lines = events
-    .filter((event) => withinLookback(event.created_at, runAt, lookbackHours))
+  lookbackHours: number,
+  usedEventIds: Set<string> = new Set()
+): SummarizedActivity[] {
+  const items = events
+    .filter((event) => {
+      if (!withinLookback(event.created_at, runAt, lookbackHours)) return false;
+      if (event.id && usedEventIds.has(`gh-event:${event.id}`)) return false;
+      return true;
+    })
     .map((event) => {
       const described = describeEvent(event);
       if (!described) return null;
 
       return {
         createdAt: new Date(event.created_at || 0).getTime(),
+        eventId: event.id || null,
         ...described,
       };
     })
@@ -266,12 +321,23 @@ function summarizeEvents(
         createdAt: number;
         priority: number;
         text: string;
+        url: string | null;
+        eventId: string | null;
       } => Boolean(value)
     )
-    .sort((a, b) => b.priority - a.priority || b.createdAt - a.createdAt)
-    .map((event) => event.text);
+    .sort((a, b) => b.priority - a.priority || b.createdAt - a.createdAt);
 
-  return uniq(lines).slice(0, 3);
+  // Deduplicate by text within a single run
+  const seen = new Set<string>();
+  const result: SummarizedActivity[] = [];
+  for (const item of items) {
+    if (seen.has(item.text)) continue;
+    seen.add(item.text);
+    result.push({ text: item.text, url: item.url, eventId: item.eventId });
+    if (result.length >= 3) break;
+  }
+
+  return result;
 }
 
 function buildTwitterCopy(snapshot: AgentPersonaSnapshot, runAt: Date) {
@@ -281,8 +347,10 @@ function buildTwitterCopy(snapshot: AgentPersonaSnapshot, runAt: Date) {
   });
   const lines = [`Agent Persona ${dayLabel}:`];
 
-  if (snapshot.activityLines[0]) {
-    lines.push(`Shipped: ${truncate(snapshot.activityLines[0], 140)}`);
+  const firstActivity = snapshot.activities[0];
+  if (firstActivity) {
+    const activityText = truncate(firstActivity.text, 120);
+    lines.push(firstActivity.url ? `${activityText}\n${firstActivity.url}` : activityText);
   }
 
   if (snapshot.blogTitles[0]) {
@@ -306,8 +374,9 @@ function buildLinkedInCopy(snapshot: AgentPersonaSnapshot, runAt: Date) {
   });
   const lines = [`What we shipped on Agent Persona for ${dayLabel}:`, ""];
 
-  for (const activity of snapshot.activityLines) {
-    lines.push(`• ${titleCaseWords(activity)}`);
+  for (const activity of snapshot.activities) {
+    const label = titleCaseWords(activity.text);
+    lines.push(activity.url ? `• ${label} — ${activity.url}` : `• ${label}`);
   }
 
   if (snapshot.blogTitles.length > 0) {
@@ -327,6 +396,27 @@ export async function resolveAgentPersonaScheduleContent(
   platformTypes: string[],
   runAt: Date = new Date()
 ): Promise<FixedScheduleContent | null> {
+  if (!isObject(config)) return null;
+
+  const typedConfig = config as AgentPersonaPostConfig;
+  if (typedConfig.postMode !== "agent_persona_updates") return null;
+
+  const context = await loadAgentPersonaScheduleContext(config);
+  if (!context) return null;
+
+  // Parse ban_phrases from transformationPrompt if present
+  const bannedPhrases = parseBannedPhrases(
+    pickString(typedConfig.transformationPrompt)
+  );
+
+  return renderAgentPersonaScheduleContent(context, platformTypes, runAt, {
+    bannedPhrases,
+  });
+}
+
+export async function loadAgentPersonaScheduleContext(
+  config: unknown
+): Promise<AgentPersonaScheduleContext | null> {
   if (!isObject(config)) return null;
 
   const typedConfig = config as AgentPersonaPostConfig;
@@ -354,28 +444,95 @@ export async function resolveAgentPersonaScheduleContent(
     repoPromise,
   ]);
 
-  const siteSnapshot = parseSiteSnapshot(siteHtml || "");
-  const activityLines = summarizeEvents(orgEvents || [], runAt, lookbackHours);
-  const fallbackActivity = [
-    `refined the public site around ${siteSnapshot.title.replace(/\s+\|\s+.*/, "")}`,
-    `kept shipping inside ${formatRepoName(repoName)}`,
-    `shared the latest product thesis at ${siteUrl.replace(/\/$/, "")}`,
+  return {
+    titleOverride: pickString(typedConfig.title),
+    summaryOverride: pickString(typedConfig.summary),
+    lookbackHours,
+    siteUrl,
+    githubOrg,
+    repoName,
+    ctaUrl,
+    mediaSource,
+    mediaUrl: pickString(typedConfig.mediaUrl),
+    siteSnapshot: parseSiteSnapshot(siteHtml || ""),
+    orgEvents: orgEvents || [],
+    repo,
+  };
+}
+
+async function loadUsedEventIds(): Promise<Set<string>> {
+  try {
+    const { db } = await import("@/db");
+    const { dedupCache } = await import("@/db/schema");
+    const { like } = await import("drizzle-orm");
+    const rows = await db
+      .select({ key: dedupCache.key })
+      .from(dedupCache)
+      .where(like(dedupCache.key, "gh-event:%"));
+    return new Set(rows.map((r) => r.key));
+  } catch {
+    return new Set();
+  }
+}
+
+export async function renderAgentPersonaScheduleContent(
+  context: AgentPersonaScheduleContext,
+  platformTypes: string[],
+  runAt: Date = new Date(),
+  options: { bannedPhrases?: string[]; usedEventIds?: Set<string> } = {}
+): Promise<FixedScheduleContent> {
+  // Load already-posted event IDs from dedup_cache (skip if provided for testing)
+  const usedEventIds = options.usedEventIds ?? (await loadUsedEventIds());
+
+  const activities = summarizeEvents(
+    context.orgEvents,
+    runAt,
+    context.lookbackHours,
+    usedEventIds
+  );
+
+  const repoUrl =
+    pickString(context.repo?.html_url) ||
+    `https://github.com/${context.githubOrg}/${context.repoName}`;
+
+  // Rotate fallback by day-of-year so consecutive runs vary
+  const dayOfYear = Math.floor(
+    (runAt.getTime() - new Date(runAt.getFullYear(), 0, 0).getTime()) /
+      (1000 * 60 * 60 * 24)
+  );
+  const siteName = context.siteSnapshot.title.replace(/\s+\|\s+.*/, "");
+  const fallbackPool: SummarizedActivity[] = [
+    { text: `updated the public site for ${siteName}`, url: context.siteUrl.replace(/\/$/, ""), eventId: null },
+    { text: `continued shipping inside ${formatRepoName(context.repoName)}`, url: repoUrl, eventId: null },
+    { text: `published product updates at ${context.siteUrl.replace(/\/$/, "")}`, url: context.siteUrl.replace(/\/$/, ""), eventId: null },
+    { text: `pushed new commits to ${formatRepoName(context.repoName)}`, url: repoUrl, eventId: null },
+    { text: `iterated on ${siteName} — see latest changes`, url: context.siteUrl.replace(/\/$/, ""), eventId: null },
+    { text: `refined ${formatRepoName(context.repoName)} across multiple branches`, url: repoUrl, eventId: null },
   ];
+  const fallbackStart = dayOfYear % fallbackPool.length;
+  const fallbackActivities = [
+    fallbackPool[fallbackStart],
+    fallbackPool[(fallbackStart + 1) % fallbackPool.length],
+    fallbackPool[(fallbackStart + 2) % fallbackPool.length],
+  ];
+
+  const resolvedActivities = activities.length > 0 ? activities : fallbackActivities;
 
   const snapshot: AgentPersonaSnapshot = {
     title:
-      pickString(typedConfig.title) ||
-      `${siteSnapshot.title.replace(/\s+\|\s+.*/, "")} build log`,
+      context.titleOverride ||
+      `${siteName} build log`,
     description:
-      pickString(typedConfig.summary) || siteSnapshot.description,
-    blogTitles: siteSnapshot.blogTitles,
-    activityLines: activityLines.length > 0 ? activityLines : fallbackActivity,
-    repoName,
-    repoUrl:
-      pickString(repo?.html_url) || `https://github.com/${githubOrg}/${repoName}`,
+      context.summaryOverride || context.siteSnapshot.description,
+    blogTitles: context.siteSnapshot.blogTitles,
+    activities: resolvedActivities,
+    repoName: context.repoName,
+    repoUrl,
     repoStars:
-      typeof repo?.stargazers_count === "number" ? repo.stargazers_count : null,
-    ctaUrl,
+      typeof context.repo?.stargazers_count === "number"
+        ? context.repo.stargazers_count
+        : null,
+    ctaUrl: context.ctaUrl,
   };
 
   const resolvedContentByPlatform: Record<string, string> = {};
@@ -383,20 +540,38 @@ export async function resolveAgentPersonaScheduleContent(
 
   for (const platformType of platformTypes) {
     const normalizedPlatform = normalizePlatform(platformType);
-    resolvedContentByPlatform[normalizedPlatform] =
+    let content =
       normalizedPlatform === "linkedin"
         ? buildLinkedInCopy(snapshot, runAt)
         : buildTwitterCopy(snapshot, runAt);
 
+    // Apply ban_phrases filter
+    for (const phrase of options.bannedPhrases || []) {
+      if (!phrase) continue;
+      const escaped = phrase.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      content = content.replace(new RegExp(escaped, "ig"), "");
+    }
+    // Clean up double spaces left by removals
+    content = content.replace(/ {2,}/g, " ").trim();
+
+    resolvedContentByPlatform[normalizedPlatform] = content;
+
     const platformMediaUrl =
-      mediaSource && isObject(mediaSource)
-        ? pickString(mediaSource[normalizedPlatform]) || pickString(mediaSource[platformType])
+      context.mediaSource && isObject(context.mediaSource)
+        ? pickString(context.mediaSource[normalizedPlatform]) ||
+          pickString(context.mediaSource[platformType])
         : null;
 
     resolvedMediaUrlByPlatform[normalizedPlatform] = resolveAssetUrl(
-      platformMediaUrl || pickString(typedConfig.mediaUrl)
+      platformMediaUrl || context.mediaUrl
     );
   }
+
+  // Collect dedup keys for events used in this post
+  const dedupKeys = resolvedActivities
+    .map((a) => a.eventId)
+    .filter((id): id is string => Boolean(id))
+    .map((id) => `gh-event:${id}`);
 
   return {
     title: snapshot.title,
@@ -405,5 +580,6 @@ export async function resolveAgentPersonaScheduleContent(
     contentByPlatform: resolvedContentByPlatform,
     mediaUrlByPlatform: resolvedMediaUrlByPlatform,
     instagramContentTypeByPlatform: {},
+    dedupKeys,
   };
 }

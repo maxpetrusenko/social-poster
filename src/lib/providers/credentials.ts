@@ -2,79 +2,113 @@ import type { ProviderCredentials } from "./base";
 
 export function credentialsFromEnv(platform: string): ProviderCredentials {
   switch (platform) {
+    case "twitter":
+    case "x":
+      return {
+        clientId: envValue(
+          "SOCIAL_POSTER_TWITTER_CLIENT_ID",
+          "NATIVE_TWITTER_CLIENT_ID",
+          "TWITTER_CLIENT_ID",
+          "X_CLIENT_ID",
+          "PLATFORM_TWITTER_CLIENT_ID"
+        ),
+        clientSecret: envValue(
+          "SOCIAL_POSTER_TWITTER_CLIENT_SECRET",
+          "NATIVE_TWITTER_CLIENT_SECRET",
+          "TWITTER_CLIENT_SECRET",
+          "X_CLIENT_SECRET",
+          "PLATFORM_TWITTER_CLIENT_SECRET"
+        ),
+      };
     case "facebook":
     case "instagram":
     case "instagram_personal":
       return {
-        appId:
-          process.env.META_APP_ID ??
-          process.env.PLATFORM_FACEBOOK_APP_ID ??
-          process.env.PLATFORM_INSTAGRAM_APP_ID,
-        clientId:
-          process.env.META_APP_ID ??
-          process.env.PLATFORM_FACEBOOK_APP_ID ??
-          process.env.PLATFORM_INSTAGRAM_APP_ID,
-        appSecret:
-          process.env.META_APP_SECRET ??
-          process.env.PLATFORM_FACEBOOK_APP_SECRET ??
-          process.env.PLATFORM_INSTAGRAM_APP_SECRET,
-        clientSecret:
-          process.env.META_APP_SECRET ??
-          process.env.PLATFORM_FACEBOOK_APP_SECRET ??
-          process.env.PLATFORM_INSTAGRAM_APP_SECRET,
+        appId: envValue(
+          "META_APP_ID",
+          "PLATFORM_FACEBOOK_APP_ID",
+          "PLATFORM_INSTAGRAM_APP_ID"
+        ),
+        clientId: envValue(
+          "META_APP_ID",
+          "PLATFORM_FACEBOOK_APP_ID",
+          "PLATFORM_INSTAGRAM_APP_ID"
+        ),
+        appSecret: envValue(
+          "META_APP_SECRET",
+          "PLATFORM_FACEBOOK_APP_SECRET",
+          "PLATFORM_INSTAGRAM_APP_SECRET"
+        ),
+        clientSecret: envValue(
+          "META_APP_SECRET",
+          "PLATFORM_FACEBOOK_APP_SECRET",
+          "PLATFORM_INSTAGRAM_APP_SECRET"
+        ),
       };
     case "threads":
       return {
-        clientId:
-          process.env.THREADS_APP_ID ??
-          process.env.META_APP_ID ??
-          process.env.PLATFORM_FACEBOOK_APP_ID,
-        clientSecret:
-          process.env.THREADS_APP_SECRET ??
-          process.env.META_APP_SECRET ??
-          process.env.PLATFORM_FACEBOOK_APP_SECRET,
+        clientId: envValue(
+          "THREADS_APP_ID",
+          "META_APP_ID",
+          "PLATFORM_FACEBOOK_APP_ID"
+        ),
+        clientSecret: envValue(
+          "THREADS_APP_SECRET",
+          "META_APP_SECRET",
+          "PLATFORM_FACEBOOK_APP_SECRET"
+        ),
       };
     case "linkedin":
     case "linkedin_personal":
     case "linkedin_company":
       return {
-        clientId:
-          process.env.LINKEDIN_CLIENT_ID ?? process.env.PLATFORM_LINKEDIN_CLIENT_ID,
-        clientSecret:
-          process.env.LINKEDIN_CLIENT_SECRET ??
-          process.env.PLATFORM_LINKEDIN_CLIENT_SECRET,
+        clientId: envValue("LINKEDIN_CLIENT_ID", "PLATFORM_LINKEDIN_CLIENT_ID"),
+        clientSecret: envValue(
+          "LINKEDIN_CLIENT_SECRET",
+          "PLATFORM_LINKEDIN_CLIENT_SECRET"
+        ),
       };
     case "tiktok":
       return {
-        clientId:
-          process.env.TIKTOK_CLIENT_KEY ?? process.env.PLATFORM_TIKTOK_CLIENT_KEY,
-        clientSecret:
-          process.env.TIKTOK_CLIENT_SECRET ??
-          process.env.PLATFORM_TIKTOK_CLIENT_SECRET,
+        clientId: envValue("TIKTOK_CLIENT_KEY", "PLATFORM_TIKTOK_CLIENT_KEY"),
+        clientSecret: envValue(
+          "TIKTOK_CLIENT_SECRET",
+          "PLATFORM_TIKTOK_CLIENT_SECRET"
+        ),
       };
     case "youtube":
       return {
-        clientId:
-          process.env.YOUTUBE_CLIENT_ID ?? process.env.PLATFORM_GOOGLE_CLIENT_ID,
-        clientSecret:
-          process.env.YOUTUBE_CLIENT_SECRET ?? process.env.PLATFORM_GOOGLE_CLIENT_SECRET,
+        clientId: envValue(
+          "YOUTUBE_CLIENT_ID",
+          "PLATFORM_GOOGLE_CLIENT_ID",
+          "GOOGLE_AUTH_CLIENT_ID"
+        ),
+        clientSecret: envValue(
+          "YOUTUBE_CLIENT_SECRET",
+          "PLATFORM_GOOGLE_CLIENT_SECRET",
+          "GOOGLE_AUTH_CLIENT_SECRET"
+        ),
       };
     case "pinterest":
       return {
-        clientId:
-          process.env.PINTEREST_CLIENT_ID ?? process.env.PLATFORM_PINTEREST_APP_ID,
-        clientSecret:
-          process.env.PINTEREST_CLIENT_SECRET ??
-          process.env.PLATFORM_PINTEREST_APP_SECRET,
+        clientId: envValue("PINTEREST_CLIENT_ID", "PLATFORM_PINTEREST_APP_ID"),
+        clientSecret: envValue(
+          "PINTEREST_CLIENT_SECRET",
+          "PLATFORM_PINTEREST_APP_SECRET"
+        ),
       };
     case "google_business":
       return {
-        clientId:
-          process.env.GOOGLE_BUSINESS_CLIENT_ID ??
-          process.env.PLATFORM_GOOGLE_CLIENT_ID,
-        clientSecret:
-          process.env.GOOGLE_BUSINESS_CLIENT_SECRET ??
-          process.env.PLATFORM_GOOGLE_CLIENT_SECRET,
+        clientId: envValue(
+          "GOOGLE_BUSINESS_CLIENT_ID",
+          "PLATFORM_GOOGLE_CLIENT_ID",
+          "GOOGLE_AUTH_CLIENT_ID"
+        ),
+        clientSecret: envValue(
+          "GOOGLE_BUSINESS_CLIENT_SECRET",
+          "PLATFORM_GOOGLE_CLIENT_SECRET",
+          "GOOGLE_AUTH_CLIENT_SECRET"
+        ),
       };
     default:
       return {};
@@ -109,6 +143,17 @@ export function mergeProviderCredentials(
     ...credentialsFromEnv(platform),
     ...credentialsFromConfig(config),
   };
+}
+
+function envValue(...keys: string[]) {
+  for (const key of keys) {
+    const value = process.env[key];
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+
+  return undefined;
 }
 
 export function readAccessToken(

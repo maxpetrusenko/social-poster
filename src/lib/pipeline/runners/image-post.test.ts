@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { selectFeedStoryForSchedule } from "./image-post.ts";
+import { selectFeedStoryForSchedule } from "./feed-story-selection.ts";
 
 test("selectFeedStoryForSchedule prefers the first story when image is optional", () => {
   const story = selectFeedStoryForSchedule(

@@ -8,6 +8,7 @@ import {
   readAccessToken,
   readRefreshToken,
 } from "./credentials";
+import { readStoredConnectionConfig } from "@/lib/connection-config";
 import type { PublishResult as PipelinePublishResult } from "@/lib/pipeline/publisher";
 import type { PublishContent } from "./types";
 
@@ -22,8 +23,14 @@ export type NativePublishInput = {
 };
 
 export function shouldPublishViaNativeProvider(
-  platform: Pick<PlatformRow, "provider" | "type">
+  platform: Pick<PlatformRow, "provider" | "type" | "config">
 ) {
+  const platformType = platform.type.toLowerCase();
+  if (platformType === "twitter" || platformType === "x") {
+    const stored = readStoredConnectionConfig(platform.config);
+    return platform.provider === "direct" && stored.authMethod === "x_oauth";
+  }
+
   return platform.provider === "direct" && hasNativeProvider(platform.type);
 }
 
@@ -151,6 +158,7 @@ function classifyNativeError(error: unknown): PipelinePublishResult["classificat
 
 function normalizeNativePlatform(platform: string) {
   if (platform === "linkedin") return "linkedin_personal";
+  if (platform === "x") return "twitter";
   return platform;
 }
 

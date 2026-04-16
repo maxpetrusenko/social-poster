@@ -10,6 +10,7 @@ import { MastodonProvider } from "./mastodon";
 import { PinterestProvider } from "./pinterest";
 import { ThreadsProvider } from "./threads";
 import { TikTokProvider } from "./tiktok";
+import { TwitterProvider } from "./twitter";
 import { YouTubeProvider } from "./youtube";
 
 type ProviderFactory = (credentials: ProviderCredentials) => SocialProvider;
@@ -27,6 +28,8 @@ const providers: Record<string, ProviderFactory> = {
   pinterest: (c) => new PinterestProvider(c),
   threads: (c) => new ThreadsProvider(c),
   tiktok: (c) => new TikTokProvider(c),
+  twitter: (c) => new TwitterProvider(c),
+  x: (c) => new TwitterProvider(c),
   youtube: (c) => new YouTubeProvider(c),
 };
 

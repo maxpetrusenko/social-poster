@@ -14,13 +14,23 @@ type ScheduleDetailSummaryProps = {
   nextRunLabels: string[];
   preview:
     | {
+        mode: "fixed" | "agent-persona" | "feed";
         title: string;
         summary: string;
         variantIndex: number;
+        sourceUrl: string | null;
+        sourceLabel: string | null;
+        sourceScore: number | null;
         platforms: SchedulePreviewPlatform[];
       }
     | null;
 };
+
+function previewLabel(mode: "fixed" | "agent-persona" | "feed") {
+  if (mode === "agent-persona") return "Agent Persona snapshot";
+  if (mode === "feed") return "RSS candidate + generated copy";
+  return "Fixed schedule";
+}
 
 export function ScheduleDetailSummary({
   nextRunLabels,
@@ -55,14 +65,39 @@ export function ScheduleDetailSummary({
             <div>
               <p className="text-sm font-medium text-gray-900">Preview</p>
               <p className="mt-1 text-xs text-gray-500">
-                Variant {preview.variantIndex + 1} for the next scheduled run
+                {preview.mode === "feed"
+                  ? `Candidate ${preview.variantIndex + 1} from the current pool for the next run`
+                  : `Variant ${preview.variantIndex + 1} for the next scheduled run`}
               </p>
             </div>
+            <span className="rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-gray-600">
+              {previewLabel(preview.mode)}
+            </span>
           </div>
 
           <div className="mt-4 rounded-lg border border-gray-100 bg-gray-50 p-4">
             <p className="text-sm font-semibold text-gray-900">{preview.title}</p>
             <p className="mt-2 text-sm leading-6 text-gray-700">{preview.summary}</p>
+            {preview.sourceUrl ? (
+              <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-gray-600">
+                <span className="rounded-full border border-gray-200 bg-white px-2.5 py-1 font-semibold uppercase tracking-[0.12em] text-gray-500">
+                  Source
+                </span>
+                <a
+                  href={preview.sourceUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="font-medium text-blue-700 underline underline-offset-4"
+                >
+                  {preview.sourceLabel || preview.sourceUrl}
+                </a>
+                {typeof preview.sourceScore === "number" ? (
+                  <span className="rounded-full border border-gray-200 bg-white px-2.5 py-1 font-medium text-gray-700">
+                    score {preview.sourceScore}
+                  </span>
+                ) : null}
+              </div>
+            ) : null}
           </div>
 
           <div className="mt-4 space-y-4">

@@ -487,6 +487,7 @@ export async function getTenantContext(): Promise<TenantContext | null> {
     memberships.find((entry) => !entry.workspace.isArchived) ??
     memberships[0];
 
+
   const now = new Date();
   if (
     activeWorkspaceEntry &&

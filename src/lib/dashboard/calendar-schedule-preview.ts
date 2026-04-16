@@ -1,4 +1,8 @@
 import type { DashboardCandidate } from "./candidates";
+import {
+  writePostCaption,
+  type PostTemplateOptions,
+} from "@/lib/pipeline/script-writer";
 
 type ScheduleLike = {
   jobType: string;
@@ -8,6 +12,8 @@ export type DynamicSchedulePreview = {
   label: string;
   preview: string | null;
   content: string | null;
+  contentByPlatform: Record<string, string>;
+  firstCommentByPlatform: Record<string, string | null>;
   mediaUrl: string | null;
   contentType: "text" | "image";
   sourceUrl: string;
@@ -29,10 +35,38 @@ function positiveModulo(value: number, size: number) {
   return ((value % size) + size) % size;
 }
 
+function platformKey(type: string) {
+  const normalized = type.toLowerCase();
+  return normalized === "x" ? "twitter" : normalized;
+}
+
+function isFirstCommentPlatform(type: string) {
+  const normalized = type.toLowerCase();
+  return normalized === "x" || normalized === "twitter";
+}
+
+function sourceFirstComment(title: string, sourceUrl: string) {
+  return title ? `Source: ${title}\n${sourceUrl}` : `Source: ${sourceUrl}`;
+}
+
+function appendSourceLinkToPreview(
+  content: string,
+  sourceUrl: string,
+  platformType: string
+) {
+  const normalized = platformType.toLowerCase();
+  if (!sourceUrl || normalized === "x" || normalized === "twitter") {
+    return content;
+  }
+  return `${content}\n\nSource: ${sourceUrl}`;
+}
+
 export function resolveDynamicSchedulePreview(
   schedule: ScheduleLike,
   candidatePool: DashboardCandidate[],
-  runIndex: number
+  runIndex: number,
+  platformTypes: string[] = ["x"],
+  postOptions?: PostTemplateOptions
 ): DynamicSchedulePreview | null {
   const needsImage = schedule.jobType === "image_post";
   const eligibleCandidates = candidatePool.filter((candidate) =>
@@ -51,11 +85,35 @@ export function resolveDynamicSchedulePreview(
     candidate.imageUrl ??
     null;
   const summary = normalizeText(candidate.summary) || null;
+  const targetPlatformTypes = platformTypes.length > 0 ? platformTypes : ["x"];
+  const contentByPlatform: Record<string, string> = {};
+  const firstCommentByPlatform: Record<string, string | null> = {};
+
+  for (const platformType of targetPlatformTypes) {
+    const key = platformKey(platformType);
+    const rawContent =
+      writePostCaption(candidate, platformType, postOptions) || candidate.title;
+    contentByPlatform[key] = appendSourceLinkToPreview(
+      rawContent,
+      candidate.link,
+      platformType
+    );
+    firstCommentByPlatform[key] = isFirstCommentPlatform(platformType)
+      ? sourceFirstComment(candidate.title, candidate.link)
+      : null;
+  }
+
+  const firstContent =
+    contentByPlatform[platformKey(targetPlatformTypes[0] ?? "x")] ??
+    Object.values(contentByPlatform)[0] ??
+    summary;
 
   return {
     label: candidate.title,
-    preview: shorten(summary, 140),
-    content: summary,
+    preview: shorten(firstContent ?? summary, 140),
+    content: firstContent ?? summary,
+    contentByPlatform,
+    firstCommentByPlatform,
     mediaUrl,
     contentType: needsImage ? "image" : "text",
     sourceUrl: candidate.link,

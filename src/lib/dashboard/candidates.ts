@@ -17,7 +17,14 @@ const CANDIDATE_CACHE_SIZE = 24;
 
 let refreshInFlight: Promise<void> | null = null;
 
-export async function getDashboardCandidates(count = 6): Promise<DashboardCandidate[]> {
+export async function getDashboardCandidates(
+  count = 6,
+  workspaceId?: string
+): Promise<DashboardCandidate[]> {
+  if (workspaceId) {
+    return loadLiveCandidates(count, workspaceId);
+  }
+
   const cached = await loadCachedCandidates();
   const isStale = shouldRefreshCandidateCache(cached[0]?.fetchedAt ? new Date(cached[0].fetchedAt) : null);
 
@@ -38,6 +45,29 @@ export async function primeDashboardCandidates(): Promise<void> {
   if (cached.length === 0 || shouldRefreshCandidateCache(cached[0]?.fetchedAt ? new Date(cached[0].fetchedAt) : null)) {
     await refreshCandidateCache();
   }
+}
+
+async function loadLiveCandidates(
+  count: number,
+  workspaceId: string
+): Promise<DashboardCandidate[]> {
+  const stories = await getCandidateStories({
+    count,
+    workspaceId,
+  });
+  const rows = await Promise.all(
+    stories.map(async (story) => {
+      const ogImageUrl = story.imageUrl ?? await fetchOpenGraphImage(story.link);
+      return {
+        ...story,
+        ogImageUrl,
+        previewImageUrl: getImagePreviewUrl(ogImageUrl),
+        sourceHost: getSourceHost(story.link),
+      } satisfies DashboardCandidate;
+    })
+  );
+
+  return rows.sort((a, b) => compareCandidatePriority(a, b));
 }
 
 async function loadCachedCandidates(): Promise<DashboardCandidate[]> {

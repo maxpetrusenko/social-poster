@@ -2,16 +2,57 @@ import { db } from "@/db";
 import { dedupCache } from "@/db/schema";
 import crypto from "node:crypto";
 import { cleanRichText, decodeHtmlEntities } from "./content-clean";
+import {
+  DEFAULT_RSS_FEEDS,
+  DEFAULT_RSS_SETTINGS,
+  getWorkspaceRssSettings,
+  getWorkspaceRssSources,
+  type ImageSelectionMode,
+} from "@/lib/rss-config";
+import { fetchOpenGraphImage } from "@/lib/open-graph-image";
 
 export interface Story {
   title: string;
   link: string;
   summary: string;
   score: number;
+  tractionScore?: number;
   imageUrl?: string;
   publishedAt?: string;
   sourceName?: string;
 }
+
+export type FeedStoryState =
+  | "selected"
+  | "eligible"
+  | "pool_full"
+  | "too_old"
+  | "low_score"
+  | "already_posted"
+  | "missing_fields";
+
+export type FeedStoryDiagnostic = {
+  title: string;
+  link: string;
+  summary: string;
+  score: number;
+  tractionScore: number;
+  scoreBreakdown: string;
+  imageUrl?: string;
+  publishedAt?: string;
+  sourceName: string;
+  state: FeedStoryState;
+};
+
+export type FeedSourceDiagnostic = {
+  sourceName: string;
+  sourceUrl: string;
+  weight: number;
+  enabled: boolean;
+  fetchedCount: number;
+  selectedCount: number;
+  stories: FeedStoryDiagnostic[];
+};
 
 interface FeedItem {
   title?: string;
@@ -21,37 +62,10 @@ interface FeedItem {
   content?: string;
   pubDate?: string;
   isoDate?: string;
+  commentsUrl?: string;
 }
 
-const FEEDS: { url: string; name: string; weight: number }[] = [
-  { url: "https://news.ycombinator.com/rss", name: "HN", weight: 20 },
-  { url: "https://techcrunch.com/feed/", name: "TechCrunch", weight: 15 },
-  { url: "https://www.theverge.com/rss/index.xml", name: "The Verge", weight: 15 },
-  { url: "https://feeds.arstechnica.com/arstechnica/index", name: "Ars", weight: 12 },
-  { url: "https://www.wired.com/feed/rss", name: "Wired", weight: 12 },
-  { url: "https://blog.google/technology/ai/rss/", name: "Google AI", weight: 18 },
-  { url: "https://openai.com/blog/rss.xml", name: "OpenAI", weight: 18 },
-  { url: "https://www.anthropic.com/feed.xml", name: "Anthropic", weight: 18 },
-  { url: "https://ai.meta.com/blog/rss/", name: "Meta AI", weight: 16 },
-  { url: "https://www.reddit.com/r/MachineLearning/.rss", name: "r/ML", weight: 14 },
-  { url: "https://www.reddit.com/r/LocalLLaMA/.rss", name: "r/LocalLLaMA", weight: 14 },
-  { url: "https://www.reddit.com/r/artificial/.rss", name: "r/AI", weight: 12 },
-  { url: "https://huggingface.co/blog/feed.xml", name: "HuggingFace", weight: 16 },
-  { url: "https://lilianweng.github.io/index.xml", name: "Lilian Weng", weight: 14 },
-  { url: "https://simonwillison.net/atom/everything/", name: "Simon Willison", weight: 15 },
-  { url: "https://www.marktechpost.com/feed/", name: "MarkTechPost", weight: 10 },
-  { url: "https://www.kdnuggets.com/feed", name: "KDnuggets", weight: 10 },
-  { url: "https://blog.langchain.dev/rss/", name: "LangChain", weight: 14 },
-  { url: "https://www.infoq.com/ai-ml-data-eng/rss/", name: "InfoQ AI", weight: 12 },
-  { url: "https://syncedreview.com/feed/", name: "Synced", weight: 10 },
-  { url: "https://thenewstack.io/blog/feed/", name: "NewStack", weight: 10 },
-  { url: "https://spectrum.ieee.org/feeds/feed.rss", name: "IEEE", weight: 12 },
-  { url: "https://venturebeat.com/category/ai/feed/", name: "VentureBeat AI", weight: 12 },
-  { url: "https://www.deeplearning.ai/the-batch/feed/", name: "The Batch", weight: 14 },
-  { url: "https://bair.berkeley.edu/blog/feed.xml", name: "BAIR", weight: 14 },
-];
-
-const AI_KEYWORDS = new Set([
+const DEFAULT_AI_KEYWORDS = new Set([
   "llm", "gpt", "claude", "ai agent", "rag", "transformer", "neural",
   "deep learning", "machine learning", "artificial intelligence", "generative ai",
   "foundation model", "large language model", "nlp", "openai", "anthropic",
@@ -59,6 +73,29 @@ const AI_KEYWORDS = new Set([
   "prompt engineering", "fine-tuning", "open weights", "inference",
   "tokens", "context window", "multimodal", "reasoning", "chain of thought",
 ]);
+
+type FeedSource = { url: string; name: string; weight: number; enabled?: boolean };
+
+type FeedSelectionConfig = {
+  feeds: FeedSource[];
+  candidateWindowHours: number;
+  candidatePoolSize: number;
+  minimumScore: number;
+  tractionWeight: number;
+  keywordBoostTerms: string[];
+};
+
+type RankedFeedItem = FeedItem & {
+  feedWeight: number;
+  feedName: string;
+  feedUrl: string;
+  tractionScore: number;
+  tractionSignals: string[];
+  computedScore: number;
+  freshnessScore: number;
+  relevanceScore: number;
+  sourceWeightScore: number;
+};
 
 async function fetchFeed(feed: { url: string; name: string }): Promise<FeedItem[]> {
   try {
@@ -75,6 +112,10 @@ async function fetchFeed(feed: { url: string; name: string }): Promise<FeedItem[
   }
 }
 
+function normalizeDedupKey(link: string) {
+  return link.replace(/^https?:\/\//, "").replace(/\/+$/, "");
+}
+
 function parseRssXml(xml: string): FeedItem[] {
   const items: FeedItem[] = [];
   const itemRegex = /<item[\s>]([\s\S]*?)<\/item>|<entry[\s>]([\s\S]*?)<\/entry>/gi;
@@ -85,6 +126,7 @@ function parseRssXml(xml: string): FeedItem[] {
     const link = extractTag(block, "link") || extractAttr(block, "link", "href");
     const desc = extractTag(block, "description") || extractTag(block, "summary") || extractTag(block, "content");
     const pubDate = extractTag(block, "pubDate") || extractTag(block, "published") || extractTag(block, "updated");
+    const commentsUrl = extractTag(block, "comments");
     const imageUrl = extractImageUrl(block, link);
     items.push({
       title: title ? cleanRichText(title) : undefined,
@@ -92,6 +134,7 @@ function parseRssXml(xml: string): FeedItem[] {
       contentSnippet: desc ? cleanSummaryText(desc).slice(0, 500) : undefined,
       imageUrl,
       pubDate,
+      commentsUrl,
     });
   }
   return items;
@@ -153,98 +196,220 @@ function cleanSummaryText(value: string): string {
     .trim();
 }
 
-function scoreItem(item: FeedItem, feedWeight: number): number {
-  let score = 0;
-  // Recency
+function extractHackerNewsItemId(item: FeedItem) {
+  const match = item.commentsUrl?.match(/item\?id=(\d+)/i);
+  return match?.[1] ?? null;
+}
+
+function extractRedditPostId(item: FeedItem) {
+  const source = item.link ?? item.commentsUrl ?? "";
+  const match = source.match(/comments\/([a-z0-9]+)\//i);
+  return match?.[1] ?? null;
+}
+
+async function fetchHackerNewsTraction(itemId: string) {
+  try {
+    const response = await fetch(`https://hn.algolia.com/api/v1/items/${itemId}`, {
+      signal: AbortSignal.timeout(6000),
+      headers: { "User-Agent": "social-poster/1.0" },
+    });
+    if (!response.ok) return null;
+
+    const body = (await response.json()) as {
+      points?: number;
+      children?: Array<unknown>;
+    };
+    const points = body.points ?? 0;
+    const commentCount = Array.isArray(body.children) ? body.children.length : 0;
+    const tractionScore = Math.min(10, Math.log10(points + commentCount * 2 + 1) * 3.4);
+
+    return {
+      tractionScore,
+      signals: [`HN ${points} points`, `${commentCount} comments`],
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function fetchRedditTraction(postId: string) {
+  try {
+    const response = await fetch(
+      `https://www.reddit.com/comments/${postId}.json?raw_json=1&limit=1`,
+      {
+        signal: AbortSignal.timeout(6000),
+        headers: { "User-Agent": "social-poster/1.0" },
+      }
+    );
+    if (!response.ok) return null;
+
+    const body = (await response.json()) as Array<{
+      data?: {
+        children?: Array<{
+          data?: {
+            score?: number;
+            num_comments?: number;
+            upvote_ratio?: number;
+          };
+        }>;
+      };
+    }>;
+
+    const post = body[0]?.data?.children?.[0]?.data;
+    if (!post) return null;
+
+    const score = post.score ?? 0;
+    const comments = post.num_comments ?? 0;
+    const upvoteRatio = post.upvote_ratio ?? 0;
+    const tractionScore = Math.min(
+      10,
+      Math.log10(score + comments * 2 + 1) * (upvoteRatio > 0.9 ? 3.5 : 3)
+    );
+
+    return {
+      tractionScore,
+      signals: [`Reddit ${score} score`, `${comments} comments`],
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function resolveTraction(item: FeedItem) {
+  const hackerNewsId = extractHackerNewsItemId(item);
+  if (hackerNewsId) {
+    return (await fetchHackerNewsTraction(hackerNewsId)) ?? {
+      tractionScore: 0,
+      signals: [],
+    };
+  }
+
+  const redditPostId = extractRedditPostId(item);
+  if (redditPostId) {
+    return (await fetchRedditTraction(redditPostId)) ?? {
+      tractionScore: 0,
+      signals: [],
+    };
+  }
+
+  return {
+    tractionScore: 0,
+    signals: [],
+  };
+}
+
+function scoreItem(
+  item: FeedItem,
+  feedWeight: number,
+  tractionWeight: number,
+  tractionScore: number,
+  keywordBoostTerms: string[]
+): {
+  total: number;
+  freshnessScore: number;
+  relevanceScore: number;
+  sourceWeightScore: number;
+} {
+  let freshnessScore = 10;
   if (item.pubDate) {
     const ageH = (Date.now() - new Date(item.pubDate).getTime()) / 3.6e6;
-    score += Math.max(0, 40 - ageH * 0.5);
-  } else {
-    score += 10;
+    freshnessScore = Math.max(0, 28 - ageH * 0.35);
   }
-  // Feed weight
-  score += feedWeight;
-  // AI keyword bonus
+
+  let relevanceScore = 0;
   const text = `${item.title || ""} ${item.contentSnippet || ""}`.toLowerCase();
   let kwHits = 0;
-  for (const kw of AI_KEYWORDS) {
+  const keywords = new Set([
+    ...DEFAULT_AI_KEYWORDS,
+    ...keywordBoostTerms.map((term) => term.toLowerCase()),
+  ]);
+  for (const kw of keywords) {
     if (text.includes(kw)) kwHits++;
   }
-  score += Math.min(30, kwHits * 5);
-  // Title quality
-  if (item.title && item.title.length > 20 && item.title.length < 120) score += 5;
-  return Math.round(score);
+  relevanceScore += Math.min(24, kwHits * 4);
+  if (item.title && item.title.length > 20 && item.title.length < 120) {
+    relevanceScore += 4;
+  }
+
+  const sourceWeightScore = feedWeight;
+  const total =
+    freshnessScore +
+    relevanceScore +
+    sourceWeightScore +
+    tractionScore * (tractionWeight / 10);
+
+  return {
+    total: Math.round(total),
+    freshnessScore: Math.round(freshnessScore),
+    relevanceScore: Math.round(relevanceScore),
+    sourceWeightScore,
+  };
 }
 
-export async function getTopStories(count = 3): Promise<Story[]> {
-  console.log(`[feed] pulling from ${FEEDS.length} feeds`);
+async function resolveFeedSelectionConfig(
+  workspaceId?: string | null
+): Promise<FeedSelectionConfig> {
+  if (!workspaceId) {
+    return {
+      feeds: DEFAULT_RSS_FEEDS,
+      candidateWindowHours: DEFAULT_RSS_SETTINGS.candidateWindowHours,
+      candidatePoolSize: DEFAULT_RSS_SETTINGS.candidatePoolSize,
+      minimumScore: DEFAULT_RSS_SETTINGS.minimumScore,
+      tractionWeight: DEFAULT_RSS_SETTINGS.tractionWeight,
+      keywordBoostTerms: DEFAULT_RSS_SETTINGS.keywordBoostTerms,
+    };
+  }
 
+  const [feeds, settings] = await Promise.all([
+    getWorkspaceRssSources(workspaceId),
+    getWorkspaceRssSettings(workspaceId),
+  ]);
+
+  return {
+    feeds: feeds.filter((feed) => feed.enabled),
+    candidateWindowHours: settings.candidateWindowHours,
+    candidatePoolSize: settings.candidatePoolSize,
+    minimumScore: settings.minimumScore,
+    tractionWeight: settings.tractionWeight,
+    keywordBoostTerms: settings.keywordBoostTerms,
+  };
+}
+
+async function loadRankedFeedItems(
+  config: FeedSelectionConfig
+): Promise<RankedFeedItem[]> {
   const results = await Promise.allSettled(
-    FEEDS.map(async (feed) => {
+    config.feeds.map(async (feed) => {
       const items = await fetchFeed(feed);
-      return items.map((item) => ({ ...item, feedWeight: feed.weight, feedName: feed.name }));
+      return Promise.all(
+        items.map(async (item) => {
+          const traction = await resolveTraction(item);
+          const score = scoreItem(
+            item,
+            feed.weight,
+            config.tractionWeight,
+            traction.tractionScore,
+            config.keywordBoostTerms
+          );
+
+          return {
+            ...item,
+            feedWeight: feed.weight,
+            feedName: feed.name,
+            feedUrl: feed.url,
+            tractionScore: Math.round(traction.tractionScore * 10) / 10,
+            tractionSignals: traction.signals,
+            computedScore: score.total,
+            freshnessScore: score.freshnessScore,
+            relevanceScore: score.relevanceScore,
+            sourceWeightScore: score.sourceWeightScore,
+          };
+        })
+      );
     })
   );
 
-  const allItems: (FeedItem & { feedWeight: number; computedScore: number; feedName: string })[] = [];
-  for (const r of results) {
-    if (r.status === "fulfilled") {
-      for (const item of r.value) {
-        allItems.push({ ...item, computedScore: scoreItem(item, item.feedWeight) });
-      }
-    }
-  }
-
-  allItems.sort((a, b) => b.computedScore - a.computedScore);
-  console.log(`[feed] ${allItems.length} total items scored`);
-
-  // Load dedup keys
-  const cached = await db.select({ key: dedupCache.key }).from(dedupCache);
-  const usedKeys = new Set(cached.map((r) => r.key));
-
-  const stories: Story[] = [];
-  for (const item of allItems) {
-    if (!item.link || !item.title) continue;
-    const key = item.link.replace(/^https?:\/\//, "").replace(/\/+$/, "");
-    if (usedKeys.has(key)) continue;
-    stories.push({
-      title: item.title,
-      link: item.link,
-      summary: item.contentSnippet || "",
-      score: item.computedScore,
-      imageUrl: item.imageUrl,
-      publishedAt: item.pubDate,
-      sourceName: item.feedName,
-    });
-    if (stories.length >= count) break;
-  }
-
-  console.log(`[feed] returning ${stories.length} stories`);
-  return stories;
-}
-
-export async function getCandidateStories({
-  count = 6,
-  maxAgeHours = 48,
-}: {
-  count?: number;
-  maxAgeHours?: number;
-} = {}): Promise<Story[]> {
-  console.log(`[feed] candidate pull from ${FEEDS.length} feeds`);
-
-  const results = await Promise.allSettled(
-    FEEDS.map(async (feed) => {
-      const items = await fetchFeed(feed);
-      return items.map((item) => ({
-        ...item,
-        feedWeight: feed.weight,
-        feedName: feed.name,
-        computedScore: scoreItem(item, feed.weight),
-      }));
-    })
-  );
-
-  const allItems: Array<FeedItem & { feedWeight: number; feedName: string; computedScore: number }> = [];
+  const allItems: RankedFeedItem[] = [];
   for (const result of results) {
     if (result.status === "fulfilled") {
       allItems.push(...result.value);
@@ -252,32 +417,183 @@ export async function getCandidateStories({
   }
 
   allItems.sort((a, b) => b.computedScore - a.computedScore);
+  return allItems;
+}
 
+async function analyzeCandidates({
+  count,
+  maxAgeHours,
+  workspaceId,
+}: {
+  count: number;
+  maxAgeHours: number;
+  workspaceId?: string | null;
+}) {
+  const config = await resolveFeedSelectionConfig(workspaceId);
+  const allItems = await loadRankedFeedItems(config);
   const cached = await db.select({ key: dedupCache.key }).from(dedupCache);
   const usedKeys = new Set(cached.map((row) => row.key));
 
   const stories: Story[] = [];
+  const diagnostics: FeedStoryDiagnostic[] = [];
+
   for (const item of allItems) {
-    if (!item.link || !item.title) continue;
-    if (!isWithinWindow(item.pubDate, maxAgeHours)) continue;
+    const title = item.title?.trim() ?? "";
+    const link = item.link?.trim() ?? "";
+    const summary = item.contentSnippet || "";
+    const withinWindow = isWithinWindow(item.pubDate, maxAgeHours);
+    const dedupKey = link ? normalizeDedupKey(link) : "";
 
-    const key = item.link.replace(/^https?:\/\//, "").replace(/\/+$/, "");
-    if (usedKeys.has(key)) continue;
+    let state: FeedStoryState = "eligible";
+    if (!title || !link) {
+      state = "missing_fields";
+    } else if (!withinWindow) {
+      state = "too_old";
+    } else if (item.computedScore < config.minimumScore) {
+      state = "low_score";
+    } else if (usedKeys.has(dedupKey)) {
+      state = "already_posted";
+    } else if (stories.length >= count) {
+      state = "pool_full";
+    } else {
+      state = "selected";
+      stories.push({
+        title,
+        link,
+        summary,
+        score: item.computedScore,
+        tractionScore: item.tractionScore,
+        imageUrl: item.imageUrl,
+        publishedAt: item.pubDate,
+        sourceName: item.feedName,
+      });
+    }
 
-    stories.push({
-      title: item.title,
-      link: item.link,
-      summary: item.contentSnippet || "",
+    diagnostics.push({
+      title: title || "(missing title)",
+      link,
+      summary,
       score: item.computedScore,
+      tractionScore: item.tractionScore,
+      scoreBreakdown: [
+        `freshness ${item.freshnessScore}`,
+        `relevance ${item.relevanceScore}`,
+        `source ${item.sourceWeightScore}`,
+        item.tractionSignals.length
+          ? `traction ${item.tractionScore} (${item.tractionSignals.join(", ")})`
+          : `traction ${item.tractionScore}`,
+      ].join(" + "),
       imageUrl: item.imageUrl,
       publishedAt: item.pubDate,
       sourceName: item.feedName,
+      state,
     });
-
-    if (stories.length >= count) break;
   }
 
+  return {
+    stories,
+    diagnostics,
+    config,
+  };
+}
+
+export async function getTopStories(
+  count = 3,
+  options?: { workspaceId?: string | null }
+): Promise<Story[]> {
+  const { stories } = await analyzeCandidates({
+    count,
+    maxAgeHours: (await resolveFeedSelectionConfig(options?.workspaceId))
+      .candidateWindowHours,
+    workspaceId: options?.workspaceId,
+  });
   return stories;
+}
+
+export async function getCandidateStories({
+  count = 6,
+  maxAgeHours = 48,
+  workspaceId,
+}: {
+  count?: number;
+  maxAgeHours?: number;
+  workspaceId?: string | null;
+} = {}): Promise<Story[]> {
+  const config = await resolveFeedSelectionConfig(workspaceId);
+  const { stories } = await analyzeCandidates({
+    count,
+    maxAgeHours: Math.min(maxAgeHours, config.candidateWindowHours),
+    workspaceId,
+  });
+  return stories;
+}
+
+export async function getFeedSourceDiagnostics({
+  workspaceId,
+}: {
+  workspaceId?: string | null;
+} = {}): Promise<FeedSourceDiagnostic[]> {
+  const config = await resolveFeedSelectionConfig(workspaceId);
+  const { diagnostics } = await analyzeCandidates({
+    count: config.candidatePoolSize,
+    maxAgeHours: config.candidateWindowHours,
+    workspaceId,
+  });
+
+  return config.feeds.map((feed) => {
+    const stories = diagnostics.filter((story) => story.sourceName === feed.name);
+    return {
+      sourceName: feed.name,
+      sourceUrl: feed.url,
+      weight: feed.weight,
+      enabled: feed.enabled !== false,
+      fetchedCount: stories.length,
+      selectedCount: stories.filter((story) => story.state === "selected").length,
+      stories,
+    };
+  });
+}
+
+export async function resolveStoryImageUrl(
+  story: Story,
+  mode: ImageSelectionMode
+): Promise<string | null> {
+  if (mode === "feed_only") {
+    return story.imageUrl ?? null;
+  }
+
+  if (mode === "prefer_open_graph") {
+    const openGraphImage = await fetchOpenGraphImage(story.link);
+    if (openGraphImage) return openGraphImage;
+    if (story.imageUrl) return story.imageUrl;
+    return screenshotFallback(story.link);
+  }
+
+  if (story.imageUrl) {
+    return story.imageUrl;
+  }
+
+  const openGraphImage = await fetchOpenGraphImage(story.link);
+  if (openGraphImage) return openGraphImage;
+  return screenshotFallback(story.link);
+}
+
+async function screenshotFallback(url: string): Promise<string | null> {
+  if (!url) return null;
+  try {
+    const { captureScreenshotSafe } = await import("@/lib/screenshot");
+    const { getAppUrlFromEnv } = await import("@/lib/app-url");
+    const result = await captureScreenshotSafe(url, {
+      width: 1200,
+      height: 630,
+      waitMs: 3000,
+    });
+    if (!result) return null;
+    const appUrl = getAppUrlFromEnv();
+    return `${appUrl}/api/screenshots/${result.filename}`;
+  } catch {
+    return null;
+  }
 }
 function isWithinWindow(pubDate: string | undefined, maxAgeHours: number): boolean {
   if (!pubDate) return true;
@@ -296,5 +612,25 @@ export async function markPosted(story: Story): Promise<void> {
     });
   } catch {
     // dupe key, fine
+  }
+}
+
+/** Insert arbitrary keys into dedup_cache (e.g. gh-event:{id} for agent persona dedup). */
+export async function markDedupKeys(
+  keys: string[],
+  source: string
+): Promise<void> {
+  const now = new Date();
+  for (const key of keys) {
+    try {
+      await db.insert(dedupCache).values({
+        id: crypto.randomUUID(),
+        key,
+        source: source.slice(0, 200),
+        createdAt: now,
+      });
+    } catch {
+      // dupe key, fine
+    }
   }
 }

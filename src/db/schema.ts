@@ -116,7 +116,7 @@ export const platforms = sqliteTable("platforms", {
     onDelete: "set null",
   }),
   name: text("name").notNull(), // "X (Main)", "LinkedIn", etc.
-  type: text("type").notNull(), // "twitter" | "linkedin" | "instagram" | "tiktok" | "facebook" | "reddit" | "youtube"
+  type: text("type").notNull(), // see PLATFORM_TYPES in src/lib/platforms.ts
   handle: text("handle"), // @maxpetrusenko
   accountId: text("account_id"), // Zernio account ID
   provider: text("provider").notNull().default("zernio"), // "zernio" | "bird" | "direct"
@@ -282,6 +282,37 @@ export const candidateCache = sqliteTable("candidate_cache", {
   sourceName: text("source_name"),
   publishedAt: integer("published_at", { mode: "timestamp" }),
   fetchedAt: integer("fetched_at", { mode: "timestamp" }).notNull(),
+});
+
+export const rssSources = sqliteTable("rss_sources", {
+  id: text("id").primaryKey(),
+  workspaceId: text("workspace_id")
+    .notNull()
+    .references(() => workspaces.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  url: text("url").notNull(),
+  weight: integer("weight").notNull().default(10),
+  enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+});
+
+export const rssSettings = sqliteTable("rss_settings", {
+  workspaceId: text("workspace_id")
+    .primaryKey()
+    .references(() => workspaces.id, { onDelete: "cascade" }),
+  candidateWindowHours: integer("candidate_window_hours").notNull().default(48),
+  candidatePoolSize: integer("candidate_pool_size").notNull().default(24),
+  minimumScore: integer("minimum_score").notNull().default(0),
+  tractionWeight: integer("traction_weight").notNull().default(35),
+  keywordBoostTerms: text("keyword_boost_terms", { mode: "json" }).$type<string[]>(),
+  xTemplate: text("x_template").notNull(),
+  linkedinTemplate: text("linkedin_template").notNull(),
+  transformationPrompt: text("transformation_prompt").notNull(),
+  imageSelectionMode: text("image_selection_mode").notNull().default("prefer_feed"),
+  imageSelectionNotes: text("image_selection_notes").notNull().default(""),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
 });
 
 // ── Types ─────────────────────────────────────────────────────────────

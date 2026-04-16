@@ -7,15 +7,37 @@ import { INITIAL_CARDS, type ReplyCard, type ReplyStatus, type ViewMode } from "
 import { cn } from "@/lib/utils";
 import type { ReplyConnectionOption, ReplyProfileOption } from "@/lib/dashboard/replies-data";
 import { DEFAULT_REPLY_PROFILE_ID } from "@/lib/replies/profiles";
+import {
+  getReplyLanguageLabel,
+  normalizeReplyLanguage,
+  type ReplyLanguage,
+} from "@/lib/replies/language";
+
+const REPLY_LANGUAGE_STORAGE_KEY = "social-poster.replyLanguage";
+
+function buildRepliesUrl(
+  platformId: string,
+  profileId: string,
+  language: ReplyLanguage
+) {
+  const params = new URLSearchParams({
+    platformId,
+    profileId,
+    language,
+  });
+  return `/api/replies?${params.toString()}`;
+}
 
 export function RepliesMockShowcase({
   connections,
   profiles,
   initialCards,
+  initialLanguage,
 }: {
   connections: ReplyConnectionOption[];
   profiles: ReplyProfileOption[];
   initialCards: ReplyCard[];
+  initialLanguage: ReplyLanguage;
 }) {
   const hasLiveConnections = connections.length > 0;
   const fallbackCards = hasLiveConnections ? initialCards : initialCards.length > 0 ? initialCards : INITIAL_CARDS;
@@ -33,6 +55,9 @@ export function RepliesMockShowcase({
     profiles.find((profile) => profile.id === DEFAULT_REPLY_PROFILE_ID)?.id ??
       profiles[0]?.id ??
       DEFAULT_REPLY_PROFILE_ID
+  );
+  const [selectedLanguage, setSelectedLanguage] = useState<ReplyLanguage>(
+    initialLanguage
   );
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -77,6 +102,7 @@ export function RepliesMockShowcase({
             platformId: selectedConnectionId,
             profileId: selectedProfileId,
             mode,
+            language: selectedLanguage,
           }),
         });
         const body = (await response.json()) as { cards?: ReplyCard[]; error?: string };
@@ -87,7 +113,18 @@ export function RepliesMockShowcase({
         setError(refreshError instanceof Error ? refreshError.message : "Failed to refresh replies");
       }
     });
-  }, [selectedConnectionId, selectedProfileId]);
+  }, [selectedConnectionId, selectedLanguage, selectedProfileId]);
+
+  useEffect(() => {
+    const storedLanguage = window.localStorage.getItem(REPLY_LANGUAGE_STORAGE_KEY);
+    if (storedLanguage) {
+      setSelectedLanguage(normalizeReplyLanguage(storedLanguage));
+    }
+  }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem(REPLY_LANGUAGE_STORAGE_KEY, selectedLanguage);
+  }, [selectedLanguage]);
 
   useEffect(() => {
     if (!selectedConnectionId || selectedConnectionId === "mock-x-main") return;
@@ -96,7 +133,7 @@ export function RepliesMockShowcase({
       try {
         setError(null);
         const response = await fetch(
-          `/api/replies?platformId=${encodeURIComponent(selectedConnectionId)}&profileId=${encodeURIComponent(selectedProfileId)}`
+          buildRepliesUrl(selectedConnectionId, selectedProfileId, selectedLanguage)
         );
         const body = (await response.json()) as { cards?: ReplyCard[]; error?: string };
         if (!response.ok) throw new Error(body.error || "Failed to load replies");
@@ -118,6 +155,7 @@ export function RepliesMockShowcase({
               platformId: selectedConnectionId,
               profileId: selectedProfileId,
               mode: "manual",
+              language: selectedLanguage,
             }),
           });
           const refreshBody = (await refreshResponse.json()) as { cards?: ReplyCard[]; error?: string };
@@ -131,7 +169,7 @@ export function RepliesMockShowcase({
         setError(fetchError instanceof Error ? fetchError.message : "Failed to load replies");
       }
     });
-  }, [selectedConnectionId, selectedProfile?.label, selectedProfileId]);
+  }, [selectedConnectionId, selectedLanguage, selectedProfile?.label, selectedProfileId]);
 
   useEffect(() => {
     if (!selectedConnectionId || selectedConnectionId === "mock-x-main") return;
@@ -141,7 +179,7 @@ export function RepliesMockShowcase({
       startTransition(async () => {
         try {
           const response = await fetch(
-            `/api/replies?platformId=${encodeURIComponent(selectedConnectionId)}&profileId=${encodeURIComponent(selectedProfileId)}`
+            buildRepliesUrl(selectedConnectionId, selectedProfileId, selectedLanguage)
           );
           const body = (await response.json()) as { cards?: ReplyCard[]; error?: string };
           if (!response.ok) throw new Error(body.error || "Failed to sync replies");
@@ -158,7 +196,7 @@ export function RepliesMockShowcase({
     }, 30_000);
 
     return () => window.clearInterval(interval);
-  }, [cards, selectedConnectionId, selectedProfileId]);
+  }, [cards, selectedConnectionId, selectedLanguage, selectedProfileId]);
 
   useEffect(() => {
     if (!selectedConnectionId || selectedConnectionId === "mock-x-main") return;
@@ -195,7 +233,7 @@ export function RepliesMockShowcase({
         if (!response.ok) throw new Error(body.error || "Failed to update reply");
         if (selectedConnectionId && selectedConnectionId !== "mock-x-main") {
           const next = await fetch(
-            `/api/replies?platformId=${encodeURIComponent(selectedConnectionId)}&profileId=${encodeURIComponent(selectedProfileId)}`
+            buildRepliesUrl(selectedConnectionId, selectedProfileId, selectedLanguage)
           );
           const nextBody = (await next.json()) as { cards?: ReplyCard[]; error?: string };
           if (!next.ok) throw new Error(nextBody.error || "Failed to sync replies");
@@ -288,6 +326,33 @@ export function RepliesMockShowcase({
             </div>
           </details>
         )}
+        <details className="relative">
+          <summary className="list-none cursor-pointer rounded-full border border-[rgba(12,17,21,0.08)] bg-white px-4 py-2 text-left text-sm text-[var(--ink)]">
+            <span className="block text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
+              Language
+            </span>
+            <span className="block truncate font-semibold text-[var(--ink)]">
+              {getReplyLanguageLabel(selectedLanguage)}
+            </span>
+          </summary>
+          <div className="absolute right-0 z-20 mt-2 w-[220px] rounded-[18px] border border-[rgba(12,17,21,0.08)] bg-white p-2 shadow-[0_18px_45px_rgba(12,17,21,0.12)]">
+            {(["en", "any"] as const).map((language) => (
+              <button
+                key={language}
+                type="button"
+                onClick={() => setSelectedLanguage(language)}
+                className={cn(
+                  "flex w-full items-center justify-between rounded-[14px] px-3 py-3 text-left text-sm font-semibold transition hover:bg-[rgba(12,17,21,0.03)]",
+                  selectedLanguage === language
+                    ? "bg-[rgba(15,126,169,0.08)] text-[var(--accent-tech)]"
+                    : "text-[var(--ink)]"
+                )}
+              >
+                {getReplyLanguageLabel(language)}
+              </button>
+            ))}
+          </div>
+        </details>
         <details className="relative">
           <summary className="list-none cursor-pointer rounded-full border border-[rgba(12,17,21,0.08)] bg-white px-4 py-2 text-sm font-semibold text-[var(--ink)]">
             {selectedConnection?.label || "Select X connection"}

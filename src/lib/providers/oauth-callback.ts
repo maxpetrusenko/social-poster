@@ -13,8 +13,9 @@ import { mergeProviderCredentials } from "@/lib/providers/credentials";
 import { getProvider } from "@/lib/providers/registry";
 import {
   decodeNativeOAuthState,
+  decodeNativeOAuthCookie,
   NATIVE_OAUTH_COOKIE,
-  oauthCallbackPath,
+  oauthCallbackUrl,
   storedPlatformType,
 } from "@/lib/providers/oauth-state";
 
@@ -33,7 +34,9 @@ export async function handleNativeOAuthCallback(
 
   const state = decodeNativeOAuthState(request.nextUrl.searchParams.get("state"));
   const cookieStore = await cookies();
-  const nonce = cookieStore.get(NATIVE_OAUTH_COOKIE)?.value;
+  const oauthCookie = decodeNativeOAuthCookie(
+    cookieStore.get(NATIVE_OAUTH_COOKIE)?.value ?? null
+  );
   cookieStore.delete(NATIVE_OAUTH_COOKIE);
 
   const fallback = new URL(state?.next || "/dashboard/platforms", appUrl);
@@ -45,7 +48,12 @@ export async function handleNativeOAuthCallback(
     return NextResponse.redirect(fallback);
   }
 
-  if (!code || !state || state.nonce !== nonce || state.platform !== platform) {
+  if (
+    !code ||
+    !state ||
+    state.nonce !== oauthCookie?.nonce ||
+    state.platform !== platform
+  ) {
     fallback.searchParams.set("error", "Invalid OAuth callback state.");
     return NextResponse.redirect(fallback);
   }
@@ -56,11 +64,21 @@ export async function handleNativeOAuthCallback(
     return NextResponse.redirect(fallback);
   }
 
-  const redirectUri = new URL(oauthCallbackPath(platform), appUrl).toString();
+  const redirectUri = oauthCallbackUrl(platform, appUrl);
 
   try {
-    const provider = getProvider(platform, mergeProviderCredentials(platform, null));
-    const tokens = await provider.exchangeCode(code, redirectUri);
+    const provider = getProvider(
+      platform,
+      mergeProviderCredentials(
+        platform,
+        oauthCookie.credentials ? { credentials: oauthCookie.credentials } : null
+      )
+    );
+    const tokens = await provider.exchangeCode(
+      code,
+      redirectUri,
+      oauthCookie.codeVerifier ?? undefined
+    );
     const profile = await provider.getProfile(tokens.accessToken).catch(() => null);
     const now = new Date();
     const expiresAt = tokens.expiresIn

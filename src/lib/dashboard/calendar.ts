@@ -6,6 +6,11 @@ import {
   postTargets,
   schedules,
 } from "@/db/schema";
+import {
+  loadAgentPersonaScheduleContext,
+  renderAgentPersonaScheduleContent,
+  type AgentPersonaScheduleContext,
+} from "@/lib/pipeline/agent-persona-updates";
 import { resolveFixedScheduleContent } from "@/lib/pipeline/fixed-schedule-post";
 import { resolvePipelineRunStatus } from "@/lib/pipeline/status";
 import { and, desc, eq, gte, inArray, lt } from "drizzle-orm";
@@ -16,6 +21,7 @@ import { getPostCategoryMeta } from "@/lib/post-categories";
 import { deriveCalendarRunDetails } from "./calendar-run-details";
 import { getDashboardCandidates } from "./candidates";
 import { resolveDynamicSchedulePreview } from "./calendar-schedule-preview";
+import { getWorkspaceRssSettings, type RssSettingsConfig } from "@/lib/rss-config";
 import {
   getDashboardWorkspaceScope,
   runTargetsWorkspace,
@@ -42,6 +48,15 @@ export type CalendarPlatformBadge = {
   tooltip: string;
   formatCode: "P" | "S" | "R" | "C" | "L" | "T" | null;
   status: "planned" | "success" | "failed" | "skipped" | "running";
+  handle: string | null;
+  content: string | null;
+  mediaUrl: string | null;
+  contentType: "text" | "image" | "video" | "avatar_video" | null;
+  publishedUrl: string | null;
+  sourceUrl: string | null;
+  sourceHost: string | null;
+  firstComment: string | null;
+  error: string | null;
 };
 
 export type CalendarEventDebug = {
@@ -251,6 +266,11 @@ function buildPlatformBadge(
     fallbackType?: string | null;
     fallbackId?: string;
     status?: CalendarPlatformBadge["status"];
+    mediaUrl?: string | null;
+    publishedUrl?: string | null;
+    sourceUrl?: string | null;
+    firstComment?: string | null;
+    error?: string | null;
   }
 ): CalendarPlatformBadge {
   const type = platform?.type ?? options.fallbackType ?? "unknown";
@@ -270,6 +290,24 @@ function buildPlatformBadge(
     mediaLabel || null,
   ].filter(Boolean);
 
+  const normalizedContentType = (() => {
+    const value = options.contentType;
+    if (
+      value === "text" ||
+      value === "image" ||
+      value === "video" ||
+      value === "avatar_video"
+    ) {
+      return value;
+    }
+    return null;
+  })();
+
+  const inferredFirstComment =
+    options.sourceUrl && normalizePlatformType(type) === "x"
+      ? `Source: ${options.sourceUrl}`
+      : null;
+
   return {
     id: platform?.id ?? options.fallbackId ?? `${type}-${meta.shortLabel}`,
     type: normalizePlatformType(type),
@@ -279,6 +317,15 @@ function buildPlatformBadge(
     tooltip: tooltipParts.join(" • "),
     formatCode,
     status: options.status ?? "planned",
+    handle: platform?.handle ?? null,
+    content: normalizeText(options.content) ? options.content ?? null : null,
+    mediaUrl: options.mediaUrl ?? null,
+    contentType: normalizedContentType,
+    publishedUrl: options.publishedUrl ?? null,
+    sourceUrl: options.sourceUrl ?? null,
+    sourceHost: getUrlHost(options.sourceUrl ?? null),
+    firstComment: options.firstComment ?? inferredFirstComment,
+    error: options.error ?? null,
   };
 }
 
@@ -326,13 +373,30 @@ function pushCalendarEvent(
 }
 
 function shouldMergeCalendarEvent(left: CalendarEvent, right: CalendarEvent) {
-  if (left.kind !== "run" || right.kind !== "run") return false;
-  if (!left.debug.scheduleId || !right.debug.scheduleId) return false;
-  if (left.debug.postId || right.debug.postId) return false;
   if (left.dayKey !== right.dayKey) return false;
+  if (!left.debug.scheduleId || !right.debug.scheduleId) return false;
   if (left.debug.scheduleId !== right.debug.scheduleId) return false;
-  if (left.label !== right.label) return false;
-  return (left.debug.sourceUrl ?? null) === (right.debug.sourceUrl ?? null);
+
+  if (left.kind === "run" && right.kind === "run") {
+    if (left.debug.postId || right.debug.postId) return false;
+    if (left.label !== right.label) return false;
+    return (left.debug.sourceUrl ?? null) === (right.debug.sourceUrl ?? null);
+  }
+
+  if (left.kind === "post" && right.kind === "post") {
+    if ((left.debug.sourceUrl ?? null) !== (right.debug.sourceUrl ?? null)) return false;
+    return sameMinute(left.at, right.at);
+  }
+
+  return false;
+}
+
+function sameMinute(left: Date, right: Date) {
+  const leftMinute = new Date(left);
+  leftMinute.setSeconds(0, 0);
+  const rightMinute = new Date(right);
+  rightMinute.setSeconds(0, 0);
+  return leftMinute.getTime() === rightMinute.getTime();
 }
 
 function mergePlatformStatus(
@@ -365,19 +429,28 @@ function mergeCalendarEvents(left: CalendarEvent, right: CalendarEvent): Calenda
   const secondary = primary === left ? right : left;
   const platforms = new Map<string, CalendarPlatformBadge>();
 
-  for (const platform of [...left.platforms, ...right.platforms]) {
+  for (const platform of [...secondary.platforms, ...primary.platforms]) {
     const existing = platforms.get(platform.type);
     if (!existing) {
       platforms.set(platform.type, platform);
       continue;
     }
+    const nextStatus = mergePlatformStatus(existing.status, platform.status);
+    const prefersIncoming =
+      nextStatus !== existing.status || primary.platforms.includes(platform);
     platforms.set(platform.type, {
       ...existing,
-      status: mergePlatformStatus(existing.status, platform.status),
-      tooltip:
-        mergePlatformStatus(existing.status, platform.status) === existing.status
-          ? existing.tooltip
-          : platform.tooltip,
+      status: nextStatus,
+      tooltip: prefersIncoming ? platform.tooltip : existing.tooltip,
+      content: prefersIncoming ? platform.content ?? existing.content : existing.content ?? platform.content,
+      mediaUrl: prefersIncoming ? platform.mediaUrl ?? existing.mediaUrl : existing.mediaUrl ?? platform.mediaUrl,
+      contentType: prefersIncoming ? platform.contentType ?? existing.contentType : existing.contentType ?? platform.contentType,
+      publishedUrl: prefersIncoming ? platform.publishedUrl ?? existing.publishedUrl : existing.publishedUrl ?? platform.publishedUrl,
+      sourceUrl: prefersIncoming ? platform.sourceUrl ?? existing.sourceUrl : existing.sourceUrl ?? platform.sourceUrl,
+      sourceHost: prefersIncoming ? platform.sourceHost ?? existing.sourceHost : existing.sourceHost ?? platform.sourceHost,
+      firstComment: prefersIncoming ? platform.firstComment ?? existing.firstComment : existing.firstComment ?? platform.firstComment,
+      error: prefersIncoming ? platform.error ?? existing.error : existing.error ?? platform.error,
+      handle: prefersIncoming ? platform.handle ?? existing.handle : existing.handle ?? platform.handle,
     });
   }
 
@@ -469,26 +542,39 @@ function getTargetPlatformsForSchedule(
     .filter((platform): platform is PlatformRow => Boolean(platform));
 }
 
-function buildSchedulePresentation(
+async function buildSchedulePresentation(
   schedule: ScheduleRow,
   targetPlatforms: PlatformRow[],
   priorRunCount: number,
   at: Date,
-  candidatePool: Awaited<ReturnType<typeof getDashboardCandidates>>
+  candidatePool: Awaited<ReturnType<typeof getDashboardCandidates>>,
+  rssSettings: RssSettingsConfig,
+  agentPersonaContextPromise: Promise<AgentPersonaScheduleContext | null>
 ) {
-  const fixedContent = resolveFixedScheduleContent(
-    schedule.config,
-    targetPlatforms.map((platform) => platform.type),
-    priorRunCount,
-    at
-  );
+  const platformTypes = targetPlatforms.map((platform) => platform.type);
+  const agentPersonaContext = await agentPersonaContextPromise;
+  const fixedContent =
+    agentPersonaContext
+      ? await renderAgentPersonaScheduleContent(agentPersonaContext, platformTypes, at)
+      : resolveFixedScheduleContent(
+          schedule.config,
+          platformTypes,
+          priorRunCount,
+          at
+        );
   const dynamicPreview =
     fixedContent
       ? null
       : resolveDynamicSchedulePreview(
           schedule,
           candidatePool,
-          priorRunCount
+          priorRunCount,
+          platformTypes,
+          {
+            xTemplate: rssSettings.xTemplate,
+            linkedinTemplate: rssSettings.linkedinTemplate,
+            transformationPrompt: rssSettings.transformationPrompt,
+          }
         );
   const preview =
     firstPlatformPreview(fixedContent, targetPlatforms) ??
@@ -499,20 +585,31 @@ function buildSchedulePresentation(
     dynamicPreview
       ? getMediaBadges(contentType, Boolean(dynamicPreview.content))
       : getScheduleMediaBadges(schedule, preview);
-  const platforms = targetPlatforms.map((platform) =>
-    buildPlatformBadge(platform, {
-      content:
-        fixedContent?.contentByPlatform[getPlatformKey(platform.type)] ??
-        dynamicPreview?.preview ??
-        dynamicPreview?.label ??
-        preview,
+  const platforms = targetPlatforms.map((platform) => {
+    const platformKey = getPlatformKey(platform.type);
+    const perPlatformContent =
+      fixedContent?.contentByPlatform[platformKey] ??
+      dynamicPreview?.contentByPlatform[platformKey] ??
+      dynamicPreview?.content ??
+      dynamicPreview?.preview ??
+      dynamicPreview?.label ??
+      preview;
+    const perPlatformMediaUrl =
+      fixedContent?.mediaUrlByPlatform[platformKey] ??
+      dynamicPreview?.mediaUrl ??
+      null;
+    return buildPlatformBadge(platform, {
+      content: perPlatformContent,
       contentType,
       explicitInstagramType:
-        fixedContent?.instagramContentTypeByPlatform[getPlatformKey(platform.type)] ?? null,
+        fixedContent?.instagramContentTypeByPlatform[platformKey] ?? null,
       media,
       status: schedule.enabled ? "planned" : "skipped",
-    })
-  );
+      mediaUrl: perPlatformMediaUrl,
+      sourceUrl: dynamicPreview?.sourceUrl ?? null,
+      firstComment: dynamicPreview?.firstCommentByPlatform[platformKey] ?? null,
+    });
+  });
 
   return {
     label: fixedContent?.title ?? dynamicPreview?.label ?? schedule.name,
@@ -559,7 +656,14 @@ export async function getCalendarInsights(
     postIdSet,
   } = await getDashboardWorkspaceScope(workspaceId);
   const scheduleIds = scheduleRows.map((schedule) => schedule.id);
-  const candidatePool = await getDashboardCandidates(24);
+  const [candidatePool, rssSettings] = await Promise.all([
+    getDashboardCandidates(24, workspaceId),
+    getWorkspaceRssSettings(workspaceId),
+  ]);
+  const agentPersonaContextByScheduleId = new Map<
+    string,
+    Promise<AgentPersonaScheduleContext | null>
+  >();
 
   const [allRunRows, scheduledPostRows, priorRunRows] = await Promise.all([
     db
@@ -692,25 +796,36 @@ export async function getCalendarInsights(
 
   const events: CalendarEvent[] = [];
 
+  const getAgentPersonaContext = (schedule: ScheduleRow) => {
+    const existing = agentPersonaContextByScheduleId.get(schedule.id);
+    if (existing) return existing;
+
+    const created = loadAgentPersonaScheduleContext(schedule.config);
+    agentPersonaContextByScheduleId.set(schedule.id, created);
+    return created;
+  };
+
   for (const schedule of scheduleRows) {
     const targetPlatforms = getTargetPlatformsForSchedule(schedule, platformMap);
     const occurrences = getCronOccurrences(schedule.cron, monthStart, monthEnd, 120);
 
-    occurrences.forEach((at, index) => {
+    for (const [index, at] of occurrences.entries()) {
       if (at.getTime() < now.getTime()) {
-        return;
+        continue;
       }
 
       if (handledScheduleSlots.has(`${schedule.id}:${dayKey(at)}`)) {
-        return;
+        continue;
       }
 
-      const presentation = buildSchedulePresentation(
+      const presentation = await buildSchedulePresentation(
         schedule,
         targetPlatforms,
         index,
         at,
-        candidatePool
+        candidatePool,
+        rssSettings,
+        getAgentPersonaContext(schedule)
       );
 
       const baseEvent = {
@@ -742,7 +857,7 @@ export async function getCalendarInsights(
       };
 
       pushCalendarEvent(events, baseEvent);
-    });
+    }
   }
 
   for (const post of scheduledPostRows) {
@@ -772,6 +887,10 @@ export async function getCalendarInsights(
                     : post.status === "publishing"
                       ? "running"
                       : "planned",
+          mediaUrl: post.mediaUrl ?? null,
+          publishedUrl: target.publishedUrl ?? null,
+          sourceUrl: post.sourceUrl ?? null,
+          error: target.error ?? null,
         })
       );
 
@@ -831,6 +950,10 @@ export async function getCalendarInsights(
                   : target.status === "skipped"
                     ? "skipped"
                     : "planned",
+          mediaUrl: post.mediaUrl ?? null,
+          publishedUrl: target.publishedUrl ?? null,
+          sourceUrl: post.sourceUrl ?? null,
+          error: target.error ?? null,
         })
       );
 
@@ -865,8 +988,17 @@ export async function getCalendarInsights(
     pushCalendarEvent(events, baseEvent);
   }
 
+  // Post IDs already represented on the calendar from the scheduled/published queries
+  const renderedPostIds = new Set([
+    ...scheduledPostRows.map((post) => post.id),
+    ...publishedPostRows.map((post) => post.id),
+  ]);
+
   for (const run of runRowsRaw) {
-    if (run.postId) {
+    // Only skip runs whose linked post is already rendered as its own calendar event.
+    // Failed posts don't appear in scheduledPostRows/publishedPostRows, so the run
+    // must represent them instead.
+    if (run.postId && renderedPostIds.has(run.postId)) {
       continue;
     }
 
@@ -875,12 +1007,14 @@ export async function getCalendarInsights(
     const schedule = run.scheduleId ? scheduleMap.get(run.scheduleId) ?? null : null;
     const targetPlatforms = getTargetPlatformsForSchedule(schedule, platformMap);
     const schedulePresentation = schedule
-      ? buildSchedulePresentation(
+      ? await buildSchedulePresentation(
           schedule,
           targetPlatforms,
           priorRunCountByRunId.get(run.id) ?? 0,
           new Date(run.startedAt),
-          candidatePool
+          candidatePool,
+          rssSettings,
+          getAgentPersonaContext(schedule)
         )
       : null;
     const runDetails = deriveCalendarRunDetails(run, targetPlatforms);
@@ -915,6 +1049,15 @@ export async function getCalendarInsights(
     const runDetailsByPlatformType = new Map(
       runDetails.platforms.map((platform) => [normalizePlatformType(platform.type), platform])
     );
+    const runSourceUrl = runDetails.sourceUrl ?? runPost?.sourceUrl ?? null;
+    const runPostTargetByPlatformType = runPost
+      ? new Map(
+          (targetsByPostId.get(runPost.id) ?? []).map((target) => {
+            const platform = platformMap.get(target.platformId);
+            return [normalizePlatformType(platform?.type ?? null), target] as const;
+          })
+        )
+      : new Map<string, PostTargetRow>();
     const derivedPlatforms = runDetails.platforms.map((item) =>
       buildPlatformBadge(
         targetPlatforms.find(
@@ -936,15 +1079,23 @@ export async function getCalendarInsights(
                   : status === "running"
                     ? "running"
                     : "planned",
+          mediaUrl: item.mediaUrl ?? runDetails.mediaUrl ?? null,
+          sourceUrl: runSourceUrl,
+          publishedUrl:
+            runPostTargetByPlatformType.get(normalizePlatformType(item.type))?.publishedUrl ?? null,
         }
       )
     );
     const platformsForEvent =
       runPostPlatforms.length > 0
-        ? runPostPlatforms.map((platform) =>
-            buildPlatformBadge(platform, {
-              content: runPost?.content,
-              contentType: runPost?.contentType,
+        ? runPostPlatforms.map((platform) => {
+            const target = runPostTargetByPlatformType.get(
+              normalizePlatformType(platform.type)
+            );
+            const details = runDetailsByPlatformType.get(normalizePlatformType(platform.type));
+            return buildPlatformBadge(platform, {
+              content: details?.content ?? runPost?.content,
+              contentType: details?.contentType ?? runPost?.contentType,
               media,
               status:
                 status === "completed"
@@ -952,8 +1103,12 @@ export async function getCalendarInsights(
                   : status === "running"
                     ? "running"
                     : "failed",
-            })
-          )
+              mediaUrl: details?.mediaUrl ?? runPost?.mediaUrl ?? null,
+              publishedUrl: target?.publishedUrl ?? null,
+              sourceUrl: runSourceUrl ?? runPost?.sourceUrl ?? null,
+              error: target?.error ?? null,
+            });
+          })
         : targetPlatforms.length > 0
           ? targetPlatforms.map((platform) => {
               const details = runDetailsByPlatformType.get(normalizePlatformType(platform.type));
@@ -978,6 +1133,11 @@ export async function getCalendarInsights(
                           : status === "completed"
                             ? "success"
                             : "failed",
+                mediaUrl: details?.mediaUrl ?? runDetails.mediaUrl ?? null,
+                sourceUrl: runSourceUrl,
+                publishedUrl:
+                  runPostTargetByPlatformType.get(normalizePlatformType(platform.type))
+                    ?.publishedUrl ?? null,
               });
             })
           : derivedPlatforms.length > 0

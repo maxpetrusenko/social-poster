@@ -1,37 +1,39 @@
 import { db } from "@/db";
-import { pipelineRuns, schedules, platforms } from "@/db/schema";
+import { pipelineRuns, posts, postTargets, schedules, platforms } from "@/db/schema";
 import type { PipelineStep } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import crypto from "node:crypto";
 
-import { getTopStories, markPosted } from "../feed-engine";
+import {
+  getTopStories,
+  markPosted,
+  markDedupKeys,
+  resolveStoryImageUrl,
+} from "../feed-engine";
 import { resolveAgentPersonaScheduleContent } from "../agent-persona-updates";
 import { resolveFixedScheduleContent } from "../fixed-schedule-post";
 import { writePostCaption } from "../script-writer";
 import { publishPlatformTargets } from "../publish-service";
-import { resolvePublishResultsStatus } from "../status";
+import {
+  resolvePostStatusFromTargetResults,
+  resolvePublishResultsStatus,
+} from "../status";
+import { appendSourceLink, publishFirstComment } from "../first-comment";
+import { enrichSummaryIfNeeded } from "../enrich-summary";
 import type { Story } from "../feed-engine";
-import { fetchOpenGraphImage } from "@/lib/open-graph-image";
-
-export function selectFeedStoryForSchedule(
-  stories: Story[],
-  options: { requireImage: boolean }
-) {
-  if (!stories.length) return null;
-  if (!options.requireImage) return stories[0];
-  return stories.find((story) => Boolean(story.imageUrl)) ?? null;
-}
+import { getWorkspaceRssSettings } from "@/lib/rss-config";
+import { selectFeedStoryForSchedule } from "./feed-story-selection";
 
 async function resolveStoryImages(
   stories: Story[],
-  options: { requireImage: boolean }
+  options: { requireImage: boolean; imageSelectionMode: "prefer_feed" | "prefer_open_graph" | "feed_only" }
 ) {
   if (!options.requireImage) return stories;
 
   return Promise.all(
     stories.map(async (story) => ({
       ...story,
-      imageUrl: story.imageUrl ?? (await fetchOpenGraphImage(story.link)) ?? undefined,
+      imageUrl: (await resolveStoryImageUrl(story, options.imageSelectionMode)) ?? undefined,
     }))
   );
 }
@@ -74,6 +76,9 @@ export async function runImagePostJob(
   }
 
   try {
+    const rssSettings = schedule.workspaceId
+      ? await getWorkspaceRssSettings(schedule.workspaceId)
+      : null;
     const scheduledContent =
       (await resolveAgentPersonaScheduleContent(
         schedule.config,
@@ -102,9 +107,14 @@ export async function runImagePostJob(
           link: "",
         }
       : await (async () => {
-          const stories = await getTopStories(schedule.jobType === "image_post" ? 8 : 1);
+          const stories = await getTopStories(
+            schedule.jobType === "image_post" ? 8 : 1,
+            { workspaceId: schedule.workspaceId }
+          );
           const resolvedStories = await resolveStoryImages(stories, {
             requireImage: schedule.jobType === "image_post",
+            imageSelectionMode:
+              rssSettings?.imageSelectionMode ?? "prefer_feed",
           });
           const selectedStory = selectFeedStoryForSchedule(resolvedStories, {
             requireImage: schedule.jobType === "image_post",
@@ -137,6 +147,13 @@ export async function runImagePostJob(
           sourceName: story.sourceName ?? null,
         };
 
+    // 1b. Enrich summary if RSS gave us garbage
+    const enrichedSummary =
+      !scheduledContent && story.link
+        ? await enrichSummaryIfNeeded(story)
+        : story.summary;
+    const enrichedStory = { ...story, summary: enrichedSummary };
+
     // 2. Caption
     const s2: PipelineStep = { name: "caption:write", status: "running", startedAt: new Date().toISOString() };
     steps.push(s2);
@@ -147,11 +164,18 @@ export async function runImagePostJob(
         story.imageUrl ??
         undefined;
 
+      const rawContent = scheduledContent
+        ? scheduledContent.contentByPlatform[platformType] || scheduledContent.title
+        : writePostCaption(enrichedStory, platform.type, rssSettings ?? undefined);
+
+      // Append source link for non-X platforms (X gets it as a first comment)
+      const content = story.link
+        ? appendSourceLink(rawContent, story.link, platform.type)
+        : rawContent;
+
       return {
         platform,
-        content: scheduledContent
-          ? scheduledContent.contentByPlatform[platformType] || scheduledContent.title
-          : writePostCaption(story, platform.type),
+        content,
         mediaUrl,
         mediaType: mediaUrl ? ("image" as const) : undefined,
         instagramContentType:
@@ -196,19 +220,121 @@ export async function runImagePostJob(
       s3.error = failed.map((result) => `${result.platform}: ${result.error}`).join("; ");
     }
 
-    if (!scheduledContent) {
-      await markPosted(story);
+    // 4. First comment (source link on X)
+    if (story.link) {
+      const commentTargets = publishTargets.filter((t) => {
+        const pType = t.platform.type.toLowerCase();
+        return pType === "x" || pType === "twitter";
+      });
+
+      for (const target of commentTargets) {
+        const result = results.find(
+          (r) => r.platform === target.platform.type && r.success
+        );
+        if (result) {
+          const commentResult = await publishFirstComment({
+            platform: target.platform,
+            publishResult: result,
+            sourceUrl: story.link,
+            sourceTitle: story.title,
+          });
+          if (commentResult.success) {
+            console.log(
+              `[image-post] first comment on X: ${commentResult.commentUrl}`
+            );
+          }
+        }
+      }
     }
 
+    if (!scheduledContent) {
+      await markPosted(story);
+    } else if (scheduledContent.dedupKeys && scheduledContent.dedupKeys.length > 0) {
+      await markDedupKeys(scheduledContent.dedupKeys, scheduledContent.title);
+    }
+
+    // Persist post + per-platform targets so the calendar/posts pages can show them
+    const postId = crypto.randomUUID();
     const now = new Date();
+    const firstSuccessful = publishTargets.find((t) =>
+      results.find((r) => r.platform === t.platform.type && r.success)
+    );
+    const postContent =
+      firstSuccessful?.content ??
+      publishTargets[0]?.content ??
+      story.title ??
+      "";
+    const postMediaUrl =
+      firstSuccessful?.mediaUrl ??
+      publishTargets[0]?.mediaUrl ??
+      story.imageUrl ??
+      null;
+    const postContentType =
+      postMediaUrl
+        ? schedule.jobType === "avatar_video"
+          ? "avatar_video"
+          : "image"
+        : "text";
+    const postStatus = resolvePostStatusFromTargetResults(results);
+
+    await db.insert(posts).values({
+      id: postId,
+      workspaceId: schedule.workspaceId,
+      title: story.title ?? schedule.name,
+      content: postContent,
+      contentType: postContentType,
+      mediaUrl: postMediaUrl ?? null,
+      sourceUrl: story.link || null,
+      sourceTitle: story.title ?? null,
+      status: postStatus,
+      publishedAt:
+        postStatus === "published" || postStatus === "partial_failure"
+          ? now
+          : null,
+      metadata: {
+        sourceScheduleId: schedule.id,
+        runId,
+      },
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    for (const target of publishTargets) {
+      const result = results.find(
+        (r) => r.platform === target.platform.type
+      );
+      const targetStatus = result?.success
+        ? "published"
+        : result?.classification === "disabled" ||
+            result?.classification === "duplicate"
+          ? "skipped"
+          : "failed";
+
+      await db.insert(postTargets).values({
+        id: crypto.randomUUID(),
+        postId,
+        platformId: target.platform.id,
+        status: targetStatus,
+        publishedUrl: result?.postUrl ?? null,
+        platformPostId: result?.postId ?? null,
+        error:
+          result?.classification === "disabled"
+            ? null
+            : result?.error ?? null,
+        publishedAt: result?.success ? now : null,
+        createdAt: now,
+      });
+    }
+
     await db.update(pipelineRuns).set({
       status: resolvePublishResultsStatus(results),
+      postId,
       steps,
       durationMs: now.getTime() - startedAt.getTime(),
       completedAt: now,
     }).where(eq(pipelineRuns.id, runId));
 
-    console.log(`[image-post] run ${runId} done — ${ok.length}/${results.length}`);
+    console.log(`[image-post] run ${runId} done — ${ok.length}/${results.length} → post ${postId}`);
   } catch (err) {
     await fail(runId, steps, startedAt, err instanceof Error ? err.message : String(err));
   }

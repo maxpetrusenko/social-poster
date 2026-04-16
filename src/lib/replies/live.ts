@@ -5,6 +5,7 @@ import { platforms, replyCandidates, replyEvents } from "@/db/schema";
 import {
   getThreadForPlatform,
   getLikeCount,
+  getReplyCount,
   getTweetAuthor,
   getTweetAuthorName,
   getTweetCreatedAt,
@@ -29,6 +30,12 @@ import {
   type ReplyProfileId,
 } from "@/lib/replies/profiles";
 import {
+  detectReplyLanguage,
+  isReplyLanguageAllowed,
+  normalizeReplyLanguage,
+  type ReplyLanguage,
+} from "@/lib/replies/language";
+import {
   LIVE_REPLY_DISCOVERY_QUERIES,
   getReplyDirectionLabel,
   getReplyDirectionSummary,
@@ -46,6 +53,8 @@ const MAX_VISIBLE_REPLY_CARDS = 10;
 const AUTO_REVIEW_TARGET = 3;
 const MANUAL_REVIEW_TARGET = 5;
 const MAX_THREAD_CONTEXT_FETCHES = 2;
+const MIN_DISCOVERY_REPLY_COUNT = 3;
+const MIN_DISCOVERY_LIKE_COUNT = 10;
 const READY_QUEUE_LOCKS = new Set<string>();
 const POSTING_CANDIDATE_LOCKS = new Set<string>();
 
@@ -75,6 +84,8 @@ type ReplyRefreshPassDiagnostics = {
   staleSkipped: number;
   alreadyRepliedSkipped: number;
   duplicateTweetSkipped: number;
+  languageSkipped: number;
+  lowEngagementSkipped: number;
   candidateCount: number;
   aiCandidateCount: number;
   zeroDraftCount: number;
@@ -115,6 +126,7 @@ type LiveCandidate = {
       views: string;
     };
     mediaUrl: string | null;
+    tweetLanguage: "en" | "other";
     threadContext: string[];
   };
 };
@@ -122,8 +134,10 @@ type LiveCandidate = {
 export async function listReplyCandidates(
   platformId?: string,
   profileId?: ReplyProfileId,
-  workspaceId?: string
+  workspaceId?: string,
+  language: ReplyLanguage = "en"
 ): Promise<ReplyCard[]> {
+  const replyLanguage = normalizeReplyLanguage(language);
   const rows = platformId
     ? await db
         .select()
@@ -156,6 +170,7 @@ export async function listReplyCandidates(
       if (rowProfileId) return isAgentPersonaProfile(rowProfileId);
       return true;
     })
+    .filter((row) => isReplyLanguageAllowed(row.tweetText, replyLanguage))
     .slice(0, MAX_VISIBLE_REPLY_CARDS)
     .map(mapRowToCard);
 }
@@ -179,9 +194,16 @@ export async function refreshReplyCandidates(
   platformId: string,
   profileId?: ReplyProfileId,
   workspaceId?: string,
-  mode: RefreshReplyMode = "manual"
+  mode: RefreshReplyMode = "manual",
+  language: ReplyLanguage = "en"
 ) {
-  const result = await refreshReplyCandidatesWithDiagnostics(platformId, profileId, workspaceId, mode);
+  const result = await refreshReplyCandidatesWithDiagnostics(
+    platformId,
+    profileId,
+    workspaceId,
+    mode,
+    language
+  );
   return result.cards;
 }
 
@@ -189,7 +211,8 @@ export async function refreshReplyCandidatesWithDiagnostics(
   platformId: string,
   profileId?: ReplyProfileId,
   workspaceId?: string,
-  mode: RefreshReplyMode = "manual"
+  mode: RefreshReplyMode = "manual",
+  language: ReplyLanguage = "en"
 ) {
   const platform = await db.query.platforms.findFirst({
     where: eq(platforms.id, platformId),
@@ -220,7 +243,8 @@ export async function refreshReplyCandidatesWithDiagnostics(
     platform,
     profile,
     discoveryPlan,
-    `${mode}:primary`
+    `${mode}:primary`,
+    language
   );
   let drafted = draftedResult.drafted;
   passes.push(draftedResult.diagnostics);
@@ -230,7 +254,8 @@ export async function refreshReplyCandidatesWithDiagnostics(
       platform,
       profile,
       getReplyDiscoveryPlan("auto_fallback"),
-      "auto:fallback"
+      "auto:fallback",
+      language
     );
     drafted = draftedResult.drafted;
     passes.push(draftedResult.diagnostics);
@@ -241,7 +266,8 @@ export async function refreshReplyCandidatesWithDiagnostics(
       platform,
       profile,
       getReplyDiscoveryPlan("manual"),
-      "manual:escalation"
+      "manual:escalation",
+      language
     );
     drafted = draftedResult.drafted;
     passes.push(draftedResult.diagnostics);
@@ -290,7 +316,12 @@ export async function refreshReplyCandidatesWithDiagnostics(
     insertedCount += 1;
   }
 
-  const cards = await listReplyCandidates(platformId, profile.id, workspaceId);
+  const cards = await listReplyCandidates(
+    platformId,
+    profile.id,
+    workspaceId,
+    language
+  );
 
   return {
     cards,
@@ -528,7 +559,8 @@ async function postReplyCandidateInternal(
 async function discoverLiveCandidates(
   platform: PlatformRow,
   profile: ReplyProfile,
-  plan: ReplyDiscoveryPlan
+  plan: ReplyDiscoveryPlan,
+  language: ReplyLanguage
 ) {
   const workspaceId = platform.workspaceId;
   const alreadyRepliedRows = workspaceId
@@ -560,6 +592,8 @@ async function discoverLiveCandidates(
     staleSkipped: 0,
     alreadyRepliedSkipped: 0,
     duplicateTweetSkipped: 0,
+    languageSkipped: 0,
+    lowEngagementSkipped: 0,
     candidateCount: 0,
     aiCandidateCount: 0,
     zeroDraftCount: 0,
@@ -586,8 +620,17 @@ async function discoverLiveCandidates(
 
       for (const tweet of tweets) {
         const tweetUrl = getTweetUrl(tweet);
-        if (!tweet.id || !getTweetText(tweet).trim()) {
+        const tweetText = getTweetText(tweet).trim();
+        if (!tweet.id || !tweetText) {
           diagnostics.emptyTextSkipped += 1;
+          continue;
+        }
+        if (!isReplyLanguageAllowed(tweetText, language)) {
+          diagnostics.languageSkipped += 1;
+          continue;
+        }
+        if (!hasMinimumEngagement(tweet)) {
+          diagnostics.lowEngagementSkipped += 1;
           continue;
         }
         if (isReplyTweet(tweet)) {
@@ -702,9 +745,15 @@ async function discoverAndDraftLiveCandidates(
   platform: PlatformRow,
   profile: ReplyProfile,
   plan: ReplyDiscoveryPlan,
-  label: string
+  label: string,
+  language: ReplyLanguage
 ) {
-  const discoveredResult = await discoverLiveCandidates(platform, profile, plan);
+  const discoveredResult = await discoverLiveCandidates(
+    platform,
+    profile,
+    plan,
+    language
+  );
   const discovered = discoveredResult.candidates;
   const candidateInputs = discovered.map((item) => ({
     tweetId: item.tweetId,
@@ -844,9 +893,23 @@ async function buildLiveCandidate(
         views: compactNumber(getViewCount(rootTweet)),
       },
       mediaUrl: getTweetImageUrl(rootTweet),
+      tweetLanguage: detectReplyLanguage(tweetText),
       threadContext,
     },
   };
+}
+
+function hasMinimumEngagement(tweet: {
+  replyCount?: number;
+  public_metrics?: { reply_count?: number; like_count?: number };
+  likeCount?: number;
+  favoriteCount?: number;
+  favorite_count?: number;
+}) {
+  return (
+    getReplyCount(tweet) >= MIN_DISCOVERY_REPLY_COUNT ||
+    getLikeCount(tweet) >= MIN_DISCOVERY_LIKE_COUNT
+  );
 }
 
 function calculateScore(

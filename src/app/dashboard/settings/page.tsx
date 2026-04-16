@@ -2,6 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import { ExternalLink, Copy } from 'lucide-react';
+import {
+  getReplyLanguageLabel,
+  normalizeReplyLanguage,
+  type ReplyLanguage,
+} from '@/lib/replies/language';
+
+const REPLY_LANGUAGE_STORAGE_KEY = 'social-poster.replyLanguage';
 
 export default function SettingsPage() {
   const [config, setConfig] = useState({
@@ -12,8 +19,14 @@ export default function SettingsPage() {
   });
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState<string | null>(null);
+  const [replyLanguage, setReplyLanguage] = useState<ReplyLanguage>('en');
 
   useEffect(() => {
+    const storedReplyLanguage = window.localStorage.getItem(REPLY_LANGUAGE_STORAGE_KEY);
+    if (storedReplyLanguage) {
+      setReplyLanguage(normalizeReplyLanguage(storedReplyLanguage));
+    }
+
     async function loadConfig() {
       try {
         // In a real app, this would fetch from an API endpoint
@@ -31,6 +44,10 @@ export default function SettingsPage() {
     }
     loadConfig();
   }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem(REPLY_LANGUAGE_STORAGE_KEY, replyLanguage);
+  }, [replyLanguage]);
 
   const copyToClipboard = (value: string, key: string) => {
     navigator.clipboard.writeText(value);
@@ -128,6 +145,34 @@ export default function SettingsPage() {
                 {config.timezone}
               </div>
               {copied === 'timezone' && <p className="text-xs text-green-600 mt-2">Copied to clipboard</p>}
+            </div>
+          </div>
+
+          <div className="bg-white border border-gray-200 rounded-lg p-4">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-sm font-medium text-gray-900">Replies Language</p>
+                <p className="text-xs text-gray-500 mt-1">Used when discovering and showing X reply candidates</p>
+              </div>
+              <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-700">
+                {getReplyLanguageLabel(replyLanguage)}
+              </span>
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-2 rounded-lg bg-gray-50 p-1">
+              {(['en', 'any'] as const).map((language) => (
+                <button
+                  key={language}
+                  type="button"
+                  onClick={() => setReplyLanguage(language)}
+                  className={`rounded-md px-3 py-2 text-sm font-semibold transition ${
+                    replyLanguage === language
+                      ? 'bg-white text-gray-950 shadow-sm'
+                      : 'text-gray-500 hover:text-gray-800'
+                  }`}
+                >
+                  {getReplyLanguageLabel(language)}
+                </button>
+              ))}
             </div>
           </div>
 

@@ -14,11 +14,16 @@ import {
 } from "@/lib/replies/profiles";
 import { z } from "zod";
 import { getTenantContext } from "@/lib/tenancy";
+import {
+  REPLY_LANGUAGE_OPTIONS,
+  normalizeReplyLanguage,
+} from "@/lib/replies/language";
 
 const refreshSchema = z.object({
   platformId: z.string().min(1),
   profileId: z.enum(ACCEPTED_REPLY_PROFILE_IDS).optional(),
   mode: z.enum(REPLY_REFRESH_MODES).optional(),
+  language: z.enum(REPLY_LANGUAGE_OPTIONS).optional(),
 });
 
 export async function GET(request: NextRequest) {
@@ -34,6 +39,9 @@ export async function GET(request: NextRequest) {
     const platformId = request.nextUrl.searchParams.get("platformId") || undefined;
     const profileParam = request.nextUrl.searchParams.get("profileId");
     const profileId = normalizeReplyProfileId(profileParam);
+    const language = normalizeReplyLanguage(
+      request.nextUrl.searchParams.get("language")
+    );
 
     void processReadyReplyQueue(platformId).catch((error) => {
       console.error("[api/replies] ready queue sweep failed:", error);
@@ -42,7 +50,8 @@ export async function GET(request: NextRequest) {
     const cards = await listReplyCandidates(
       platformId,
       profileId,
-      tenant.currentWorkspace.id
+      tenant.currentWorkspace.id,
+      language
     );
     return NextResponse.json({ cards });
   } catch (error) {
@@ -68,7 +77,8 @@ export async function POST(request: NextRequest) {
       body.platformId,
       normalizeReplyProfileId(body.profileId),
       tenant.currentWorkspace.id,
-      body.mode ?? "manual"
+      body.mode ?? "manual",
+      normalizeReplyLanguage(body.language)
     );
     return NextResponse.json(result);
   } catch (error) {

@@ -137,7 +137,10 @@ export async function POST(
   // Update post status
   await db.update(posts).set({
     status: postStatus,
-    publishedAt: postStatus === "published" ? completedAt : null,
+    publishedAt:
+      postStatus === "published" || postStatus === "partial_failure"
+        ? completedAt
+        : null,
     updatedAt: completedAt,
   }).where(eq(posts.id, postId));
 

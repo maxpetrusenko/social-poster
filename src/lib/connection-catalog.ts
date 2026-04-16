@@ -93,6 +93,35 @@ export const CONNECTION_PLATFORM_DEFINITIONS: ConnectionPlatformDefinition[] = [
     summary: "Direct API app or Bird-based custom flow.",
     methods: [
       {
+        id: "x_oauth",
+        label: "Connect with X (Direct)",
+        provider: "direct",
+        authType: "oauth",
+        description:
+          "Authorize through X OAuth 2.0 and store the returned user token for native posting.",
+        recommendation:
+          "Use when the X developer app credentials are configured and you want account-bound OAuth.",
+        fields: [],
+        docs: [
+          {
+            label: "X developer apps",
+            url: "https://docs.x.com/fundamentals/developer-apps",
+          },
+          {
+            label: "X developer portal",
+            url: "https://developer.x.com/en/portal/dashboard",
+          },
+          {
+            label: "X OAuth overview",
+            url: "https://docs.x.com/fundamentals/authentication/oauth-2-0/overview",
+          },
+          {
+            label: "X OAuth 2.0 user context",
+            url: "https://docs.x.com/fundamentals/authentication/oauth-2-0/user-access-token",
+          },
+        ],
+      },
+      {
         id: "x_api",
         label: "X API keys + user tokens",
         provider: "direct",
@@ -123,6 +152,14 @@ export const CONNECTION_PLATFORM_DEFINITIONS: ConnectionPlatformDefinition[] = [
           ),
         ],
         docs: [
+          {
+            label: "X developer apps",
+            url: "https://docs.x.com/fundamentals/developer-apps",
+          },
+          {
+            label: "X developer portal",
+            url: "https://developer.x.com/en/portal/dashboard",
+          },
           {
             label: "X OAuth overview",
             url: "https://docs.x.com/fundamentals/authentication/oauth-2-0/overview",
@@ -233,9 +270,9 @@ export const CONNECTION_PLATFORM_DEFINITIONS: ConnectionPlatformDefinition[] = [
   },
   {
     type: "linkedin_personal",
-    label: "LinkedIn Personal",
+    label: "LinkedIn Profile",
     category: "social",
-    summary: "Native OAuth for member profile posting.",
+    summary: "Member profile connection.",
     methods: [
       {
         id: "linkedin_personal_oauth",
@@ -249,6 +286,10 @@ export const CONNECTION_PLATFORM_DEFINITIONS: ConnectionPlatformDefinition[] = [
         fields: [],
         docs: [
           {
+            label: "LinkedIn developer apps",
+            url: "https://www.linkedin.com/developers/apps",
+          },
+          {
             label: "LinkedIn auth overview",
             url: "https://learn.microsoft.com/en-us/linkedin/shared/authentication/authentication",
           },
@@ -259,9 +300,9 @@ export const CONNECTION_PLATFORM_DEFINITIONS: ConnectionPlatformDefinition[] = [
   },
   {
     type: "linkedin_company",
-    label: "LinkedIn Company",
+    label: "LinkedIn Page",
     category: "social",
-    summary: "Native OAuth for company page posting.",
+    summary: "Company page connection.",
     methods: [
       {
         id: "linkedin_company_oauth",
@@ -274,6 +315,10 @@ export const CONNECTION_PLATFORM_DEFINITIONS: ConnectionPlatformDefinition[] = [
           "Use for direct company posting when Community Management API is approved.",
         fields: [],
         docs: [
+          {
+            label: "LinkedIn developer apps",
+            url: "https://www.linkedin.com/developers/apps",
+          },
           {
             label: "LinkedIn auth overview",
             url: "https://learn.microsoft.com/en-us/linkedin/shared/authentication/authentication",
@@ -299,7 +344,16 @@ export const CONNECTION_PLATFORM_DEFINITIONS: ConnectionPlatformDefinition[] = [
         recommendation:
           "Preferred when you want direct access instead of a relay provider.",
         fields: [],
-        docs: [],
+        docs: [
+          {
+            label: "Create a Meta app",
+            url: "https://developers.facebook.com/docs/development/create-an-app/",
+          },
+          {
+            label: "Instagram Graph API setup",
+            url: "https://developers.facebook.com/docs/instagram-api/getting-started/",
+          },
+        ],
       },
       {
         id: "instagram_relay",
@@ -317,7 +371,16 @@ export const CONNECTION_PLATFORM_DEFINITIONS: ConnectionPlatformDefinition[] = [
             "Publishing caveats, media handling notes, escalation rules"
           ),
         ],
-        docs: [],
+        docs: [
+          {
+            label: "Create a Meta app",
+            url: "https://developers.facebook.com/docs/development/create-an-app/",
+          },
+          {
+            label: "Facebook Login setup",
+            url: "https://developers.facebook.com/docs/facebook-login/",
+          },
+        ],
       },
     ],
   },
@@ -359,6 +422,10 @@ export const CONNECTION_PLATFORM_DEFINITIONS: ConnectionPlatformDefinition[] = [
         fields: [],
         docs: [
           {
+            label: "TikTok app setup",
+            url: "https://developers.tiktok.com/doc/login-kit-web/",
+          },
+          {
             label: "TikTok Content Posting API",
             url: "https://developers.tiktok.com/products/content-posting-api",
           },
@@ -384,6 +451,10 @@ export const CONNECTION_PLATFORM_DEFINITIONS: ConnectionPlatformDefinition[] = [
           "Use for direct channel actions. API keys alone are not enough for writes.",
         fields: [],
         docs: [
+          {
+            label: "Google credentials console",
+            url: "https://console.cloud.google.com/apis/credentials",
+          },
           {
             label: "YouTube auth guide",
             url: "https://developers.google.com/youtube/v3/guides/authentication",
@@ -411,7 +482,16 @@ export const CONNECTION_PLATFORM_DEFINITIONS: ConnectionPlatformDefinition[] = [
         description: "Use your own Pinterest app and token flow.",
         recommendation: "Use when Pinterest is a direct integration requirement.",
         fields: [],
-        docs: [],
+        docs: [
+          {
+            label: "Pinterest app dashboard",
+            url: "https://developers.pinterest.com/apps/",
+          },
+          {
+            label: "Pinterest OAuth",
+            url: "https://developers.pinterest.com/docs/getting-started/authentication/",
+          },
+        ],
       },
       relayMethod("Pinterest", "@m_petrusenko"),
     ],
@@ -430,7 +510,16 @@ export const CONNECTION_PLATFORM_DEFINITIONS: ConnectionPlatformDefinition[] = [
         description: "Authorize through Threads OAuth for direct publishing.",
         recommendation: "Use for first-party Threads publishing.",
         fields: [],
-        docs: [{ label: "Threads API", url: "https://developers.facebook.com/docs/threads" }],
+        docs: [
+          {
+            label: "Threads API",
+            url: "https://developers.facebook.com/docs/threads",
+          },
+          {
+            label: "Threads app setup",
+            url: "https://developers.facebook.com/docs/threads/get-started",
+          },
+        ],
       },
       relayMethod("Threads", "@maxpetrusenko"),
     ],
@@ -473,7 +562,20 @@ export const CONNECTION_PLATFORM_DEFINITIONS: ConnectionPlatformDefinition[] = [
         description: "Authorize through Google OAuth for Business Profile posting.",
         recommendation: "Use for direct location updates.",
         fields: [],
-        docs: [{ label: "Business Profile APIs", url: "https://developers.google.com/my-business" }],
+        docs: [
+          {
+            label: "Google credentials console",
+            url: "https://console.cloud.google.com/apis/credentials",
+          },
+          {
+            label: "Business Profile APIs",
+            url: "https://developers.google.com/my-business",
+          },
+          {
+            label: "Business Profile setup",
+            url: "https://developers.google.com/my-business/content/basic-setup",
+          },
+        ],
       },
       relayMethod("Google Business", "Business location"),
     ],
@@ -518,7 +620,16 @@ export const CONNECTION_PLATFORM_DEFINITIONS: ConnectionPlatformDefinition[] = [
         description: "Authorize through Instagram OAuth for the personal API path.",
         recommendation: "Use when this account cannot use the Instagram Graph business path.",
         fields: [],
-        docs: [{ label: "Instagram Platform", url: "https://developers.facebook.com/docs/instagram-platform" }],
+        docs: [
+          {
+            label: "Create a Meta app",
+            url: "https://developers.facebook.com/docs/development/create-an-app/",
+          },
+          {
+            label: "Instagram Platform",
+            url: "https://developers.facebook.com/docs/instagram-platform",
+          },
+        ],
       },
       relayMethod("Instagram Personal", "@max.petrusenko"),
     ],
@@ -563,6 +674,10 @@ export const CONNECTION_PLATFORM_DEFINITIONS: ConnectionPlatformDefinition[] = [
           ),
         ],
         docs: [
+          {
+            label: "Reddit app preferences",
+            url: "https://www.reddit.com/prefs/apps",
+          },
           {
             label: "Reddit API docs",
             url: "https://www.reddit.com/dev/api/",

@@ -1,6 +1,7 @@
 "use client";
 
-import { Check, ExternalLink, Link2, X } from "lucide-react";
+import { useState } from "react";
+import { X } from "lucide-react";
 import {
   CONNECTION_PLATFORM_DEFINITIONS,
   type ConnectionField,
@@ -8,7 +9,21 @@ import {
   type ConnectionPlatformDefinition,
 } from "@/lib/connection-catalog";
 import { getPlatformMeta } from "@/lib/dashboard/platforms";
+import type { NativeConnectionAvailability } from "@/lib/providers/env-availability";
+import type { PlatformType } from "@/lib/platforms";
 import type { FormState, ProfileRow } from "./connections-types";
+import {
+  ConnectionDocButton,
+  ConnectionDocPillLinks,
+  getUniqueConnectionDocs,
+} from "./connection-doc-links";
+import { ConnectionSetupGuideButton } from "./connection-setup-guide";
+import {
+  ConnectionMethodOption,
+  getBrowserOAuthCallbackUrl,
+  OAuthSetupPanel,
+} from "./connection-method-option";
+import { PlatformBrandIcon } from "./platform-brand-icon";
 
 export function ConnectionsDrawer({
   drawerOpen,
@@ -19,6 +34,7 @@ export function ConnectionsDrawer({
   selectedMethod,
   selectedMethodMode,
   availableMethodModes,
+  nativeAvailabilityByPlatform,
   formState,
   error,
   isSaving,
@@ -29,6 +45,7 @@ export function ConnectionsDrawer({
   onMethodModeChange,
   onFieldChange,
   onSubmit,
+  onOAuthConnect,
 }: {
   drawerOpen: boolean;
   profiles: ProfileRow[];
@@ -38,6 +55,7 @@ export function ConnectionsDrawer({
   selectedMethod: ConnectionMethod;
   selectedMethodMode: "native" | "proxy";
   availableMethodModes: Array<"native" | "proxy">;
+  nativeAvailabilityByPlatform: Record<PlatformType, NativeConnectionAvailability>;
   formState: FormState;
   error: string | null;
   isSaving: boolean;
@@ -48,10 +66,27 @@ export function ConnectionsDrawer({
   onMethodModeChange: (value: "native" | "proxy") => void;
   onFieldChange: (key: string, value: string | boolean) => void;
   onSubmit: () => void;
+  onOAuthConnect: (
+    platformType: ConnectionPlatformDefinition["type"],
+    methodId: string,
+    credentials?: { clientId?: string; clientSecret?: string }
+  ) => void;
 }) {
+  const [expandedPlatformType, setExpandedPlatformType] =
+    useState<PlatformType | null>(selectedPlatformType);
+
   if (!drawerOpen) {
     return null;
   }
+
+  const selectedMethodDeactivated = isMethodDeactivated(
+    selectedDefinition.type,
+    selectedMethod,
+    nativeAvailabilityByPlatform
+  );
+  const selectedNativeAvailability =
+    nativeAvailabilityByPlatform[selectedDefinition.type];
+  const selectedCallbackUrl = getBrowserOAuthCallbackUrl(selectedDefinition.type);
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-[rgba(7,11,18,0.58)] backdrop-blur-[2px]">
@@ -99,41 +134,150 @@ export function ConnectionsDrawer({
               Social
             </p>
             <div className="mt-3 space-y-2">
-              {CONNECTION_PLATFORM_DEFINITIONS.map((definition) => {
+              {CONNECTION_PLATFORM_DEFINITIONS.filter((definition) =>
+                hasMethodForMode(definition, selectedMethodMode)
+              ).map((definition) => {
                 const active = definition.type === selectedPlatformType;
+                const expanded = definition.type === expandedPlatformType;
                 const meta = getPlatformMeta(definition.type);
+                const visibleMethods = definition.methods.filter((method) =>
+                  selectedMethodMode === "native"
+                    ? method.provider === "direct"
+                    : method.provider !== "direct"
+                );
+                const nativeDeactivated = hasDeactivatedOAuthMethod(
+                  definition,
+                  nativeAvailabilityByPlatform
+                );
+                const docs = getUniqueConnectionDocs(
+                  visibleMethods.flatMap((method) => method.docs)
+                );
                 return (
-                  <button
+                  <div
                     key={definition.type}
-                    type="button"
-                    onClick={() => onPlatformChange(definition.type)}
-                    className={`flex w-full items-center justify-between rounded-[16px] border px-4 py-3 text-left transition ${
+                    className={`w-full rounded-[16px] border transition ${
                       active
                         ? "border-[rgba(15,126,169,0.26)] bg-white"
                         : "border-[rgba(33,25,19,0.08)] bg-[rgba(255,255,255,0.72)]"
                     }`}
                   >
-                    <div className="flex items-center gap-3">
-                      <span
-                        className="inline-flex h-10 w-10 items-center justify-center rounded-[12px] text-sm font-bold"
-                        style={{
-                          backgroundColor: `${meta.accent}18`,
-                          color: meta.accent,
+                    <div className="flex items-center gap-3 px-3 py-3">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (expanded) {
+                            setExpandedPlatformType(null);
+                            return;
+                          }
+                          onPlatformChange(definition.type);
+                          setExpandedPlatformType(definition.type);
                         }}
+                        className="flex min-w-0 flex-1 items-center gap-3 text-left"
                       >
-                        {meta.shortLabel}
-                      </span>
-                      <div>
-                        <p className="text-sm font-semibold text-[#211913]">
-                          {definition.label}
-                        </p>
-                        <p className="text-xs text-[#7a6756]">
-                          {definition.summary}
-                        </p>
+                        <span
+                          className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px]"
+                          style={{
+                            backgroundColor: `${meta.accent}18`,
+                            color: meta.accent,
+                          }}
+                        >
+                          <PlatformBrandIcon
+                            type={definition.type}
+                            className="h-5 w-5"
+                          />
+                        </span>
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-[#211913]">
+                            {definition.label}
+                          </p>
+                          <p className="text-xs text-[#7a6756]">
+                            {definition.summary}
+                          </p>
+                          {nativeDeactivated ? (
+                            <p className="mt-1 text-[11px] font-semibold text-[#a36211]">
+                              Native deactivated
+                            </p>
+                          ) : null}
+                        </div>
+                      </button>
+                      <div className="flex shrink-0 items-center gap-1.5">
+                        <ConnectionDocButton docs={docs} label={definition.label} />
                       </div>
                     </div>
-                    <Link2 className="h-4 w-4 text-[#8b7868]" />
-                  </button>
+                    {expanded ? (
+                      <div className="border-t border-[rgba(33,25,19,0.08)] px-3 pb-3 pt-3">
+                        <div className="mt-2 space-y-2">
+                          {visibleMethods.map((method) => (
+                            <div key={method.id}>
+                              <ConnectionMethodOption
+                                method={method}
+                                definition={definition}
+                                active={method.id === selectedMethod.id}
+                                deactivated={isMethodDeactivated(
+                                  definition.type,
+                                  method,
+                                  nativeAvailabilityByPlatform
+                                )}
+                                onSelect={() => onMethodChange(method.id)}
+                                onConnect={() =>
+                                  onOAuthConnect(
+                                    definition.type,
+                                    method.id,
+                                    getOAuthCredentials(formState, method.id)
+                                  )
+                                }
+                                callbackUrl={getBrowserOAuthCallbackUrl(
+                                  definition.type
+                                )}
+                                availability={
+                                  nativeAvailabilityByPlatform[definition.type]
+                                }
+                                clientId={readOAuthCredential(
+                                  formState,
+                                  method.id,
+                                  "clientId"
+                                )}
+                                clientSecret={readOAuthCredential(
+                                  formState,
+                                  method.id,
+                                  "clientSecret"
+                                )}
+                                onCredentialChange={(key, value) =>
+                                  onFieldChange(
+                                    getOAuthCredentialKey(method.id, key),
+                                    value
+                                  )
+                                }
+                              />
+                              {method.id === selectedMethod.id &&
+                              method.authType !== "oauth" ? (
+                                <div className="mt-2 space-y-3 rounded-[14px] border border-[rgba(33,25,19,0.08)] bg-white/75 p-3">
+                                  {method.fields.map((field) => (
+                                    <ConnectionFieldInput
+                                      key={field.id}
+                                      field={field}
+                                      value={formState[field.id]}
+                                      onChange={(value) =>
+                                        onFieldChange(field.id, value)
+                                      }
+                                    />
+                                  ))}
+                                  <button
+                                    type="button"
+                                    onClick={onSubmit}
+                                    disabled={isSaving}
+                                    className="inline-flex w-full items-center justify-center rounded-[12px] bg-[#121d2e] px-4 py-3 text-sm font-semibold text-white disabled:opacity-60"
+                                  >
+                                    {isSaving ? "Connecting..." : "Create connection"}
+                                  </button>
+                                </div>
+                              ) : null}
+                            </div>
+                            ))}
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
                 );
               })}
             </div>
@@ -169,46 +313,6 @@ export function ConnectionsDrawer({
               })}
             </div>
 
-            <div className="mt-4 space-y-2">
-              {selectedDefinition.methods
-                .filter((method) =>
-                  selectedMethodMode === "native"
-                    ? method.provider === "direct"
-                    : method.provider !== "direct"
-                )
-                .map((method) => {
-                const active = method.id === selectedMethod.id;
-                return (
-                  <button
-                    key={method.id}
-                    type="button"
-                    onClick={() => onMethodChange(method.id)}
-                    className={`w-full rounded-[16px] border px-4 py-3 text-left transition ${
-                      active
-                        ? "border-[rgba(15,126,169,0.28)] bg-[rgba(15,126,169,0.06)]"
-                        : "border-[rgba(33,25,19,0.08)] bg-[rgba(248,244,235,0.7)]"
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <p className="text-sm font-semibold text-[#211913]">
-                          {method.label}
-                        </p>
-                        <p className="mt-1 text-xs leading-6 text-[#746253]">
-                          {method.description}
-                        </p>
-                      </div>
-                      {active ? (
-                        <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-[rgba(15,126,169,0.14)] text-[var(--accent-tech)]">
-                          <Check className="h-4 w-4" />
-                        </span>
-                      ) : null}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-
             <div className="mt-4 rounded-[14px] border border-[rgba(33,25,19,0.08)] bg-[#f7f1e5] px-3 py-3">
               <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#7a6756]">
                 Recommendation
@@ -225,27 +329,25 @@ export function ConnectionsDrawer({
                 Setup details
               </p>
               <div className="flex flex-wrap gap-2">
-                {selectedMethod.docs.map((item) => (
-                  <a
-                    key={item.url}
-                    href={item.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1 rounded-full border border-[rgba(33,25,19,0.1)] px-2.5 py-1 text-xs font-semibold text-[#5e4e42]"
-                  >
-                    {item.label}
-                    <ExternalLink className="h-3 w-3" />
-                  </a>
-                ))}
+                {selectedMethod.authType === "oauth" ? (
+                  <ConnectionSetupGuideButton
+                    definition={selectedDefinition}
+                    method={selectedMethod}
+                    callbackUrl={selectedCallbackUrl}
+                    availability={selectedNativeAvailability}
+                  />
+                ) : null}
+                <ConnectionDocPillLinks docs={selectedMethod.docs} />
               </div>
             </div>
 
             <div className="mt-4 space-y-4">
               {selectedMethod.authType === "oauth" ? (
-                <div className="rounded-[14px] border border-[rgba(33,25,19,0.08)] bg-[#fcfbf8] px-3 py-3 text-sm leading-6 text-[#4d3f34]">
-                  OAuth opens the provider sign-in flow and stores the returned
-                  token on callback.
-                </div>
+                <OAuthSetupPanel
+                  availability={selectedNativeAvailability}
+                  callbackUrl={selectedCallbackUrl}
+                  deactivated={selectedMethodDeactivated}
+                />
               ) : (
                 selectedMethod.fields.map((field) => (
                   <ConnectionFieldInput
@@ -273,10 +375,12 @@ export function ConnectionsDrawer({
               <button
                 type="button"
                 onClick={onSubmit}
-                disabled={isSaving}
+                disabled={isSaving || selectedMethodDeactivated}
                 className="inline-flex flex-1 items-center justify-center gap-2 rounded-[14px] bg-[#121d2e] px-4 py-3 text-sm font-semibold text-white disabled:opacity-60"
               >
-                {isSaving
+                {selectedMethodDeactivated
+                  ? "Deactivated"
+                  : isSaving
                   ? "Connecting..."
                   : selectedMethod.authType === "oauth"
                     ? "Continue with OAuth"
@@ -295,6 +399,53 @@ export function ConnectionsDrawer({
       </div>
     </div>
   );
+}
+
+function hasDeactivatedOAuthMethod(
+  definition: ConnectionPlatformDefinition,
+  availabilityByPlatform: Record<PlatformType, NativeConnectionAvailability>
+) {
+  return definition.methods.some((method) =>
+    isMethodDeactivated(definition.type, method, availabilityByPlatform)
+  );
+}
+
+function isMethodDeactivated(
+  platformType: PlatformType,
+  method: ConnectionMethod,
+  availabilityByPlatform: Record<PlatformType, NativeConnectionAvailability>
+) {
+  if (method.authType !== "oauth") return false;
+  return availabilityByPlatform[platformType]?.configured === false;
+}
+
+function hasMethodForMode(
+  definition: ConnectionPlatformDefinition,
+  mode: "native" | "proxy"
+) {
+  return definition.methods.some((method) =>
+    mode === "native" ? method.provider === "direct" : method.provider !== "direct"
+  );
+}
+
+function getOAuthCredentials(formState: FormState, methodId: string) {
+  return {
+    clientId: readOAuthCredential(formState, methodId, "clientId"),
+    clientSecret: readOAuthCredential(formState, methodId, "clientSecret"),
+  };
+}
+
+function readOAuthCredential(
+  formState: FormState,
+  methodId: string,
+  key: "clientId" | "clientSecret"
+) {
+  const value = formState[getOAuthCredentialKey(methodId, key)];
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function getOAuthCredentialKey(methodId: string, key: "clientId" | "clientSecret") {
+  return `oauth.${methodId}.${key}`;
 }
 
 function ConnectionFieldInput({

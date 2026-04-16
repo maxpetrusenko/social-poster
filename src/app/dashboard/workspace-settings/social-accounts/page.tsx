@@ -3,6 +3,7 @@ import { PLATFORM_TYPES } from "@/lib/platforms";
 import { ConnectionsPage } from "@/components/dashboard/connections-page";
 import { getConnectionsPageData } from "@/lib/dashboard/connections-data";
 import { getTenantContext } from "@/lib/tenancy";
+import { getNativeConnectionAvailabilityByPlatform } from "@/lib/providers/env-availability";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,7 @@ export default async function WorkspaceSettingsSocialAccountsPage({
     : null;
 
   const data = await getConnectionsPageData(tenant.currentWorkspace.id);
+  const nativeAvailabilityByPlatform = getNativeConnectionAvailabilityByPlatform();
 
   return (
     <ConnectionsPage
@@ -31,6 +33,7 @@ export default async function WorkspaceSettingsSocialAccountsPage({
       insights={data.insights}
       initialDrawerOpen={params.connect === "1"}
       initialPlatformType={initialPlatformType}
+      nativeAvailabilityByPlatform={nativeAvailabilityByPlatform}
     />
   );
 }
