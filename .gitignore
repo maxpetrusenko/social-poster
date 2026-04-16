@@ -16,3 +16,4 @@ data/
 .cursor
 CLAUDE.md
 drizzle/
+sqlite:/
