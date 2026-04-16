@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import type { PlatformType } from "@/lib/platforms";
 
 type ConnectionStatus = "all" | "enabled" | "disabled";
+export type ConnectionViewMode = "native" | "proxy";
 
 export type ConnectionCardItem = {
   id: string;
@@ -42,10 +43,12 @@ export function ConnectionsWorkspaceHeader({
   selectedProfileId,
   selectedPlatformType,
   selectedStatus,
+  selectedViewMode,
   profiles,
   onProfileChange,
   onPlatformChange,
   onStatusChange,
+  onViewModeChange,
   onCreateConnection,
 }: {
   workspaceName: string;
@@ -57,10 +60,12 @@ export function ConnectionsWorkspaceHeader({
   selectedProfileId: string;
   selectedPlatformType: PlatformType | "all";
   selectedStatus: ConnectionStatus;
+  selectedViewMode: ConnectionViewMode;
   profiles: Array<{ id: string; name: string }>;
   onProfileChange: (value: string) => void;
   onPlatformChange: (value: PlatformType | "all") => void;
   onStatusChange: (value: ConnectionStatus) => void;
+  onViewModeChange: (value: ConnectionViewMode) => void;
   onCreateConnection: () => void;
 }) {
   return (
@@ -102,8 +107,16 @@ export function ConnectionsWorkspaceHeader({
               <option value="all">All platforms</option>
               <option value="twitter">X</option>
               <option value="linkedin">LinkedIn</option>
+              <option value="linkedin_personal">LinkedIn Personal</option>
+              <option value="linkedin_company">LinkedIn Company</option>
               <option value="instagram">Instagram</option>
+              <option value="instagram_personal">Instagram Personal</option>
               <option value="facebook">Facebook</option>
+              <option value="threads">Threads</option>
+              <option value="bluesky">Bluesky</option>
+              <option value="google_business">Google Business</option>
+              <option value="mastodon">Mastodon</option>
+              <option value="whatsapp">WhatsApp</option>
               <option value="tiktok">TikTok</option>
               <option value="youtube">YouTube</option>
               <option value="reddit">Reddit</option>
@@ -128,6 +141,42 @@ export function ConnectionsWorkspaceHeader({
             Add connection
           </button>
         </div>
+      </div>
+
+      <div className="mt-5 grid gap-3 rounded-[1.1rem] border border-[#e1d5c2] bg-[#f7f1e6] p-1 md:grid-cols-2">
+        {[
+          {
+            id: "native" as const,
+            label: "Native auth connections",
+            summary: "Connected through platform apps and OAuth tokens.",
+          },
+          {
+            id: "proxy" as const,
+            label: "Proxy connections",
+            summary: "Connected through Late/GetLate or Bird.",
+          },
+        ].map((tab) => {
+          const active = tab.id === selectedViewMode;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => onViewModeChange(tab.id)}
+              className={`rounded-[0.9rem] px-4 py-3 text-left transition ${
+                active
+                  ? "bg-white shadow-[0_6px_18px_rgba(23,23,23,0.07)]"
+                  : "hover:bg-[rgba(255,255,255,0.45)]"
+              }`}
+            >
+              <span className="block text-sm font-semibold text-[#171717]">
+                {tab.label}
+              </span>
+              <span className="mt-1 block text-xs leading-5 text-[#786a55]">
+                {tab.summary}
+              </span>
+            </button>
+          );
+        })}
       </div>
     </section>
   );
@@ -340,9 +389,17 @@ function getAccountAvatarUrl(type: PlatformType, handle: string | null) {
   const provider = {
     twitter: "x",
     linkedin: "linkedin",
+    linkedin_personal: "linkedin",
+    linkedin_company: "linkedin",
     instagram: "instagram",
+    instagram_personal: "instagram",
     tiktok: "tiktok",
     facebook: "facebook",
+    threads: "threads",
+    bluesky: "bluesky",
+    google_business: "google",
+    mastodon: "mastodon",
+    whatsapp: "whatsapp",
     reddit: "reddit",
     pinterest: "pinterest",
     youtube: "youtube",
@@ -385,12 +442,15 @@ function PlatformBrandIcon({
         </svg>
       );
     case "linkedin":
+    case "linkedin_personal":
+    case "linkedin_company":
       return (
         <svg {...commonProps}>
           <path d="M20.447 20.452h-3.554V14.87c0-1.332-.027-3.045-1.854-3.045-1.854 0-2.137 1.445-2.137 2.947v5.68H9.35V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455zM5.337 7.433a2.062 2.062 0 1 1 0-4.124 2.062 2.062 0 0 1 0 4.124M7.119 20.452H3.555V9h3.564z" />
         </svg>
       );
     case "instagram":
+    case "instagram_personal":
       return (
         <svg {...commonProps}>
           <path d="M7.75 2h8.5A5.75 5.75 0 0 1 22 7.75v8.5A5.75 5.75 0 0 1 16.25 22h-8.5A5.75 5.75 0 0 1 2 16.25v-8.5A5.75 5.75 0 0 1 7.75 2m0 1.8A3.95 3.95 0 0 0 3.8 7.75v8.5a3.95 3.95 0 0 0 3.95 3.95h8.5a3.95 3.95 0 0 0 3.95-3.95v-8.5a3.95 3.95 0 0 0-3.95-3.95zm8.95 1.35a1.2 1.2 0 1 1-1.2 1.2 1.2 1.2 0 0 1 1.2-1.2M12 6.86A5.14 5.14 0 1 1 6.86 12 5.14 5.14 0 0 1 12 6.86m0 1.8A3.34 3.34 0 1 0 15.34 12 3.34 3.34 0 0 0 12 8.66" />
@@ -424,6 +484,16 @@ function PlatformBrandIcon({
       return (
         <svg {...commonProps}>
           <path d="M23.5 6.2a3 3 0 0 0-2.1-2.12C19.53 3.5 12 3.5 12 3.5s-7.53 0-9.4.58A3 3 0 0 0 .5 6.2 31.3 31.3 0 0 0 0 12a31.3 31.3 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.12c1.87.58 9.4.58 9.4.58s7.53 0 9.4-.58a3 3 0 0 0 2.1-2.12A31.3 31.3 0 0 0 24 12a31.3 31.3 0 0 0-.5-5.8M9.75 15.62V8.38L16.02 12z" />
+        </svg>
+      );
+    case "threads":
+    case "bluesky":
+    case "google_business":
+    case "mastodon":
+    case "whatsapp":
+      return (
+        <svg {...commonProps}>
+          <circle cx="12" cy="12" r="10" />
         </svg>
       );
   }

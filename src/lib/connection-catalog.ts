@@ -14,6 +14,7 @@ export type ConnectionMethod = {
   id: string;
   label: string;
   provider: "direct" | "zernio" | "bird";
+  authType?: "manual" | "oauth";
   description: string;
   recommendation: string;
   fields: ConnectionField[];
@@ -60,6 +61,28 @@ function textareaField(
 
 function toggleField(id: string, label: string, help?: string): ConnectionField {
   return { id, label, type: "toggle", help };
+}
+
+function relayMethod(platformLabel: string, handlePlaceholder: string): ConnectionMethod {
+  return {
+    id: `${platformLabel.toLowerCase().replace(/[^a-z0-9]+/g, "_")}_relay`,
+    label: "Managed relay account",
+    provider: "zernio",
+    authType: "manual",
+    description: `Use an existing relay/provider account ID for ${platformLabel}.`,
+    recommendation: "Use when this account is already managed in Zernio/Late.",
+    fields: [
+      textField("displayName", "Connection name", `${platformLabel} Relay`),
+      textField("handle", "Handle or label", handlePlaceholder),
+      textField("providerAccountId", "Provider account ID", "69024a..."),
+      textareaField(
+        "customInstructions",
+        "Relay notes",
+        "Publishing caveats, media handling notes, escalation rules"
+      ),
+    ],
+    docs: [],
+  };
 }
 
 export const CONNECTION_PLATFORM_DEFINITIONS: ConnectionPlatformDefinition[] = [
@@ -203,41 +226,27 @@ export const CONNECTION_PLATFORM_DEFINITIONS: ConnectionPlatformDefinition[] = [
     type: "linkedin",
     label: "LinkedIn",
     category: "social",
-    summary: "OAuth app credentials for member or page posting.",
+    summary: "Late-managed LinkedIn account proxy.",
+    methods: [
+      relayMethod("LinkedIn", "Max Petrusenko"),
+    ],
+  },
+  {
+    type: "linkedin_personal",
+    label: "LinkedIn Personal",
+    category: "social",
+    summary: "Native OAuth for member profile posting.",
     methods: [
       {
-        id: "linkedin_oauth",
-        label: "LinkedIn OAuth app",
+        id: "linkedin_personal_oauth",
+        label: "Connect with LinkedIn (Direct)",
         provider: "direct",
+        authType: "oauth",
         description:
-          "For member authorization and page/company publishing with LinkedIn app credentials.",
+          "Authorize through LinkedIn OAuth and store the member or page token for direct publishing.",
         recommendation:
           "Preferred path for direct posting tied to the connected member/page.",
-        fields: [
-          textField("displayName", "Connection name", "LinkedIn Personal"),
-          textField("handle", "Profile or page label", "Max Petrusenko"),
-          passwordField("clientId", "Client ID", "Paste LinkedIn client ID"),
-          passwordField(
-            "clientSecret",
-            "Client secret",
-            "Paste LinkedIn client secret"
-          ),
-          passwordField(
-            "refreshToken",
-            "Refresh token",
-            "Paste refresh token or long-lived access token"
-          ),
-          textField(
-            "providerAccountId",
-            "URN / account ID",
-            "Optional page or member URN"
-          ),
-          textareaField(
-            "customInstructions",
-            "Operator instructions",
-            "Scopes, page ownership notes, post format constraints"
-          ),
-        ],
+        fields: [],
         docs: [
           {
             label: "LinkedIn auth overview",
@@ -245,6 +254,33 @@ export const CONNECTION_PLATFORM_DEFINITIONS: ConnectionPlatformDefinition[] = [
           },
         ],
       },
+      relayMethod("LinkedIn Personal", "Max Petrusenko"),
+    ],
+  },
+  {
+    type: "linkedin_company",
+    label: "LinkedIn Company",
+    category: "social",
+    summary: "Native OAuth for company page posting.",
+    methods: [
+      {
+        id: "linkedin_company_oauth",
+        label: "Connect LinkedIn Company (Direct)",
+        provider: "direct",
+        authType: "oauth",
+        description:
+          "Authorize through LinkedIn OAuth for company/page publishing.",
+        recommendation:
+          "Use for direct company posting when Community Management API is approved.",
+        fields: [],
+        docs: [
+          {
+            label: "LinkedIn auth overview",
+            url: "https://learn.microsoft.com/en-us/linkedin/shared/authentication/authentication",
+          },
+        ],
+      },
+      relayMethod("LinkedIn Company", "Company Page"),
     ],
   },
   {
@@ -255,33 +291,14 @@ export const CONNECTION_PLATFORM_DEFINITIONS: ConnectionPlatformDefinition[] = [
     methods: [
       {
         id: "meta_oauth",
-        label: "Meta app + token flow",
+        label: "Connect with Meta (Direct)",
         provider: "direct",
+        authType: "oauth",
         description:
-          "Use a Meta app and account/page tokens for business or creator workflows.",
+          "Authorize through Meta OAuth for Instagram business or creator publishing.",
         recommendation:
           "Preferred when you want direct access instead of a relay provider.",
-        fields: [
-          textField("displayName", "Connection name", "Instagram Main"),
-          textField("handle", "Handle", "@max.petrusenko"),
-          passwordField("appId", "Meta app ID", "Paste app ID"),
-          passwordField("clientSecret", "Meta app secret", "Paste app secret"),
-          passwordField(
-            "accessToken",
-            "Access token",
-            "Paste page or business access token"
-          ),
-          textField(
-            "providerAccountId",
-            "Instagram business ID",
-            "Optional IG business account ID"
-          ),
-          textareaField(
-            "customInstructions",
-            "Operator instructions",
-            "Business account notes, media limits, manual review rules"
-          ),
-        ],
+        fields: [],
         docs: [],
       },
       {
@@ -312,30 +329,16 @@ export const CONNECTION_PLATFORM_DEFINITIONS: ConnectionPlatformDefinition[] = [
     methods: [
       {
         id: "facebook_meta",
-        label: "Meta page token",
+        label: "Connect with Meta (Direct)",
         provider: "direct",
+        authType: "oauth",
         description:
-          "Connect a Facebook page with Meta app credentials and page access tokens.",
+          "Authorize through Meta OAuth and store a token for direct page publishing.",
         recommendation: "Use for direct page publishing and page-bound automations.",
-        fields: [
-          textField("displayName", "Connection name", "Facebook Page"),
-          textField("handle", "Page label", "Max Petrusenko"),
-          passwordField("appId", "Meta app ID", "Paste app ID"),
-          passwordField("clientSecret", "Meta app secret", "Paste app secret"),
-          passwordField(
-            "accessToken",
-            "Page access token",
-            "Paste page access token"
-          ),
-          textField("providerAccountId", "Page ID", "Optional Facebook page ID"),
-          textareaField(
-            "customInstructions",
-            "Operator instructions",
-            "Page admin notes, posting restrictions, media caveats"
-          ),
-        ],
+        fields: [],
         docs: [],
       },
+      relayMethod("Facebook", "Max Petrusenko"),
     ],
   },
   {
@@ -346,32 +349,14 @@ export const CONNECTION_PLATFORM_DEFINITIONS: ConnectionPlatformDefinition[] = [
     methods: [
       {
         id: "tiktok_oauth",
-        label: "TikTok Content Posting API",
+        label: "Connect with TikTok (Direct)",
         provider: "direct",
+        authType: "oauth",
         description:
           "Supports direct post or draft upload flows with a TikTok developer app.",
         recommendation:
           "Use for first-party posting or draft export from your app.",
-        fields: [
-          textField("displayName", "Connection name", "TikTok Main"),
-          textField("handle", "Handle", "@max_petrusenko"),
-          passwordField("clientId", "Client key", "Paste TikTok client key"),
-          passwordField(
-            "clientSecret",
-            "Client secret",
-            "Paste TikTok client secret"
-          ),
-          passwordField(
-            "refreshToken",
-            "Refresh token",
-            "Paste TikTok refresh token"
-          ),
-          textareaField(
-            "customInstructions",
-            "Operator instructions",
-            "Choose direct post vs upload draft, privacy defaults, creator notes"
-          ),
-        ],
+        fields: [],
         docs: [
           {
             label: "TikTok Content Posting API",
@@ -379,6 +364,7 @@ export const CONNECTION_PLATFORM_DEFINITIONS: ConnectionPlatformDefinition[] = [
           },
         ],
       },
+      relayMethod("TikTok", "@max_petrusenko"),
     ],
   },
   {
@@ -389,33 +375,14 @@ export const CONNECTION_PLATFORM_DEFINITIONS: ConnectionPlatformDefinition[] = [
     methods: [
       {
         id: "youtube_oauth",
-        label: "YouTube OAuth app",
+        label: "Connect with Google (Direct)",
         provider: "direct",
+        authType: "oauth",
         description:
           "Use Google OAuth 2.0 for channel-level posting and management.",
         recommendation:
           "Use for direct channel actions. API keys alone are not enough for writes.",
-        fields: [
-          textField("displayName", "Connection name", "YouTube Channel"),
-          textField("handle", "Channel label", "@maxpetrusenko"),
-          passwordField("clientId", "Client ID", "Paste Google OAuth client ID"),
-          passwordField(
-            "clientSecret",
-            "Client secret",
-            "Paste Google OAuth client secret"
-          ),
-          passwordField(
-            "refreshToken",
-            "Refresh token",
-            "Paste YouTube refresh token"
-          ),
-          textField("providerAccountId", "Channel ID", "Optional channel ID"),
-          textareaField(
-            "customInstructions",
-            "Operator instructions",
-            "Shorts-only, title template, privacy defaults, upload rules"
-          ),
-        ],
+        fields: [],
         docs: [
           {
             label: "YouTube auth guide",
@@ -427,6 +394,7 @@ export const CONNECTION_PLATFORM_DEFINITIONS: ConnectionPlatformDefinition[] = [
           },
         ],
       },
+      relayMethod("YouTube", "@maxpetrusenko"),
     ],
   },
   {
@@ -437,24 +405,131 @@ export const CONNECTION_PLATFORM_DEFINITIONS: ConnectionPlatformDefinition[] = [
     methods: [
       {
         id: "pinterest_custom",
-        label: "Custom OAuth setup",
+        label: "Connect with Pinterest (Direct)",
         provider: "direct",
+        authType: "oauth",
         description: "Use your own Pinterest app and token flow.",
         recommendation: "Use when Pinterest is a direct integration requirement.",
-        fields: [
-          textField("displayName", "Connection name", "Pinterest Main"),
-          textField("handle", "Handle", "@m_petrusenko"),
-          passwordField("clientId", "Client ID", "Paste Pinterest client ID"),
-          passwordField("clientSecret", "Client secret", "Paste client secret"),
-          passwordField("refreshToken", "Refresh token", "Paste refresh token"),
-          textareaField(
-            "customInstructions",
-            "Operator instructions",
-            "Board routing, media rules, approval notes"
-          ),
-        ],
+        fields: [],
         docs: [],
       },
+      relayMethod("Pinterest", "@m_petrusenko"),
+    ],
+  },
+  {
+    type: "threads",
+    label: "Threads",
+    category: "social",
+    summary: "Threads OAuth or managed relay.",
+    methods: [
+      {
+        id: "threads_oauth",
+        label: "Connect with Threads (Direct)",
+        provider: "direct",
+        authType: "oauth",
+        description: "Authorize through Threads OAuth for direct publishing.",
+        recommendation: "Use for first-party Threads publishing.",
+        fields: [],
+        docs: [{ label: "Threads API", url: "https://developers.facebook.com/docs/threads" }],
+      },
+      relayMethod("Threads", "@maxpetrusenko"),
+    ],
+  },
+  {
+    type: "bluesky",
+    label: "Bluesky",
+    category: "social",
+    summary: "AT Protocol session using handle and app password.",
+    methods: [
+      {
+        id: "bluesky_session",
+        label: "Bluesky app password",
+        provider: "direct",
+        authType: "manual",
+        description: "Use a handle and Bluesky app password for direct AT Protocol publishing.",
+        recommendation: "Use for direct Bluesky posting without a developer app.",
+        fields: [
+          textField("displayName", "Connection name", "Bluesky Main"),
+          textField("handle", "Handle", "maxpetrusenko.bsky.social"),
+          passwordField("appPassword", "App password", "Paste Bluesky app password"),
+          textField("pdsUrl", "PDS URL", "https://bsky.social", "Optional. Leave default for Bluesky-hosted accounts."),
+        ],
+        docs: [{ label: "Bluesky app passwords", url: "https://bsky.app/settings/app-passwords" }],
+      },
+      relayMethod("Bluesky", "maxpetrusenko.bsky.social"),
+    ],
+  },
+  {
+    type: "google_business",
+    label: "Google Business",
+    category: "social",
+    summary: "Google OAuth for Business Profile locations.",
+    methods: [
+      {
+        id: "google_business_oauth",
+        label: "Connect with Google (Direct)",
+        provider: "direct",
+        authType: "oauth",
+        description: "Authorize through Google OAuth for Business Profile posting.",
+        recommendation: "Use for direct location updates.",
+        fields: [],
+        docs: [{ label: "Business Profile APIs", url: "https://developers.google.com/my-business" }],
+      },
+      relayMethod("Google Business", "Business location"),
+    ],
+  },
+  {
+    type: "mastodon",
+    label: "Mastodon",
+    category: "social",
+    summary: "Per-instance OAuth app registration.",
+    methods: [
+      {
+        id: "mastodon_instance",
+        label: "Mastodon instance token",
+        provider: "direct",
+        authType: "manual",
+        description: "Use per-instance OAuth credentials or an existing access token.",
+        recommendation: "Use once the target instance and app registration are known.",
+        fields: [
+          textField("displayName", "Connection name", "Mastodon Main"),
+          textField("handle", "Handle", "@max@mastodon.social"),
+          textField("instanceUrl", "Instance URL", "https://mastodon.social"),
+          passwordField("clientId", "Client ID", "Paste client ID"),
+          passwordField("clientSecret", "Client secret", "Paste client secret"),
+          passwordField("accessToken", "Access token", "Paste access token"),
+        ],
+        docs: [{ label: "Mastodon OAuth", url: "https://docs.joinmastodon.org/client/token/" }],
+      },
+      relayMethod("Mastodon", "@max@mastodon.social"),
+    ],
+  },
+  {
+    type: "instagram_personal",
+    label: "Instagram Personal",
+    category: "social",
+    summary: "Instagram direct OAuth for personal or creator workflows.",
+    methods: [
+      {
+        id: "instagram_personal_oauth",
+        label: "Connect with Instagram (Direct)",
+        provider: "direct",
+        authType: "oauth",
+        description: "Authorize through Instagram OAuth for the personal API path.",
+        recommendation: "Use when this account cannot use the Instagram Graph business path.",
+        fields: [],
+        docs: [{ label: "Instagram Platform", url: "https://developers.facebook.com/docs/instagram-platform" }],
+      },
+      relayMethod("Instagram Personal", "@max.petrusenko"),
+    ],
+  },
+  {
+    type: "whatsapp",
+    label: "WhatsApp",
+    category: "community",
+    summary: "WhatsApp Business messaging through Late proxy.",
+    methods: [
+      relayMethod("WhatsApp", "+1 555 0100"),
     ],
   },
   {

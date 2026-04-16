@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   CONNECTION_PLATFORM_DEFINITIONS,
   getConnectionPlatformDefinition,
+  type ConnectionMethod,
 } from "@/lib/connection-catalog";
 import { getPlatformMeta } from "@/lib/dashboard/platforms";
 import {
@@ -15,6 +16,7 @@ import {
   ConnectionsGrid,
   ConnectionsWorkspaceHeader,
   type ConnectionCardItem,
+  type ConnectionViewMode,
 } from "./connections-page-sections";
 import type {
   FormState,
@@ -49,6 +51,11 @@ export function ConnectionsPage({
     initialPlatformType ?? CONNECTION_PLATFORM_DEFINITIONS[0].type
   );
   const [selectedMethodId, setSelectedMethodId] = useState<string | null>(null);
+  const [requestedMethodMode, setRequestedMethodMode] = useState<
+    "native" | "proxy"
+  >("native");
+  const [selectedViewMode, setSelectedViewMode] =
+    useState<ConnectionViewMode>("native");
   const [selectedProfileId, setSelectedProfileId] = useState<string>("all");
   const [selectedPlatformFilter, setSelectedPlatformFilter] = useState<
     PlatformType | "all"
@@ -81,12 +88,31 @@ export function ConnectionsPage({
     getConnectionPlatformDefinition(selectedPlatformType) ??
     CONNECTION_PLATFORM_DEFINITIONS[0];
 
+  const availableMethodModes = getAvailableMethodModes(selectedDefinition.methods);
+  const selectedMethodMode = availableMethodModes.includes(requestedMethodMode)
+    ? requestedMethodMode
+    : availableMethodModes[0] ?? "native";
+  const methodsForMode = selectedDefinition.methods.filter(
+    (method) => getConnectionMethodMode(method) === selectedMethodMode
+  );
   const selectedMethod =
-    selectedDefinition.methods.find((item) => item.id === selectedMethodId) ??
+    methodsForMode.find((item) => item.id === selectedMethodId) ??
+    methodsForMode[0] ??
     selectedDefinition.methods[0];
 
   const filteredPlatforms = useMemo(() => {
     return localPlatforms.filter((platform) => {
+      const isProxyConnection =
+        platform.provider === "zernio" || platform.provider === "bird";
+
+      if (selectedViewMode === "native" && isProxyConnection) {
+        return false;
+      }
+
+      if (selectedViewMode === "proxy" && !isProxyConnection) {
+        return false;
+      }
+
       if (selectedStatus === "enabled" && !platform.enabled) {
         return false;
       }
@@ -106,7 +132,13 @@ export function ConnectionsPage({
       const stored = summarizeCredentialState(platform.config);
       return stored.profileId === selectedProfileId;
     });
-  }, [localPlatforms, selectedPlatformFilter, selectedProfileId, selectedStatus]);
+  }, [
+    localPlatforms,
+    selectedPlatformFilter,
+    selectedProfileId,
+    selectedStatus,
+    selectedViewMode,
+  ]);
 
   const totals = useMemo(() => {
     const connected = localPlatforms.length;
@@ -174,6 +206,7 @@ export function ConnectionsPage({
     if (platformType) {
       setSelectedPlatformType(platformType);
       setSelectedMethodId(null);
+      setRequestedMethodMode(selectedViewMode);
     }
     setError(null);
   }
@@ -193,6 +226,7 @@ export function ConnectionsPage({
   function resetFormForPlatform(platformType: PlatformType) {
     setSelectedPlatformType(platformType);
     setSelectedMethodId(null);
+    setRequestedMethodMode("native");
     setFormState({
       useInstalledBirdSession: true,
       threadLongPosts: true,
@@ -201,6 +235,18 @@ export function ConnectionsPage({
   }
 
   async function handleCreateConnection() {
+    if (selectedMethod.authType === "oauth") {
+      const params = new URLSearchParams({
+        methodId: selectedMethod.id,
+        next: "/dashboard/platforms",
+      });
+      if (selectedProfileId !== "all") {
+        params.set("profileId", selectedProfileId);
+      }
+      window.location.href = `/api/auth/${selectedDefinition.type.replace(/_/g, "-")}?${params.toString()}`;
+      return;
+    }
+
     const credentials: Record<string, string | boolean> = {};
 
     for (const field of selectedMethod.fields) {
@@ -346,10 +392,15 @@ export function ConnectionsPage({
           selectedProfileId={selectedProfileId}
           selectedPlatformType={selectedPlatformFilter}
           selectedStatus={selectedStatus}
+          selectedViewMode={selectedViewMode}
           profiles={profiles}
           onProfileChange={setSelectedProfileId}
           onPlatformChange={setSelectedPlatformFilter}
           onStatusChange={setSelectedStatus}
+          onViewModeChange={(mode) => {
+            setSelectedViewMode(mode);
+            setRequestedMethodMode(mode);
+          }}
           onCreateConnection={() =>
             openDrawer(
               selectedPlatformFilter === "all" ? undefined : selectedPlatformFilter
@@ -383,6 +434,12 @@ export function ConnectionsPage({
         onProfileChange={setSelectedProfileId}
         onPlatformChange={resetFormForPlatform}
         onMethodChange={setSelectedMethodId}
+        selectedMethodMode={selectedMethodMode}
+        availableMethodModes={availableMethodModes}
+        onMethodModeChange={(mode) => {
+          setRequestedMethodMode(mode);
+          setSelectedMethodId(null);
+        }}
         onFieldChange={updateField}
         onSubmit={handleCreateConnection}
       />
@@ -401,19 +458,42 @@ function formatProviderLabel(provider: PlatformRow["provider"]) {
   return {
     direct: "Direct",
     bird: "Bird",
-    zernio: "Relay",
+    zernio: "Late",
   }[provider];
+}
+
+function getConnectionMethodMode(method: ConnectionMethod) {
+  return method.provider === "direct" ? "native" : "proxy";
+}
+
+function getAvailableMethodModes(methods: ConnectionMethod[]) {
+  const modes: Array<"native" | "proxy"> = [];
+  if (methods.some((method) => getConnectionMethodMode(method) === "native")) {
+    modes.push("native");
+  }
+  if (methods.some((method) => getConnectionMethodMode(method) === "proxy")) {
+    modes.push("proxy");
+  }
+  return modes;
 }
 
 function getManageLabel(platformType: PlatformType) {
   return {
+    bluesky: "Manage Account",
     facebook: "Manage Pages",
+    google_business: "Manage Locations",
     instagram: "Manage Account",
+    instagram_personal: "Manage Account",
     linkedin: "Manage Account",
+    linkedin_personal: "Manage Account",
+    linkedin_company: "Manage Page",
+    mastodon: "Manage Instance",
     pinterest: "Manage Boards",
     reddit: "Manage Subreddit",
+    threads: "Manage Account",
     tiktok: "Manage Account",
     twitter: "Manage Account",
+    whatsapp: "Manage Channel",
     youtube: "Manage Channel",
   }[platformType];
 }

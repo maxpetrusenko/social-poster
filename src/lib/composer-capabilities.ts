@@ -44,10 +44,46 @@ export const COMPOSER_PLATFORM_META: Record<PlatformType, ComposerPlatformMeta> 
     mediaTypes: ["image", "video"],
     hashtagLimit: 30,
   },
+  instagram_personal: {
+    label: "Instagram Personal",
+    icon: "IP",
+    accent: "#c13584",
+    charLimit: 2200,
+    formats: [
+      { id: "post", label: "Post", mediaRequired: true },
+      { id: "story", label: "Story", mediaRequired: true },
+      { id: "reel", label: "Reel", mediaRequired: true, videoOnly: true },
+      { id: "carousel", label: "Carousel", mediaRequired: true, multiMedia: true },
+    ],
+    mediaTypes: ["image", "video"],
+    hashtagLimit: 30,
+  },
   linkedin: {
     label: "LinkedIn",
     icon: "Li",
     accent: "#0a66c2",
+    charLimit: 3000,
+    formats: [
+      { id: "post", label: "Post" },
+      { id: "article", label: "Article" },
+    ],
+    mediaTypes: ["image", "video", "document"],
+  },
+  linkedin_personal: {
+    label: "LinkedIn Personal",
+    icon: "Li",
+    accent: "#0a66c2",
+    charLimit: 3000,
+    formats: [
+      { id: "post", label: "Post" },
+      { id: "article", label: "Article" },
+    ],
+    mediaTypes: ["image", "video", "document"],
+  },
+  linkedin_company: {
+    label: "LinkedIn Company",
+    icon: "Li",
+    accent: "#004182",
     charLimit: 3000,
     formats: [
       { id: "post", label: "Post" },
@@ -112,6 +148,59 @@ export const COMPOSER_PLATFORM_META: Record<PlatformType, ComposerPlatformMeta> 
       { id: "video", label: "Video", mediaRequired: true, videoOnly: true },
     ],
     mediaTypes: ["image", "video"],
+  },
+  threads: {
+    label: "Threads",
+    icon: "Th",
+    accent: "#111111",
+    charLimit: 500,
+    formats: [
+      { id: "post", label: "Post" },
+      { id: "carousel", label: "Carousel", mediaRequired: true, multiMedia: true },
+    ],
+    mediaTypes: ["image", "video"],
+  },
+  bluesky: {
+    label: "Bluesky",
+    icon: "BS",
+    accent: "#1185fe",
+    charLimit: 300,
+    formats: [{ id: "post", label: "Post" }],
+    mediaTypes: ["image", "video"],
+  },
+  google_business: {
+    label: "Google Business",
+    icon: "GB",
+    accent: "#0f9d58",
+    charLimit: 1500,
+    formats: [
+      { id: "update", label: "Update" },
+      { id: "offer", label: "Offer" },
+      { id: "event", label: "Event" },
+    ],
+    mediaTypes: ["image"],
+  },
+  mastodon: {
+    label: "Mastodon",
+    icon: "Ma",
+    accent: "#6364ff",
+    charLimit: 500,
+    formats: [
+      { id: "status", label: "Status" },
+      { id: "poll", label: "Poll" },
+    ],
+    mediaTypes: ["image", "video", "gif"],
+  },
+  whatsapp: {
+    label: "WhatsApp",
+    icon: "WA",
+    accent: "#25d366",
+    charLimit: 4096,
+    formats: [
+      { id: "message", label: "Message" },
+      { id: "media", label: "Media", mediaRequired: true },
+    ],
+    mediaTypes: ["image", "video", "document"],
   },
 };
 

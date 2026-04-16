@@ -6,6 +6,10 @@ import {
 } from "@/lib/platform-capabilities";
 import { publishToBird } from "./bird-publisher";
 import { publishToLate, type PublishResult } from "./publisher";
+import {
+  publishViaNativeProvider,
+  shouldPublishViaNativeProvider,
+} from "@/lib/providers/native-publisher";
 
 type PlatformRow = typeof platforms.$inferSelect;
 
@@ -54,7 +58,7 @@ function createValidationFailure(
 ): PublishResult {
   return {
     platform: target.platform.type,
-    provider: target.platform.provider === "bird" ? "bird" : "late",
+    provider: getPublishProviderLabel(target.platform),
     accountId: target.platform.accountId,
     success: false,
     classification: "validation_error",
@@ -65,7 +69,7 @@ function createValidationFailure(
 function createDisabledSkip(target: PublishPlatformInput): PublishResult {
   return {
     platform: target.platform.type,
-    provider: target.platform.provider === "bird" ? "bird" : "late",
+    provider: getPublishProviderLabel(target.platform),
     accountId: target.platform.accountId,
     success: false,
     classification: "disabled",
@@ -96,7 +100,9 @@ export async function publishPlatformTargets(
       continue;
     }
 
-    const outcome = shouldPublishViaBird(target.platform)
+    const outcome = shouldPublishViaNativeProvider(target.platform)
+      ? await publishViaNativeProvider(target)
+      : shouldPublishViaBird(target.platform)
       ? await publishToBird({
           platform: target.platform,
           content: target.content,
@@ -133,4 +139,9 @@ export async function publishPlatformTargets(
         classification: outcome.classification,
       })),
   };
+}
+
+function getPublishProviderLabel(platform: Pick<PlatformRow, "provider" | "type">) {
+  if (shouldPublishViaNativeProvider(platform)) return "direct";
+  return shouldPublishViaBird(platform) ? "bird" : "late";
 }

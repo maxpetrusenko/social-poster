@@ -1,12 +1,20 @@
 export const PLATFORM_TYPES = [
   "twitter",
   "linkedin",
+  "linkedin_personal",
+  "linkedin_company",
   "instagram",
   "tiktok",
   "facebook",
   "reddit",
   "pinterest",
   "youtube",
+  "threads",
+  "bluesky",
+  "google_business",
+  "mastodon",
+  "instagram_personal",
+  "whatsapp",
 ] as const;
 
 export type PlatformType = (typeof PLATFORM_TYPES)[number];
@@ -14,12 +22,20 @@ export type PlatformType = (typeof PLATFORM_TYPES)[number];
 export const PLATFORM_OPTIONS: Array<{ value: PlatformType; label: string }> = [
   { value: "twitter", label: "Twitter / X" },
   { value: "linkedin", label: "LinkedIn" },
+  { value: "linkedin_personal", label: "LinkedIn Personal" },
+  { value: "linkedin_company", label: "LinkedIn Company" },
   { value: "instagram", label: "Instagram" },
   { value: "tiktok", label: "TikTok" },
   { value: "facebook", label: "Facebook" },
   { value: "reddit", label: "Reddit" },
   { value: "pinterest", label: "Pinterest" },
   { value: "youtube", label: "YouTube" },
+  { value: "threads", label: "Threads" },
+  { value: "bluesky", label: "Bluesky" },
+  { value: "google_business", label: "Google Business Profile" },
+  { value: "mastodon", label: "Mastodon" },
+  { value: "instagram_personal", label: "Instagram Personal" },
+  { value: "whatsapp", label: "WhatsApp" },
 ];
 
 type PlatformConfig = Record<string, unknown> | null | undefined;

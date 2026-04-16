@@ -17,6 +17,8 @@ export function ConnectionsDrawer({
   selectedPlatformType,
   selectedDefinition,
   selectedMethod,
+  selectedMethodMode,
+  availableMethodModes,
   formState,
   error,
   isSaving,
@@ -24,6 +26,7 @@ export function ConnectionsDrawer({
   onProfileChange,
   onPlatformChange,
   onMethodChange,
+  onMethodModeChange,
   onFieldChange,
   onSubmit,
 }: {
@@ -33,6 +36,8 @@ export function ConnectionsDrawer({
   selectedPlatformType: ConnectionPlatformDefinition["type"];
   selectedDefinition: ConnectionPlatformDefinition;
   selectedMethod: ConnectionMethod;
+  selectedMethodMode: "native" | "proxy";
+  availableMethodModes: Array<"native" | "proxy">;
   formState: FormState;
   error: string | null;
   isSaving: boolean;
@@ -40,6 +45,7 @@ export function ConnectionsDrawer({
   onProfileChange: (value: string) => void;
   onPlatformChange: (value: ConnectionPlatformDefinition["type"]) => void;
   onMethodChange: (value: string) => void;
+  onMethodModeChange: (value: "native" | "proxy") => void;
   onFieldChange: (key: string, value: string | boolean) => void;
   onSubmit: () => void;
 }) {
@@ -141,8 +147,36 @@ export function ConnectionsDrawer({
               {selectedDefinition.summary}
             </p>
 
+            <div className="mt-4 grid grid-cols-2 rounded-[14px] border border-[rgba(33,25,19,0.08)] bg-[#f7f1e5] p-1">
+              {(["native", "proxy"] as const).map((mode) => {
+                const enabled = availableMethodModes.includes(mode);
+                const active = selectedMethodMode === mode;
+                return (
+                  <button
+                    key={mode}
+                    type="button"
+                    disabled={!enabled}
+                    onClick={() => onMethodModeChange(mode)}
+                    className={`rounded-[11px] px-3 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-45 ${
+                      active
+                        ? "bg-white text-[#211913] shadow-[0_3px_12px_rgba(33,25,19,0.08)]"
+                        : "text-[#746253]"
+                    }`}
+                  >
+                    {mode === "native" ? "Native" : "Proxy"}
+                  </button>
+                );
+              })}
+            </div>
+
             <div className="mt-4 space-y-2">
-              {selectedDefinition.methods.map((method) => {
+              {selectedDefinition.methods
+                .filter((method) =>
+                  selectedMethodMode === "native"
+                    ? method.provider === "direct"
+                    : method.provider !== "direct"
+                )
+                .map((method) => {
                 const active = method.id === selectedMethod.id;
                 return (
                   <button
@@ -207,14 +241,21 @@ export function ConnectionsDrawer({
             </div>
 
             <div className="mt-4 space-y-4">
-              {selectedMethod.fields.map((field) => (
-                <ConnectionFieldInput
-                  key={field.id}
-                  field={field}
-                  value={formState[field.id]}
-                  onChange={(value) => onFieldChange(field.id, value)}
-                />
-              ))}
+              {selectedMethod.authType === "oauth" ? (
+                <div className="rounded-[14px] border border-[rgba(33,25,19,0.08)] bg-[#fcfbf8] px-3 py-3 text-sm leading-6 text-[#4d3f34]">
+                  OAuth opens the provider sign-in flow and stores the returned
+                  token on callback.
+                </div>
+              ) : (
+                selectedMethod.fields.map((field) => (
+                  <ConnectionFieldInput
+                    key={field.id}
+                    field={field}
+                    value={formState[field.id]}
+                    onChange={(value) => onFieldChange(field.id, value)}
+                  />
+                ))
+              )}
             </div>
 
             <div className="mt-4 rounded-[14px] border border-amber-200 bg-amber-50 px-3 py-3 text-sm leading-6 text-amber-800">
@@ -235,7 +276,11 @@ export function ConnectionsDrawer({
                 disabled={isSaving}
                 className="inline-flex flex-1 items-center justify-center gap-2 rounded-[14px] bg-[#121d2e] px-4 py-3 text-sm font-semibold text-white disabled:opacity-60"
               >
-                {isSaving ? "Connecting..." : "Create connection"}
+                {isSaving
+                  ? "Connecting..."
+                  : selectedMethod.authType === "oauth"
+                    ? "Continue with OAuth"
+                    : "Create connection"}
               </button>
               <button
                 type="button"
