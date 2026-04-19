@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Platform Depth Restructure - Visual Plan</title>
+    <style>
+      :root {
+        --bg: #071018;
+        --panel: rgba(10, 17, 28, 0.84);
+        --panel-2: rgba(14, 25, 40, 0.92);
+        --line: rgba(133, 214, 255, 0.16);
+        --text: #edf7ff;
+        --muted: #89a2ba;
+        --cyan: #67ddff;
+        --lime: #d7ff74;
+        --gold: #ffcc7a;
+        --rose: #ff9a8b;
+        --purple: #c4a0ff;
+        --shadow: 0 28px 80px rgba(0, 0, 0, 0.34);
+      }
+      * { box-sizing: border-box; margin: 0; }
+      body {
+        font-family: "Space Grotesk", "Inter", "Avenir Next", system-ui, sans-serif;
+        color: var(--text);
+        background:
+          radial-gradient(circle at top left, rgba(103, 221, 255, 0.14), transparent 22%),
+          radial-gradient(circle at bottom right, rgba(215, 255, 116, 0.1), transparent 20%),
+          linear-gradient(180deg, #030813 0%, #071018 45%, #091423 100%);
+        min-height: 100vh;
+      }
+      .wrap { width: min(1600px, calc(100vw - 32px)); margin: 0 auto; padding: 22px 0 56px; }
+      .hero, .panel, .card { border: 1px solid var(--line); background: linear-gradient(180deg, var(--panel), var(--panel-2)); box-shadow: var(--shadow); }
+      .hero { border-radius: 28px; padding: 28px 32px; margin-bottom: 18px; }
+      .eyebrow { color: var(--cyan); font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase; }
+      h1 { margin: 10px 0 0; font-size: clamp(28px, 4vw, 48px); line-height: 1.0; }
+      h2 { font-size: 22px; margin: 0 0 12px; }
+      h3 { font-size: 16px; color: var(--cyan); margin: 0 0 8px; }
+      .sub { margin: 12px 0 0; max-width: 1100px; color: var(--muted); line-height: 1.7; font-size: 14px; }
+      .tabbar { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 18px; }
+      .tab {
+        border: 1px solid var(--line); border-radius: 999px; padding: 9px 16px;
+        font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
+        background: rgba(255,255,255,0.03); color: var(--muted); cursor: pointer;
+        transition: all 0.2s;
+      }
+      .tab:hover { border-color: var(--cyan); color: var(--text); }
+      .tab.active { background: rgba(103,221,255,0.12); border-color: var(--cyan); color: var(--cyan); font-weight: 600; }
+      .tab-content { display: none; }
+      .tab-content.active { display: block; }
+      .panel { border-radius: 20px; padding: 24px; margin-top: 14px; }
+      .card { border-radius: 16px; padding: 18px; margin-bottom: 12px; }
+      .grid { display: grid; gap: 14px; }
+      .grid-2 { grid-template-columns: 1fr 1fr; }
+      .grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+      .grid-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+      @media (max-width: 900px) { .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; } }
+      .badge { display: inline-block; padding: 3px 8px; border-radius: 6px; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
+      .badge-cyan { background: rgba(103,221,255,0.15); color: var(--cyan); }
+      .badge-lime { background: rgba(215,255,116,0.15); color: var(--lime); }
+      .badge-gold { background: rgba(255,204,122,0.15); color: var(--gold); }
+      .badge-rose { background: rgba(255,154,139,0.15); color: var(--rose); }
+      .badge-purple { background: rgba(196,160,255,0.15); color: var(--purple); }
+      .badge-muted { background: rgba(137,162,186,0.1); color: var(--muted); }
+      pre { background: rgba(0,0,0,0.4); border: 1px solid var(--line); border-radius: 12px; padding: 16px; overflow-x: auto; font-size: 12px; line-height: 1.5; color: var(--muted); }
+      code { font-family: "JetBrains Mono", "Fira Code", monospace; }
+      table { width: 100%; border-collapse: collapse; font-size: 13px; }
+      th { text-align: left; color: var(--cyan); font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+      td { padding: 8px 10px; border-bottom: 1px solid rgba(133,214,255,0.06); color: var(--muted); }
+      td:first-child { color: var(--text); font-weight: 500; }
+      .mockup { border: 1px solid var(--line); border-radius: 14px; background: rgba(0,0,0,0.3); padding: 0; overflow: hidden; }
+      .mockup-header { background: rgba(103,221,255,0.06); padding: 10px 16px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 8px; }
+      .mockup-dot { width: 10px; height: 10px; border-radius: 50%; }
+      .mockup-body { padding: 16px; font-size: 13px; line-height: 1.6; }
+      .flow-box { display: inline-block; border: 1px solid var(--line); border-radius: 10px; padding: 8px 14px; margin: 4px; font-size: 12px; background: rgba(103,221,255,0.05); }
+      .flow-arrow { display: inline-block; color: var(--cyan); margin: 4px 6px; font-size: 16px; }
+      .capability-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 6px; margin-top: 8px; }
+      .cap-chip { text-align: center; padding: 6px 4px; border-radius: 8px; font-size: 10px; font-weight: 600; text-transform: uppercase; }
+      .cap-yes { background: rgba(215,255,116,0.12); color: var(--lime); }
+      .cap-no { background: rgba(255,154,139,0.08); color: rgba(255,154,139,0.4); }
+      .cap-partial { background: rgba(255,204,122,0.1); color: var(--gold); }
+      .tree { font-family: "JetBrains Mono", monospace; font-size: 12px; line-height: 1.7; color: var(--muted); }
+      .tree .dir { color: var(--cyan); font-weight: 600; }
+      .tree .file { color: var(--text); }
+      .tree .new { color: var(--lime); }
+      .tree .existing { color: var(--muted); }
+      .phase-tag { display: inline-block; padding: 4px 10px; border-radius: 8px; font-size: 11px; font-weight: 700; margin-right: 8px; }
+      .phase-1 { background: rgba(103,221,255,0.15); color: var(--cyan); }
+      .phase-2 { background: rgba(215,255,116,0.15); color: var(--lime); }
+      .phase-3 { background: rgba(255,204,122,0.15); color: var(--gold); }
+      .phase-4 { background: rgba(196,160,255,0.15); color: var(--purple); }
+      .phase-5 { background: rgba(255,154,139,0.15); color: var(--rose); }
+      .info-icon { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; border: 1px solid var(--cyan); color: var(--cyan); font-size: 11px; font-weight: 700; cursor: help; margin-left: 6px; }
+      .tooltip-preview { background: rgba(103,221,255,0.08); border: 1px solid rgba(103,221,255,0.2); border-radius: 10px; padding: 12px; margin-top: 8px; font-size: 12px; }
+      .agent-chat { max-width: 500px; }
+      .agent-msg { padding: 10px 14px; border-radius: 12px; margin-bottom: 8px; font-size: 13px; line-height: 1.5; }
+      .agent-msg.user { background: rgba(103,221,255,0.1); border: 1px solid rgba(103,221,255,0.2); margin-left: 40px; }
+      .agent-msg.agent { background: rgba(215,255,116,0.06); border: 1px solid rgba(215,255,116,0.15); margin-right: 40px; }
+      .agent-msg .role { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 4px; }
+      .agent-msg.user .role { color: var(--cyan); }
+      .agent-msg.agent .role { color: var(--lime); }
+      .tool-call { background: rgba(0,0,0,0.3); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; margin: 6px 0; font-family: monospace; font-size: 11px; color: var(--gold); }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+
+      <!-- HERO -->
+      <div class="hero">
+        <p class="eyebrow">Social Poster Restructure</p>
+        <h1>Platform Depth + Agent Harness</h1>
+        <p class="sub">From flat post-only providers to deep per-platform modules with analytics, DMs, comments, engagement, and webhooks. AI agent controls everything via tools.</p>
+        <div class="tabbar">
+          <div class="tab active" onclick="showTab('ui')">Connection UI</div>
+          <div class="tab" onclick="showTab('agent')">Agent UI</div>
+          <div class="tab" onclick="showTab('hierarchy')">Folder Hierarchy</div>
+          <div class="tab" onclick="showTab('flows')">Platform Flows</div>
+          <div class="tab" onclick="showTab('phases')">Phase Plan</div>
+          <div class="tab" onclick="showTab('capabilities')">Capability Matrix</div>
+        </div>
+      </div>
+
+      <!-- TAB: CONNECTION UI -->
+      <div id="tab-ui" class="tab-content active">
+        <div class="panel">
+          <h2>Connection Drawer - Before vs After</h2>
+          <p class="sub" style="margin-bottom:18px">Right-side panel gets info tooltips, capability badges, and per-platform flow explanations</p>
+
+          <div class="grid grid-2">
+            <!-- BEFORE -->
+            <div class="card">
+              <h3>Before (Current)</h3>
+              <div class="mockup">
+                <div class="mockup-header">
+                  <div class="mockup-dot" style="background:var(--rose)"></div>
+                  <div class="mockup-dot" style="background:var(--gold)"></div>
+                  <div class="mockup-dot" style="background:var(--lime)"></div>
+                  <span style="color:var(--muted);font-size:12px;margin-left:8px">Connection Drawer (470px)</span>
+                </div>
+                <div class="mockup-body">
+                  <div style="border-bottom:1px solid var(--line);padding-bottom:10px;margin-bottom:10px">
+                    <span style="color:var(--muted);font-size:11px;text-transform:uppercase">Profile</span><br>
+                    <span style="color:var(--text)">[ Select a profile v ]</span>
+                  </div>
+                  <div style="border-bottom:1px solid var(--line);padding-bottom:10px;margin-bottom:10px">
+                    <span style="color:var(--muted);font-size:11px;text-transform:uppercase">Platform</span><br>
+                    <div style="padding:8px;border:1px solid var(--line);border-radius:8px;margin:4px 0">
+                      <span style="color:var(--text)">Twitter/X</span><br>
+                      <span style="color:var(--muted);font-size:11px">Post to Twitter using OAuth or API keys</span>
+                    </div>
+                  </div>
+                  <div>
+                    <span style="color:var(--muted);font-size:11px;text-transform:uppercase">Method</span><br>
+                    <div style="padding:8px;border:1px solid var(--cyan);border-radius:8px;margin:4px 0;background:rgba(103,221,255,0.05)">
+                      <span style="color:var(--text)">X OAuth 2.0</span><br>
+                      <span style="color:var(--muted);font-size:11px">Connect via OAuth. Requires developer app.</span>
+                    </div>
+                    <div style="padding:8px;border:1px solid var(--line);border-radius:8px;margin:4px 0">
+                      <span style="color:var(--text)">X API Keys</span><br>
+                      <span style="color:var(--muted);font-size:11px">Manual API key entry</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <p style="color:var(--rose);font-size:12px;margin-top:8px">No info about what each method enables. No capability visibility.</p>
+            </div>
+
+            <!-- AFTER -->
+            <div class="card">
+              <h3>After (Enhanced)</h3>
+              <div class="mockup">
+                <div class="mockup-header">
+                  <div class="mockup-dot" style="background:var(--rose)"></div>
+                  <div class="mockup-dot" style="background:var(--gold)"></div>
+                  <div class="mockup-dot" style="background:var(--lime)"></div>
+                  <span style="color:var(--muted);font-size:12px;margin-left:8px">Connection Drawer (470px)</span>
+                </div>
+                <div class="mockup-body">
+                  <div style="border-bottom:1px solid var(--line);padding-bottom:10px;margin-bottom:10px">
+                    <span style="color:var(--muted);font-size:11px;text-transform:uppercase">Profile</span><br>
+                    <span style="color:var(--text)">[ Select a profile v ]</span>
+                  </div>
+                  <div style="border-bottom:1px solid var(--line);padding-bottom:10px;margin-bottom:10px">
+                    <span style="color:var(--muted);font-size:11px;text-transform:uppercase">Platform</span><br>
+                    <div style="padding:10px;border:1px solid var(--cyan);border-radius:10px;margin:4px 0;background:rgba(103,221,255,0.04)">
+                      <div style="display:flex;align-items:center;justify-content:space-between">
+                        <span style="color:var(--text);font-weight:600">Twitter/X</span>
+                      </div>
+                      <div class="capability-grid" style="margin-top:6px">
+                        <div class="cap-chip cap-yes">Posting</div>
+                        <div class="cap-chip cap-yes">Analytics</div>
+                        <div class="cap-chip cap-yes">DMs</div>
+                        <div class="cap-chip cap-yes">Comments</div>
+                        <div class="cap-chip cap-yes">Engage</div>
+                        <div class="cap-chip cap-partial">Webhooks</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <span style="color:var(--muted);font-size:11px;text-transform:uppercase">Method</span><br>
+                    <div style="padding:10px;border:1px solid var(--cyan);border-radius:10px;margin:4px 0;background:rgba(103,221,255,0.06)">
+                      <div style="display:flex;align-items:center">
+                        <span style="color:var(--text);font-weight:500">X OAuth 2.0</span>
+                        <span class="info-icon" title="Info">i</span>
+                        <span class="badge badge-lime" style="margin-left:auto">Recommended</span>
+                      </div>
+                      <span style="color:var(--muted);font-size:11px">Full access: posting, analytics, DMs</span>
+                      <div class="tooltip-preview">
+                        <div style="color:var(--cyan);font-size:11px;font-weight:600;margin-bottom:4px">HOW IT WORKS</div>
+                        <div style="color:var(--muted);font-size:11px">
+                          1. Create app at developer.x.com<br>
+                          2. Enable OAuth 2.0 with PKCE<br>
+                          3. Add callback URL<br>
+                          4. Enter Client ID here<br>
+                          <span style="color:var(--gold);font-size:10px">Requires: Basic tier ($100/mo) for DMs + analytics</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div style="padding:10px;border:1px solid var(--line);border-radius:10px;margin:4px 0">
+                      <div style="display:flex;align-items:center">
+                        <span style="color:var(--text);font-weight:500">Browser Session</span>
+                        <span class="info-icon">i</span>
+                      </div>
+                      <span style="color:var(--muted);font-size:11px">Cookie-based. Full posting, no analytics API.</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <p style="color:var(--lime);font-size:12px;margin-top:8px">Capabilities visible. (i) explains each method. Tooltip shows setup steps.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- INFO TOOLTIP DETAIL -->
+        <div class="panel" style="margin-top:14px">
+          <h2>Info Tooltip Patterns</h2>
+          <p class="sub" style="margin-bottom:14px">Each connection method gets an (i) icon. Clicking it shows a popover with setup instructions, requirements, and what capabilities it unlocks.</p>
+          <div class="grid grid-3">
+            <div class="card">
+              <h3>X OAuth 2.0 <span class="info-icon">i</span></h3>
+              <div class="tooltip-preview">
+                <strong style="color:var(--text);font-size:12px">Setup Steps:</strong><br>
+                <span style="font-size:11px;color:var(--muted)">
+                  1. Go to developer.x.com<br>
+                  2. Create project + app<br>
+                  3. Enable "OAuth 2.0" under User Authentication<br>
+                  4. Set type: "Web App"<br>
+                  5. Add callback URL<br>
+                  6. Copy Client ID
+                </span><br><br>
+                <strong style="color:var(--text);font-size:12px">Unlocks:</strong><br>
+                <span class="badge badge-lime" style="margin:2px">Posting</span>
+                <span class="badge badge-lime" style="margin:2px">Analytics</span>
+                <span class="badge badge-lime" style="margin:2px">DMs</span>
+                <span class="badge badge-lime" style="margin:2px">Replies</span><br><br>
+                <span style="font-size:10px;color:var(--gold)">API Tier: Basic ($100/mo) or higher</span>
+              </div>
+            </div>
+            <div class="card">
+              <h3>LinkedIn OAuth <span class="info-icon">i</span></h3>
+              <div class="tooltip-preview">
+                <strong style="color:var(--text);font-size:12px">Setup Steps:</strong><br>
+                <span style="font-size:11px;color:var(--muted)">
+                  1. Go to linkedin.com/developers<br>
+                  2. Create app under your company page<br>
+                  3. Request "Community Management" product<br>
+                  4. Add OAuth 2.0 redirect URL<br>
+                  5. Copy Client ID + Secret
+                </span><br><br>
+                <strong style="color:var(--text);font-size:12px">Unlocks:</strong><br>
+                <span class="badge badge-lime" style="margin:2px">Posting</span>
+                <span class="badge badge-lime" style="margin:2px">Analytics</span>
+                <span class="badge badge-lime" style="margin:2px">Comments</span>
+                <span class="badge badge-muted" style="margin:2px">No DMs</span><br><br>
+                <span style="font-size:10px;color:var(--gold)">Note: Company page requires admin access</span>
+              </div>
+            </div>
+            <div class="card">
+              <h3>Instagram via FB <span class="info-icon">i</span></h3>
+              <div class="tooltip-preview">
+                <strong style="color:var(--text);font-size:12px">Setup Steps:</strong><br>
+                <span style="font-size:11px;color:var(--muted)">
+                  1. Create Meta App at developers.facebook.com<br>
+                  2. Add Instagram Graph API product<br>
+                  3. IG must be Business account (not Creator)<br>
+                  4. IG must link to a Facebook Page<br>
+                  5. Complete App Review for production
+                </span><br><br>
+                <strong style="color:var(--text);font-size:12px">Unlocks:</strong><br>
+                <span class="badge badge-lime" style="margin:2px">Posting</span>
+                <span class="badge badge-lime" style="margin:2px">Analytics</span>
+                <span class="badge badge-lime" style="margin:2px">Comments</span>
+                <span class="badge badge-lime" style="margin:2px">DMs</span><br><br>
+                <span style="font-size:10px;color:var(--gold)">Limit: 100 posts/day, tokens expire in 60 days</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: AGENT UI -->
+      <div id="tab-agent" class="tab-content">
+        <div class="panel">
+          <h2>Agent Interface - Visual Design</h2>
+          <p class="sub" style="margin-bottom:18px">The social agent lives in the dashboard as a chat panel. It can call tools to post, analyze, read DMs, reply to comments across all connected platforms.</p>
+
+          <div class="grid grid-2">
+            <!-- Agent Chat Mockup -->
+            <div class="card">
+              <h3>Agent Chat Panel</h3>
+              <div class="mockup">
+                <div class="mockup-header">
+                  <div class="mockup-dot" style="background:var(--lime)"></div>
+                  <span style="color:var(--lime);font-size:12px;font-weight:600;margin-left:8px">Social Agent</span>
+                  <span style="color:var(--muted);font-size:11px;margin-left:auto">3 platforms connected</span>
+                </div>
+                <div class="mockup-body agent-chat">
+                  <div class="agent-msg user">
+                    <div class="role">You</div>
+                    Post my latest blog to Twitter and LinkedIn. The URL is https://myblog.com/new-post
+                  </div>
+                  <div class="agent-msg agent">
+                    <div class="role">Agent</div>
+                    I'll create posts for both platforms. Let me draft them:
+                    <div class="tool-call">
+                      tool: post-tool<br>
+                      platforms: ["x", "linkedin"]<br>
+                      content: "Just published: ..."<br>
+                      linkUrl: "https://myblog.com/new-post"
+                    </div>
+                  </div>
+                  <div class="agent-msg agent">
+                    <div class="role">Agent</div>
+                    Posted successfully:<br>
+                    <span style="color:var(--cyan)">X:</span> twitter.com/you/status/123...<br>
+                    <span style="color:var(--cyan)">LinkedIn:</span> linkedin.com/posts/123...
+                  </div>
+                  <div class="agent-msg user">
+                    <div class="role">You</div>
+                    How did my tweets perform this week?
+                  </div>
+                  <div class="agent-msg agent">
+                    <div class="role">Agent</div>
+                    <div class="tool-call">
+                      tool: analytics-tool<br>
+                      platform: "x"<br>
+                      dateRange: "last_7_days"
+                    </div>
+                    This week's X performance:<br>
+                    <span style="color:var(--lime)">12 tweets</span> | <span style="color:var(--cyan)">45.2K impressions</span> | <span style="color:var(--gold)">892 engagements</span><br>
+                    Top tweet: "AI tools..." (8.2K impressions, 4.1% engagement rate)
+                  </div>
+                  <div class="agent-msg user">
+                    <div class="role">You</div>
+                    Reply to the top comments on that tweet
+                  </div>
+                  <div class="agent-msg agent">
+                    <div class="role">Agent</div>
+                    <div class="tool-call">
+                      tool: comments-tool<br>
+                      platform: "x"<br>
+                      postId: "tweet_123"<br>
+                      action: "list_replies"
+                    </div>
+                    Found 23 replies. Top 3 by engagement:<br>
+                    1. @user1: "This is great!" (42 likes)<br>
+                    2. @user2: "Can you share more?" (28 likes)<br>
+                    3. @user3: "Disagree, here's why..." (19 likes)<br><br>
+                    Want me to draft replies to these?
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Agent Architecture -->
+            <div class="card">
+              <h3>Agent Architecture</h3>
+              <div style="padding:12px">
+                <div style="text-align:center;margin-bottom:16px">
+                  <div class="flow-box" style="border-color:var(--cyan)">User Message</div>
+                  <div class="flow-arrow">&darr;</div><br>
+                  <div class="flow-box" style="border-color:var(--lime)">Agent Runtime</div>
+                  <div class="flow-arrow">&darr;</div><br>
+                  <div style="display:flex;justify-content:center;gap:6px;flex-wrap:wrap">
+                    <div class="flow-box" style="border-color:var(--gold)">LLM Decision</div>
+                    <div class="flow-arrow">&harr;</div>
+                    <div class="flow-box" style="border-color:var(--gold)">Tool Registry</div>
+                  </div>
+                  <div class="flow-arrow">&darr;</div><br>
+                  <div style="display:flex;justify-content:center;gap:6px;flex-wrap:wrap">
+                    <div class="flow-box">post-tool</div>
+                    <div class="flow-box">analytics-tool</div>
+                    <div class="flow-box">inbox-tool</div>
+                    <div class="flow-box">comments-tool</div>
+                  </div>
+                  <div class="flow-arrow">&darr;</div><br>
+                  <div class="flow-box" style="border-color:var(--purple)">Platform Connectors</div>
+                  <div class="flow-arrow">&darr;</div><br>
+                  <div style="display:flex;justify-content:center;gap:6px;flex-wrap:wrap">
+                    <div class="flow-box" style="color:var(--cyan)">X Module</div>
+                    <div class="flow-box" style="color:var(--cyan)">LinkedIn Module</div>
+                    <div class="flow-box" style="color:var(--cyan)">Instagram Module</div>
+                    <div class="flow-box" style="color:var(--cyan)">...</div>
+                  </div>
+                </div>
+
+                <h3 style="margin-top:20px">Plugin Hooks (Safety)</h3>
+                <div style="font-size:12px;color:var(--muted);line-height:1.6">
+                  <div style="padding:6px 10px;background:rgba(255,204,122,0.06);border-radius:8px;margin:4px 0">
+                    <span style="color:var(--gold)">PreToolUse</span> &mdash; Guardrail checks before executing. Confirms publish actions. Blocks credential exposure.
+                  </div>
+                  <div style="padding:6px 10px;background:rgba(215,255,116,0.06);border-radius:8px;margin:4px 0">
+                    <span style="color:var(--lime)">PostToolUse</span> &mdash; Audit logging. Updates analytics cache. Triggers webhooks.
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Agent Tools -->
+        <div class="panel" style="margin-top:14px">
+          <h2>Agent Tools Registry</h2>
+          <table>
+            <tr><th>Tool</th><th>Description</th><th>Parameters</th><th>Platforms</th></tr>
+            <tr><td style="color:var(--cyan)">post-tool</td><td>Create, schedule, edit, delete posts</td><td>platform, content, mediaUrl, scheduledAt, postType</td><td>All</td></tr>
+            <tr><td style="color:var(--cyan)">analytics-tool</td><td>Fetch post/account metrics</td><td>platform, dateRange, metric, postId</td><td>X, IG, FB, LI, TT, YT</td></tr>
+            <tr><td style="color:var(--cyan)">inbox-tool</td><td>Read/send DMs</td><td>platform, conversationId, message</td><td>X, IG, FB</td></tr>
+            <tr><td style="color:var(--cyan)">comments-tool</td><td>Read/reply to comments</td><td>platform, postId, replyText, action</td><td>X, IG, FB, LI, YT, BS</td></tr>
+            <tr><td style="color:var(--cyan)">engagement-tool</td><td>Like, repost, bookmark</td><td>platform, postId, action</td><td>X, BS, Mastodon</td></tr>
+            <tr><td style="color:var(--cyan)">connect-tool</td><td>List platforms, check status</td><td>action (list/status/health)</td><td>All (read-only)</td></tr>
+          </table>
+        </div>
+      </div>
+
+      <!-- TAB: FOLDER HIERARCHY -->
+      <div id="tab-hierarchy" class="tab-content">
+        <div class="panel">
+          <h2>Target Folder Hierarchy</h2>
+          <p class="sub" style="margin-bottom:14px">Green = new files/folders. Gray = existing (kept for backward compat).</p>
+          <div class="grid grid-2">
+            <div class="card">
+              <div class="tree">
+<span class="dir">src/</span>
+<span class="dir new">&nbsp;&nbsp;platforms/</span>
+<span class="dir new">&nbsp;&nbsp;&nbsp;&nbsp;_shared/</span>
+<span class="file new">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;types.ts</span> <span style="color:var(--gold)">&larr; PlatformModule, all capability interfaces</span>
+<span class="file new">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;base-platform.ts</span> <span style="color:var(--gold)">&larr; Abstract base with no-op stubs</span>
+<span class="file new">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;oauth-utils.ts</span> <span style="color:var(--gold)">&larr; Extracted from providers/oauth.ts</span>
+<span class="file new">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;media-upload.ts</span> <span style="color:var(--gold)">&larr; Shared binary upload</span>
+<span class="file new">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;rate-limiter.ts</span> <span style="color:var(--gold)">&larr; Per-endpoint limiting</span>
+<span class="dir new">&nbsp;&nbsp;&nbsp;&nbsp;x/</span> <span class="phase-tag phase-2">Phase 2</span>
+<span class="file new">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;index.ts</span> <span style="color:var(--muted)">&larr; PlatformModule export</span>
+<span class="file new">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;auth.ts</span> <span style="color:var(--muted)">&larr; OAuth2+PKCE</span>
+<span class="file new">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;posting.ts</span> <span style="color:var(--muted)">&larr; Tweets, threads, media</span>
+<span class="file new">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;analytics.ts</span> <span style="color:var(--lime)">&larr; NEW: tweet/account metrics</span>
+<span class="file new">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;inbox.ts</span> <span style="color:var(--lime)">&larr; NEW: DMs</span>
+<span class="file new">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;comments.ts</span> <span style="color:var(--lime)">&larr; NEW: replies, quotes</span>
+<span class="file new">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;engagement.ts</span> <span style="color:var(--lime)">&larr; NEW: like, RT, bookmark</span>
+<span class="file new">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;webhooks.ts</span> <span style="color:var(--lime)">&larr; NEW: Account Activity API</span>
+<span class="file new">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;config.ts</span> <span style="color:var(--muted)">&larr; Capabilities, tooltips</span>
+<span class="file new">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;types.ts</span> <span style="color:var(--muted)">&larr; X-specific types</span>
+<span class="dir new">&nbsp;&nbsp;&nbsp;&nbsp;linkedin/</span> <span style="color:var(--muted)">... same pattern</span>
+<span class="dir new">&nbsp;&nbsp;&nbsp;&nbsp;instagram/</span>
+<span class="dir new">&nbsp;&nbsp;&nbsp;&nbsp;facebook/</span>
+<span class="dir new">&nbsp;&nbsp;&nbsp;&nbsp;threads/</span>
+<span class="dir new">&nbsp;&nbsp;&nbsp;&nbsp;tiktok/</span>
+<span class="dir new">&nbsp;&nbsp;&nbsp;&nbsp;youtube/</span>
+<span class="dir new">&nbsp;&nbsp;&nbsp;&nbsp;pinterest/</span>
+<span class="dir new">&nbsp;&nbsp;&nbsp;&nbsp;bluesky/</span>
+<span class="dir new">&nbsp;&nbsp;&nbsp;&nbsp;mastodon/</span>
+<span class="dir new">&nbsp;&nbsp;&nbsp;&nbsp;google-business/</span>
+<span class="dir new">&nbsp;&nbsp;&nbsp;&nbsp;reddit/</span> <span class="phase-tag phase-5">Phase 6</span>
+<span class="dir new">&nbsp;&nbsp;&nbsp;&nbsp;discord/</span>
+<span class="dir new">&nbsp;&nbsp;&nbsp;&nbsp;telegram/</span>
+<span class="file new">&nbsp;&nbsp;&nbsp;&nbsp;registry.ts</span> <span style="color:var(--gold)">&larr; Unified PlatformModule registry</span>
+              </div>
+            </div>
+            <div class="card">
+              <div class="tree">
+<span class="dir new">&nbsp;&nbsp;agent/</span> <span class="phase-tag phase-4">Phase 4</span>
+<span class="file new">&nbsp;&nbsp;&nbsp;&nbsp;types.ts</span> <span style="color:var(--gold)">&larr; AgentTool, ToolResult, AgentContext</span>
+<span class="file new">&nbsp;&nbsp;&nbsp;&nbsp;runtime.ts</span> <span style="color:var(--gold)">&larr; Conversation loop + tool calling</span>
+<span class="file new">&nbsp;&nbsp;&nbsp;&nbsp;config.ts</span> <span style="color:var(--gold)">&larr; Model selection, permissions</span>
+<span class="dir new">&nbsp;&nbsp;&nbsp;&nbsp;tools/</span>
+<span class="file new">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;post-tool.ts</span>
+<span class="file new">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;analytics-tool.ts</span>
+<span class="file new">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;inbox-tool.ts</span>
+<span class="file new">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;comments-tool.ts</span>
+<span class="file new">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;engagement-tool.ts</span>
+<span class="file new">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;connect-tool.ts</span>
+<span class="file new">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;registry.ts</span>
+<span class="dir new">&nbsp;&nbsp;&nbsp;&nbsp;connectors/</span>
+<span class="file new">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;platform-connector.ts</span>
+<span class="file new">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;connector-registry.ts</span>
+<span class="dir new">&nbsp;&nbsp;&nbsp;&nbsp;plugins/</span>
+<span class="file new">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;types.ts</span>
+<span class="file new">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;guardrail-plugin.ts</span>
+<span class="file new">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;audit-plugin.ts</span>
+<br>
+<span class="dir existing">&nbsp;&nbsp;lib/providers/</span> <span style="color:var(--muted)">(backward compat shims)</span>
+<span class="file existing">&nbsp;&nbsp;&nbsp;&nbsp;base.ts</span> <span style="color:var(--muted)">&larr; kept, not modified</span>
+<span class="file existing">&nbsp;&nbsp;&nbsp;&nbsp;twitter.ts</span> <span style="color:var(--muted)">&larr; kept, re-exported</span>
+<span class="file existing">&nbsp;&nbsp;&nbsp;&nbsp;facebook.ts</span>
+<span class="file existing">&nbsp;&nbsp;&nbsp;&nbsp;instagram.ts</span>
+<span class="file existing">&nbsp;&nbsp;&nbsp;&nbsp;linkedin*.ts</span>
+<span class="file existing">&nbsp;&nbsp;&nbsp;&nbsp;threads.ts</span>
+<span class="file existing">&nbsp;&nbsp;&nbsp;&nbsp;tiktok.ts</span>
+<span class="file existing">&nbsp;&nbsp;&nbsp;&nbsp;bluesky.ts</span>
+<span class="file existing">&nbsp;&nbsp;&nbsp;&nbsp;mastodon.ts</span>
+<span class="file existing">&nbsp;&nbsp;&nbsp;&nbsp;registry.ts</span> <span style="color:var(--gold)">&larr; deprecated shim</span>
+<br>
+<span class="dir existing">&nbsp;&nbsp;components/dashboard/</span>
+<span class="file existing">&nbsp;&nbsp;&nbsp;&nbsp;connections-drawer.tsx</span> <span style="color:var(--lime)">&larr; enhanced</span>
+<span class="file existing">&nbsp;&nbsp;&nbsp;&nbsp;connection-method-option.tsx</span> <span style="color:var(--lime)">&larr; + (i) tooltips</span>
+<span class="file new">&nbsp;&nbsp;&nbsp;&nbsp;connection-flow-explainer.tsx</span> <span style="color:var(--lime)">&larr; NEW</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: PLATFORM FLOWS -->
+      <div id="tab-flows" class="tab-content">
+        <div class="panel">
+          <h2>Platform Connection Flows</h2>
+          <div class="grid grid-2">
+            <div class="card">
+              <h3>OAuth 2.0 Flow (X, LinkedIn, IG, FB, etc.)</h3>
+              <pre><code>User clicks "Connect"
+    |
+    v
+GET /api/auth/{platform}
+    |
+    v
+Generate state + PKCE verifier
+Store in cookie
+    |
+    v
+Redirect to platform auth URL
+    |
+    v
+User authorizes on platform
+    |
+    v
+Platform redirects to callback
+GET /api/auth/{platform}/callback?code=...
+    |
+    v
+Exchange code for tokens
+Fetch user profile
+    |
+    v
+Store in DB: platforms table
+  - access_token, refresh_token
+  - profile info
+  - capabilities
+    |
+    v
+Redirect to /dashboard/platforms
+Connection card appears</code></pre>
+            </div>
+            <div class="card">
+              <h3>Credential Flow (Bluesky, Telegram)</h3>
+              <pre><code>User enters credentials in drawer
+  - Bluesky: handle + app password
+  - Telegram: bot token
+    |
+    v
+POST /api/platforms
+  { type, credentials, provider: "direct" }
+    |
+    v
+Backend validates credentials
+  - Bluesky: createSession()
+  - Telegram: getMe()
+    |
+    v
+Store in DB: platforms table
+  - session tokens
+  - profile info
+    |
+    v
+Drawer closes
+Connection card appears</code></pre>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel" style="margin-top:14px">
+          <h2>Agent Tool Execution Flow</h2>
+          <pre><code>User: "Post to Twitter and check my LinkedIn analytics"
+    |
+    v
+Agent Runtime receives message
+    |
+    v
+LLM analyzes intent, decides on tools:
+  1. post-tool (platform: "x", content: "...")
+  2. analytics-tool (platform: "linkedin", dateRange: "7d")
+    |
+    v
+[PreToolUse Plugin: Guardrail]
+  - Confirms publish action with user? (configurable)
+  - Validates no credential leakage
+  - Checks rate limits
+    |
+    v
+[Tool Execution via Platform Connector]
+  post-tool --> X Module --> posting.ts --> Twitter API v2
+  analytics-tool --> LinkedIn Module --> analytics.ts --> LinkedIn API
+    |
+    v
+[PostToolUse Plugin: Audit]
+  - Log execution to audit table
+  - Cache analytics results
+    |
+    v
+LLM formats results for user
+    |
+    v
+Agent: "Posted to X: [url]. LinkedIn this week: 12K impressions..."</code></pre>
+        </div>
+      </div>
+
+      <!-- TAB: PHASES -->
+      <div id="tab-phases" class="tab-content">
+        <div class="panel">
+          <h2>Implementation Phases</h2>
+          <div class="grid grid-3">
+            <div class="card">
+              <span class="phase-tag phase-1">Phase 1</span>
+              <h3 style="margin-top:8px">Foundation</h3>
+              <p style="color:var(--muted);font-size:12px;line-height:1.5">
+                Create _shared types. Platform folder stubs with re-exports. Unified registry. Backward compat shims.
+              </p>
+              <div style="margin-top:8px">
+                <span class="badge badge-cyan">Scope: L</span>
+                <span class="badge badge-muted">Deps: None</span>
+              </div>
+            </div>
+            <div class="card">
+              <span class="phase-tag phase-2">Phase 2</span>
+              <h3 style="margin-top:8px">X/Twitter Deep</h3>
+              <p style="color:var(--muted);font-size:12px;line-height:1.5">
+                Full X implementation: analytics, DMs, comments, engagement, webhooks. Reference pattern for all platforms.
+              </p>
+              <div style="margin-top:8px">
+                <span class="badge badge-cyan">Scope: XL</span>
+                <span class="badge badge-gold">Deps: Phase 1</span>
+              </div>
+            </div>
+            <div class="card">
+              <span class="phase-tag phase-3">Phase 3</span>
+              <h3 style="margin-top:8px">Connection UX</h3>
+              <p style="color:var(--muted);font-size:12px;line-height:1.5">
+                (i) tooltips, capability badges, flow explanations. Per-platform setup guides.
+              </p>
+              <div style="margin-top:8px">
+                <span class="badge badge-cyan">Scope: M</span>
+                <span class="badge badge-gold">Deps: Phase 1</span>
+              </div>
+            </div>
+            <div class="card">
+              <span class="phase-tag phase-4">Phase 4</span>
+              <h3 style="margin-top:8px">Agent Harness</h3>
+              <p style="color:var(--muted);font-size:12px;line-height:1.5">
+                Tool system, platform connectors, runtime, plugins (guardrail + audit). Refactor social-agent endpoint.
+              </p>
+              <div style="margin-top:8px">
+                <span class="badge badge-cyan">Scope: XL</span>
+                <span class="badge badge-gold">Deps: Phase 2</span>
+              </div>
+            </div>
+            <div class="card">
+              <span class="phase-tag phase-5">Phase 5</span>
+              <h3 style="margin-top:8px">Platform Expansion</h3>
+              <p style="color:var(--muted);font-size:12px;line-height:1.5">
+                Apply X depth to LinkedIn, Instagram, Facebook, Threads, TikTok, YouTube, Bluesky, Mastodon.
+              </p>
+              <div style="margin-top:8px">
+                <span class="badge badge-cyan">Scope: XL</span>
+                <span class="badge badge-gold">Deps: Phase 2</span>
+              </div>
+            </div>
+            <div class="card">
+              <span class="phase-tag" style="background:rgba(255,255,255,0.06);color:var(--muted)">Phase 6</span>
+              <h3 style="margin-top:8px">New Platforms</h3>
+              <p style="color:var(--muted);font-size:12px;line-height:1.5">
+                Reddit, Discord, Telegram with full depth from day one.
+              </p>
+              <div style="margin-top:8px">
+                <span class="badge badge-cyan">Scope: L</span>
+                <span class="badge badge-gold">Deps: Phase 1</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Dependency Graph -->
+          <div class="card" style="margin-top:14px;text-align:center">
+            <h3>Dependency Graph</h3>
+            <pre style="text-align:left;display:inline-block"><code>
+  Phase 1 (Foundation)
+     |
+     +----------+----------+
+     |          |          |
+  Phase 2    Phase 3    Phase 6
+  (X Deep)   (UX)       (New Platforms)
+     |
+     +----------+
+     |          |
+  Phase 4    Phase 5
+  (Agent)    (Expand All)
+            </code></pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: CAPABILITY MATRIX -->
+      <div id="tab-capabilities" class="tab-content">
+        <div class="panel">
+          <h2>Platform Capability Matrix (Target State)</h2>
+          <p class="sub" style="margin-bottom:14px">What each platform will support after full implementation</p>
+          <table>
+            <tr>
+              <th>Platform</th><th>Auth</th><th>Posting</th><th>Analytics</th><th>DMs</th><th>Comments</th><th>Engagement</th><th>Webhooks</th>
+            </tr>
+            <tr>
+              <td>X / Twitter</td>
+              <td><span class="badge badge-lime">OAuth2+PKCE</span></td>
+              <td><span class="badge badge-lime">Full</span></td>
+              <td><span class="badge badge-lime">Full</span></td>
+              <td><span class="badge badge-lime">Full</span></td>
+              <td><span class="badge badge-lime">Full</span></td>
+              <td><span class="badge badge-lime">Full</span></td>
+              <td><span class="badge badge-gold">Pro tier</span></td>
+            </tr>
+            <tr>
+              <td>LinkedIn</td>
+              <td><span class="badge badge-lime">OAuth2</span></td>
+              <td><span class="badge badge-lime">Full</span></td>
+              <td><span class="badge badge-lime">Full</span></td>
+              <td><span class="badge badge-muted">No API</span></td>
+              <td><span class="badge badge-lime">Full</span></td>
+              <td><span class="badge badge-gold">Reactions</span></td>
+              <td><span class="badge badge-muted">None</span></td>
+            </tr>
+            <tr>
+              <td>Instagram</td>
+              <td><span class="badge badge-lime">FB OAuth</span></td>
+              <td><span class="badge badge-lime">Full</span></td>
+              <td><span class="badge badge-lime">Insights</span></td>
+              <td><span class="badge badge-lime">Messaging</span></td>
+              <td><span class="badge badge-lime">Full</span></td>
+              <td><span class="badge badge-muted">No API</span></td>
+              <td><span class="badge badge-lime">Full</span></td>
+            </tr>
+            <tr>
+              <td>Facebook</td>
+              <td><span class="badge badge-lime">OAuth2</span></td>
+              <td><span class="badge badge-lime">Full</span></td>
+              <td><span class="badge badge-lime">Insights</span></td>
+              <td><span class="badge badge-lime">Messenger</span></td>
+              <td><span class="badge badge-lime">Full</span></td>
+              <td><span class="badge badge-gold">Reactions</span></td>
+              <td><span class="badge badge-lime">Full</span></td>
+            </tr>
+            <tr>
+              <td>Threads</td>
+              <td><span class="badge badge-lime">Meta OAuth</span></td>
+              <td><span class="badge badge-lime">Full</span></td>
+              <td><span class="badge badge-lime">Insights</span></td>
+              <td><span class="badge badge-muted">No API</span></td>
+              <td><span class="badge badge-gold">Reply only</span></td>
+              <td><span class="badge badge-muted">No API</span></td>
+              <td><span class="badge badge-muted">None</span></td>
+            </tr>
+            <tr>
+              <td>TikTok</td>
+              <td><span class="badge badge-lime">OAuth2</span></td>
+              <td><span class="badge badge-gold">Video only</span></td>
+              <td><span class="badge badge-lime">Research API</span></td>
+              <td><span class="badge badge-muted">No API</span></td>
+              <td><span class="badge badge-muted">No API</span></td>
+              <td><span class="badge badge-muted">No API</span></td>
+              <td><span class="badge badge-muted">None</span></td>
+            </tr>
+            <tr>
+              <td>YouTube</td>
+              <td><span class="badge badge-lime">Google OAuth</span></td>
+              <td><span class="badge badge-lime">Upload</span></td>
+              <td><span class="badge badge-lime">Full</span></td>
+              <td><span class="badge badge-muted">No API</span></td>
+              <td><span class="badge badge-lime">Full</span></td>
+              <td><span class="badge badge-muted">No API</span></td>
+              <td><span class="badge badge-muted">None</span></td>
+            </tr>
+            <tr>
+              <td>Bluesky</td>
+              <td><span class="badge badge-cyan">App Password</span></td>
+              <td><span class="badge badge-lime">Full</span></td>
+              <td><span class="badge badge-gold">Basic stats</span></td>
+              <td><span class="badge badge-lime">AT Proto</span></td>
+              <td><span class="badge badge-lime">Replies</span></td>
+              <td><span class="badge badge-lime">Full</span></td>
+              <td><span class="badge badge-gold">Firehose</span></td>
+            </tr>
+            <tr>
+              <td>Mastodon</td>
+              <td><span class="badge badge-cyan">Instance OAuth</span></td>
+              <td><span class="badge badge-lime">Full</span></td>
+              <td><span class="badge badge-gold">Status stats</span></td>
+              <td><span class="badge badge-lime">Full</span></td>
+              <td><span class="badge badge-lime">Replies</span></td>
+              <td><span class="badge badge-lime">Full</span></td>
+              <td><span class="badge badge-lime">Streaming</span></td>
+            </tr>
+            <tr>
+              <td>Reddit</td>
+              <td><span class="badge badge-lime">OAuth2</span></td>
+              <td><span class="badge badge-lime">Full</span></td>
+              <td><span class="badge badge-gold">Karma/votes</span></td>
+              <td><span class="badge badge-lime">Full</span></td>
+              <td><span class="badge badge-lime">Full</span></td>
+              <td><span class="badge badge-lime">Vote/save</span></td>
+              <td><span class="badge badge-muted">None</span></td>
+            </tr>
+            <tr>
+              <td>Discord</td>
+              <td><span class="badge badge-cyan">Bot Token</span></td>
+              <td><span class="badge badge-lime">Messages</span></td>
+              <td><span class="badge badge-muted">No API</span></td>
+              <td><span class="badge badge-lime">Full</span></td>
+              <td><span class="badge badge-lime">Threads</span></td>
+              <td><span class="badge badge-lime">Reactions</span></td>
+              <td><span class="badge badge-lime">Gateway</span></td>
+            </tr>
+            <tr>
+              <td>Telegram</td>
+              <td><span class="badge badge-cyan">Bot Token</span></td>
+              <td><span class="badge badge-lime">Messages</span></td>
+              <td><span class="badge badge-muted">No API</span></td>
+              <td><span class="badge badge-lime">Full</span></td>
+              <td><span class="badge badge-lime">Replies</span></td>
+              <td><span class="badge badge-muted">No API</span></td>
+              <td><span class="badge badge-lime">Updates</span></td>
+            </tr>
+          </table>
+        </div>
+      </div>
+
+    </div>
+
+    <script>
+      function showTab(id) {
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+        document.getElementById('tab-' + id).classList.add('active');
+        event.target.classList.add('active');
+      }
+    </script>
+  </body>
+</html>

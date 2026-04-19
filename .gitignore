@@ -2,6 +2,7 @@ node_modules/
 .next/
 .next-dev/
 dist/
+out/
 data/
 .env
 .env.local
@@ -14,6 +15,8 @@ data/
 .codex
 .claude
 .cursor
+/agents
+/skills
 CLAUDE.md
 drizzle/
 sqlite:/

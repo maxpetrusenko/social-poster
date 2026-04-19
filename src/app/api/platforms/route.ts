@@ -1,11 +1,10 @@
 import { db } from "@/db";
 import { platforms } from "@/db/schema";
-import { requireApiSession } from "@/lib/auth";
+import { requireApiWorkspaceManager } from "@/lib/api-authorization";
 import { PLATFORM_TYPES } from "@/lib/platforms";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import crypto from "node:crypto";
-import { getTenantContext } from "@/lib/tenancy";
 
 const createPlatformSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -18,16 +17,12 @@ const createPlatformSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
-  const session = await requireApiSession();
-  if (session instanceof NextResponse) return session;
+  const tenant = await requireApiWorkspaceManager();
+  if (tenant instanceof NextResponse) return tenant;
 
   try {
     const body = await request.json();
     const validated = createPlatformSchema.parse(body);
-    const tenant = await getTenantContext();
-    if (!tenant) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
 
     const now = new Date();
     const id = crypto.randomUUID();

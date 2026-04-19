@@ -1,6 +1,6 @@
 # Social Agent — Tasks & Status
 
-Last updated: 2026-04-16
+Last updated: 2026-04-19
 
 ## Current State
 
@@ -58,12 +58,16 @@ Deploys to `social.maxpetrusenko.com` on Contabo/Coolify.
 - [x] Schedule category presets via `schedules.config` — take/opinion, product update, source share, hype/future, hiring
 - [x] Platforms — list, create, edit, delete, per-platform skills/config editor
 - [x] Platforms native connection flow starts configured OAuth providers directly and exposes credential setup docs from each method
+- [x] LinkedIn native OAuth now uses app-managed auth connections: users approve LinkedIn access without pasting client IDs or secrets
+- [x] Connection catalog now lives in per-platform configs, with method info tooltips and live/planned capability badges in the connection drawer
+- [x] X proxy/Bird setup now only asks for `X_AUTH_TOKEN` and `X_CT0`, includes cookie-copy guidance, and exposes a read-only connection test
 - [x] Profiles — list, create, edit, delete (voice ID, face ID, tone)
 - [x] Posts — list with status filters, create with platform targeting, detail view
 - [x] Calendar — monthly grid view with schedule recurrences + actual pipeline runs
 - [x] Calendar recurring forecast cards now show source-title/image predictions with a debug panel instead of synthetic generated captions
 - [x] Calendar recurring cron slots now resolve in UTC, suppress past forecast shells, and label predictions as candidate-only without implying a draft exists
 - [x] Calendar recurring slots now reuse `agent_persona_updates` content generation, so Agent Persona schedule previews match pipeline-specific copy instead of generic feed candidates
+- [x] Calendar excludes X reply-engine schedules and runs; X replies stay in Replies only
 - [x] Pipeline — run history with expandable step detail
 - [x] Schedules — list, create, edit, delete, manual "Run Now", success/error stats
 - [x] Schedule detail preview now shows fixed, Agent Persona, or RSS-candidate mode with source visibility and per-platform generated copy
@@ -93,6 +97,8 @@ Deploys to `social.maxpetrusenko.com` on Contabo/Coolify.
 - [x] `src/app/api/auth/verify/route.ts` — GET handler to verify token + create session
 - [x] `src/app/api/auth/logout/route.ts` — POST handler to destroy session
 - [x] Middleware to protect /dashboard routes (next middleware.ts)
+- [x] Server-side org/workspace role gates for team settings and high-risk mutating APIs
+- [x] Social Agent can invite current-workspace members inline via an admin-only `/invite` command
 - [ ] Set Supabase env in production and verify live Google sign-in against allowlist
 
 ### Agent / Pipeline Engine
@@ -107,6 +113,7 @@ Deploys to `social.maxpetrusenko.com` on Contabo/Coolify.
 - [x] Pipeline orchestrator: feed → dedup → render → publish → log
 - [x] Reply engine duplicate guard skips already-attempted drafts before calling X again
 - [x] Reply discovery defaults to English-only candidates, exposes a language selector, and skips low-engagement tweets below 3 replies and 10 likes
+- [x] Reply refresh now reuses env X auth for saved Bird sessions, runs a wider manual fallback scan, and shows empty-state diagnostics
 - [x] Boot recovery marks interrupted `running` pipeline rows failed after app restarts
 - [x] Schedule runtime now reconciles by diff instead of full reload
 - [x] `/api/health` and dashboard expose DB-enabled vs runtime-registered schedule counts
@@ -114,6 +121,8 @@ Deploys to `social.maxpetrusenko.com` on Contabo/Coolify.
 - [x] Mixed manual post delivery can resolve to `partial_failure`
 - [x] Cron schedule execution now uses a SQLite-backed minute lock to suppress duplicate scheduler fires across processes
 - [x] X publish now routes through Bird when the platform provider is `bird`, with dashboard credentials first and env fallback second
+- [x] Direct OAuth platform tokens now auto-refresh in a background scheduler sweep before expiry, with a manager-only manual refresh endpoint
+- [x] Platform-depth presearch docs added for X, LinkedIn, Instagram, Facebook, Threads, TikTok, YouTube, Pinterest, Bluesky, Mastodon, Google Business, Reddit, Discord, Telegram, and the future agent harness
 - [ ] Idempotency keys on every publish attempt
 
 ### Deploy
@@ -207,6 +216,8 @@ social-poster/
   `npm run legacy:import -- --legacy-dir ../social-agent --with-remote-runs --ssh-target max@173.249.52.27 --ssh-key ~/.ssh/contabo_vmi3203669_ed25519 --volume <coolify-volume>`
 - Imported schedules default to disabled, matching pre-cutover safety
 - Platform skills live in `platforms.config.skills`; advanced per-platform settings live in `platforms.config`
+- Direct OAuth access tokens are refreshed by the scheduler every `TOKEN_REFRESH_SWEEP_HOURS` hours (default 6) when within `TOKEN_REFRESH_WINDOW_DAYS` days of expiry (default 7). Manual refresh: `POST /api/platforms/refresh-tokens` with optional `{ "force": true }`.
+- Bird-backed X connections store read-only session health in `platforms.config.birdSession`; the scheduler checks enabled Bird sessions every `BIRD_SESSION_CHECK_HOURS` hours (default 24), and connection cards expose a manual "Check Bird session" action.
 
 ## Environment
 - Contabo VPS: 173.249.52.27

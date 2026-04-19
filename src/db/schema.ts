@@ -90,6 +90,25 @@ export const workspaceInvitations = sqliteTable("workspace_invitations", {
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
 });
 
+export const auditEvents = sqliteTable("audit_events", {
+  id: text("id").primaryKey(),
+  organizationId: text("organization_id").references(() => organizations.id, {
+    onDelete: "set null",
+  }),
+  workspaceId: text("workspace_id").references(() => workspaces.id, {
+    onDelete: "set null",
+  }),
+  actorUserId: text("actor_user_id").references(() => users.id, {
+    onDelete: "set null",
+  }),
+  actorEmail: text("actor_email"),
+  action: text("action").notNull(),
+  targetType: text("target_type").notNull(),
+  targetId: text("target_id"),
+  metadata: text("metadata", { mode: "json" }).$type<Record<string, unknown>>(),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+});
+
 // ── Auth ──────────────────────────────────────────────────────────────
 export const sessions = sqliteTable("sessions", {
   id: text("id").primaryKey(),

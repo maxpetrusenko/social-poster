@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
-import { requireApiSession } from "@/lib/auth";
+import { requireApiWorkspaceManager } from "@/lib/api-authorization";
 import { getRequestAppUrl } from "@/lib/app-url";
 import { mergeProviderCredentials } from "@/lib/providers/credentials";
 import { getProvider } from "@/lib/providers/registry";
@@ -32,8 +32,8 @@ async function startNativeOAuth(
   params: Promise<{ platform: string }>,
   transientCredentials?: { clientId?: string; clientSecret?: string } | null
 ) {
-  const session = await requireApiSession();
-  if (session instanceof NextResponse) return session;
+  const authorized = await requireApiWorkspaceManager();
+  if (authorized instanceof NextResponse) return authorized;
 
   const { platform: routePlatform } = await params;
   const platform = normalizeRoutePlatform(routePlatform);
@@ -49,6 +49,9 @@ async function startNativeOAuth(
     next: request.nextUrl.searchParams.get("next") ?? "/dashboard/platforms",
   });
   const redirectUri = oauthCallbackUrl(platform, appUrl);
+  const oauthCredentials = isAppManagedOAuth(platform)
+    ? null
+    : transientCredentials;
 
   if (!sameOrigin(appUrl, redirectUri)) {
     return oauthStartError(
@@ -61,14 +64,14 @@ async function startNativeOAuth(
   try {
     const provider = getProvider(
       platform,
-      mergeProviderCredentials(platform, credentialsToConfig(transientCredentials))
+      mergeProviderCredentials(platform, credentialsToConfig(oauthCredentials))
     );
     const authUrl = provider.getAuthUrl(redirectUri, state, codeVerifier);
     const cookieStore = await cookies();
     cookieStore.set(NATIVE_OAUTH_COOKIE, encodeNativeOAuthCookie({
       nonce,
       codeVerifier,
-      credentials: transientCredentials ?? null,
+      credentials: oauthCredentials ?? null,
     }), {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
@@ -87,6 +90,14 @@ async function startNativeOAuth(
       error instanceof Error ? error.message : "Native OAuth unavailable"
     );
   }
+}
+
+function isAppManagedOAuth(platform: string) {
+  return (
+    platform === "linkedin" ||
+    platform === "linkedin_personal" ||
+    platform === "linkedin_company"
+  );
 }
 
 function oauthStartError(request: NextRequest, appUrl: string, message: string) {

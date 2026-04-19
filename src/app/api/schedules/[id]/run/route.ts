@@ -1,23 +1,17 @@
 import { db } from "@/db";
 import { schedules } from "@/db/schema";
-import { requireApiSession } from "@/lib/auth";
+import { requireApiWorkspacePublisher } from "@/lib/api-authorization";
 import { and, eq } from "drizzle-orm";
 import { runScheduleJob } from "@/lib/schedule-jobs";
-import { getTenantContext } from "@/lib/tenancy";
 
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await requireApiSession();
-  if (session instanceof Response) return session;
+  const tenant = await requireApiWorkspacePublisher();
+  if (tenant instanceof Response) return tenant;
 
   try {
-    const tenant = await getTenantContext();
-    if (!tenant) {
-      return Response.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
     const { id: scheduleId } = await params;
     const schedule = await db.query.schedules.findFirst({
       where: and(

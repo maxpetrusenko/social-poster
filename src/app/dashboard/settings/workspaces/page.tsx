@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { WorkspaceControlPlane } from "@/components/dashboard/team-settings-panels";
 import {
+  canManageOrganization,
   getOrgMembersData,
   getWorkspaceSummary,
   type ApprovalWorkflowMode,
@@ -11,6 +12,9 @@ export const dynamic = "force-dynamic";
 export default async function SettingsWorkspacesPage() {
   try {
     const { context, workspaces, workspaceMemberships } = await getOrgMembersData();
+    if (!canManageOrganization(context)) {
+      redirect("/dashboard");
+    }
     const memberCountByWorkspaceId = new Map<string, number>();
 
     for (const row of workspaceMemberships) {
@@ -38,6 +42,7 @@ export default async function SettingsWorkspacesPage() {
                   (entry.membership.workspaceRole === "owner" ||
                     entry.membership.workspaceRole === "manager")
               ),
+            canDelete: canManageOrganization(context),
           }))
           .sort((left, right) => {
             if (left.isArchived !== right.isArchived) {

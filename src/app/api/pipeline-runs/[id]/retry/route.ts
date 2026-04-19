@@ -5,25 +5,19 @@ import { NextResponse } from "next/server";
 
 import { db } from "@/db";
 import { pipelineRuns, type PipelineStep } from "@/db/schema";
-import { requireApiSession } from "@/lib/auth";
+import { requireApiWorkspacePublisher } from "@/lib/api-authorization";
 import { getRecoveredRunContext } from "@/lib/dashboard/recovered-run";
 import { publishPlatformTargets } from "@/lib/pipeline/publish-service";
 import { resolvePublishResultsStatus } from "@/lib/pipeline/status";
-import { getTenantContext } from "@/lib/tenancy";
 
 export async function POST(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await requireApiSession();
-  if (session instanceof NextResponse) return session;
+  const tenant = await requireApiWorkspacePublisher();
+  if (tenant instanceof NextResponse) return tenant;
 
   try {
-    const tenant = await getTenantContext();
-    if (!tenant) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
     const { id } = await params;
     const context = await getRecoveredRunContext(id, tenant.currentWorkspace.id);
     const startedAt = new Date();

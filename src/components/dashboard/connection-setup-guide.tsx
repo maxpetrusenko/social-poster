@@ -80,7 +80,7 @@ export function ConnectionSetupGuideButton({
 
               <section className="rounded-[16px] border border-[rgba(33,25,19,0.08)] bg-white p-4">
                 <h4 className="text-sm font-semibold text-[#211913]">
-                  How to get credentials
+                  {guide.stepsTitle}
                 </h4>
                 <ol className="mt-3 space-y-2 text-sm leading-6 text-[#4d3f34]">
                   {guide.steps.map((step, index) => (
@@ -189,6 +189,7 @@ function buildSetupGuide(
     return {
       title: "X (Twitter) app configuration",
       subtitle: "Configure your own API credentials to connect this platform.",
+      stepsTitle: "How to get credentials",
       links: [
         { label: "Watch video tutorial", url: X_TUTORIAL_URL },
         { label: "Twitter Developer Portal", url: "https://developer.x.com/en/portal/dashboard" },
@@ -207,9 +208,87 @@ function buildSetupGuide(
     };
   }
 
+  if (definition.type === "facebook" && method.authType === "oauth") {
+    return {
+      title: "Facebook app configuration",
+      subtitle:
+        "Meta blocks OAuth until the exact redirect URI is whitelisted.",
+      stepsTitle: "How to get credentials",
+      links: method.docs.length
+        ? method.docs
+        : [
+            {
+              label: "Facebook Login setup",
+              url: "https://developers.facebook.com/docs/facebook-login/",
+            },
+          ],
+      steps: [
+        "Open Meta Developers and select the app used by Social Poster.",
+        "Open Facebook Login, then Settings.",
+        "Turn Client OAuth Login on.",
+        "Turn Web OAuth Login on.",
+        "Paste https://social.maxpetrusenko.com/api/auth/callback into Valid OAuth Redirect URIs exactly as shown.",
+        "Also add the app domain, for example social.maxpetrusenko.com, in the app's domain settings.",
+        "Save changes, then return here and connect Facebook again.",
+      ],
+      permissions: [
+        "business_management",
+        "pages_show_list",
+        "pages_manage_posts",
+        "pages_read_engagement",
+      ],
+      useCaseText: null,
+      missing: availability?.configured === false ? availability.missing : [],
+    };
+  }
+
+  if (
+    (definition.type === "linkedin_personal" ||
+      definition.type === "linkedin_company") &&
+    method.authType === "oauth"
+  ) {
+    return {
+      title: `${definition.label} OAuth connection`,
+      subtitle:
+        "Uses the configured LinkedIn developer app. The user only signs in and approves account access.",
+      stepsTitle: "How this connects",
+      links: method.docs.length
+        ? method.docs
+        : [
+            {
+              label: "LinkedIn developer apps",
+              url: "https://www.linkedin.com/developers/apps",
+            },
+          ],
+      steps: [
+        "Keep LINKEDIN_CLIENT_ID and LINKEDIN_CLIENT_SECRET in server env or encrypted credential storage.",
+        callbackUrl
+          ? "Register the Redirect URI below in the LinkedIn app OAuth settings."
+          : "Register this app's LinkedIn callback URL in the LinkedIn app OAuth settings.",
+        "When a workspace manager clicks Connect, this app redirects to LinkedIn for member authorization.",
+        "The callback stores the account-bound token. Users never paste LinkedIn app keys.",
+      ],
+      permissions:
+        definition.type === "linkedin_personal"
+          ? ["openid", "profile", "email", "w_member_social"]
+          : [
+              "openid",
+              "profile",
+              "email",
+              "w_member_social",
+              "w_organization_social",
+              "r_organization_social",
+              "r_organization_admin",
+            ],
+      useCaseText: null,
+      missing: availability?.configured === false ? availability.missing : [],
+    };
+  }
+
   return {
     title: `${definition.label} app configuration`,
     subtitle: `Configure your own ${definition.label} app credentials for ${method.label}.`,
+    stepsTitle: "How to get credentials",
     links: method.docs.length
       ? method.docs
       : [{ label: `${definition.label} developer docs`, url: "https://developers.facebook.com/docs/" }],

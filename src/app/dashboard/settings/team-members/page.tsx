@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { TeamMembersPanel } from "@/components/dashboard/team-settings-panels";
 import {
+  canManageOrganization,
   formatWorkspaceAssignments,
   getOrgMembersData,
   type WorkspaceRole,
@@ -61,6 +62,9 @@ export default async function SettingsTeamMembersPage({
     const status = typeof rawStatus === "string" ? rawStatus : null;
     const { context, members, workspaces, workspaceMemberships, invitations } =
       await getOrgMembersData();
+    if (!canManageOrganization(context)) {
+      redirect("/dashboard");
+    }
     const appUrl = getAppUrlFromEnv();
 
     const assignmentsByUserId = new Map<

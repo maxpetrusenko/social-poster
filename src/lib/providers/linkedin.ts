@@ -14,6 +14,7 @@ import type {
 const AUTH_URL = "https://www.linkedin.com/oauth/v2/authorization";
 const TOKEN_URL = "https://www.linkedin.com/oauth/v2/accessToken";
 const API_BASE = "https://api.linkedin.com";
+const USERINFO_URL = `${API_BASE}/v2/userinfo`;
 const LINKEDIN_HEADERS = {
   "LinkedIn-Version": "202401",
   "X-Restli-Protocol-Version": "2.0.0",
@@ -35,8 +36,10 @@ export class LinkedInProvider extends OAuthProvider {
   ];
   supportedMediaTypes: MediaType[] = ["jpeg", "png", "gif", "mp4"];
   requiredScopes = [
+    "openid",
+    "profile",
+    "email",
     "w_member_social",
-    "r_member_social",
     "w_organization_social",
     "r_organization_social",
   ];
@@ -86,18 +89,14 @@ export class LinkedInProvider extends OAuthProvider {
   }
 
   async getProfile(accessToken: string): Promise<AccountProfile> {
-    const data = await this.requestJson<JsonRecord>("GET", `${API_BASE}/v2/me`, {
+    const data = await this.requestJson<JsonRecord>("GET", USERINFO_URL, {
       accessToken,
       headers: LINKEDIN_HEADERS,
     });
-    const first = readString(data, "localizedFirstName");
-    const last = readString(data, "localizedLastName");
-    const name = `${first} ${last}`.trim() || readString(data, "vanityName");
-    const picture = readRecord(data, "profilePicture");
     return {
-      platformId: readString(data, "id"),
-      name,
-      avatarUrl: readString(picture, "displayImage") || undefined,
+      platformId: readString(data, "sub"),
+      name: readString(data, "name") || readString(data, "given_name"),
+      avatarUrl: readString(data, "picture") || undefined,
       extra: data,
     };
   }

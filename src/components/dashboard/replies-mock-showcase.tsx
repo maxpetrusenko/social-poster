@@ -15,6 +15,22 @@ import {
 
 const REPLY_LANGUAGE_STORAGE_KEY = "social-poster.replyLanguage";
 
+type ReplyRefreshPassDiagnostics = {
+  tweetsFetched: number;
+  languageSkipped: number;
+  lowEngagementSkipped: number;
+  staleSkipped: number;
+  candidateCount: number;
+  draftedCount: number;
+  queryResultCounts: Array<{ results: number }>;
+};
+
+type ReplyRefreshDiagnostics = {
+  insertedCount: number;
+  finalCardCount: number;
+  passes: ReplyRefreshPassDiagnostics[];
+};
+
 function buildRepliesUrl(
   platformId: string,
   profileId: string,
@@ -60,6 +76,7 @@ export function RepliesMockShowcase({
     initialLanguage
   );
   const [error, setError] = useState<string | null>(null);
+  const [refreshSummary, setRefreshSummary] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   const selected = cards.find((card) => card.id === selectedId) ?? cards[0] ?? null;
@@ -89,12 +106,14 @@ export function RepliesMockShowcase({
   const refreshLiveReplies = useCallback((mode: "auto" | "manual" = "manual") => {
     if (!selectedConnectionId || selectedConnectionId === "mock-x-main") {
       setCards(INITIAL_CARDS);
+      setRefreshSummary(null);
       return;
     }
 
     startTransition(async () => {
       try {
         setError(null);
+        setRefreshSummary(null);
         const response = await fetch("/api/replies", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -105,9 +124,14 @@ export function RepliesMockShowcase({
             language: selectedLanguage,
           }),
         });
-        const body = (await response.json()) as { cards?: ReplyCard[]; error?: string };
+        const body = (await response.json()) as {
+          cards?: ReplyCard[];
+          diagnostics?: ReplyRefreshDiagnostics;
+          error?: string;
+        };
         if (!response.ok) throw new Error(body.error || "Failed to refresh replies");
         setCards(body.cards ?? []);
+        setRefreshSummary(summarizeReplyRefresh(body.diagnostics));
         setSelectedId((current) => body.cards?.some((item) => item.id === current) ? current : body.cards?.[0]?.id || "");
       } catch (refreshError) {
         setError(refreshError instanceof Error ? refreshError.message : "Failed to refresh replies");
@@ -132,6 +156,7 @@ export function RepliesMockShowcase({
     startTransition(async () => {
       try {
         setError(null);
+        setRefreshSummary(null);
         const response = await fetch(
           buildRepliesUrl(selectedConnectionId, selectedProfileId, selectedLanguage)
         );
@@ -158,9 +183,14 @@ export function RepliesMockShowcase({
               language: selectedLanguage,
             }),
           });
-          const refreshBody = (await refreshResponse.json()) as { cards?: ReplyCard[]; error?: string };
+          const refreshBody = (await refreshResponse.json()) as {
+            cards?: ReplyCard[];
+            diagnostics?: ReplyRefreshDiagnostics;
+            error?: string;
+          };
           if (!refreshResponse.ok) throw new Error(refreshBody.error || "Failed to refresh replies");
           nextCards = refreshBody.cards ?? [];
+          setRefreshSummary(summarizeReplyRefresh(refreshBody.diagnostics));
         }
 
         setCards(nextCards);
@@ -189,6 +219,7 @@ export function RepliesMockShowcase({
             nextCards.some((item) => item.id === current) ? current : nextCards[0]?.id || ""
           );
           setError(null);
+          if (nextCards.length > 0) setRefreshSummary(null);
         } catch (syncError) {
           setError(syncError instanceof Error ? syncError.message : "Failed to sync replies");
         }
@@ -450,9 +481,11 @@ export function RepliesMockShowcase({
       {cards.length === 0 ? (
         <div className="mx-auto flex w-full max-w-[1720px] flex-col items-center justify-center rounded-[28px] border border-[rgba(12,17,21,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(243,247,249,0.94))] px-6 py-16 text-center shadow-[0_18px_45px_rgba(12,17,21,0.08)]">
           <p className="section-eyebrow text-[var(--accent-tech)]">Live reply queue</p>
-          <h2 className="mt-3 font-serif text-[2rem] leading-none text-[var(--ink)]">No active queue yet</h2>
+          <h2 className="mt-3 font-serif text-[2rem] leading-none text-[var(--ink)]">No posts available yet</h2>
           <p className="mt-4 max-w-[680px] text-sm leading-7 text-[var(--muted)]">
-            {hasLiveConnections
+            {refreshSummary
+              ? refreshSummary
+              : hasLiveConnections
               ? "Open the page to auto-backfill a small review batch, or hit Refresh now for a broader manual pull."
               : "Add an X connection first. Mock cards stay available only when no live connection exists."}
           </p>
@@ -502,4 +535,57 @@ export function RepliesMockShowcase({
 function shouldAutoRefill(key: string, state: Map<string, number>) {
   const lastTriggeredAt = state.get(key) ?? 0;
   return Date.now() - lastTriggeredAt >= 10 * 60_000;
+}
+
+function summarizeReplyRefresh(diagnostics?: ReplyRefreshDiagnostics) {
+  if (!diagnostics) return null;
+  if (diagnostics.finalCardCount > 0) return null;
+
+  const totals = diagnostics.passes.reduce(
+    (next, pass) => {
+      next.tweetsFetched += pass.tweetsFetched;
+      next.languageSkipped += pass.languageSkipped;
+      next.lowEngagementSkipped += pass.lowEngagementSkipped;
+      next.staleSkipped += pass.staleSkipped;
+      next.candidateCount += pass.candidateCount;
+      next.draftedCount += pass.draftedCount;
+      next.failedQueries += pass.queryResultCounts.filter((entry) => entry.results < 0).length;
+      return next;
+    },
+    {
+      tweetsFetched: 0,
+      languageSkipped: 0,
+      lowEngagementSkipped: 0,
+      staleSkipped: 0,
+      candidateCount: 0,
+      draftedCount: 0,
+      failedQueries: 0,
+    }
+  );
+
+  if (totals.failedQueries > 0 && totals.tweetsFetched === 0) {
+    return "Refresh could not read X search from this connection. Check the X auth session, then refresh again.";
+  }
+
+  if (totals.tweetsFetched === 0) {
+    return "Refresh ran, but X search returned no posts for this profile. Try again in a few minutes.";
+  }
+
+  if (totals.languageSkipped > 0 && totals.candidateCount === 0) {
+    return `Refresh scanned ${totals.tweetsFetched} posts, but none matched the selected language.`;
+  }
+
+  if (totals.lowEngagementSkipped > 0 && totals.candidateCount === 0) {
+    return `Refresh scanned ${totals.tweetsFetched} posts, but none passed the current popularity filter of 3 replies or 10 likes.`;
+  }
+
+  if (totals.staleSkipped > 0 && totals.candidateCount === 0) {
+    return `Refresh scanned ${totals.tweetsFetched} posts, but they were outside the current freshness window.`;
+  }
+
+  if (totals.candidateCount > 0 && totals.draftedCount === 0) {
+    return `Refresh found ${totals.candidateCount} eligible posts, but the draft generator returned no usable replies.`;
+  }
+
+  return `Refresh scanned ${totals.tweetsFetched} posts, but none were eligible for review.`;
 }

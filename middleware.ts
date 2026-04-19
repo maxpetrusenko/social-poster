@@ -4,7 +4,6 @@ import { createServerClient } from "@supabase/ssr";
 import {
   getSupabasePublicEnv,
   isSupabaseConfigured,
-  isWorkspaceUserAllowed,
 } from "@/lib/supabase/config";
 
 export async function middleware(request: NextRequest) {
@@ -37,7 +36,7 @@ export async function middleware(request: NextRequest) {
       data: { user },
     } = await supabase.auth.getUser();
 
-    if (isWorkspaceUserAllowed(user?.email)) {
+    if (user?.email) {
       return response;
     }
 

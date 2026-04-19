@@ -19,6 +19,10 @@ import { getPlatformMeta, normalizePlatformType } from "./platforms";
 import { getZonedDateParts } from "@/lib/timezone";
 import { getPostCategoryMeta } from "@/lib/post-categories";
 import { deriveCalendarRunDetails } from "./calendar-run-details";
+import {
+  isCalendarVisibleRun,
+  isCalendarVisibleSchedule,
+} from "./calendar-visibility";
 import { getDashboardCandidates } from "./candidates";
 import { resolveDynamicSchedulePreview } from "./calendar-schedule-preview";
 import { getWorkspaceRssSettings, type RssSettingsConfig } from "@/lib/rss-config";
@@ -655,7 +659,9 @@ export async function getCalendarInsights(
     postIds,
     postIdSet,
   } = await getDashboardWorkspaceScope(workspaceId);
-  const scheduleIds = scheduleRows.map((schedule) => schedule.id);
+  const scheduleMap = new Map(scheduleRows.map((schedule) => [schedule.id, schedule]));
+  const calendarScheduleRows = scheduleRows.filter(isCalendarVisibleSchedule);
+  const calendarScheduleIds = calendarScheduleRows.map((schedule) => schedule.id);
   const [candidatePool, rssSettings] = await Promise.all([
     getDashboardCandidates(24, workspaceId),
     getWorkspaceRssSettings(workspaceId),
@@ -691,22 +697,22 @@ export async function getCalendarInsights(
           )
           .orderBy(desc(posts.scheduledAt))
       : Promise.resolve([] as PostRow[]),
-    scheduleIds.length > 0
+    calendarScheduleIds.length > 0
       ? db
           .select({ scheduleId: pipelineRuns.scheduleId })
           .from(pipelineRuns)
           .where(
             and(
               eq(pipelineRuns.workspaceId, workspaceId),
-              inArray(pipelineRuns.scheduleId, scheduleIds),
+              inArray(pipelineRuns.scheduleId, calendarScheduleIds),
               lt(pipelineRuns.startedAt, monthStart)
             )
           )
       : Promise.resolve([] as Array<{ scheduleId: string | null }>),
   ]);
-  const runRowsRaw = allRunRows.filter((run) =>
-    runTargetsWorkspace(run, workspaceId, scheduleIdSet, postIdSet)
-  );
+  const runRowsRaw = allRunRows
+    .filter((run) => runTargetsWorkspace(run, workspaceId, scheduleIdSet, postIdSet))
+    .filter((run) => isCalendarVisibleRun(run, scheduleMap));
 
   const publishedPostRows =
     postIds.length > 0
@@ -754,7 +760,6 @@ export async function getCalendarInsights(
   ]);
 
   const platformMap = new Map(platformRows.map((platform) => [platform.id, platform]));
-  const scheduleMap = new Map(scheduleRows.map((schedule) => [schedule.id, schedule]));
   const postMap = new Map(relatedPostRows.map((post) => [post.id, post]));
   const now = new Date();
   const priorRunCountsByScheduleId = priorRunRows.reduce<Map<string, number>>(
@@ -805,7 +810,7 @@ export async function getCalendarInsights(
     return created;
   };
 
-  for (const schedule of scheduleRows) {
+  for (const schedule of calendarScheduleRows) {
     const targetPlatforms = getTargetPlatformsForSchedule(schedule, platformMap);
     const occurrences = getCronOccurrences(schedule.cron, monthStart, monthEnd, 120);
 

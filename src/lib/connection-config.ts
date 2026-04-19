@@ -4,6 +4,13 @@ export type StoredConnectionConfig = {
   customInstructions?: string | null;
   credentials?: Record<string, unknown> | null;
   notes?: string | null;
+  birdSession?: {
+    status?: string | null;
+    checkedAt?: string | null;
+    source?: string | null;
+    message?: string | null;
+    error?: string | null;
+  } | null;
 };
 
 export function readStoredConnectionConfig(
@@ -25,7 +32,23 @@ export function readStoredConnectionConfig(
         ? source.customInstructions
         : null,
     notes: typeof source.notes === "string" ? source.notes : null,
+    birdSession: readBirdSession(source.birdSession),
     credentials,
+  };
+}
+
+function readBirdSession(value: unknown): StoredConnectionConfig["birdSession"] {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+
+  const record = value as Record<string, unknown>;
+  return {
+    status: typeof record.status === "string" ? record.status : null,
+    checkedAt: typeof record.checkedAt === "string" ? record.checkedAt : null,
+    source: typeof record.source === "string" ? record.source : null,
+    message: typeof record.message === "string" ? record.message : null,
+    error: typeof record.error === "string" ? record.error : null,
   };
 }
 

@@ -70,6 +70,7 @@ export function ConnectionsPage({
   const [isSaving, startSaving] = useTransition();
   const [disconnectingId, setDisconnectingId] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [checkingBirdId, setCheckingBirdId] = useState<string | null>(null);
 
   const insightById = useMemo(
     () => new Map(insights.map((item) => [item.id, item])),
@@ -177,6 +178,7 @@ export function ConnectionsPage({
           secondaryLabel,
           platformLabel: definition?.label ?? platform.name,
           handle: platform.handle,
+          provider: platform.provider,
           accent: meta.accent,
           glow: meta.glow,
           shortLabel: meta.shortLabel,
@@ -191,6 +193,10 @@ export function ConnectionsPage({
           customInstructions: stored.customInstructions ?? null,
           createdAtLabel: null,
           manageLabel: getManageLabel(platform.type),
+          birdSession:
+            platform.provider === "bird"
+              ? formatBirdSessionStatus(stored.birdSession)
+              : null,
         };
       })
       .sort((left, right) => {
@@ -437,6 +443,35 @@ export function ConnectionsPage({
     }
   }
 
+  async function handleCheckBirdSession(platformId: string) {
+    setCheckingBirdId(platformId);
+
+    try {
+      const response = await fetch(`/api/platforms/${platformId}/test`, {
+        method: "POST",
+      });
+      const body = (await response.json().catch(() => ({}))) as {
+        message?: string;
+        error?: string;
+      };
+
+      if (!response.ok) {
+        throw new Error(body.error ?? "Bird session check failed.");
+      }
+
+      router.refresh();
+    } catch (checkError) {
+      router.refresh();
+      alert(
+        checkError instanceof Error
+          ? checkError.message
+          : "Bird session check failed."
+      );
+    } finally {
+      setCheckingBirdId(null);
+    }
+  }
+
   return (
     <div className="bg-[radial-gradient(circle_at_top_left,#fff8ef_0%,transparent_32%),linear-gradient(180deg,#f5f0e6_0%,#eee5d7_100%)]">
       <div className="mx-auto flex w-full max-w-[1500px] flex-col gap-6 px-5 py-6 md:px-8 md:py-8 xl:px-10">
@@ -470,11 +505,13 @@ export function ConnectionsPage({
           items={cardItems}
           togglingId={togglingId}
           disconnectingId={disconnectingId}
+          checkingBirdId={checkingBirdId}
           onToggle={(platformId) => {
             const platform = platforms.find((item) => item.id === platformId);
             if (platform) handleToggleEnabled(platform);
           }}
           onDisconnect={handleDisconnect}
+          onCheckBirdSession={handleCheckBirdSession}
         />
       </div>
 
@@ -507,9 +544,45 @@ export function ConnectionsPage({
   );
 }
 
+function formatBirdSessionStatus(
+  session:
+    | {
+        status?: string | null;
+        checkedAt?: string | null;
+        message?: string | null;
+        error?: string | null;
+      }
+    | null
+    | undefined
+) {
+  if (!session) {
+    return {
+      status: "unknown" as const,
+      checkedAtLabel: null,
+      message: null,
+    };
+  }
+
+  const checkedAt = session.checkedAt ? new Date(session.checkedAt) : null;
+  const checkedAtLabel =
+    checkedAt && !Number.isNaN(checkedAt.getTime())
+      ? checkedAt.toLocaleString()
+      : null;
+  const status: "ok" | "failed" | "unknown" =
+    session.status === "ok" || session.status === "failed"
+      ? session.status
+      : "unknown";
+
+  return {
+    status,
+    checkedAtLabel,
+    message: session.error ?? session.message ?? null,
+  };
+}
+
 function getOAuthStartUrl(platformType: PlatformType, params: URLSearchParams) {
   const route = `/api/auth/${platformType.replace(/_/g, "-")}?${params.toString()}`;
-  const callbackUrl = getPinnedOAuthCallbackUrl(platformType);
+  const callbackUrl = getPinnedOAuthCallbackUrl();
   if (!callbackUrl || typeof window === "undefined") return route;
 
   const callbackOrigin = new URL(callbackUrl).origin;
@@ -518,11 +591,6 @@ function getOAuthStartUrl(platformType: PlatformType, params: URLSearchParams) {
   return new URL(route, callbackOrigin).toString();
 }
 
-function getPinnedOAuthCallbackUrl(platformType: PlatformType) {
-  switch (platformType) {
-    case "twitter":
-      return "https://social.maxpetrusenko.com/api/auth/twitter/callback";
-    default:
-      return null;
-  }
+function getPinnedOAuthCallbackUrl() {
+  return "https://social.maxpetrusenko.com/api/auth/callback";
 }

@@ -1,23 +1,18 @@
 import { db } from "@/db";
 import { platforms } from "@/db/schema";
-import { requireApiSession } from "@/lib/auth";
+import { requireApiWorkspaceManager } from "@/lib/api-authorization";
 import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
-import { getTenantContext } from "@/lib/tenancy";
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await requireApiSession();
-  if (session instanceof NextResponse) return session;
+  const tenant = await requireApiWorkspaceManager();
+  if (tenant instanceof NextResponse) return tenant;
 
   try {
     const { id } = await params;
-    const tenant = await getTenantContext();
-    if (!tenant) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
 
     // Check if platform exists
     const platform = await db.query.platforms.findFirst({

@@ -1,7 +1,7 @@
 import { db } from "@/db";
 import { posts, postTargets, platforms, pipelineRuns } from "@/db/schema";
 import type { PipelineStep } from "@/db/schema";
-import { requireApiSession } from "@/lib/auth";
+import { requireApiWorkspacePublisher } from "@/lib/api-authorization";
 import { publishPlatformTargets } from "@/lib/pipeline/publish-service";
 import { and, eq } from "drizzle-orm";
 import crypto from "node:crypto";
@@ -10,18 +10,13 @@ import {
   resolvePostStatusFromTargetResults,
   resolvePublishResultsStatus,
 } from "@/lib/pipeline/status";
-import { getTenantContext } from "@/lib/tenancy";
 
 export async function POST(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await requireApiSession();
-  if (session instanceof NextResponse) return session;
-  const tenant = await getTenantContext();
-  if (!tenant) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const tenant = await requireApiWorkspacePublisher();
+  if (tenant instanceof NextResponse) return tenant;
 
   const { id: postId } = await params;
   const post = await db.query.posts.findFirst({

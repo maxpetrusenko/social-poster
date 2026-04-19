@@ -77,6 +77,7 @@ type WorkspaceSurface = {
   isArchived: boolean;
   memberCount: number;
   canManage: boolean;
+  canDelete?: boolean;
 };
 
 type MemberSurface = {
@@ -308,12 +309,14 @@ export function WorkspaceControlPlane({
                           </button>
                         </form>
                       )}
-                      <form action={deleteWorkspaceAction}>
-                        <input type="hidden" name="workspaceId" value={workspace.id} />
-                        <button className="rounded-[12px] border border-[rgba(12,17,21,0.12)] bg-white px-3 py-2 text-sm font-semibold text-[var(--muted)]">
-                          Delete
-                        </button>
-                      </form>
+                      {workspace.canDelete ? (
+                        <form action={deleteWorkspaceAction}>
+                          <input type="hidden" name="workspaceId" value={workspace.id} />
+                          <button className="rounded-[12px] border border-[rgba(12,17,21,0.12)] bg-white px-3 py-2 text-sm font-semibold text-[var(--muted)]">
+                            Delete
+                          </button>
+                        </form>
+                      ) : null}
                     </>
                   ) : null}
                 </div>

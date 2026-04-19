@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireApiWorkspaceEditor } from "@/lib/api-authorization";
 
 const OPENAI_URL = "https://api.openai.com/v1/responses";
 const MODEL = process.env.OPENAI_ENRICH_MODEL || "gpt-4.1-mini";
@@ -103,6 +104,9 @@ Respond with JSON only:
 }
 
 export async function POST(request: NextRequest) {
+  const authorized = await requireApiWorkspaceEditor();
+  if (authorized instanceof NextResponse) return authorized;
+
   try {
     const body = (await request.json()) as {
       url?: string;

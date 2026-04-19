@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireApiWorkspaceEditor } from "@/lib/api-authorization";
 import { requireApiSession } from "@/lib/auth";
 import {
   listReplyCandidates,
-  processReadyReplyQueue,
   refreshReplyCandidatesWithDiagnostics,
   REPLY_REFRESH_MODES,
 } from "@/lib/replies/live";
@@ -43,10 +43,6 @@ export async function GET(request: NextRequest) {
       request.nextUrl.searchParams.get("language")
     );
 
-    void processReadyReplyQueue(platformId).catch((error) => {
-      console.error("[api/replies] ready queue sweep failed:", error);
-    });
-
     const cards = await listReplyCandidates(
       platformId,
       profileId,
@@ -63,15 +59,10 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const session = await requireApiSession();
-  if (session instanceof NextResponse) return session;
+  const tenant = await requireApiWorkspaceEditor();
+  if (tenant instanceof NextResponse) return tenant;
 
   try {
-    const tenant = await getTenantContext();
-    if (!tenant) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
     const body = refreshSchema.parse(await request.json());
     const result = await refreshReplyCandidatesWithDiagnostics(
       body.platformId,

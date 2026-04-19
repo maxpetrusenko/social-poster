@@ -100,6 +100,19 @@ function ensureSchema(sqlite: Database.Database) {
       created_at INTEGER NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS audit_events (
+      id TEXT PRIMARY KEY NOT NULL,
+      organization_id TEXT REFERENCES organizations(id) ON DELETE SET NULL,
+      workspace_id TEXT REFERENCES workspaces(id) ON DELETE SET NULL,
+      actor_user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+      actor_email TEXT,
+      action TEXT NOT NULL,
+      target_type TEXT NOT NULL,
+      target_id TEXT,
+      metadata TEXT,
+      created_at INTEGER NOT NULL
+    );
+
     CREATE TABLE IF NOT EXISTS sessions (
       id TEXT PRIMARY KEY NOT NULL,
       email TEXT NOT NULL,
@@ -303,6 +316,8 @@ function ensureSchema(sqlite: Database.Database) {
     CREATE UNIQUE INDEX IF NOT EXISTS org_memberships_user_org_idx ON org_memberships(user_id, organization_id);
     CREATE UNIQUE INDEX IF NOT EXISTS workspace_memberships_user_workspace_idx ON workspace_memberships(user_id, workspace_id);
     CREATE UNIQUE INDEX IF NOT EXISTS rss_sources_workspace_url_idx ON rss_sources(workspace_id, url);
+    CREATE INDEX IF NOT EXISTS audit_events_org_created_idx ON audit_events(organization_id, created_at);
+    CREATE INDEX IF NOT EXISTS audit_events_workspace_created_idx ON audit_events(workspace_id, created_at);
   `);
 
   addColumnIfMissing(sqlite, "platforms", "workspace_id", "workspace_id TEXT");

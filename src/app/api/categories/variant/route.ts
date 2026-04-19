@@ -1,9 +1,8 @@
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { platforms, schedules } from "@/db/schema";
-import { requireApiSession } from "@/lib/auth";
+import { requireApiWorkspaceEditor } from "@/lib/api-authorization";
 import { reconcileSchedules } from "@/lib/scheduler";
-import { getTenantContext } from "@/lib/tenancy";
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -23,15 +22,10 @@ function copyRecord(source: unknown) {
 }
 
 export async function POST(request: Request) {
-  const session = await requireApiSession();
-  if (session instanceof Response) return session;
+  const tenant = await requireApiWorkspaceEditor();
+  if (tenant instanceof Response) return tenant;
 
   try {
-    const tenant = await getTenantContext();
-    if (!tenant) {
-      return Response.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
     const body = (await request.json()) as {
       scheduleId?: string;
       contentByPlatform?: Record<string, string>;

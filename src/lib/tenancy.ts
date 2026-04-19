@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 import { and, eq, gt, inArray, isNull } from "drizzle-orm";
 import { db } from "@/db";
 import {
+  auditEvents,
   orgMemberships,
   organizations,
   platforms,
@@ -69,8 +70,106 @@ export type TenantContext = {
   accessibleWorkspaces: TenantWorkspace[];
 };
 
+const ORG_ADMIN_ROLES = new Set<OrgRole>(["owner", "admin"]);
+const WORKSPACE_MANAGER_ROLES = new Set<WorkspaceRole>(["owner", "manager"]);
+const WORKSPACE_EDITOR_ROLES = new Set<WorkspaceRole>([
+  "owner",
+  "manager",
+  "editor",
+  "contributor",
+]);
+const WORKSPACE_PUBLISHER_ROLES = new Set<WorkspaceRole>([
+  "owner",
+  "manager",
+  "editor",
+]);
+
 function normalizeEmail(email: string) {
   return email.trim().toLowerCase();
+}
+
+export function canManageOrganization(context: TenantContext) {
+  return ORG_ADMIN_ROLES.has(context.orgMembership.orgRole as OrgRole);
+}
+
+export function canManageWorkspace(context: TenantContext, workspaceId: string) {
+  if (canManageOrganization(context)) {
+    return true;
+  }
+
+  const membership = context.accessibleWorkspaces.find(
+    (entry) => entry.workspace.id === workspaceId
+  )?.membership;
+
+  return membership
+    ? WORKSPACE_MANAGER_ROLES.has(membership.workspaceRole as WorkspaceRole)
+    : false;
+}
+
+export function canManageCurrentWorkspace(context: TenantContext) {
+  return canManageWorkspace(context, context.currentWorkspace.id);
+}
+
+export function canEditCurrentWorkspaceContent(context: TenantContext) {
+  if (canManageOrganization(context)) {
+    return true;
+  }
+
+  return WORKSPACE_EDITOR_ROLES.has(
+    context.currentWorkspaceMembership.workspaceRole as WorkspaceRole
+  );
+}
+
+export function canPublishCurrentWorkspaceContent(context: TenantContext) {
+  if (canManageOrganization(context)) {
+    return true;
+  }
+
+  return WORKSPACE_PUBLISHER_ROLES.has(
+    context.currentWorkspaceMembership.workspaceRole as WorkspaceRole
+  );
+}
+
+function requireOrgAdmin(context: TenantContext) {
+  if (!canManageOrganization(context)) {
+    throw new Error("Organization admin access is required.");
+  }
+}
+
+function requireOrgOwner(context: TenantContext) {
+  if (context.orgMembership.orgRole !== "owner") {
+    throw new Error("Organization owner access is required.");
+  }
+}
+
+function requireWorkspaceManager(context: TenantContext, workspaceId: string) {
+  if (!canManageWorkspace(context, workspaceId)) {
+    throw new Error("Workspace manager access is required.");
+  }
+}
+
+async function recordAuditEvent(
+  context: TenantContext,
+  input: {
+    action: string;
+    targetType: string;
+    targetId?: string | null;
+    workspaceId?: string | null;
+    metadata?: Record<string, unknown>;
+  }
+) {
+  await db.insert(auditEvents).values({
+    id: crypto.randomUUID(),
+    organizationId: context.organization.id,
+    workspaceId: input.workspaceId ?? context.currentWorkspace.id,
+    actorUserId: context.user.id,
+    actorEmail: context.user.email,
+    action: input.action,
+    targetType: input.targetType,
+    targetId: input.targetId ?? null,
+    metadata: input.metadata,
+    createdAt: new Date(),
+  });
 }
 
 function titleCase(input: string) {
@@ -630,6 +729,7 @@ export async function getOrgMembersData() {
 
 export async function createWorkspaceForCurrentOrg(name: string) {
   const context = await requireTenantContext();
+  requireOrgAdmin(context);
   const trimmedName = name.trim();
   if (!trimmedName) {
     throw new Error("Workspace name is required.");
@@ -660,6 +760,13 @@ export async function createWorkspaceForCurrentOrg(name: string) {
   });
 
   await switchCurrentWorkspace(workspaceId);
+  await recordAuditEvent(context, {
+    action: "workspace.create",
+    targetType: "workspace",
+    targetId: workspaceId,
+    workspaceId,
+    metadata: { name: trimmedName },
+  });
 
   return workspaceId;
 }
@@ -669,6 +776,7 @@ export async function updateOrganizationGeneral(input: {
   defaultTimezone: string;
 }) {
   const context = await requireTenantContext();
+  requireOrgAdmin(context);
   const name = input.name.trim();
   const timezone = input.defaultTimezone.trim() || "UTC";
   if (!name) {
@@ -683,13 +791,18 @@ export async function updateOrganizationGeneral(input: {
       updatedAt: new Date(),
     })
     .where(eq(organizations.id, context.organization.id));
+  await recordAuditEvent(context, {
+    action: "organization.update",
+    targetType: "organization",
+    targetId: context.organization.id,
+    workspaceId: null,
+    metadata: { name, defaultTimezone: timezone },
+  });
 }
 
 export async function scheduleOrganizationDeletion() {
   const context = await requireTenantContext();
-  if (context.orgMembership.orgRole !== "owner") {
-    throw new Error("Only an owner can schedule deletion.");
-  }
+  requireOrgOwner(context);
 
   const now = new Date();
   const scheduledFor = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
@@ -702,13 +815,18 @@ export async function scheduleOrganizationDeletion() {
       updatedAt: now,
     })
     .where(eq(organizations.id, context.organization.id));
+  await recordAuditEvent(context, {
+    action: "organization.deletion_scheduled",
+    targetType: "organization",
+    targetId: context.organization.id,
+    workspaceId: null,
+    metadata: { scheduledFor: scheduledFor.toISOString() },
+  });
 }
 
 export async function cancelOrganizationDeletion() {
   const context = await requireTenantContext();
-  if (context.orgMembership.orgRole !== "owner") {
-    throw new Error("Only an owner can cancel deletion.");
-  }
+  requireOrgOwner(context);
 
   await db
     .update(organizations)
@@ -718,6 +836,12 @@ export async function cancelOrganizationDeletion() {
       updatedAt: new Date(),
     })
     .where(eq(organizations.id, context.organization.id));
+  await recordAuditEvent(context, {
+    action: "organization.deletion_cancelled",
+    targetType: "organization",
+    targetId: context.organization.id,
+    workspaceId: null,
+  });
 }
 
 export async function updateCurrentWorkspaceGeneral(input: {
@@ -732,6 +856,7 @@ export async function updateCurrentWorkspaceGeneral(input: {
 }) {
   const context = await requireTenantContext();
   const workspace = context.currentWorkspace;
+  requireWorkspaceManager(context, workspace.id);
   const name = input.name.trim();
   if (!name) {
     throw new Error("Workspace name is required.");
@@ -752,10 +877,18 @@ export async function updateCurrentWorkspaceGeneral(input: {
       updatedAt: new Date(),
     })
     .where(eq(workspaces.id, workspace.id));
+  await recordAuditEvent(context, {
+    action: "workspace.update",
+    targetType: "workspace",
+    targetId: workspace.id,
+    workspaceId: workspace.id,
+    metadata: { name, approvalWorkflowMode: input.approvalWorkflowMode },
+  });
 }
 
 export async function archiveWorkspace(workspaceId: string) {
   const context = await requireTenantContext();
+  requireWorkspaceManager(context, workspaceId);
   const activeWorkspaces = await db
     .select()
     .from(workspaces)
@@ -779,6 +912,12 @@ export async function archiveWorkspace(workspaceId: string) {
         eq(workspaces.organizationId, context.organization.id)
       )
     );
+  await recordAuditEvent(context, {
+    action: "workspace.archive",
+    targetType: "workspace",
+    targetId: workspaceId,
+    workspaceId,
+  });
 
   if (context.currentWorkspace.id === workspaceId) {
     const fallback = activeWorkspaces.find((workspace) => workspace.id !== workspaceId);
@@ -790,6 +929,7 @@ export async function archiveWorkspace(workspaceId: string) {
 
 export async function restoreWorkspace(workspaceId: string) {
   const context = await requireTenantContext();
+  requireWorkspaceManager(context, workspaceId);
   await db
     .update(workspaces)
     .set({ isArchived: false, updatedAt: new Date() })
@@ -799,10 +939,17 @@ export async function restoreWorkspace(workspaceId: string) {
         eq(workspaces.organizationId, context.organization.id)
       )
     );
+  await recordAuditEvent(context, {
+    action: "workspace.restore",
+    targetType: "workspace",
+    targetId: workspaceId,
+    workspaceId,
+  });
 }
 
 export async function deleteWorkspace(workspaceId: string) {
   const context = await requireTenantContext();
+  requireOrgAdmin(context);
   const activeCount = await db
     .select()
     .from(workspaces)
@@ -833,6 +980,13 @@ export async function deleteWorkspace(workspaceId: string) {
   }
 
   await db.delete(workspaces).where(eq(workspaces.id, workspaceId));
+  await recordAuditEvent(context, {
+    action: "workspace.delete",
+    targetType: "workspace",
+    targetId: workspaceId,
+    workspaceId: null,
+    metadata: { name: target.name },
+  });
 
   if (context.currentWorkspace.id === workspaceId) {
     const fallback = activeCount.find((workspace) => workspace.id !== workspaceId);
@@ -848,6 +1002,16 @@ export async function createInvitation(input: {
   workspaceAssignments: Array<{ workspaceId: string; role: WorkspaceRole }>;
 }) {
   const context = await requireTenantContext();
+  requireOrgAdmin(context);
+  if (context.orgMembership.orgRole !== "owner" && input.orgRole !== "member") {
+    throw new Error("Only an owner can invite organization admins or owners.");
+  }
+  if (
+    context.orgMembership.orgRole !== "owner" &&
+    input.workspaceAssignments.some((assignment) => assignment.role === "owner")
+  ) {
+    throw new Error("Only an owner can grant workspace owner access.");
+  }
   const email = normalizeEmail(input.email);
   if (!email) {
     throw new Error("Invite email is required.");
@@ -913,6 +1077,17 @@ export async function createInvitation(input: {
     expiresAt,
     createdAt: now,
   });
+  await recordAuditEvent(context, {
+    action: "invitation.create",
+    targetType: "workspace_invitation",
+    targetId: invitationId,
+    workspaceId: input.workspaceAssignments[0]?.workspaceId ?? null,
+    metadata: {
+      email,
+      orgRole: input.orgRole,
+      workspaceAssignments: input.workspaceAssignments,
+    },
+  });
 
   return {
     id: invitationId,
@@ -924,6 +1099,7 @@ export async function createInvitation(input: {
 
 export async function resendInvitation(invitationId: string) {
   const context = await requireTenantContext();
+  requireOrgAdmin(context);
   const invitation = await db
     .select()
     .from(workspaceInvitations)
@@ -946,6 +1122,13 @@ export async function resendInvitation(invitationId: string) {
     .update(workspaceInvitations)
     .set({ token, expiresAt })
     .where(eq(workspaceInvitations.id, invitation.id));
+  await recordAuditEvent(context, {
+    action: "invitation.resend",
+    targetType: "workspace_invitation",
+    targetId: invitation.id,
+    workspaceId: invitation.workspaceAssignments?.[0]?.workspaceId ?? null,
+    metadata: { email: invitation.email },
+  });
 
   return {
     ...invitation,
@@ -957,6 +1140,18 @@ export async function resendInvitation(invitationId: string) {
 
 export async function revokeInvitation(invitationId: string) {
   const context = await requireTenantContext();
+  requireOrgAdmin(context);
+  const invitation = await db
+    .select()
+    .from(workspaceInvitations)
+    .where(
+      and(
+        eq(workspaceInvitations.id, invitationId),
+        eq(workspaceInvitations.organizationId, context.organization.id)
+      )
+    )
+    .get();
+
   await db
     .delete(workspaceInvitations)
     .where(
@@ -965,6 +1160,15 @@ export async function revokeInvitation(invitationId: string) {
         eq(workspaceInvitations.organizationId, context.organization.id)
       )
     );
+  if (invitation) {
+    await recordAuditEvent(context, {
+      action: "invitation.revoke",
+      targetType: "workspace_invitation",
+      targetId: invitation.id,
+      workspaceId: invitation.workspaceAssignments?.[0]?.workspaceId ?? null,
+      metadata: { email: invitation.email },
+    });
+  }
 }
 
 export async function acceptInvitationByToken(token: string) {
@@ -1038,6 +1242,13 @@ export async function acceptInvitationByToken(token: string) {
     .update(workspaceInvitations)
     .set({ acceptedAt: now })
     .where(eq(workspaceInvitations.id, invitation.id));
+  await recordAuditEvent(context, {
+    action: "invitation.accept",
+    targetType: "workspace_invitation",
+    targetId: invitation.id,
+    workspaceId: invitation.workspaceAssignments?.[0]?.workspaceId ?? null,
+    metadata: { email: invitation.email },
+  });
 
   const firstWorkspaceId = invitation.workspaceAssignments?.[0]?.workspaceId;
   if (firstWorkspaceId) {
@@ -1049,6 +1260,7 @@ export async function acceptInvitationByToken(token: string) {
 
 export async function updateMemberOrgRole(membershipId: string, orgRole: OrgRole) {
   const context = await requireTenantContext();
+  requireOrgOwner(context);
   const membership = await db
     .select()
     .from(orgMemberships)
@@ -1084,6 +1296,17 @@ export async function updateMemberOrgRole(membershipId: string, orgRole: OrgRole
     .update(orgMemberships)
     .set({ orgRole })
     .where(eq(orgMemberships.id, membership.id));
+  await recordAuditEvent(context, {
+    action: "member.org_role_update",
+    targetType: "org_membership",
+    targetId: membership.id,
+    workspaceId: null,
+    metadata: {
+      userId: membership.userId,
+      previousOrgRole: membership.orgRole,
+      orgRole,
+    },
+  });
 }
 
 export async function updateMemberWorkspaceAssignments(
@@ -1091,6 +1314,7 @@ export async function updateMemberWorkspaceAssignments(
   assignments: Array<{ workspaceId: string; role: WorkspaceRole }>
 ) {
   const context = await requireTenantContext();
+  requireOrgAdmin(context);
   const orgWorkspaceRows = await db
     .select({ id: workspaces.id })
     .from(workspaces)
@@ -1114,6 +1338,13 @@ export async function updateMemberWorkspaceAssignments(
     );
 
   const currentForUser = current.filter((membership) => membership.userId === userId);
+  if (
+    context.orgMembership.orgRole !== "owner" &&
+    (currentForUser.some((membership) => membership.workspaceRole === "owner") ||
+      assignments.some((assignment) => assignment.role === "owner"))
+  ) {
+    throw new Error("Only an owner can change workspace owner access.");
+  }
   const currentByWorkspaceId = new Map(
     currentForUser.map((membership) => [membership.workspaceId, membership])
   );
@@ -1147,10 +1378,18 @@ export async function updateMemberWorkspaceAssignments(
       addedAt: new Date(),
     });
   }
+  await recordAuditEvent(context, {
+    action: "member.workspace_assignments_update",
+    targetType: "user",
+    targetId: userId,
+    workspaceId: assignments[0]?.workspaceId ?? null,
+    metadata: { assignments },
+  });
 }
 
 export async function removeMemberFromOrganization(membershipId: string) {
   const context = await requireTenantContext();
+  requireOrgAdmin(context);
   const membership = await db
     .select()
     .from(orgMemberships)
@@ -1171,6 +1410,10 @@ export async function removeMemberFromOrganization(membershipId: string) {
   }
 
   if (membership.orgRole === "owner") {
+    if (context.orgMembership.orgRole !== "owner") {
+      throw new Error("Only an owner can remove another owner.");
+    }
+
     const owners = await db
       .select()
       .from(orgMemberships)
@@ -1203,6 +1446,13 @@ export async function removeMemberFromOrganization(membershipId: string) {
   }
 
   await db.delete(orgMemberships).where(eq(orgMemberships.id, membership.id));
+  await recordAuditEvent(context, {
+    action: "member.remove",
+    targetType: "org_membership",
+    targetId: membership.id,
+    workspaceId: null,
+    metadata: { userId: membership.userId, orgRole: membership.orgRole },
+  });
 }
 
 export function formatWorkspaceAssignments(

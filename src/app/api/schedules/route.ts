@@ -1,21 +1,15 @@
 import { db } from "@/db";
 import { platforms, profiles, schedules } from "@/db/schema";
-import { requireApiSession } from "@/lib/auth";
+import { requireApiWorkspaceEditor } from "@/lib/api-authorization";
 import { reconcileSchedules } from "@/lib/scheduler";
 import crypto from "node:crypto";
-import { getTenantContext } from "@/lib/tenancy";
 import { and, eq, inArray } from "drizzle-orm";
 
 export async function POST(request: Request) {
-  const session = await requireApiSession();
-  if (session instanceof Response) return session;
+  const tenant = await requireApiWorkspaceEditor();
+  if (tenant instanceof Response) return tenant;
 
   try {
-    const tenant = await getTenantContext();
-    if (!tenant) {
-      return Response.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
     const body = await request.json();
     const { name, description, cron, cronHuman, jobType, profileId, targetPlatformIds, enabled, config } = body;
 

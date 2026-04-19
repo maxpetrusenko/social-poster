@@ -141,15 +141,10 @@ export function StatusBadge({
   tone: "good" | "warn" | "bad" | "neutral" | "blocked";
   children: React.ReactNode;
 }) {
-  const styles = {
-    good: "border-emerald-200 bg-emerald-50 text-emerald-700",
-    warn: "border-amber-200 bg-amber-50 text-amber-700",
-    bad: "border-red-200 bg-red-50 text-red-700",
-    neutral: "border-slate-300 bg-slate-100 text-slate-700",
-    blocked: "border-stone-100 bg-stone-50/70 text-stone-400",
-  }[tone];
+  void tone;
+  void children;
 
-  return <span className={cn("inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em]", styles)}>{children}</span>;
+  return null;
 }
 
 export function TinyBars({

@@ -10,6 +10,10 @@ import {
   getDashboardWorkspaceScope,
   runTargetsWorkspace,
 } from "./workspace-scope";
+import {
+  isCalendarVisibleRun,
+  isCalendarVisibleSchedule,
+} from "./calendar-visibility";
 
 type RunRow = typeof pipelineRuns.$inferSelect;
 type ScheduleRow = typeof schedules.$inferSelect;
@@ -526,10 +530,12 @@ export async function getCalendarInsights(
 
   const { scheduleRows, scheduleIdSet, postIdSet } =
     await getDashboardWorkspaceScope(workspaceId);
-  const scheduleIds = scheduleRows.map((schedule) => schedule.id);
+  const scheduleMap = new Map(scheduleRows.map((schedule) => [schedule.id, schedule]));
+  const calendarScheduleRows = scheduleRows.filter(isCalendarVisibleSchedule);
+  const scheduleIds = calendarScheduleRows.map((schedule) => schedule.id);
   const postIds = Array.from(postIdSet);
 
-  const enabledScheduleRows = scheduleRows.filter((schedule) => schedule.enabled);
+  const enabledScheduleRows = calendarScheduleRows.filter((schedule) => schedule.enabled);
   const allRunRows = await getScopedRunRows({
     workspaceId,
     scheduleIds,
@@ -537,12 +543,12 @@ export async function getCalendarInsights(
     startedAtGte: monthStart,
     startedAtLt: monthEnd,
   });
-  const runRowsRaw = allRunRows.filter((run) =>
-    runTargetsWorkspace(run, workspaceId, scheduleIdSet, postIdSet)
-  );
+  const runRowsRaw = allRunRows
+    .filter((run) => runTargetsWorkspace(run, workspaceId, scheduleIdSet, postIdSet))
+    .filter((run) => isCalendarVisibleRun(run, scheduleMap));
 
   const events: CalendarEvent[] = [];
-  const scheduleMap = new Map(enabledScheduleRows.map((schedule) => [schedule.id, schedule]));
+  const enabledScheduleMap = new Map(enabledScheduleRows.map((schedule) => [schedule.id, schedule]));
 
   for (const schedule of enabledScheduleRows) {
     const occurrences = getCronOccurrences(schedule.cron, monthStart, monthEnd, 120);
@@ -560,7 +566,7 @@ export async function getCalendarInsights(
 
   for (const run of runRowsRaw) {
     const status = resolvePipelineRunStatus(run);
-    const schedule = run.scheduleId ? scheduleMap.get(run.scheduleId) : null;
+    const schedule = run.scheduleId ? enabledScheduleMap.get(run.scheduleId) : null;
     events.push({
       id: run.id,
       dayKey: dayKey(new Date(run.startedAt)),

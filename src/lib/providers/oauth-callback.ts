@@ -5,10 +5,9 @@ import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { platforms } from "@/db/schema";
+import { requireApiWorkspaceManager } from "@/lib/api-authorization";
 import { getRequestAppUrl } from "@/lib/app-url";
-import { requireApiSession } from "@/lib/auth";
 import { PLATFORM_TYPES, type PlatformType } from "@/lib/platforms";
-import { getTenantContext } from "@/lib/tenancy";
 import { mergeProviderCredentials } from "@/lib/providers/credentials";
 import { getProvider } from "@/lib/providers/registry";
 import {
@@ -23,12 +22,9 @@ export async function handleNativeOAuthCallback(
   request: NextRequest,
   platform: string
 ) {
-  const session = await requireApiSession();
-  if (session instanceof NextResponse) return session;
-
-  const tenant = await getTenantContext();
   const appUrl = getRequestAppUrl(request);
-  if (!tenant) {
+  const tenant = await requireApiWorkspaceManager();
+  if (tenant instanceof NextResponse) {
     return NextResponse.redirect(new URL("/login", appUrl));
   }
 

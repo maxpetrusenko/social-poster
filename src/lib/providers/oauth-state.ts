@@ -99,37 +99,13 @@ export function storedPlatformType(platform: string) {
 }
 
 export function oauthCallbackPath(platform: string) {
-  if (platform === "linkedin_personal" || platform === "linkedin_company") {
-    return `/social-accounts/callback/${platform}/`;
-  }
-
-  return `/api/auth/${routePlatformPath(platform)}/callback`;
+  void platform;
+  return "/api/auth/callback";
 }
 
 export function oauthCallbackUrl(platform: string, appUrl: string) {
-  if (platform === "twitter" || platform === "x") {
-    return (
-      process.env.SOCIAL_POSTER_TWITTER_CALLBACK_URL?.trim() ||
-      process.env.TWITTER_OAUTH_CALLBACK_URL?.trim() ||
-      "https://social.maxpetrusenko.com/api/auth/twitter/callback"
-    );
-  }
-
-  if (platform === "linkedin" || platform === "linkedin_personal") {
-    return (
-      process.env.SOCIAL_POSTER_LINKEDIN_PERSONAL_CALLBACK_URL?.trim() ||
-      process.env.LINKEDIN_OAUTH_CALLBACK_URL?.trim() ||
-      new URL(oauthCallbackPath("linkedin_personal"), appUrl).toString()
-    );
-  }
-
-  if (platform === "linkedin_company") {
-    return (
-      process.env.SOCIAL_POSTER_LINKEDIN_COMPANY_CALLBACK_URL?.trim() ||
-      process.env.LINKEDIN_COMPANY_OAUTH_CALLBACK_URL?.trim() ||
-      new URL(oauthCallbackPath(platform), appUrl).toString()
-    );
-  }
+  const override = process.env.SOCIAL_POSTER_OAUTH_CALLBACK_URL?.trim();
+  if (override) return override;
 
   return new URL(oauthCallbackPath(platform), appUrl).toString();
 }

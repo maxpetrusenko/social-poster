@@ -18,18 +18,6 @@ export type OverviewPlatformRow = {
   accent: string;
 };
 
-function StatusBadge({ enabled }: { enabled: boolean }) {
-  return (
-    <span
-      className={`inline-flex items-center rounded-full px-2.5 py-1 text-[0.72rem] font-semibold uppercase tracking-[0.16em] ${
-        enabled ? "bg-[#e8f3eb] text-[#2d6a43]" : "bg-[#f4e9e3] text-[#8f4f3c]"
-      }`}
-    >
-      {enabled ? "Enabled" : "Disabled"}
-    </span>
-  );
-}
-
 export function OverviewPlatformTable({
   rows,
   totals,
@@ -135,9 +123,6 @@ export function OverviewPlatformTable({
                 </span>
                 <div className="min-w-0">
                   <p className="truncate font-medium text-[#171717]">{row.name}</p>
-                  <div className="mt-2">
-                    <StatusBadge enabled={row.enabled} />
-                  </div>
                 </div>
               </div>
               <div className="px-5 py-4 text-[#5f523f]">{row.handle || "No handle"}</div>

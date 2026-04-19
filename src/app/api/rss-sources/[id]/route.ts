@@ -1,23 +1,17 @@
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { rssSources } from "@/db/schema";
-import { requireApiSession } from "@/lib/auth";
+import { requireApiWorkspaceEditor } from "@/lib/api-authorization";
 import { normalizeRssFeedInput } from "@/lib/rss-config";
-import { getTenantContext } from "@/lib/tenancy";
 
 export async function POST(
   request: Request,
   context: { params: Promise<{ id: string }> }
 ) {
-  const session = await requireApiSession();
-  if (session instanceof Response) return session;
+  const tenant = await requireApiWorkspaceEditor();
+  if (tenant instanceof Response) return tenant;
 
   try {
-    const tenant = await getTenantContext();
-    if (!tenant) {
-      return Response.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
     const { id } = await context.params;
     const body = (await request.json()) as {
       name?: string;
@@ -57,13 +51,8 @@ export async function DELETE(
   _request: Request,
   context: { params: Promise<{ id: string }> }
 ) {
-  const session = await requireApiSession();
-  if (session instanceof Response) return session;
-
-  const tenant = await getTenantContext();
-  if (!tenant) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const tenant = await requireApiWorkspaceEditor();
+  if (tenant instanceof Response) return tenant;
 
   const { id } = await context.params;
   const [row] = await db

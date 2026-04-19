@@ -1,5 +1,6 @@
 import { db } from "@/db";
 import { rssSettings } from "@/db/schema";
+import { requireApiWorkspaceEditor } from "@/lib/api-authorization";
 import { requireApiSession } from "@/lib/auth";
 import {
   ensureWorkspaceRssConfig,
@@ -28,15 +29,10 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const session = await requireApiSession();
-  if (session instanceof Response) return session;
+  const tenant = await requireApiWorkspaceEditor();
+  if (tenant instanceof Response) return tenant;
 
   try {
-    const tenant = await getTenantContext();
-    if (!tenant) {
-      return Response.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
     const body = (await request.json()) as {
       candidateWindowHours?: number;
       candidatePoolSize?: number;

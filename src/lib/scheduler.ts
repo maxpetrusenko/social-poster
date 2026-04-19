@@ -1,11 +1,19 @@
 import cron from "node-cron";
 import { db } from "@/db";
 import { pipelineRuns, schedules } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { and, eq, isNotNull } from "drizzle-orm";
 import { processReadyReplyQueue } from "./replies/live";
 import { runScheduleJob } from "./schedule-jobs";
 import { finalizeAbandonedSteps } from "./pipeline/recovery";
 import { getScheduleCronTimeZone } from "./timezone";
+import {
+  getTokenRefreshSnapshot,
+  refreshExpiringPlatformTokens,
+} from "./providers/token-refresh";
+import {
+  checkBirdSessions,
+  getBirdSessionCheckSnapshot,
+} from "./replies/bird-session-health";
 
 type RegisteredScheduleTask = {
   cron: string;
@@ -17,11 +25,17 @@ const tasks = new Map<string, RegisteredScheduleTask>();
 const ABANDONED_RUN_ERROR = "Run interrupted by app restart before completion";
 let didRecoverAbandonedRuns = false;
 let readyQueueInterval: NodeJS.Timeout | null = null;
+let tokenRefreshInterval: NodeJS.Timeout | null = null;
+let tokenRefreshBootTimer: NodeJS.Timeout | null = null;
+let birdSessionCheckInterval: NodeJS.Timeout | null = null;
+let birdSessionCheckBootTimer: NodeJS.Timeout | null = null;
 
 export async function initScheduler(): Promise<void> {
   console.log("[scheduler] init");
   await ensureRecoveredAbandonedRuns();
   ensureReadyQueueWorker();
+  ensureTokenRefreshWorker();
+  ensureBirdSessionCheckWorker();
   await reconcileSchedules("init");
 
   console.log("[scheduler] ready");
@@ -32,7 +46,7 @@ export async function reconcileSchedules(reason = "manual"): Promise<void> {
   const rows = await db
     .select()
     .from(schedules)
-    .where(eq(schedules.enabled, true));
+    .where(and(eq(schedules.enabled, true), isNotNull(schedules.workspaceId)));
   const enabledById = new Map(rows.map((schedule) => [schedule.id, schedule]));
 
   for (const [scheduleId, registered] of tasks) {
@@ -87,6 +101,8 @@ export async function reloadSchedules(): Promise<void> {
 export async function ensureSchedulerReady(): Promise<void> {
   await ensureRecoveredAbandonedRuns();
   ensureReadyQueueWorker();
+  ensureTokenRefreshWorker();
+  ensureBirdSessionCheckWorker();
 
   if (tasks.size === 0) {
     await reconcileSchedules("ensure-ready");
@@ -101,6 +117,8 @@ export function getSchedulerSnapshot() {
   return {
     runtimeRegisteredCount: tasks.size,
     runtimeRegisteredScheduleIds: getActiveScheduleIds(),
+    tokenRefresh: getTokenRefreshSnapshot(),
+    birdSessionCheck: getBirdSessionCheckSnapshot(),
   };
 }
 
@@ -185,4 +203,70 @@ function ensureReadyQueueWorker() {
     void runSweep();
   }, 60_000);
   readyQueueInterval.unref?.();
+}
+
+function ensureTokenRefreshWorker() {
+  if (tokenRefreshInterval || tokenRefreshBootTimer) return;
+
+  const runSweep = async () => {
+    try {
+      const summary = await refreshExpiringPlatformTokens();
+      if (summary.failed > 0 || summary.refreshed > 0) {
+        console.log(
+          `[scheduler] token refresh sweep: ${summary.refreshed} refreshed, ${summary.failed} failed, ${summary.skipped} skipped`
+        );
+      }
+    } catch (error) {
+      console.error("[scheduler] token refresh sweep failed:", error);
+    }
+  };
+
+  tokenRefreshBootTimer = setTimeout(() => {
+    tokenRefreshBootTimer = null;
+    void runSweep();
+  }, 10_000);
+  tokenRefreshBootTimer.unref?.();
+
+  tokenRefreshInterval = setInterval(() => {
+    void runSweep();
+  }, readTokenRefreshIntervalMs());
+  tokenRefreshInterval.unref?.();
+}
+
+function ensureBirdSessionCheckWorker() {
+  if (birdSessionCheckInterval || birdSessionCheckBootTimer) return;
+
+  const runSweep = async () => {
+    try {
+      const summary = await checkBirdSessions();
+      if (summary.checked > 0) {
+        console.log(
+          `[scheduler] Bird session check: ${summary.ok} ok, ${summary.failed} failed`
+        );
+      }
+    } catch (error) {
+      console.error("[scheduler] Bird session check failed:", error);
+    }
+  };
+
+  birdSessionCheckBootTimer = setTimeout(() => {
+    birdSessionCheckBootTimer = null;
+    void runSweep();
+  }, 30_000);
+  birdSessionCheckBootTimer.unref?.();
+
+  birdSessionCheckInterval = setInterval(() => {
+    void runSweep();
+  }, readBirdSessionCheckIntervalMs());
+  birdSessionCheckInterval.unref?.();
+}
+
+function readTokenRefreshIntervalMs() {
+  const hours = Number(process.env.TOKEN_REFRESH_SWEEP_HOURS ?? 6);
+  return (Number.isFinite(hours) && hours > 0 ? hours : 6) * 60 * 60 * 1000;
+}
+
+function readBirdSessionCheckIntervalMs() {
+  const hours = Number(process.env.BIRD_SESSION_CHECK_HOURS ?? 24);
+  return (Number.isFinite(hours) && hours > 0 ? hours : 24) * 60 * 60 * 1000;
 }

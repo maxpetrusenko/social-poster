@@ -1,12 +1,17 @@
 import { db, checkIntegrity, checkCoreTables, sqlite } from "@/db";
 import { schedules } from "@/db/schema";
 import { ensureSchedulerReady, getSchedulerSnapshot } from "@/lib/scheduler";
-import { eq } from "drizzle-orm";
+import { and, eq, isNotNull } from "drizzle-orm";
 
 export async function GET() {
   await ensureSchedulerReady();
   const enabledSchedules =
-    (await db.select().from(schedules).where(eq(schedules.enabled, true))).length;
+    (
+      await db
+        .select()
+        .from(schedules)
+        .where(and(eq(schedules.enabled, true), isNotNull(schedules.workspaceId)))
+    ).length;
   const scheduler = getSchedulerSnapshot();
 
   const integrity = checkIntegrity(sqlite);
@@ -32,5 +37,6 @@ export async function GET() {
           ? 0
           : enabledSchedules - scheduler.runtimeRegisteredCount,
     },
+    tokenRefresh: scheduler.tokenRefresh,
   });
 }

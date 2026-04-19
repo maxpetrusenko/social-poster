@@ -5,13 +5,13 @@ import { pipelineRuns, platforms, replyEvents, schedules } from "@/db/schema";
 import type { PipelineStep } from "@/db/schema";
 import { REPLY_TARGETS, type ReplyCandidate } from "@/lib/replies/config";
 import {
-  getMentions,
+  getMentionsForPlatform,
   getReplyCount,
   getRetweetCount,
   getTweetAuthor,
   getTweetUrl,
   isReplyTweet,
-  searchTweets,
+  searchTweetsForPlatform,
 } from "@/lib/replies/bird";
 import { generateAiReplyDraftsBatch } from "@/lib/replies/ai";
 import {
@@ -80,7 +80,7 @@ export async function runReplyEngineJob(
 
     const discoverStep = step("reply:discover");
     steps.push(discoverStep);
-    const candidates = await discoverCandidates();
+    const candidates = await discoverCandidates(targetPlatform);
     complete(discoverStep, {
       count: candidates.length,
       authors: candidates.slice(0, 5).map((candidate) => candidate.author),
@@ -291,14 +291,16 @@ async function resolveXPlatform(schedule: ScheduleRow) {
   );
 }
 
-async function discoverCandidates(): Promise<ReplyCandidate[]> {
+async function discoverCandidates(
+  targetPlatform: Pick<typeof platforms.$inferSelect, "config" | "handle">
+): Promise<ReplyCandidate[]> {
   const dailyCount = await getDailyReplyCount();
   if (dailyCount >= REPLY_TARGETS.dailyLimit) {
     return [];
   }
 
   const candidates: CandidateSeed[] = [];
-  const mentions = await getMentions();
+  const mentions = await getMentionsForPlatform(targetPlatform);
   for (const tweet of mentions.slice(0, 5)) {
     const candidate = await buildCandidate(tweet, "mentions", "Engaged with Max's post");
     if (candidate) candidates.push(candidate);
@@ -306,7 +308,7 @@ async function discoverCandidates(): Promise<ReplyCandidate[]> {
 
   if (candidates.length === 0) {
     for (const query of REPLY_TARGETS.autoDraftSearchQueries.slice(0, 5)) {
-      const tweets = await searchTweets(query, 10);
+      const tweets = await searchTweetsForPlatform(targetPlatform, query, 10);
       for (const tweet of tweets.slice(0, 3)) {
         const candidate = await buildCandidate(tweet, query, `Trending in ${query}`);
         if (candidate) candidates.push(candidate);

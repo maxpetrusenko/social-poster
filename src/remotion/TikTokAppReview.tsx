@@ -158,11 +158,9 @@ export const TikTokAppReview: React.FC<TikTokDemoProps> = ({
   tiktokHandle,
   displayName,
   followerCount,
-  durationInSeconds,
 }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
-  const totalFrames = Math.round(durationInSeconds * fps);
 
   /* Scene timing (frames) */
   const s = (sec: number) => Math.round(sec * fps);
@@ -470,8 +468,8 @@ export const TikTokAppReview: React.FC<TikTokDemoProps> = ({
                     Connect via TikTok OAuth
                   </p>
                   <p style={{ fontSize: 13, color: "#777", margin: "0 0 16px" }}>
-                    Sign in with your TikTok account. We'll request access to publish videos
-                    through TikTok's Content Posting API.
+                    Sign in with your TikTok account. We&apos;ll request access to publish videos
+                    through TikTok&apos;s Content Posting API.
                   </p>
                   <div
                     style={{

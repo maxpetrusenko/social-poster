@@ -1,21 +1,15 @@
 import { NextResponse } from "next/server";
-import { requireApiSession } from "@/lib/auth";
+import { requireApiWorkspacePublisher } from "@/lib/api-authorization";
 import { postReplyCandidate } from "@/lib/replies/live";
-import { getTenantContext } from "@/lib/tenancy";
 
 export async function POST(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await requireApiSession();
-  if (session instanceof NextResponse) return session;
+  const tenant = await requireApiWorkspacePublisher();
+  if (tenant instanceof NextResponse) return tenant;
 
   try {
-    const tenant = await getTenantContext();
-    if (!tenant) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
     const { id } = await params;
     const row = await postReplyCandidate(id, tenant.currentWorkspace.id);
     return NextResponse.json({ row });

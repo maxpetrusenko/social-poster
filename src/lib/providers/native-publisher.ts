@@ -8,6 +8,7 @@ import {
   readAccessToken,
   readRefreshToken,
 } from "./credentials";
+import { normalizeNativePlatform } from "./platform-key";
 import { readStoredConnectionConfig } from "@/lib/connection-config";
 import type { PublishResult as PipelinePublishResult } from "@/lib/pipeline/publisher";
 import type { PublishContent } from "./types";
@@ -154,12 +155,6 @@ function classifyNativeError(error: unknown): PipelinePublishResult["classificat
     return "provider_error";
   }
   return "network_error";
-}
-
-function normalizeNativePlatform(platform: string) {
-  if (platform === "linkedin") return "linkedin_personal";
-  if (platform === "x") return "twitter";
-  return platform;
 }
 
 function readCredentialObject(config: Record<string, unknown> | null | undefined) {

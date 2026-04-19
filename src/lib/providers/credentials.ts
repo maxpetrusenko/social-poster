@@ -187,3 +187,47 @@ export function readRefreshToken(
     ? refreshToken.trim()
     : null;
 }
+
+export function readTokenExpiresAt(
+  config: Record<string, unknown> | null | undefined
+) {
+  const credentials =
+    config?.credentials &&
+    typeof config.credentials === "object" &&
+    !Array.isArray(config.credentials)
+      ? (config.credentials as Record<string, unknown>)
+      : {};
+
+  const expiresAt = credentials.expiresAt;
+  if (typeof expiresAt === "number" && Number.isFinite(expiresAt)) {
+    return expiresAt;
+  }
+  if (typeof expiresAt === "string" && expiresAt.trim()) {
+    const parsed = Number(expiresAt);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  return null;
+}
+
+export function readTokenLastRefreshedAt(
+  config: Record<string, unknown> | null | undefined
+) {
+  const credentials =
+    config?.credentials &&
+    typeof config.credentials === "object" &&
+    !Array.isArray(config.credentials)
+      ? (config.credentials as Record<string, unknown>)
+      : {};
+
+  const lastRefreshedAt = credentials.lastRefreshedAt;
+  if (typeof lastRefreshedAt === "number" && Number.isFinite(lastRefreshedAt)) {
+    return lastRefreshedAt;
+  }
+  if (typeof lastRefreshedAt === "string" && lastRefreshedAt.trim()) {
+    const parsed = Number(lastRefreshedAt);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  return null;
+}

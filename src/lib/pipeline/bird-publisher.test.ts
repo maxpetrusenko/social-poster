@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   buildBirdEnv,
+  buildBirdMentionCommandArgs,
   classifyBirdError,
   resolveBirdCredentialsFromSource,
   splitBirdThreadContent,
@@ -45,6 +46,16 @@ test("resolveBirdCredentials prefers dashboard credentials over env", () => {
       process.env.X_CT0 = previousCt0;
     }
   }
+});
+
+test("resolveBirdCredentials accepts X env key names from dashboard config", () => {
+  const resolved = resolveBirdCredentialsFromSource({
+    X_AUTH_TOKEN: "cfg-x-auth",
+    X_CT0: "cfg-x-ct0",
+  });
+
+  assert.equal(resolved.authToken, "cfg-x-auth");
+  assert.equal(resolved.ct0, "cfg-x-ct0");
 });
 
 test("resolveBirdCredentials prefers installed Bird session over env fallback", () => {
@@ -169,4 +180,19 @@ test("buildBirdEnv strips inherited env auth when explicit Bird credentials are 
   assert.equal(env.X_AUTH_TOKEN, undefined);
   assert.equal(env.X_CT0, undefined);
   assert.equal(env.PATH, "/usr/bin");
+});
+
+test("buildBirdMentionCommandArgs adds explicit user for mentions", () => {
+  assert.deepEqual(
+    buildBirdMentionCommandArgs(["mentions", "--json"], "maxpetrusenko"),
+    ["mentions", "--user", "@maxpetrusenko", "--json"]
+  );
+  assert.deepEqual(
+    buildBirdMentionCommandArgs(["mentions", "--user", "@other", "--json"], "@maxpetrusenko"),
+    ["mentions", "--user", "@other", "--json"]
+  );
+  assert.deepEqual(
+    buildBirdMentionCommandArgs(["search", "ai", "--json"], "@maxpetrusenko"),
+    ["search", "ai", "--json"]
+  );
 });

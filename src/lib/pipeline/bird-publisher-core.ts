@@ -2,6 +2,8 @@ const DEFAULT_TWEET_CHAR_LIMIT = 280;
 const DEFAULT_THREAD_CHUNK_LIMIT = 260;
 
 export type BirdCredentialSource = {
+  X_AUTH_TOKEN?: string | null;
+  X_CT0?: string | null;
   authToken?: string | null;
   ct0?: string | null;
   useInstalledBirdSession?: boolean | null;
@@ -48,6 +50,25 @@ export function buildBirdEnv(
   }
 
   return nextEnv;
+}
+
+export function normalizeBirdUserHandle(handle?: string | null) {
+  const trimmed = handle?.trim();
+  if (!trimmed) return null;
+  return trimmed.startsWith("@") ? trimmed : `@${trimmed}`;
+}
+
+export function buildBirdMentionCommandArgs(
+  args: string[],
+  handle?: string | null
+) {
+  if (args[0] !== "mentions") return args;
+  if (args.includes("--user") || args.includes("-u")) return args;
+
+  const userHandle = normalizeBirdUserHandle(handle);
+  if (!userHandle) return args;
+
+  return ["mentions", "--user", userHandle, ...args.slice(1)];
 }
 
 function readCredentialString(
@@ -119,11 +140,13 @@ export function resolveBirdCredentialsFromSource(
   );
   const explicitAuthToken = readCredentialString(
     credentials,
+    "X_AUTH_TOKEN",
     "authToken",
     "accessToken"
   );
   const explicitCt0 = readCredentialString(
     credentials,
+    "X_CT0",
     "ct0",
     "accessTokenSecret"
   );

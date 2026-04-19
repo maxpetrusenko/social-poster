@@ -1,3 +1,8 @@
+/**
+ * @deprecated Legacy provider registry — use src/platforms/registry.ts instead.
+ * This file is kept for backward compatibility with existing imports.
+ * New platform integrations should use PlatformModule from src/platforms/_shared/.
+ */
 import type { SocialProvider, ProviderCredentials } from "./base";
 import { BlueskyProvider } from "./bluesky";
 import { FacebookProvider } from "./facebook";

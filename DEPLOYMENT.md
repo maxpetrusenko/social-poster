@@ -60,6 +60,7 @@ Target state:
 - app always serves Next.js on `3000`; entrypoint bridges any Coolify rollout port to `3000`
 - GitHub source uses an SSH deploy key; no public-repo toggle
 - required reply env vars in Coolify: `X_AUTH_TOKEN`, `X_CT0`, `BIRD_RUNNER=bird`
+- optional Bird health interval: `BIRD_SESSION_CHECK_HOURS=24`
 - `APP_URL` is optional in Coolify; app-relative asset URLs can fall back to `COOLIFY_URL`
 - X/Bird image posts should use PNG/JPG/WebP assets, not SVG
 

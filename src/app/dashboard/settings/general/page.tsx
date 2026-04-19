@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { OrganizationSettingsPanel } from "@/components/dashboard/team-settings-panels";
-import { getOrgMembersData } from "@/lib/tenancy";
+import { canManageOrganization, getOrgMembersData } from "@/lib/tenancy";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +19,9 @@ function formatDateLabel(value: Date | null) {
 export default async function SettingsGeneralPage() {
   try {
     const { context, members, workspaces } = await getOrgMembersData();
+    if (!canManageOrganization(context)) {
+      redirect("/dashboard");
+    }
 
     return (
       <OrganizationSettingsPanel

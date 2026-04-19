@@ -1,23 +1,17 @@
 import { db } from "@/db";
 import { profiles } from "@/db/schema";
-import { requireApiSession } from "@/lib/auth";
+import { requireApiWorkspaceEditor } from "@/lib/api-authorization";
 import { and, eq } from "drizzle-orm";
-import { getTenantContext } from "@/lib/tenancy";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await requireApiSession();
-  if (session instanceof NextResponse) return session;
+  const tenant = await requireApiWorkspaceEditor();
+  if (tenant instanceof NextResponse) return tenant;
 
   try {
-    const tenant = await getTenantContext();
-    if (!tenant) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
     const { id } = await params;
 
     // Check if profile exists

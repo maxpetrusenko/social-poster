@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireApiSession } from "@/lib/auth";
+import { requireApiWorkspaceEditor } from "@/lib/api-authorization";
 import { updateReplyCandidateDraft, updateReplyCandidateStatus } from "@/lib/replies/live";
 import { z } from "zod";
-import { getTenantContext } from "@/lib/tenancy";
 
 const bodySchema = z.object({
   status: z.enum(["new", "analyzed", "drafted", "ready", "posted", "skipped"]).optional(),
@@ -15,15 +14,10 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await requireApiSession();
-  if (session instanceof NextResponse) return session;
+  const tenant = await requireApiWorkspaceEditor();
+  if (tenant instanceof NextResponse) return tenant;
 
   try {
-    const tenant = await getTenantContext();
-    if (!tenant) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
     const { id } = await params;
     const body = bodySchema.parse(await request.json());
 

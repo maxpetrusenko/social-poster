@@ -5,11 +5,13 @@ import type { PublishContent } from "./types";
 export class LinkedInCompanyProvider extends LinkedInProvider {
   platformName = "LinkedIn (Company Page)";
   requiredScopes = [
-    "r_basicprofile",
+    "openid",
+    "profile",
+    "email",
     "w_member_social",
     "w_organization_social",
     "r_organization_social",
-    "rw_organization_admin",
+    "r_organization_admin",
   ];
 
   protected async resolveAuthor(

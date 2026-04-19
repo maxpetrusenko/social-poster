@@ -1,4 +1,5 @@
-import { Check } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { Check, Info } from "lucide-react";
 import type {
   ConnectionMethod,
   ConnectionPlatformDefinition,
@@ -35,7 +36,9 @@ export function ConnectionMethodOption({
     value: string
   ) => void;
 }) {
-  const hasInlineCredentials = Boolean(clientId && clientSecret);
+  const appManagedOAuth = isAppManagedOAuth(definition.type);
+  const hasInlineCredentials =
+    !appManagedOAuth && Boolean(clientId && clientSecret);
   const canStartOAuth =
     method.authType === "oauth" && (!deactivated || hasInlineCredentials);
 
@@ -47,30 +50,39 @@ export function ConnectionMethodOption({
           : "border-[rgba(33,25,19,0.08)] bg-[rgba(248,244,235,0.72)]"
       }`}
     >
-      <button type="button" onClick={onSelect} className="w-full text-left">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-sm font-semibold text-[#211913]">{method.label}</p>
-            <p className="mt-1 text-xs leading-5 text-[#746253]">
-              {method.description}
-            </p>
-          </div>
-          {deactivated ? (
-            <span className="rounded-full border border-[#ead7a7] bg-[#fff5da] px-2.5 py-1 text-xs font-semibold text-[#89661b]">
-              Missing env
-            </span>
-          ) : active ? (
-            <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[rgba(15,126,169,0.14)] text-[var(--accent-tech)]">
-              <Check className="h-4 w-4" />
-            </span>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 flex-1 items-start gap-1.5">
+          <button
+            type="button"
+            onClick={onSelect}
+            className="min-w-0 flex-1 text-left"
+          >
+            <div>
+              <p className="text-sm font-semibold text-[#211913]">{method.label}</p>
+              <p className="mt-1 text-xs leading-5 text-[#746253]">
+                {method.description}
+              </p>
+            </div>
+          </button>
+          {method.infoTooltip ? (
+            <MethodInfoTooltip tooltip={method.infoTooltip} />
           ) : null}
         </div>
-      </button>
+        {deactivated ? (
+          <span className="rounded-full border border-[#ead7a7] bg-[#fff5da] px-2.5 py-1 text-xs font-semibold text-[#89661b]">
+            Missing env
+          </span>
+        ) : active ? (
+          <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[rgba(15,126,169,0.14)] text-[var(--accent-tech)]">
+            <Check className="h-4 w-4" />
+          </span>
+        ) : null}
+      </div>
       {active && method.authType === "oauth" ? (
         <div className="mt-3 space-y-3 rounded-[12px] border border-[rgba(33,25,19,0.08)] bg-white/70 p-3">
           <div className="flex items-center justify-between gap-3">
             <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#7a6756]">
-              App credentials
+              {appManagedOAuth ? "Account authorization" : "App credentials"}
             </p>
             <ConnectionSetupGuideButton
               definition={definition}
@@ -79,24 +91,33 @@ export function ConnectionMethodOption({
               availability={availability}
             />
           </div>
-          <CredentialInput
-            label="Client ID"
-            value={clientId}
-            onChange={(value) => onCredentialChange("clientId", value)}
-          />
-          <CredentialInput
-            label="Client secret"
-            type="password"
-            value={clientSecret}
-            onChange={(value) => onCredentialChange("clientSecret", value)}
-          />
+          {appManagedOAuth ? (
+            <p className="text-sm leading-6 text-[#4d3f34]">
+              Uses the configured LinkedIn app. Users sign in and approve access;
+              no app keys are needed here.
+            </p>
+          ) : (
+            <>
+              <CredentialInput
+                label="Client ID"
+                value={clientId}
+                onChange={(value) => onCredentialChange("clientId", value)}
+              />
+              <CredentialInput
+                label="Client secret"
+                type="password"
+                value={clientSecret}
+                onChange={(value) => onCredentialChange("clientSecret", value)}
+              />
+            </>
+          )}
           <button
             type="button"
             onClick={onConnect}
             disabled={!canStartOAuth}
             className="inline-flex w-full items-center justify-center rounded-[12px] bg-[#121d2e] px-4 py-3 text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-45"
           >
-            Connect
+            {appManagedOAuth ? `Connect ${definition.label}` : "Connect"}
           </button>
         </div>
       ) : null}
@@ -191,10 +212,77 @@ export function OAuthSetupPanel({
 
 export function getBrowserOAuthCallbackUrl(platformType: PlatformType) {
   if (typeof window === "undefined") return null;
-  if (platformType === "twitter") {
-    return "https://social.maxpetrusenko.com/api/auth/twitter/callback";
-  }
   return `${window.location.origin}${getOAuthCallbackPath(platformType)}`;
+}
+
+function isAppManagedOAuth(platformType: PlatformType) {
+  return (
+    platformType === "linkedin" ||
+    platformType === "linkedin_personal" ||
+    platformType === "linkedin_company"
+  );
+}
+
+function MethodInfoTooltip({
+  tooltip,
+}: {
+  tooltip: NonNullable<ConnectionMethod["infoTooltip"]>;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function handleOutside(event: MouseEvent) {
+      if (ref.current && !ref.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleOutside);
+    return () => document.removeEventListener("mousedown", handleOutside);
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={(event) => {
+          event.stopPropagation();
+          setOpen((prev) => !prev);
+        }}
+        className="inline-flex h-5 w-5 items-center justify-center rounded-full text-[#7a6756] hover:bg-[rgba(33,25,19,0.08)]"
+      >
+        <Info className="h-3.5 w-3.5" />
+      </button>
+      {open ? (
+        <div className="absolute left-0 top-full z-50 mt-1 w-64 rounded-[12px] border border-[rgba(33,25,19,0.12)] bg-white p-3 shadow-lg">
+          <p className="text-xs font-semibold text-[#211913]">{tooltip.title}</p>
+          <ul className="mt-2 space-y-1">
+            {tooltip.bullets.map((bullet) => (
+              <li
+                key={bullet}
+                className="flex items-start gap-1.5 text-xs leading-5 text-[#4d3f34]"
+              >
+                <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-[#7a6756]" />
+                {bullet}
+              </li>
+            ))}
+          </ul>
+          {tooltip.learnMoreUrl ? (
+            <a
+              href={tooltip.learnMoreUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-2 block text-xs font-semibold text-[var(--accent-tech)] hover:underline"
+              onClick={(event) => event.stopPropagation()}
+            >
+              Learn more
+            </a>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 function hasCallbackOriginMismatch(callbackUrl: string | null) {
@@ -207,9 +295,6 @@ function hasCallbackOriginMismatch(callbackUrl: string | null) {
 }
 
 function getOAuthCallbackPath(platformType: PlatformType) {
-  if (platformType === "linkedin_personal" || platformType === "linkedin_company") {
-    return `/social-accounts/callback/${platformType}/`;
-  }
-
-  return `/api/auth/${platformType.replace(/_/g, "-")}/callback`;
+  void platformType;
+  return "/api/auth/callback";
 }

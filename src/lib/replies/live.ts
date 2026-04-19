@@ -48,7 +48,7 @@ type PlatformRow = typeof platforms.$inferSelect;
 type CandidateRow = typeof replyCandidates.$inferSelect;
 export const REPLY_REFRESH_MODES = ["auto", "manual"] as const;
 export type RefreshReplyMode = (typeof REPLY_REFRESH_MODES)[number];
-type InternalRefreshReplyMode = RefreshReplyMode | "auto_fallback";
+type InternalRefreshReplyMode = RefreshReplyMode | "auto_fallback" | "manual_fallback";
 const MAX_VISIBLE_REPLY_CARDS = 10;
 const AUTO_REVIEW_TARGET = 3;
 const MANUAL_REVIEW_TARGET = 5;
@@ -175,15 +175,18 @@ export async function listReplyCandidates(
     .map(mapRowToCard);
 }
 
-export async function processReadyReplyQueue(platformId?: string) {
-  const platformIds = platformId ? [platformId] : await listReadyPlatformIds();
+export async function processReadyReplyQueue(
+  platformId?: string,
+  workspaceId?: string
+) {
+  const platformIds = platformId ? [platformId] : await listReadyPlatformIds(workspaceId);
 
   for (const id of platformIds) {
     if (!id || READY_QUEUE_LOCKS.has(id)) continue;
 
     READY_QUEUE_LOCKS.add(id);
     try {
-      await processReadyReplyQueueForPlatform(id);
+      await processReadyReplyQueueForPlatform(id, workspaceId);
     } finally {
       READY_QUEUE_LOCKS.delete(id);
     }
@@ -267,6 +270,18 @@ export async function refreshReplyCandidatesWithDiagnostics(
       profile,
       getReplyDiscoveryPlan("manual"),
       "manual:escalation",
+      language
+    );
+    drafted = draftedResult.drafted;
+    passes.push(draftedResult.diagnostics);
+  }
+
+  if (drafted.length === 0 && mode === "manual") {
+    draftedResult = await discoverAndDraftLiveCandidates(
+      platform,
+      profile,
+      getReplyDiscoveryPlan("manual_fallback"),
+      "manual:fallback",
       language
     );
     drafted = draftedResult.drafted;
@@ -375,7 +390,7 @@ export async function updateReplyCandidateStatus(
 
   await db.update(replyCandidates).set(update).where(eq(replyCandidates.id, candidateId));
   if (status === "ready" && row.platformId) {
-    await processReadyReplyQueue(row.platformId);
+    await processReadyReplyQueue(row.platformId, workspaceId);
   }
 
   return db.query.replyCandidates.findFirst({
@@ -517,7 +532,7 @@ async function postReplyCandidateInternal(
         });
 
         if (continueQueue) {
-          await processReadyReplyQueue(platform.id);
+          await processReadyReplyQueue(platform.id, workspaceId);
         }
 
         return db.query.replyCandidates.findFirst({
@@ -699,6 +714,16 @@ function getReplyDiscoveryPlan(mode: InternalRefreshReplyMode): ReplyDiscoveryPl
       queryTweetCount: 3,
       freshnessWindowsHours: [36, 14 * 24],
       maxDiscoveryPool: 5,
+    };
+  }
+
+  if (mode === "manual_fallback") {
+    return {
+      targetDraftedCount: MANUAL_REVIEW_TARGET,
+      queryLimit: 6,
+      queryTweetCount: 8,
+      freshnessWindowsHours: [36, 14 * 24, 45 * 24],
+      maxDiscoveryPool: 10,
     };
   }
 
@@ -1075,8 +1100,13 @@ function readThreadContext(row: CandidateRow) {
     : [row.tweetText];
 }
 
-async function listReadyPlatformIds() {
-  const rows = await db.select().from(replyCandidates);
+async function listReadyPlatformIds(workspaceId?: string) {
+  const rows = workspaceId
+    ? await db
+        .select()
+        .from(replyCandidates)
+        .where(eq(replyCandidates.workspaceId, workspaceId))
+    : await db.select().from(replyCandidates);
   return Array.from(
     new Set(
       rows
@@ -1086,16 +1116,27 @@ async function listReadyPlatformIds() {
   );
 }
 
-async function processReadyReplyQueueForPlatform(platformId: string) {
+async function processReadyReplyQueueForPlatform(
+  platformId: string,
+  workspaceId?: string
+) {
   const readyRows = (await db
     .select()
     .from(replyCandidates)
-    .where(and(eq(replyCandidates.platformId, platformId), eq(replyCandidates.status, "ready"))))
+    .where(
+      workspaceId
+        ? and(
+            eq(replyCandidates.platformId, platformId),
+            eq(replyCandidates.status, "ready"),
+            eq(replyCandidates.workspaceId, workspaceId)
+          )
+        : and(eq(replyCandidates.platformId, platformId), eq(replyCandidates.status, "ready"))
+    ))
     .sort(compareReadyRows);
 
   if (readyRows.length === 0) return;
 
-  const latestSentAt = await getLatestSentReplyAt(platformId);
+  const latestSentAt = await getLatestSentReplyAt(platformId, workspaceId);
   const now = Date.now();
   const baseAllowedAt = latestSentAt
     ? Math.max(latestSentAt.getTime() + REPLY_TARGETS.cooldownMinutes * 60_000, now)
@@ -1105,19 +1146,27 @@ async function processReadyReplyQueueForPlatform(platformId: string) {
   const firstQueuedForAt = new Date(baseAllowedAt);
 
   if (firstQueuedForAt.getTime() <= now) {
-    await postReplyCandidateInternal(firstRow.id, false);
-    await processReadyReplyQueueForPlatform(platformId);
+    await postReplyCandidateInternal(firstRow.id, false, workspaceId);
+    await processReadyReplyQueueForPlatform(platformId, workspaceId);
     return;
   }
 
   await persistReadyQueueSchedule(readyRows, baseAllowedAt);
 }
 
-async function getLatestSentReplyAt(platformId: string) {
+async function getLatestSentReplyAt(platformId: string, workspaceId?: string) {
   const [lastSent] = await db
     .select({ createdAt: replyEvents.createdAt })
     .from(replyEvents)
-    .where(and(eq(replyEvents.platformId, platformId), eq(replyEvents.status, "sent")))
+    .where(
+      workspaceId
+        ? and(
+            eq(replyEvents.platformId, platformId),
+            eq(replyEvents.status, "sent"),
+            eq(replyEvents.workspaceId, workspaceId)
+          )
+        : and(eq(replyEvents.platformId, platformId), eq(replyEvents.status, "sent"))
+    )
     .orderBy(desc(replyEvents.createdAt))
     .limit(1);
 

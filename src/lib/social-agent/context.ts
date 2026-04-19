@@ -20,7 +20,11 @@ import { getPlatformMeta } from "@/lib/dashboard/platforms";
 import { getPlatformCapabilities } from "@/lib/platform-capabilities";
 import { PLATFORM_TYPES, type PlatformType } from "@/lib/platforms";
 import { isReplyLanguageAllowed, normalizeReplyLanguage } from "@/lib/replies/language";
-import { getTenantContext } from "@/lib/tenancy";
+import {
+  canManageOrganization,
+  canManageWorkspace,
+  getTenantContext,
+} from "@/lib/tenancy";
 
 const REVIEW_REPLY_STATUSES = new Set(["new", "analyzed", "drafted"]);
 
@@ -61,6 +65,13 @@ type SafeReplyCandidate = {
 
 export type SocialAgentContext = {
   workspace: { name: string; organizationName: string };
+  access: {
+    orgRole: string;
+    workspaceRole: string;
+    canManageOrganization: boolean;
+    canManageCurrentWorkspace: boolean;
+    canInviteMembers: boolean;
+  };
   summary: {
     enabledPlatformCount: number;
     disabledPlatformCount: number;
@@ -134,6 +145,8 @@ export async function loadSocialAgentContext(
   if (!tenant) return null;
 
   const workspaceId = tenant.currentWorkspace.id;
+  const canManageOrg = canManageOrganization(tenant);
+  const canManageCurrentWorkspace = canManageWorkspace(tenant, workspaceId);
   const replyLanguage = normalizeReplyLanguage(options.replyLanguage);
   const [
     profileRows,
@@ -300,6 +313,13 @@ export async function loadSocialAgentContext(
       name: tenant.currentWorkspace.name,
       organizationName: tenant.organization.name,
     },
+    access: {
+      orgRole: tenant.orgMembership.orgRole,
+      workspaceRole: tenant.currentWorkspaceMembership.workspaceRole,
+      canManageOrganization: canManageOrg,
+      canManageCurrentWorkspace,
+      canInviteMembers: canManageOrg,
+    },
     summary: {
       enabledPlatformCount: safePlatforms.filter((platform) => platform.enabled).length,
       disabledPlatformCount: safePlatforms.filter((platform) => !platform.enabled).length,
@@ -414,6 +434,17 @@ export async function loadSocialAgentContext(
         method: "GET or POST",
         guardrail: "Never expose credential values or internal account metadata.",
       },
+      ...(canManageOrg
+        ? [
+            {
+              label: "Invite a member to the current workspace",
+              endpoint: "/api/social-agent",
+              method: "POST",
+              guardrail:
+                "Use exact command: /invite email@example.com as viewer|client|contributor|editor|manager.",
+            },
+          ]
+        : []),
     ],
   };
 }

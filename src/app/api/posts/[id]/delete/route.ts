@@ -2,22 +2,16 @@ import { db } from "@/db";
 import { posts, postTargets } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
-import { requireApiSession } from "@/lib/auth";
-import { getTenantContext } from "@/lib/tenancy";
+import { requireApiWorkspaceEditor } from "@/lib/api-authorization";
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await requireApiSession();
-  if (session instanceof NextResponse) return session;
+  const tenant = await requireApiWorkspaceEditor();
+  if (tenant instanceof NextResponse) return tenant;
 
   try {
-    const tenant = await getTenantContext();
-    if (!tenant) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
     const { id } = await params;
 
     const post = await db.query.posts.findFirst({

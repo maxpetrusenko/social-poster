@@ -2,7 +2,11 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { readStoredConnectionConfig } from "@/lib/connection-config";
 import { platforms } from "@/db/schema";
-import { buildBirdEnv, resolveBirdCredentialsFromSource } from "@/lib/pipeline/bird-publisher-core";
+import {
+  buildBirdEnv,
+  buildBirdMentionCommandArgs,
+  resolveBirdCredentialsFromSource,
+} from "@/lib/pipeline/bird-publisher-core";
 
 const execFileAsync = promisify(execFile);
 
@@ -39,15 +43,7 @@ type BirdTweet = {
 };
 
 type PlatformRow = typeof platforms.$inferSelect;
-
-function getBirdAuthFromEnv(): { authToken: string; ct0: string } {
-  const authToken = process.env.X_AUTH_TOKEN || process.env.AUTH_TOKEN;
-  const ct0 = process.env.X_CT0 || process.env.CT0;
-  if (!authToken || !ct0) {
-    throw new Error("Missing X auth env vars");
-  }
-  return { authToken, ct0 };
-}
+type BirdPlatform = Pick<PlatformRow, "config"> & Partial<Pick<PlatformRow, "handle">>;
 
 function stripBirdAuthFromEnv(env: NodeJS.ProcessEnv = process.env) {
   const nextEnv = { ...env };
@@ -58,21 +54,22 @@ function stripBirdAuthFromEnv(env: NodeJS.ProcessEnv = process.env) {
   return nextEnv;
 }
 
-function buildBirdArgsFromPlatform(
-  platform?: Pick<PlatformRow, "config">
-) {
-  if (!platform) {
-    const hasEnvAuth = Boolean(process.env.X_AUTH_TOKEN || process.env.AUTH_TOKEN) && Boolean(process.env.X_CT0 || process.env.CT0);
-    const shouldPreferEnvAuth =
-      process.env.BIRD_FORCE_ENV_AUTH === "true" || process.env.NODE_ENV === "production";
+function buildBirdAuthFromEnv() {
+  const authToken = process.env.X_AUTH_TOKEN || process.env.AUTH_TOKEN;
+  const ct0 = process.env.X_CT0 || process.env.CT0;
 
-    if (hasEnvAuth && shouldPreferEnvAuth) {
-      const { authToken, ct0 } = getBirdAuthFromEnv();
-      return {
-        args: ["--auth-token", authToken, "--ct0", ct0] as string[],
-        env: process.env,
-      };
-    }
+  if (!authToken || !ct0) return null;
+
+  return {
+    args: ["--auth-token", authToken, "--ct0", ct0] as string[],
+    env: process.env,
+  };
+}
+
+function buildBirdArgsFromPlatform(platform?: BirdPlatform) {
+  if (!platform) {
+    const envAuth = buildBirdAuthFromEnv();
+    if (envAuth) return envAuth;
 
     return {
       args: [],
@@ -102,15 +99,25 @@ function buildBirdArgsFromPlatform(
     args.push("--firefox-profile", credentials.firefoxProfile);
   }
 
+  if (args.length > 0) {
+    return {
+      args,
+      env: stripBirdAuthFromEnv(),
+    };
+  }
+
+  const envAuth = buildBirdAuthFromEnv();
+  if (envAuth) return envAuth;
+
   return {
     args,
     env: stripBirdAuthFromEnv(),
   };
 }
 
-async function runBird(args: string[], expectJson = true, platform?: Pick<PlatformRow, "config">): Promise<unknown> {
+async function runBird(args: string[], expectJson = true, platform?: BirdPlatform): Promise<unknown> {
   const auth = buildBirdArgsFromPlatform(platform);
-  const commandArgs = [...auth.args, ...args];
+  const commandArgs = [...auth.args, ...buildBirdMentionCommandArgs(args, platform?.handle)];
   const runnerArgs = BIRD_RUNNER === "npx" ? ["-y", BIRD_PACKAGE, ...commandArgs] : commandArgs;
 
   let stdout: string;
@@ -279,12 +286,12 @@ export async function searchTweets(query: string, count = 20): Promise<BirdTweet
   return coerceTweets(await runBirdSearch(query, count));
 }
 
-export async function getMentionsForPlatform(platform: Pick<PlatformRow, "config">): Promise<BirdTweet[]> {
+export async function getMentionsForPlatform(platform: BirdPlatform): Promise<BirdTweet[]> {
   return coerceTweets(await runBird(["mentions", "--json"], true, platform));
 }
 
 export async function searchTweetsForPlatform(
-  platform: Pick<PlatformRow, "config">,
+  platform: BirdPlatform,
   query: string,
   count = 20
 ): Promise<BirdTweet[]> {
@@ -292,7 +299,7 @@ export async function searchTweetsForPlatform(
 }
 
 export async function readTweetForPlatform(
-  platform: Pick<PlatformRow, "config">,
+  platform: BirdPlatform,
   tweetUrl: string
 ): Promise<BirdTweet | null> {
   const tweets = coerceTweets(await runBird(["read", tweetUrl, "--json"], true, platform));
@@ -300,7 +307,7 @@ export async function readTweetForPlatform(
 }
 
 export async function getThreadForPlatform(
-  platform: Pick<PlatformRow, "config">,
+  platform: BirdPlatform,
   tweetUrl: string
 ): Promise<BirdTweet[]> {
   return coerceTweets(await runBird(["thread", tweetUrl, "--json"], true, platform));
@@ -309,7 +316,7 @@ export async function getThreadForPlatform(
 export async function sendBirdReply(
   tweetUrl: string,
   text: string,
-  platform?: Pick<PlatformRow, "config">
+  platform?: BirdPlatform
 ): Promise<string | null> {
   const output = String(await runBird(["reply", tweetUrl, text], false, platform));
   for (const line of output.split("\n")) {
@@ -324,7 +331,7 @@ export async function sendBirdReply(
 async function runBirdSearch(
   query: string,
   count: number,
-  platform?: Pick<PlatformRow, "config">
+  platform?: BirdPlatform
 ) {
   const attempts: Array<{ args: string[]; waitMs: number }> = [
     { args: ["search", query, "--json", "--count", String(count)], waitMs: 0 },
