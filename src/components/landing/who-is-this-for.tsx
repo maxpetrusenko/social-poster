@@ -1,3 +1,7 @@
+"use client";
+
+import { RevealOnScroll, StaggerChildren } from "./use-reveal";
+
 const PERSONAS = [
   {
     icon: (
@@ -6,7 +10,7 @@ const PERSONAS = [
       </svg>
     ),
     title: "Solo Founders & Indie Hackers",
-    body: "You're shipping features, closing deals, and talking to customers. Posting to sixteen platforms daily is not in your job description. Let your claw handle it.",
+    body: "You\u2019re shipping features, closing deals, and talking to customers. Posting to sixteen platforms daily is not in your job description. Let your claw handle it.",
     accent: "var(--accent-tech)",
   },
   {
@@ -25,7 +29,7 @@ const PERSONAS = [
         <path d="M9.53 16.122a3 3 0 00-5.78 1.128 2.25 2.25 0 01-2.4 2.245 4.5 4.5 0 008.4-2.245c0-.399-.078-.78-.22-1.128zm0 0a15.998 15.998 0 003.388-1.62m-5.043-.025a15.994 15.994 0 011.622-3.395m3.42 3.42a15.995 15.995 0 004.764-4.648l3.876-5.814a1.151 1.151 0 00-1.597-1.597L14.146 6.32a15.996 15.996 0 00-4.649 4.763m3.42 3.42a6.776 6.776 0 00-3.42-3.42" />
       </svg>
     ),
-    title: "Creators Who'd Rather Create",
+    title: "Creators Who\u2019d Rather Create",
     body: "You have the ideas. ClawPoster turns one idea into sixteen platform-ready posts. Spend your time on the craft, not on reformatting content for every social network.",
     accent: "var(--accent-mindfold)",
   },
@@ -35,16 +39,18 @@ export function WhoIsThisFor() {
   return (
     <section id="who-is-this-for" className="py-20 md:py-28 px-6">
       <div className="container">
-        <p className="section-eyebrow text-[var(--accent-mindfold)] mb-3 text-center">Who It&apos;s For</p>
-        <h2 className="text-3xl md:text-4xl font-bold text-center max-w-3xl mx-auto leading-tight">
-          Built for people who have a business to run — not a feed to manage
-        </h2>
+        <RevealOnScroll>
+          <p className="section-eyebrow text-[var(--accent-mindfold)] mb-3 text-center">Who It&apos;s For</p>
+          <h2 className="text-3xl md:text-4xl font-bold text-center max-w-3xl mx-auto leading-tight">
+            Built for people who have a business to run — not a feed to manage
+          </h2>
+        </RevealOnScroll>
 
-        <div className="mt-14 grid grid-cols-1 md:grid-cols-3 gap-8">
+        <StaggerChildren stagger={150} className="mt-14 grid grid-cols-1 md:grid-cols-3 gap-8">
           {PERSONAS.map((p) => (
             <div
               key={p.title}
-              className="rounded-2xl border border-[var(--line)] bg-[var(--paper)] p-8 hover:border-[var(--accent-tech)]/30 transition-colors"
+              className="rounded-2xl border border-[var(--line)] bg-[var(--paper)] p-8 hover:border-[var(--accent-tech)]/30 hover:-translate-y-1 transition-all duration-300"
             >
               <div
                 className="h-10 w-10 rounded-xl flex items-center justify-center mb-5"
@@ -56,7 +62,7 @@ export function WhoIsThisFor() {
               <p className="text-[0.95rem] leading-relaxed text-[var(--muted)]">{p.body}</p>
             </div>
           ))}
-        </div>
+        </StaggerChildren>
       </div>
     </section>
   );
