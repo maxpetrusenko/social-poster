@@ -36,11 +36,22 @@ export function ConnectionMethodOption({
     value: string
   ) => void;
 }) {
-  const appManagedOAuth = isAppManagedOAuth(definition.type);
+  const appManagedOAuth =
+    isAppManagedOAuth(definition.type) || availability?.configured === true;
+  const appManagedCopy = getAppManagedOAuthCopy(definition.type);
   const hasInlineCredentials =
     !appManagedOAuth && Boolean(clientId && clientSecret);
   const canStartOAuth =
     method.authType === "oauth" && (!deactivated || hasInlineCredentials);
+  const handleSelect = () => {
+    if (method.authType === "oauth" && appManagedOAuth && canStartOAuth) {
+      onSelect();
+      onConnect();
+      return;
+    }
+
+    onSelect();
+  };
 
   return (
     <div
@@ -54,7 +65,7 @@ export function ConnectionMethodOption({
         <div className="flex min-w-0 flex-1 items-start gap-1.5">
           <button
             type="button"
-            onClick={onSelect}
+            onClick={handleSelect}
             className="min-w-0 flex-1 text-left"
           >
             <div>
@@ -93,8 +104,8 @@ export function ConnectionMethodOption({
           </div>
           {appManagedOAuth ? (
             <p className="text-sm leading-6 text-[#4d3f34]">
-              Uses the configured LinkedIn app. Users sign in and approve access;
-              no app keys are needed here.
+              Uses the configured {appManagedCopy.appLabel} app. Users sign in
+              and approve access; no app keys are needed here.
             </p>
           ) : (
             <>
@@ -210,17 +221,51 @@ export function OAuthSetupPanel({
   );
 }
 
-export function getBrowserOAuthCallbackUrl(platformType: PlatformType) {
+export function getBrowserOAuthCallbackUrl(
+  platformType: PlatformType,
+  oauthCallbackUrlOverride: string | null
+) {
   if (typeof window === "undefined") return null;
+  if (oauthCallbackUrlOverride) return oauthCallbackUrlOverride;
   return `${window.location.origin}${getOAuthCallbackPath(platformType)}`;
 }
 
 function isAppManagedOAuth(platformType: PlatformType) {
   return (
+    platformType === "facebook" ||
     platformType === "linkedin" ||
     platformType === "linkedin_personal" ||
     platformType === "linkedin_company"
   );
+}
+
+function getAppManagedOAuthCopy(platformType: PlatformType) {
+  if (
+    platformType === "facebook" ||
+    platformType === "instagram" ||
+    platformType === "instagram_personal" ||
+    platformType === "threads"
+  ) {
+    return { appLabel: "Meta" };
+  }
+
+  if (platformType === "tiktok") {
+    return { appLabel: "TikTok" };
+  }
+
+  if (platformType === "youtube" || platformType === "google_business") {
+    return { appLabel: "Google" };
+  }
+
+  if (platformType === "pinterest") {
+    return { appLabel: "Pinterest" };
+  }
+
+  if (platformType === "twitter") {
+    return { appLabel: "X" };
+  }
+
+  return { appLabel: "LinkedIn" };
 }
 
 function MethodInfoTooltip({

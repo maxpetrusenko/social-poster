@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import { readFile, stat } from "node:fs/promises";
 import { OAuthProvider, buildAuthUrl } from "./oauth";
 import { PublishError } from "./errors";
@@ -42,22 +43,34 @@ export class TikTokProvider extends OAuthProvider {
     return { requestsPerHour: 200, requestsPerDay: 5000, publishPerDay: 5 };
   }
 
-  getAuthUrl(redirectUri: string, state: string): string {
+  getAuthUrl(redirectUri: string, state: string, codeVerifier?: string): string {
+    const verifier = codeVerifier || state;
     return buildAuthUrl(AUTH_URL, {
       client_key: this.clientKey(),
       redirect_uri: redirectUri,
       state,
       scope: this.requiredScopes.join(","),
       response_type: "code",
+      code_challenge: pkceChallenge(verifier),
+      code_challenge_method: "S256",
     });
   }
 
-  async exchangeCode(code: string, redirectUri: string): Promise<OAuthTokens> {
+  async exchangeCode(
+    code: string,
+    redirectUri: string,
+    codeVerifier?: string
+  ): Promise<OAuthTokens> {
+    if (!codeVerifier) {
+      throw new Error("TikTok OAuth callback missing PKCE verifier");
+    }
+
     const body = await this.requestJson<JsonRecord>("POST", TOKEN_URL, {
       form: {
         client_key: this.clientKey(),
         client_secret: this.clientSecret(),
         code,
+        code_verifier: codeVerifier,
         grant_type: "authorization_code",
         redirect_uri: redirectUri,
       },
@@ -219,6 +232,13 @@ function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
   const buffer = new ArrayBuffer(bytes.byteLength);
   new Uint8Array(buffer).set(bytes);
   return buffer;
+}
+
+function pkceChallenge(verifier: string) {
+  return crypto
+    .createHash("sha256")
+    .update(verifier)
+    .digest("base64url");
 }
 
 function readString(source: unknown, key: string): string {

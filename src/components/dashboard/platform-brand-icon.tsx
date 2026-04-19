@@ -1,12 +1,25 @@
-import type { PlatformType } from "@/lib/platforms";
+import { PLATFORM_TYPES, type PlatformType } from "@/lib/platforms";
+
+export function getPlatformBrandIconType(
+  type: PlatformType | string | null | undefined
+): PlatformType | null {
+  const normalized = (type || "").trim().toLowerCase();
+  const platformType = normalized === "x" ? "twitter" : normalized;
+  return PLATFORM_TYPES.includes(platformType as PlatformType)
+    ? (platformType as PlatformType)
+    : null;
+}
 
 export function PlatformBrandIcon({
   type,
   className,
 }: {
-  type: PlatformType;
+  type: PlatformType | string;
   className?: string;
 }) {
+  const brandType = getPlatformBrandIconType(type);
+  if (!brandType) return null;
+
   const commonProps = {
     className,
     viewBox: "0 0 24 24",
@@ -15,7 +28,7 @@ export function PlatformBrandIcon({
     focusable: false,
   };
 
-  switch (type) {
+  switch (brandType) {
     case "twitter":
       return (
         <svg {...commonProps}>

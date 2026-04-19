@@ -3,9 +3,11 @@
 import { LoaderCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
+import { PlatformBrandIcon } from "./platform-brand-icon";
 
 export type OverviewPlatformRow = {
   id: string;
+  type: string;
   name: string;
   handle: string | null;
   provider: string;
@@ -14,7 +16,6 @@ export type OverviewPlatformRow = {
   deliveryCount30d: number;
   failureCount30d: number;
   lastDeliveredAtLabel: string;
-  shortLabel: string;
   accent: string;
 };
 
@@ -115,12 +116,7 @@ export function OverviewPlatformTable({
               }`}
             >
               <div className="flex items-center gap-4 px-5 py-4">
-                <span
-                  className="flex h-11 w-11 items-center justify-center rounded-full text-[0.84rem] font-semibold uppercase tracking-[0.12em] text-white"
-                  style={{ background: row.accent }}
-                >
-                  {row.shortLabel}
-                </span>
+                <PlatformBadge row={row} />
                 <div className="min-w-0">
                   <p className="truncate font-medium text-[#171717]">{row.name}</p>
                 </div>
@@ -170,5 +166,16 @@ export function OverviewPlatformTable({
         </div>
       </div>
     </div>
+  );
+}
+
+function PlatformBadge({ row }: { row: OverviewPlatformRow }) {
+  return (
+    <span
+      className="flex h-11 w-11 items-center justify-center rounded-full text-[0.84rem] font-semibold uppercase tracking-[0.12em] text-white"
+      style={{ background: row.accent }}
+    >
+      <PlatformBrandIcon type={row.type} className="h-5 w-5" />
+    </span>
   );
 }

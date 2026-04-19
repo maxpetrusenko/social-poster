@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { PlatformBrandIcon } from "./platform-brand-icon";
 
 export function DashboardHero({
   eyebrow,
@@ -108,11 +109,11 @@ export function SectionCard({
 export function PlatformChip({
   label,
   accent,
-  shortLabel,
+  type,
 }: {
   label: string;
   accent: string;
-  shortLabel: string;
+  type: string;
 }) {
   return (
     <span
@@ -127,7 +128,7 @@ export function PlatformChip({
         className="inline-flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold text-white"
         style={{ background: accent }}
       >
-        {shortLabel}
+        <PlatformBrandIcon type={type} className="h-3 w-3" />
       </span>
       {label}
     </span>

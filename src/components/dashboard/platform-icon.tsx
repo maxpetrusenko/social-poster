@@ -1,44 +1,16 @@
-import { Facebook, Instagram, Linkedin, Youtube } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { CalendarEventTone } from "@/lib/dashboard/calendar";
 import { normalizePlatformType } from "@/lib/dashboard/platforms";
-
-function XGlyph({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
-      <path d="M18.244 2H21.5l-7.11 8.128L22.75 22h-6.547l-5.127-6.71L5.2 22H1.94l7.606-8.69L1.5 2h6.713l4.635 6.162L18.244 2Zm-1.145 18.025h1.804L7.224 3.87H5.289l11.81 16.155Z" />
-    </svg>
-  );
-}
+import { getPlatformBrandIconType, PlatformBrandIcon } from "./platform-brand-icon";
 
 function platformGlyph(type: string, className?: string) {
   const normalized = normalizePlatformType(type);
-
-  if (normalized === "x") {
-    return <XGlyph className={className} />;
+  const iconType = getPlatformBrandIconType(normalized);
+  if (iconType) {
+    return <PlatformBrandIcon type={iconType} className={className} />;
   }
 
-  if (normalized === "instagram") {
-    return <Instagram className={className} strokeWidth={2} />;
-  }
-
-  if (normalized === "linkedin") {
-    return <Linkedin className={className} strokeWidth={2} />;
-  }
-
-  if (normalized === "facebook") {
-    return <Facebook className={className} strokeWidth={2} />;
-  }
-
-  if (normalized === "youtube") {
-    return <Youtube className={className} strokeWidth={2} />;
-  }
-
-  return (
-    <span className={cn("text-[9px] font-bold uppercase tracking-[-0.01em]", className)}>
-      {normalized.slice(0, 2)}
-    </span>
-  );
+  return <span className={cn("block h-2 w-2 rounded-full bg-current", className)} />;
 }
 
 function toneClasses(tone: CalendarEventTone) {

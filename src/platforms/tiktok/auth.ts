@@ -7,8 +7,8 @@ export function createAuth(credentials: ProviderCredentials): PlatformAuth {
   return {
     authType: "oauth2",
     requiredScopes: provider.requiredScopes,
-    getAuthUrl: (r, s) => provider.getAuthUrl(r, s),
-    exchangeCode: (c, r) => provider.exchangeCode(c, r),
+    getAuthUrl: (r, s, v) => provider.getAuthUrl(r, s, v),
+    exchangeCode: (c, r, v) => provider.exchangeCode(c, r, v),
     refreshToken: (t) => provider.refreshToken(t),
     getProfile: (t) => provider.getProfile(t),
   };

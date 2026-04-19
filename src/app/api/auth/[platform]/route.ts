@@ -94,6 +94,7 @@ async function startNativeOAuth(
 
 function isAppManagedOAuth(platform: string) {
   return (
+    platform === "facebook" ||
     platform === "linkedin" ||
     platform === "linkedin_personal" ||
     platform === "linkedin_company"

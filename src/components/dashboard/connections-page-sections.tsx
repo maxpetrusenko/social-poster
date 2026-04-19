@@ -460,11 +460,8 @@ function ConnectionAvatar({ item }: { item: ConnectionCardItem }) {
             onError={() => setFailed(true)}
           />
         ) : (
-          <span
-            className="text-sm font-semibold"
-            style={{ color: item.accent }}
-          >
-            {getInitials(item.accountLabel, item.shortLabel)}
+          <span style={{ color: item.accent }}>
+            <PlatformBrandIcon type={item.platformType} className="h-6 w-6" />
           </span>
         )}
       </div>
@@ -500,16 +497,4 @@ function getAccountAvatarUrl(type: PlatformType, handle: string | null) {
   }[type];
 
   return `https://unavatar.io/${provider}/${encodeURIComponent(cleanHandle)}`;
-}
-
-function getInitials(label: string, fallback: string) {
-  const parts = label
-    .replace(/^@/, "")
-    .split(/[\s._-]+/)
-    .filter(Boolean);
-  if (parts.length === 0) return fallback.slice(0, 2).toUpperCase();
-  return parts
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() ?? "")
-    .join("");
 }

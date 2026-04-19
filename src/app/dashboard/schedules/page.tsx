@@ -122,7 +122,7 @@ export default async function SchedulesPage() {
                       key={`${schedule.id}-${platform}`}
                       label={platform}
                       accent={meta.accent}
-                      shortLabel={meta.shortLabel}
+                      type={platform}
                     />
                   );
                 })}

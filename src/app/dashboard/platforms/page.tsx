@@ -10,7 +10,12 @@ export default async function PlatformsPage({
 }) {
   const params = searchParams ? await searchParams : {};
   const nextParams = new URLSearchParams();
-  if (params.connect) nextParams.set("connect", params.connect);
+  if (params.connect) {
+    nextParams.set("connect", "1");
+    if (PLATFORM_TYPES.includes(params.connect as (typeof PLATFORM_TYPES)[number])) {
+      nextParams.set("platform", params.connect);
+    }
+  }
   if (
     PLATFORM_TYPES.includes((params.platform as (typeof PLATFORM_TYPES)[number]) ?? "twitter") &&
     params.platform

@@ -122,6 +122,7 @@ export default async function DashboardPage() {
     .map((platform) => {
       return {
         id: platform.id,
+        type: platform.type,
         name: platform.name,
         handle: platform.handle,
         provider: formatProviderLabel(platform.provider),
@@ -130,7 +131,6 @@ export default async function DashboardPage() {
         deliveryCount30d: platform.deliveryCount30d,
         failureCount30d: platform.failureCount30d,
         lastDeliveredAtLabel: platform.lastDeliveredAt ? relativeTime(platform.lastDeliveredAt) : "No deliveries yet",
-        shortLabel: platform.shortLabel,
         accent: platform.accent,
       };
     })

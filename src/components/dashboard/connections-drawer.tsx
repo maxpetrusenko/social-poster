@@ -14,14 +14,11 @@ import type { PlatformType } from "@/lib/platforms";
 import type { FormState, ProfileRow } from "./connections-types";
 import {
   ConnectionDocButton,
-  ConnectionDocPillLinks,
   getUniqueConnectionDocs,
 } from "./connection-doc-links";
-import { ConnectionSetupGuideButton } from "./connection-setup-guide";
 import {
   ConnectionMethodOption,
   getBrowserOAuthCallbackUrl,
-  OAuthSetupPanel,
 } from "./connection-method-option";
 import { ConnectionCapabilityBadges } from "./connection-capability-badges";
 import { PlatformBrandIcon } from "./platform-brand-icon";
@@ -31,11 +28,11 @@ export function ConnectionsDrawer({
   profiles,
   selectedProfileId,
   selectedPlatformType,
-  selectedDefinition,
   selectedMethod,
   selectedMethodMode,
   availableMethodModes,
   nativeAvailabilityByPlatform,
+  oauthCallbackUrlOverride,
   formState,
   error,
   isSaving,
@@ -52,11 +49,11 @@ export function ConnectionsDrawer({
   profiles: ProfileRow[];
   selectedProfileId: string;
   selectedPlatformType: ConnectionPlatformDefinition["type"];
-  selectedDefinition: ConnectionPlatformDefinition;
   selectedMethod: ConnectionMethod;
   selectedMethodMode: "native" | "proxy";
   availableMethodModes: Array<"native" | "proxy">;
   nativeAvailabilityByPlatform: Record<PlatformType, NativeConnectionAvailability>;
+  oauthCallbackUrlOverride: string | null;
   formState: FormState;
   error: string | null;
   isSaving: boolean;
@@ -79,15 +76,6 @@ export function ConnectionsDrawer({
   if (!drawerOpen) {
     return null;
   }
-
-  const selectedMethodDeactivated = isMethodDeactivated(
-    selectedDefinition.type,
-    selectedMethod,
-    nativeAvailabilityByPlatform
-  );
-  const selectedNativeAvailability =
-    nativeAvailabilityByPlatform[selectedDefinition.type];
-  const selectedCallbackUrl = getBrowserOAuthCallbackUrl(selectedDefinition.type);
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-[rgba(7,11,18,0.58)] backdrop-blur-[2px]">
@@ -131,9 +119,32 @@ export function ConnectionsDrawer({
           </div>
 
           <div className="border-t border-[rgba(33,25,19,0.08)] pt-5">
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#7a6756]">
-              Social
-            </p>
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#7a6756]">
+                Social
+              </p>
+              <div className="grid grid-cols-2 rounded-[12px] border border-[rgba(33,25,19,0.08)] bg-[#f7f1e5] p-1">
+                {(["native", "proxy"] as const).map((mode) => {
+                  const enabled = availableMethodModes.includes(mode);
+                  const active = selectedMethodMode === mode;
+                  return (
+                    <button
+                      key={mode}
+                      type="button"
+                      disabled={!enabled}
+                      onClick={() => onMethodModeChange(mode)}
+                      className={`rounded-[9px] px-3 py-1.5 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-45 ${
+                        active
+                          ? "bg-white text-[#211913] shadow-[0_3px_12px_rgba(33,25,19,0.08)]"
+                          : "text-[#746253]"
+                      }`}
+                    >
+                      {mode === "native" ? "Native" : "Proxy"}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
             <div className="mt-3 space-y-2">
               {CONNECTION_PLATFORM_DEFINITIONS.filter((definition) =>
                 hasMethodForMode(definition, selectedMethodMode)
@@ -229,7 +240,8 @@ export function ConnectionsDrawer({
                                   )
                                 }
                                 callbackUrl={getBrowserOAuthCallbackUrl(
-                                  definition.type
+                                  definition.type,
+                                  oauthCallbackUrlOverride
                                 )}
                                 availability={
                                   nativeAvailabilityByPlatform[definition.type]
@@ -285,118 +297,11 @@ export function ConnectionsDrawer({
             </div>
           </div>
 
-          <div className="rounded-[18px] border border-[rgba(33,25,19,0.08)] bg-white p-4">
-            <p className="text-sm font-semibold text-[#211913]">
-              {selectedDefinition.label}
-            </p>
-            <p className="mt-1 text-sm leading-6 text-[#746253]">
-              {selectedDefinition.summary}
-            </p>
-
-            <div className="mt-4 grid grid-cols-2 rounded-[14px] border border-[rgba(33,25,19,0.08)] bg-[#f7f1e5] p-1">
-              {(["native", "proxy"] as const).map((mode) => {
-                const enabled = availableMethodModes.includes(mode);
-                const active = selectedMethodMode === mode;
-                return (
-                  <button
-                    key={mode}
-                    type="button"
-                    disabled={!enabled}
-                    onClick={() => onMethodModeChange(mode)}
-                    className={`rounded-[11px] px-3 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-45 ${
-                      active
-                        ? "bg-white text-[#211913] shadow-[0_3px_12px_rgba(33,25,19,0.08)]"
-                        : "text-[#746253]"
-                    }`}
-                  >
-                    {mode === "native" ? "Native" : "Proxy"}
-                  </button>
-                );
-              })}
+          {error ? (
+            <div className="rounded-[14px] border border-red-200 bg-red-50 px-3 py-3 text-sm text-red-700">
+              {error}
             </div>
-
-            <div className="mt-4 rounded-[14px] border border-[rgba(33,25,19,0.08)] bg-[#f7f1e5] px-3 py-3">
-              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#7a6756]">
-                Recommendation
-              </p>
-              <p className="mt-2 text-sm leading-6 text-[#4d3f34]">
-                {selectedMethod.recommendation}
-              </p>
-            </div>
-          </div>
-
-          <div className="rounded-[18px] border border-[rgba(33,25,19,0.08)] bg-white p-4">
-            <div className="flex items-center justify-between gap-4">
-              <p className="text-sm font-semibold text-[#211913]">
-                Setup details
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {selectedMethod.authType === "oauth" ? (
-                  <ConnectionSetupGuideButton
-                    definition={selectedDefinition}
-                    method={selectedMethod}
-                    callbackUrl={selectedCallbackUrl}
-                    availability={selectedNativeAvailability}
-                  />
-                ) : null}
-                <ConnectionDocPillLinks docs={selectedMethod.docs} />
-              </div>
-            </div>
-
-            <div className="mt-4 space-y-4">
-              {selectedMethod.authType === "oauth" ? (
-                <OAuthSetupPanel
-                  availability={selectedNativeAvailability}
-                  callbackUrl={selectedCallbackUrl}
-                  deactivated={selectedMethodDeactivated}
-                />
-              ) : (
-                selectedMethod.fields.map((field) => (
-                  <ConnectionFieldInput
-                    key={field.id}
-                    field={field}
-                    value={formState[field.id]}
-                    onChange={(value) => onFieldChange(field.id, value)}
-                  />
-                ))
-              )}
-            </div>
-
-            <div className="mt-4 rounded-[14px] border border-amber-200 bg-amber-50 px-3 py-3 text-sm leading-6 text-amber-800">
-              Temporary note: credentials still live inside `platforms.config`
-              until the dedicated encrypted credential model lands.
-            </div>
-
-            {error ? (
-              <div className="mt-4 rounded-[14px] border border-red-200 bg-red-50 px-3 py-3 text-sm text-red-700">
-                {error}
-              </div>
-            ) : null}
-
-            <div className="mt-5 flex gap-3">
-              <button
-                type="button"
-                onClick={onSubmit}
-                disabled={isSaving || selectedMethodDeactivated}
-                className="inline-flex flex-1 items-center justify-center gap-2 rounded-[14px] bg-[#121d2e] px-4 py-3 text-sm font-semibold text-white disabled:opacity-60"
-              >
-                {selectedMethodDeactivated
-                  ? "Deactivated"
-                  : isSaving
-                  ? "Connecting..."
-                  : selectedMethod.authType === "oauth"
-                    ? "Continue with OAuth"
-                    : "Create connection"}
-              </button>
-              <button
-                type="button"
-                onClick={onClose}
-                className="rounded-[14px] border border-[rgba(33,25,19,0.12)] px-4 py-3 text-sm font-semibold text-[#4d3f34]"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
+          ) : null}
         </div>
       </div>
     </div>

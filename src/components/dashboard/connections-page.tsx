@@ -35,6 +35,7 @@ export function ConnectionsPage({
   initialDrawerOpen,
   initialPlatformType,
   nativeAvailabilityByPlatform,
+  oauthCallbackUrlOverride,
 }: {
   workspaceName: string;
   organizationName: string;
@@ -44,6 +45,7 @@ export function ConnectionsPage({
   initialDrawerOpen: boolean;
   initialPlatformType: PlatformType | null;
   nativeAvailabilityByPlatform: Record<PlatformType, NativeConnectionAvailability>;
+  oauthCallbackUrlOverride: string | null;
 }) {
   const router = useRouter();
   const [drawerOpen, setDrawerOpen] = useState(initialDrawerOpen);
@@ -283,7 +285,7 @@ export function ConnectionsPage({
 
     if (credentials?.clientId && credentials.clientSecret) {
       const response = await fetch(
-        getOAuthStartUrl(platformType, params),
+        getOAuthStartUrl(platformType, params, oauthCallbackUrlOverride),
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -302,7 +304,11 @@ export function ConnectionsPage({
       return;
     }
 
-    window.location.href = getOAuthStartUrl(platformType, params);
+    window.location.href = getOAuthStartUrl(
+      platformType,
+      params,
+      oauthCallbackUrlOverride
+    );
   }
 
   async function handleCreateConnection() {
@@ -520,7 +526,6 @@ export function ConnectionsPage({
         profiles={profiles}
         selectedProfileId={selectedProfileId}
         selectedPlatformType={selectedPlatformType}
-        selectedDefinition={selectedDefinition}
         selectedMethod={selectedMethod}
         formState={formState}
         error={error}
@@ -532,6 +537,7 @@ export function ConnectionsPage({
         selectedMethodMode={selectedMethodMode}
         availableMethodModes={availableMethodModes}
         nativeAvailabilityByPlatform={nativeAvailabilityByPlatform}
+        oauthCallbackUrlOverride={oauthCallbackUrlOverride}
         onMethodModeChange={(mode) => {
           setRequestedMethodMode(mode);
           setSelectedMethodId(null);
@@ -580,17 +586,17 @@ function formatBirdSessionStatus(
   };
 }
 
-function getOAuthStartUrl(platformType: PlatformType, params: URLSearchParams) {
+function getOAuthStartUrl(
+  platformType: PlatformType,
+  params: URLSearchParams,
+  oauthCallbackUrlOverride: string | null
+) {
   const route = `/api/auth/${platformType.replace(/_/g, "-")}?${params.toString()}`;
-  const callbackUrl = getPinnedOAuthCallbackUrl();
+  const callbackUrl = oauthCallbackUrlOverride;
   if (!callbackUrl || typeof window === "undefined") return route;
 
   const callbackOrigin = new URL(callbackUrl).origin;
   if (callbackOrigin === window.location.origin) return route;
 
   return new URL(route, callbackOrigin).toString();
-}
-
-function getPinnedOAuthCallbackUrl() {
-  return "https://social.maxpetrusenko.com/api/auth/callback";
 }

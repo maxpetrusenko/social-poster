@@ -2,6 +2,7 @@
 
 import { ChevronRight } from "lucide-react";
 import { useEffect, useState } from "react";
+import { PlatformBrandIcon } from "./platform-brand-icon";
 
 // ── OG metadata lazy loader ──────────────────────────────────────────
 
@@ -416,7 +417,7 @@ export function CollapsiblePlatformPreview({
           <span
             className={`inline-flex h-8 w-8 items-center justify-center rounded-full text-[11px] font-semibold uppercase tracking-[0.12em] ${accent}`}
           >
-            {data.shortLabel}
+            <PlatformBrandIcon type={data.type} className="h-4 w-4" />
           </span>
           <div>
             <div className="text-sm font-semibold">{name} preview</div>

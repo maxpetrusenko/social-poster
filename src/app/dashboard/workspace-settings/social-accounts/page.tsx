@@ -24,6 +24,8 @@ export default async function WorkspaceSettingsSocialAccountsPage({
 
   const data = await getConnectionsPageData(tenant.currentWorkspace.id);
   const nativeAvailabilityByPlatform = getNativeConnectionAvailabilityByPlatform();
+  const oauthCallbackUrlOverride =
+    process.env.SOCIAL_POSTER_OAUTH_CALLBACK_URL?.trim() || null;
 
   return (
     <ConnectionsPage
@@ -32,9 +34,10 @@ export default async function WorkspaceSettingsSocialAccountsPage({
       platforms={data.platforms}
       profiles={data.profiles}
       insights={data.insights}
-      initialDrawerOpen={params.connect === "1"}
+      initialDrawerOpen={Boolean(params.connect)}
       initialPlatformType={initialPlatformType}
       nativeAvailabilityByPlatform={nativeAvailabilityByPlatform}
+      oauthCallbackUrlOverride={oauthCallbackUrlOverride}
     />
   );
 }
