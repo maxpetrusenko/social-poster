@@ -53,6 +53,7 @@ export async function handleNativeOAuthCallback(
     state.nonce !== oauthCookie?.nonce ||
     state.platform !== platform
   ) {
+    console.error(`[oauth-callback] ❌ State mismatch for ${platform}: code=${!!code}, state=${!!state}, nonceMatch=${state?.nonce === oauthCookie?.nonce}, platformMatch=${state?.platform === platform}`);
     fallback.searchParams.set("error", "Invalid OAuth callback state.");
     return NextResponse.redirect(fallback);
   }
@@ -111,8 +112,10 @@ export async function handleNativeOAuthCallback(
     });
 
     fallback.searchParams.set("connected", platform);
+    console.log(`[oauth-callback] ✅ Saved ${platform} connection for workspace ${tenant.currentWorkspace.id}`);
     return NextResponse.redirect(fallback);
   } catch (callbackError) {
+    console.error(`[oauth-callback] ❌ ${platform} callback failed:`, callbackError);
     fallback.searchParams.set(
       "error",
       callbackError instanceof Error
