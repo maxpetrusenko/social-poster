@@ -148,8 +148,14 @@ export function verifyOAuthState(
   }
 }
 
+/**
+ * Build the OAuth callback URL from the live request.
+ * Uses a single shared `/api/auth/callback` path — the shim route
+ * extracts the platform from signed state and routes internally.
+ * This keeps portal whitelists simple (one URI per domain).
+ */
 export function oauthCallbackUrl(
-  platform: string,
+  _platform: string,
   request: { headers: Headers; url?: string }
 ): string {
   const proto =
@@ -159,8 +165,7 @@ export function oauthCallbackUrl(
     request.headers.get("x-forwarded-host") ??
     request.headers.get("host") ??
     "localhost:3000";
-  const base = `${proto}://${host}`;
-  return `${base}/api/auth/callback/${platform.replace(/_/g, "-")}`;
+  return `${proto}://${host}/api/auth/callback`;
 }
 
 export function resolveOAuthCallbackOverride(
