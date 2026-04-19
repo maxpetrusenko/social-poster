@@ -339,6 +339,14 @@ export const rssSettings = sqliteTable("rss_settings", {
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
 });
 
+// ── Waitlist ──────────────────────────────────────────────────────────
+export const waitlistSignups = sqliteTable("waitlist_signups", {
+  id: text("id").primaryKey(),
+  email: text("email").notNull().unique(),
+  source: text("source").notNull().default("landing"), // "landing" | "blog" | "social"
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+});
+
 // ── Types ─────────────────────────────────────────────────────────────
 export type PipelineStep = {
   name: string;
