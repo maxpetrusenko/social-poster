@@ -59,6 +59,8 @@ Deploys to `social.maxpetrusenko.com` on Contabo/Coolify.
 - [x] Platforms — list, create, edit, delete, per-platform skills/config editor
 - [x] Platforms native connection flow starts configured OAuth providers directly and exposes credential setup docs from each method
 - [x] LinkedIn native OAuth now uses app-managed auth connections: users approve LinkedIn access without pasting client IDs or secrets
+- [x] Connections filter groups LinkedIn native profile/page rows under LinkedIn, so saved OAuth profiles remain visible beside X native connections
+- [x] Local OAuth setup guide shows both localhost and 127.0.0.1 redirect URIs for native providers
 - [x] Connection catalog now lives in per-platform configs, with method info tooltips and live/planned capability badges in the connection drawer
 - [x] X proxy/Bird setup now only asks for `X_AUTH_TOKEN` and `X_CT0`, includes cookie-copy guidance, and exposes a read-only connection test
 - [x] Profiles — list, create, edit, delete (voice ID, face ID, tone)

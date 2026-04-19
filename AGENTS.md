@@ -1,4 +1,4 @@
-READ /Users/maxpetrusenko/Desktop/Projects/agent-scripts/AGENTS.MD BEFORE ANYTHING (skip if missing).
+~/Desktop/AGENTS.MD
 
 ## social-poster
 

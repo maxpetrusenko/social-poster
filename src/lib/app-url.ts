@@ -24,7 +24,9 @@ export function getRequestAppUrl(input: {
     const forwardedProto =
       input.headers.get("x-forwarded-proto") ??
       input.headers.get("x-forwarded-protocol") ??
-      new URL(input.url ?? getAppUrlFromEnv()).protocol.replace(/:$/, "");
+      (isLocalHost(forwardedHost)
+        ? "http"
+        : new URL(input.url ?? getAppUrlFromEnv()).protocol.replace(/:$/, ""));
 
     return `${forwardedProto}://${forwardedHost}`;
   }
@@ -34,4 +36,13 @@ export function getRequestAppUrl(input: {
   }
 
   return getAppUrlFromEnv();
+}
+
+function isLocalHost(host: string) {
+  const hostname = host.split(":")[0]?.toLowerCase();
+  return (
+    hostname === "localhost" ||
+    hostname === "127.0.0.1" ||
+    hostname === "::1"
+  );
 }

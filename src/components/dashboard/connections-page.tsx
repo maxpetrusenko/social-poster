@@ -25,7 +25,15 @@ import type {
 import { ConnectionsDrawer } from "./connections-drawer";
 import type { PlatformType } from "@/lib/platforms";
 import type { NativeConnectionAvailability } from "@/lib/providers/env-availability";
-import { formatMethodLabel, formatProviderLabel, getAvailableMethodModes, getConnectionMethodMode, getManageLabel } from "./connections-page-utils";
+import {
+  formatMethodLabel,
+  formatProviderLabel,
+  getAvailableMethodModes,
+  getConnectionMethodMode,
+  getDrawerPlatformForConnectionFilter,
+  getManageLabel,
+  platformMatchesConnectionFilter,
+} from "./connections-page-utils";
 export function ConnectionsPage({
   workspaceName,
   profiles,
@@ -130,7 +138,7 @@ export function ConnectionsPage({
         return false;
       }
 
-      if (selectedPlatformFilter !== "all" && platform.type !== selectedPlatformFilter) {
+      if (!platformMatchesConnectionFilter(platform.type, selectedPlatformFilter)) {
         return false;
       }
 
@@ -495,7 +503,10 @@ export function ConnectionsPage({
           }}
           onCreateConnection={() =>
             openDrawer(
-              selectedPlatformFilter === "all" ? undefined : selectedPlatformFilter
+              getDrawerPlatformForConnectionFilter(
+                selectedPlatformFilter,
+                selectedViewMode
+              )
             )
           }
         />

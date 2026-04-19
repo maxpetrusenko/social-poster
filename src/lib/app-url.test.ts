@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { getAppUrlFromEnv, getRequestAppUrl } from "@/lib/app-url";
+import { getAppUrlFromEnv, getRequestAppUrl } from "./app-url.ts";
 
 test("getAppUrlFromEnv prefers APP_URL", () => {
   assert.equal(
@@ -36,6 +36,16 @@ test("getRequestAppUrl prefers forwarded host and protocol", () => {
       url: "http://0.0.0.0:3000/auth/callback?next=%2Fdashboard",
     }),
     "https://social.maxpetrusenko.com"
+  );
+});
+
+test("getRequestAppUrl keeps localhost on http without forwarded protocol", () => {
+  assert.equal(
+    getRequestAppUrl({
+      headers: new Headers({ host: "localhost:3000" }),
+      url: "http://localhost:3000/api/auth/linkedin",
+    }),
+    "http://localhost:3000"
   );
 });
 

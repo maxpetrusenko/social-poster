@@ -46,6 +46,31 @@ export function isOAuthMethodConfigured(
   return nativeAvailabilityByPlatform[platformType]?.configured !== false;
 }
 
+export function platformMatchesConnectionFilter(
+  platformType: PlatformType,
+  selectedPlatform: PlatformType | "all"
+) {
+  if (selectedPlatform === "all") return true;
+
+  const group = CONNECTION_FILTER_GROUPS[selectedPlatform];
+  if (group) return group.includes(platformType);
+
+  return platformType === selectedPlatform;
+}
+
+export function getDrawerPlatformForConnectionFilter(
+  selectedPlatform: PlatformType | "all",
+  selectedMode: "native" | "proxy"
+): PlatformType | undefined {
+  if (selectedPlatform === "all") return undefined;
+
+  if (selectedPlatform === "linkedin" && selectedMode === "native") {
+    return "linkedin_personal";
+  }
+
+  return selectedPlatform;
+}
+
 export function getManageLabel(platformType: PlatformType) {
   return {
     bluesky: "Manage Account",
@@ -66,3 +91,8 @@ export function getManageLabel(platformType: PlatformType) {
     youtube: "Manage Channel",
   }[platformType];
 }
+
+const CONNECTION_FILTER_GROUPS: Partial<Record<PlatformType, PlatformType[]>> = {
+  linkedin: ["linkedin", "linkedin_personal", "linkedin_company"],
+  instagram: ["instagram", "instagram_personal"],
+};

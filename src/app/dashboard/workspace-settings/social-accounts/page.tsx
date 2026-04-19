@@ -1,9 +1,12 @@
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { PLATFORM_TYPES } from "@/lib/platforms";
 import { ConnectionsPage } from "@/components/dashboard/connections-page";
+import { getRequestAppUrl } from "@/lib/app-url";
 import { getConnectionsPageData } from "@/lib/dashboard/connections-data";
 import { canManageCurrentWorkspace, getTenantContext } from "@/lib/tenancy";
 import { getNativeConnectionAvailabilityByPlatform } from "@/lib/providers/env-availability";
+import { resolveOAuthCallbackOverride } from "@/lib/providers/oauth-state";
 
 export const dynamic = "force-dynamic";
 
@@ -29,8 +32,12 @@ export default async function WorkspaceSettingsSocialAccountsPage({
 
   const data = await getConnectionsPageData(tenant.currentWorkspace.id);
   const nativeAvailabilityByPlatform = getNativeConnectionAvailabilityByPlatform();
-  const oauthCallbackUrlOverride =
-    process.env.SOCIAL_POSTER_OAUTH_CALLBACK_URL?.trim() || null;
+  const requestHeaders = await headers();
+  const appUrl = getRequestAppUrl({ headers: requestHeaders as Headers });
+  const oauthCallbackUrlOverride = resolveOAuthCallbackOverride(
+    process.env.SOCIAL_POSTER_OAUTH_CALLBACK_URL,
+    appUrl
+  );
 
   return (
     <ConnectionsPage

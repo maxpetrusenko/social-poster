@@ -24,7 +24,14 @@ export function ConnectionSetupGuideButton({
   availability?: NativeConnectionAvailability;
 }) {
   const [open, setOpen] = useState(false);
-  const guide = buildSetupGuide(definition, method, callbackUrl, availability);
+  const redirectUris = getLocalRedirectUriVariants(callbackUrl);
+  const guide = buildSetupGuide(
+    definition,
+    method,
+    callbackUrl,
+    redirectUris,
+    availability
+  );
 
   return (
     <>
@@ -78,7 +85,7 @@ export function ConnectionSetupGuideButton({
                 </div>
               </section>
 
-              <section className="rounded-[16px] border border-[rgba(33,25,19,0.08)] bg-white p-4">
+              <section>
                 <h4 className="text-sm font-semibold text-[#211913]">
                   {guide.stepsTitle}
                 </h4>
@@ -103,7 +110,7 @@ export function ConnectionSetupGuideButton({
               ) : null}
 
               {guide.permissions.length ? (
-                <section className="rounded-[16px] border border-[rgba(33,25,19,0.08)] bg-white p-4">
+                <section>
                   <h4 className="text-sm font-semibold text-[#211913]">
                     Required permissions
                   </h4>
@@ -115,9 +122,17 @@ export function ConnectionSetupGuideButton({
                 </section>
               ) : null}
 
-              {callbackUrl ? (
-                <CopyBox label="Redirect URI" value={callbackUrl} />
-              ) : null}
+              {redirectUris.map((redirectUri, index) => (
+                <CopyBox
+                  key={redirectUri}
+                  label={
+                    redirectUris.length > 1
+                      ? `Redirect URI ${index + 1}`
+                      : "Redirect URI"
+                  }
+                  value={redirectUri}
+                />
+              ))}
 
               {guide.missing.length ? (
                 <section className="rounded-[16px] border border-[#ead7a7] bg-[#fff5da] p-4 text-sm leading-6 text-[#89661b]">
@@ -156,7 +171,7 @@ function CopyBox({
   multiline?: boolean;
 }) {
   return (
-    <section className="rounded-[16px] border border-[rgba(33,25,19,0.08)] bg-white p-4">
+    <section>
       <div className="flex items-center justify-between gap-3">
         <h4 className="text-sm font-semibold text-[#211913]">{label}</h4>
         <button
@@ -183,6 +198,7 @@ function buildSetupGuide(
   definition: ConnectionPlatformDefinition,
   method: ConnectionMethod,
   callbackUrl: string | null,
+  redirectUris: string[],
   availability?: NativeConnectionAvailability
 ) {
   if (definition.type === "twitter" && method.authType === "oauth") {
@@ -200,8 +216,8 @@ function buildSetupGuide(
         "Open User authentication settings.",
         "Set app permissions to Read and write.",
         "Set app type to Web App, Automated App or Bot.",
-        callbackUrl?.startsWith("http://127.0.0.1")
-          ? "Add the Redirect URI below exactly. X local development requires 127.0.0.1, not localhost."
+        redirectUris.length > 1
+          ? "Add both local Redirect URIs below exactly so localhost and 127.0.0.1 both work."
           : "Add the Redirect URI below exactly.",
         "Save changes, then connect X again.",
       ],
@@ -267,8 +283,10 @@ function buildSetupGuide(
           ],
       steps: [
         "Keep LINKEDIN_CLIENT_ID and LINKEDIN_CLIENT_SECRET in server env or encrypted credential storage.",
-        callbackUrl
-          ? "Register the Redirect URI below in the LinkedIn app OAuth settings."
+        redirectUris.length > 1
+          ? "Register both local Redirect URIs below in the LinkedIn app OAuth settings so localhost and 127.0.0.1 both work."
+          : callbackUrl
+            ? "Register the Redirect URI below in the LinkedIn app OAuth settings."
           : "Register this app's LinkedIn callback URL in the LinkedIn app OAuth settings.",
         "When a workspace manager clicks Connect, this app redirects to LinkedIn for member authorization.",
         "The callback stores the account-bound token. Users never paste LinkedIn app keys.",
@@ -333,5 +351,35 @@ function inferGenericPermissions(type: ConnectionPlatformDefinition["type"]) {
       return ["Business profile read access", "Local posts write access"];
     default:
       return [];
+  }
+}
+
+function getLocalRedirectUriVariants(callbackUrl: string | null) {
+  if (!callbackUrl) return [];
+
+  const parsed = safeUrl(callbackUrl);
+  if (!parsed || !isLoopbackHost(parsed.hostname)) return [callbackUrl];
+
+  return Array.from(
+    new Set(
+      ["localhost", "127.0.0.1"].map((host) => {
+        const next = new URL(parsed.toString());
+        next.hostname = host;
+        return next.toString();
+      })
+    )
+  );
+}
+
+function isLoopbackHost(hostname: string) {
+  const normalized = hostname.toLowerCase();
+  return normalized === "localhost" || normalized === "127.0.0.1";
+}
+
+function safeUrl(value: string) {
+  try {
+    return new URL(value);
+  } catch {
+    return null;
   }
 }

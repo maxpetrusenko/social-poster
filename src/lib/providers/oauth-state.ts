@@ -104,8 +104,47 @@ export function oauthCallbackPath(platform: string) {
 }
 
 export function oauthCallbackUrl(platform: string, appUrl: string) {
-  const override = process.env.SOCIAL_POSTER_OAUTH_CALLBACK_URL?.trim();
+  const override = resolveOAuthCallbackOverride(
+    process.env.SOCIAL_POSTER_OAUTH_CALLBACK_URL,
+    appUrl
+  );
   if (override) return override;
 
   return new URL(oauthCallbackPath(platform), appUrl).toString();
+}
+
+export function resolveOAuthCallbackOverride(
+  override: string | null | undefined,
+  appUrl: string | null | undefined
+) {
+  const value = override?.trim();
+  if (!value) return null;
+
+  try {
+    const overrideUrl = new URL(value);
+    const appOrigin = new URL(appUrl ?? "").origin;
+    const appUrlObject = new URL(appOrigin);
+
+    if (overrideUrl.origin === appUrlObject.origin) {
+      return value;
+    }
+
+    if (isLoopbackHost(appUrlObject.hostname)) {
+      return isLoopbackHost(overrideUrl.hostname) ? value : null;
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function isLoopbackHost(hostname: string) {
+  const normalized = hostname.toLowerCase();
+  return (
+    normalized === "localhost" ||
+    normalized === "127.0.0.1" ||
+    normalized === "::1" ||
+    normalized === "[::1]"
+  );
 }
