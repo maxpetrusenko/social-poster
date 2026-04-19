@@ -25,6 +25,23 @@ test("resolveR2Config uses Cloudflare account id plus explicit bucket", () => {
   assert.equal(config?.region, "auto");
 });
 
+test("resolveR2Config accepts S3-compatible env names from R2 dashboards", () => {
+  const config = resolveR2Config({
+    S3_ENDPOINT_URL: "https://account.r2.cloudflarestorage.com",
+    S3_BUCKET_NAME: "social-agent",
+    S3_ACCESS_KEY_ID: "key",
+    S3_SECRET_ACCESS_KEY: "secret",
+    S3_REGION_NAME: "auto",
+    S3_CUSTOM_DOMAIN: "https://media.example.com/social-agent",
+  });
+
+  assert.equal(config?.endpoint, "https://account.r2.cloudflarestorage.com");
+  assert.equal(config?.bucket, "social-agent");
+  assert.equal(config?.accessKeyId, "key");
+  assert.equal(config?.secretAccessKey, "secret");
+  assert.equal(config?.publicBaseUrl, "https://media.example.com/social-agent");
+});
+
 test("buildR2ObjectUrl uses public base url when provided", () => {
   const url = buildR2ObjectUrl(
     {
