@@ -11,7 +11,7 @@ import type {
   RateLimitConfig,
 } from "./types";
 
-const AUTH_URL = "https://twitter.com/i/oauth2/authorize";
+const AUTH_URL = "https://x.com/i/oauth2/authorize";
 const TOKEN_URL = "https://api.x.com/2/oauth2/token";
 const USERS_ME_URL = "https://api.x.com/2/users/me";
 const TWEETS_URL = "https://api.x.com/2/tweets";

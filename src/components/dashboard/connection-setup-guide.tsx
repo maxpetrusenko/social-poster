@@ -188,19 +188,22 @@ function buildSetupGuide(
   if (definition.type === "twitter" && method.authType === "oauth") {
     return {
       title: "X (Twitter) app configuration",
-      subtitle: "Configure your own API credentials to connect this platform.",
-      stepsTitle: "How to get credentials",
+      subtitle:
+        "Register the callback URL and app permissions before users connect.",
+      stepsTitle: "How to configure the app",
       links: [
         { label: "Watch video tutorial", url: X_TUTORIAL_URL },
         { label: "Twitter Developer Portal", url: "https://developer.x.com/en/portal/dashboard" },
       ],
       steps: [
-        "Go to Twitter Developer Portal.",
-        "Create a new app or select an existing app.",
-        "If Twitter asks for a 250 character use case description, copy the text below.",
-        "Open the Keys and tokens tab.",
-        "Copy the API Key as the Client ID and the API Key Secret as the Client Secret.",
-        "Add the Redirect URI below to the app OAuth settings.",
+        "Open the X Developer Portal app used by Social Poster.",
+        "Open User authentication settings.",
+        "Set app permissions to Read and write.",
+        "Set app type to Web App, Automated App or Bot.",
+        callbackUrl?.startsWith("http://127.0.0.1")
+          ? "Add the Redirect URI below exactly. X local development requires 127.0.0.1, not localhost."
+          : "Add the Redirect URI below exactly.",
+        "Save changes, then connect X again.",
       ],
       permissions: ["Read and Write tweets", "Read users"],
       useCaseText: X_USE_CASE_TEXT,
@@ -227,7 +230,9 @@ function buildSetupGuide(
         "Open Facebook Login, then Settings.",
         "Turn Client OAuth Login on.",
         "Turn Web OAuth Login on.",
-        "Paste https://social.maxpetrusenko.com/api/auth/callback into Valid OAuth Redirect URIs exactly as shown.",
+        callbackUrl
+          ? "Paste the Redirect URI below into Valid OAuth Redirect URIs exactly as shown."
+          : "Paste this app's callback URL into Valid OAuth Redirect URIs exactly as shown.",
         "Also add the app domain, for example social.maxpetrusenko.com, in the app's domain settings.",
         "Save changes, then return here and connect Facebook again.",
       ],

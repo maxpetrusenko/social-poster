@@ -35,7 +35,10 @@ export async function handleNativeOAuthCallback(
   );
   cookieStore.delete(NATIVE_OAUTH_COOKIE);
 
-  const fallback = new URL(state?.next || "/dashboard/platforms", appUrl);
+  const fallback = new URL(
+    state?.next || "/dashboard/workspace-settings/social-accounts",
+    appUrl
+  );
   const error = request.nextUrl.searchParams.get("error");
   const code = request.nextUrl.searchParams.get("code");
 

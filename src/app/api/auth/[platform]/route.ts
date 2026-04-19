@@ -46,7 +46,9 @@ async function startNativeOAuth(
     platform,
     profileId: request.nextUrl.searchParams.get("profileId"),
     methodId: request.nextUrl.searchParams.get("methodId"),
-    next: request.nextUrl.searchParams.get("next") ?? "/dashboard/platforms",
+    next:
+      request.nextUrl.searchParams.get("next") ??
+      "/dashboard/workspace-settings/social-accounts",
   });
   const redirectUri = oauthCallbackUrl(platform, appUrl);
   const oauthCredentials = isAppManagedOAuth(platform)
@@ -107,7 +109,10 @@ function oauthStartError(request: NextRequest, appUrl: string, message: string) 
   if (request.method === "POST") {
     return NextResponse.json({ error: message }, { status: 400 });
   }
-  const fallback = new URL("/dashboard/platforms", appUrl);
+  const fallback = new URL(
+    "/dashboard/workspace-settings/social-accounts",
+    appUrl
+  );
   fallback.searchParams.set("error", message);
   return NextResponse.redirect(fallback);
 }
