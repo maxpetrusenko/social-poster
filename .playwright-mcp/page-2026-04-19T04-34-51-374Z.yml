@@ -1,0 +1,74 @@
+- generic [ref=e4]:
+  - generic [ref=e10]:
+    - generic [ref=e16]:
+      - img "Meta symbol" [ref=e21]
+      - generic [ref=e31]:
+        - generic [ref=e36]:
+          - text: Get started with
+          - generic [ref=e37]: Meta for Developers
+        - generic [ref=e41]: "Manage everything to do with apps you’ve built for you or your business, including:"
+        - list [ref=e47]:
+          - listitem [ref=e48]:
+            - generic [ref=e49]: •
+            - generic [ref=e50]: Create apps with use cases that can connect your app with Facebook, Instagram, WhatsApp, Threads and more.
+          - listitem [ref=e51]:
+            - generic [ref=e52]: •
+            - generic [ref=e53]: Request access to permissions and features in App Review.
+          - listitem [ref=e54]:
+            - generic [ref=e55]: •
+            - generic [ref=e56]: Manage apps and track analytics, such as API calls and user rate limits
+          - listitem [ref=e57]:
+            - generic [ref=e58]: •
+            - generic [ref=e59]: Discover new ways to reach your users
+          - listitem [ref=e60]:
+            - generic [ref=e61]: •
+            - generic [ref=e62]: Complete all verification and data access requirements to keep your apps secure and trusted
+    - generic [ref=e68]:
+      - generic [ref=e71]: Log into Meta for Developers
+      - button "Log in with Facebook" [ref=e74] [cursor=pointer]:
+        - generic [ref=e75]:
+          - img [ref=e77]
+          - generic [ref=e80]: Log in with Facebook
+      - button "Create new account" [ref=e83] [cursor=pointer]:
+        - generic [ref=e86]: Create new account
+      - separator [ref=e88]
+      - button "Log in with a managed Meta account" [ref=e91] [cursor=pointer]:
+        - generic [ref=e94]: Log in with a managed Meta account
+      - img "Meta logo" [ref=e96]
+  - generic [ref=e108]:
+    - generic [ref=e109]:
+      - link "© 2026 Meta" [ref=e110] [cursor=pointer]:
+        - /url: https://www.facebook.com/
+      - link "Follow Meta for Business (ex Facebook for Business) Instagram Social Media Channel" [ref=e118] [cursor=pointer]:
+        - /url: https://www.instagram.com/metaforbusiness?ref=fbb_ens
+        - img "Follow Meta for Business (ex Facebook for Business) Instagram Social Media Channel" [ref=e119]
+    - generic [ref=e122]:
+      - generic [ref=e123]:
+        - link "About" [ref=e124] [cursor=pointer]:
+          - /url: https://www.meta.com/about/
+        - link "Developers" [ref=e125] [cursor=pointer]:
+          - /url: https://developers.meta.com/
+        - link "Careers" [ref=e126] [cursor=pointer]:
+          - /url: https://l.facebook.com/l.php?u=https%3A%2F%2Fwww.metacareers.com%2F&h=AT7ypSQWj-dwinHmYikKq3s6FmZ4vuosOluUUlhaYTnQIyJ0ErAuOrWJAgwcdjMKwGSam4O3Z7PtMbxTmIRUWWTrnozVr46y_S8O3lgw14dL2QslbdeJb0iLH_8FHBXMjMcXww5VahVokJ-5OVXogPmw6zg
+        - link "Privacy" [ref=e127] [cursor=pointer]:
+          - /url: https://www.facebook.com/privacy/explanation
+        - link "Cookies" [ref=e128] [cursor=pointer]:
+          - /url: https://www.facebook.com/help/cookies
+        - link "Terms" [ref=e129] [cursor=pointer]:
+          - /url: https://www.facebook.com/policies/
+        - link "Help Center" [ref=e130] [cursor=pointer]:
+          - /url: https://www.facebook.com/business/help/
+      - generic [ref=e131]:
+        - link "English (US)" [ref=e132] [cursor=pointer]:
+          - /url: https://business.facebook.com/business/loginpage/?next=https%3A%2F%2Fdevelopers.facebook.com%2Fapps%2F2361497637361022%2Ffb-login%2Fsettings%2F
+        - link "English (UK)" [ref=e133] [cursor=pointer]:
+          - /url: https://business.facebook.com/business/loginpage/?next=https%3A%2F%2Fdevelopers.facebook.com%2Fapps%2F2361497637361022%2Ffb-login%2Fsettings%2F
+        - link "Español" [ref=e134] [cursor=pointer]:
+          - /url: https://business.facebook.com/business/loginpage/?next=https%3A%2F%2Fdevelopers.facebook.com%2Fapps%2F2361497637361022%2Ffb-login%2Fsettings%2F
+        - link "Português (Brasil)" [ref=e135] [cursor=pointer]:
+          - /url: https://business.facebook.com/business/loginpage/?next=https%3A%2F%2Fdevelopers.facebook.com%2Fapps%2F2361497637361022%2Ffb-login%2Fsettings%2F
+        - link "Français (France)" [ref=e136] [cursor=pointer]:
+          - /url: https://business.facebook.com/business/loginpage/?next=https%3A%2F%2Fdevelopers.facebook.com%2Fapps%2F2361497637361022%2Ffb-login%2Fsettings%2F
+        - link "Español (España)" [ref=e137] [cursor=pointer]:
+          - /url: https://business.facebook.com/business/loginpage/?next=https%3A%2F%2Fdevelopers.facebook.com%2Fapps%2F2361497637361022%2Ffb-login%2Fsettings%2F
+        - button "More languages" [ref=e138] [cursor=pointer]: More languages

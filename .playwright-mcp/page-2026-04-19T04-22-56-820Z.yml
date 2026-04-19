@@ -1,0 +1,210 @@
+- generic [ref=e2]:
+  - complementary [ref=e3]:
+    - generic [ref=e4]:
+      - generic [ref=e5]:
+        - generic [ref=e6]:
+          - paragraph [ref=e7]: Menu
+          - paragraph [ref=e8]: Social Agent
+        - button "Collapse menu" [ref=e9]:
+          - img [ref=e10]
+      - generic [ref=e11]:
+        - generic [ref=e12]:
+          - paragraph [ref=e13]: Dashboard
+          - link "Dashboard" [ref=e15] [cursor=pointer]:
+            - /url: /dashboard
+            - img [ref=e17]
+            - generic [ref=e19]:
+              - generic [ref=e20]: Dashboard
+              - generic [ref=e21]: Main board and KPIs.
+        - generic [ref=e22]:
+          - paragraph [ref=e23]: Workspace
+          - generic [ref=e24]:
+            - link "Calendar" [ref=e25] [cursor=pointer]:
+              - /url: /dashboard/calendar
+              - img [ref=e27]
+              - generic [ref=e29]:
+                - generic [ref=e30]: Calendar
+                - generic [ref=e31]: Monthly cadence, runs, timing.
+            - link "Create Idea" [ref=e32] [cursor=pointer]:
+              - /url: /dashboard/create-idea
+              - img [ref=e34]
+              - generic [ref=e37]:
+                - generic [ref=e38]: Create Idea
+                - generic [ref=e39]: Composer, templates, feeds.
+            - link "Social Inbox" [ref=e40] [cursor=pointer]:
+              - /url: /dashboard/inbox
+              - img [ref=e42]
+              - generic [ref=e44]:
+                - generic [ref=e45]: Social Inbox
+                - generic [ref=e46]: Threads, assignment, replies.
+            - link "Replies" [ref=e47] [cursor=pointer]:
+              - /url: /dashboard/replies
+              - img [ref=e49]
+              - generic [ref=e53]:
+                - generic [ref=e54]: Replies
+                - generic [ref=e55]: X reply engine log.
+            - link "Notifications" [ref=e56] [cursor=pointer]:
+              - /url: /dashboard/notifications
+              - img [ref=e58]
+              - generic [ref=e61]:
+                - generic [ref=e62]: Notifications
+                - generic [ref=e63]: Alerts, approvals, failures.
+            - link "Schedules" [ref=e64] [cursor=pointer]:
+              - /url: /dashboard/schedules
+              - img [ref=e66]
+              - generic [ref=e70]:
+                - generic [ref=e71]: Schedules
+                - generic [ref=e72]: Cadence, drift, run control.
+            - link "Recurrent Posts" [ref=e73] [cursor=pointer]:
+              - /url: /dashboard/categories
+              - img [ref=e75]
+              - generic [ref=e79]:
+                - generic [ref=e80]: Recurrent Posts
+                - generic [ref=e81]: Recurring slots and content buckets.
+            - link "RSS" [ref=e82] [cursor=pointer]:
+              - /url: /dashboard/rss
+              - img [ref=e84]
+              - generic [ref=e88]:
+                - generic [ref=e89]: RSS
+                - generic [ref=e90]: Feeds, scoring, rewrite rules.
+        - generic [ref=e91]:
+          - paragraph [ref=e92]: Channels
+          - generic [ref=e93]:
+            - link "Social Accounts" [ref=e94] [cursor=pointer]:
+              - /url: /dashboard/workspace-settings/social-accounts
+              - img [ref=e96]
+              - generic [ref=e102]:
+                - generic [ref=e103]: Social Accounts
+                - generic [ref=e104]: Connect, verify, reconnect.
+            - link "Profiles" [ref=e105] [cursor=pointer]:
+              - /url: /dashboard/profiles
+              - img [ref=e107]
+              - generic [ref=e111]:
+                - generic [ref=e112]: Profiles
+                - generic [ref=e113]: Voice, face, tone presets.
+        - generic [ref=e114]:
+          - paragraph [ref=e115]: Operator
+          - link "Pipeline" [ref=e117] [cursor=pointer]:
+            - /url: /dashboard/pipeline
+            - img [ref=e119]
+            - generic [ref=e121]:
+              - generic [ref=e122]: Pipeline
+              - generic [ref=e123]: Run history and step truth.
+      - generic [ref=e125]:
+        - link "Manage Team" [ref=e126] [cursor=pointer]:
+          - /url: /dashboard/settings/team-members
+          - img [ref=e127]
+          - generic [ref=e131]: Manage Team
+        - link "Settings" [ref=e132] [cursor=pointer]:
+          - /url: /dashboard/settings/general
+          - img [ref=e133]
+          - generic [ref=e136]: Settings
+        - button "Log Out" [ref=e137]:
+          - img [ref=e138]
+          - generic [ref=e141]: Log Out
+  - generic [ref=e142]:
+    - banner [ref=e143]:
+      - generic [ref=e144]:
+        - generic [ref=e146]:
+          - paragraph [ref=e147]: Social Accounts
+          - paragraph [ref=e148]: Connect, verify, and manage channel access.
+        - generic [ref=e149]:
+          - link "New connection" [ref=e150] [cursor=pointer]:
+            - /url: /dashboard/workspace-settings/social-accounts?connect=1
+            - img [ref=e151]
+          - button "Open activity history" [ref=e152]:
+            - img [ref=e153]
+          - button "Open logs" [ref=e157]:
+            - img [ref=e158]
+          - button "Open notifications" [ref=e159]:
+            - img [ref=e160]
+          - button "Open account menu" [ref=e163]: SA
+    - main [ref=e164]:
+      - generic [ref=e166]:
+        - generic [ref=e167]:
+          - generic [ref=e168]:
+            - heading "Default Connections" [level=1] [ref=e170]
+            - generic [ref=e171]:
+              - generic [ref=e172]:
+                - combobox [ref=e173]:
+                  - option "All profiles" [selected]
+                  - option "Max Petrusenko"
+                - combobox [ref=e174]:
+                  - option "All platforms" [selected]
+                  - option "X"
+                  - option "LinkedIn"
+                  - option "LinkedIn Personal"
+                  - option "LinkedIn Company"
+                  - option "Instagram"
+                  - option "Instagram Personal"
+                  - option "Facebook"
+                  - option "Threads"
+                  - option "Bluesky"
+                  - option "Google Business"
+                  - option "Mastodon"
+                  - option "WhatsApp"
+                  - option "TikTok"
+                  - option "YouTube"
+                  - option "Reddit"
+                - combobox [ref=e175]:
+                  - option "All status" [selected]
+                  - option "Enabled"
+                  - option "Disabled"
+              - button "Add connection" [ref=e176]
+          - generic [ref=e177]:
+            - button "Native auth connections Connected through platform apps and OAuth tokens." [ref=e178]:
+              - generic [ref=e179]: Native auth connections
+              - generic [ref=e180]: Connected through platform apps and OAuth tokens.
+            - button "Proxy connections Connected through Late/GetLate or Bird." [ref=e181]:
+              - generic [ref=e182]: Proxy connections
+              - generic [ref=e183]: Connected through Late/GetLate or Bird.
+        - generic [ref=e184]:
+          - article [ref=e185]:
+            - generic [ref=e186]:
+              - generic [ref=e187]:
+                - generic [ref=e188]:
+                  - img [ref=e191]
+                  - img [ref=e194]
+                - generic [ref=e196]:
+                  - generic [ref=e197]:
+                    - img [ref=e198]
+                    - paragraph [ref=e200]: LinkedIn Profile
+                  - paragraph [ref=e201]: Max Petrusenko
+                  - paragraph [ref=e202]: "Account ID: d51a18dHga"
+              - generic [ref=e203]: connected
+            - generic [ref=e205]: No profile
+            - generic [ref=e206]:
+              - link "Manage Account" [ref=e207] [cursor=pointer]:
+                - /url: /dashboard/platforms/487586ac-0f79-483f-a2a0-8e9cd2114968
+              - button "Disconnect" [ref=e208]:
+                - img [ref=e209]
+                - text: Disconnect
+            - button "Pause posting" [ref=e216]:
+              - img [ref=e217]
+              - text: Pause posting
+          - article [ref=e219]:
+            - generic [ref=e220]:
+              - generic [ref=e221]:
+                - generic [ref=e222]:
+                  - img "@petrusenko_max avatar" [ref=e224]
+                  - img [ref=e226]
+                - generic [ref=e228]:
+                  - generic [ref=e229]:
+                    - img [ref=e230]
+                    - paragraph [ref=e232]: Twitter/X
+                  - paragraph [ref=e233]: "@petrusenko_max"
+                  - paragraph [ref=e234]: Max Petrusenko
+              - generic [ref=e235]: connected
+            - generic [ref=e237]: No profile
+            - generic [ref=e238]:
+              - link "Manage Account" [ref=e239] [cursor=pointer]:
+                - /url: /dashboard/platforms/d6beeabb-0d99-4e03-a3fd-f3b09d428c22
+              - button "Disconnect" [ref=e240]:
+                - img [ref=e241]
+                - text: Disconnect
+            - button "Pause posting" [ref=e248]:
+              - img [ref=e249]
+              - text: Pause posting
+    - button "Social Agent" [ref=e251]:
+      - img [ref=e252]
+      - text: Social Agent

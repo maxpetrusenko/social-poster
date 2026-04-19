@@ -1,0 +1,126 @@
+- generic [ref=e3]:
+  - generic:
+    - generic:
+      - generic:
+        - generic:
+          - dialog:
+            - group [active] [ref=e4]:
+              - dialog [ref=e6]:
+                - progressbar [ref=e8]:
+                  - img [ref=e10]
+  - main [ref=e13]:
+    - generic [ref=e15]:
+      - generic [ref=e16]:
+        - generic [ref=e18]:
+          - generic [ref=e19]: Happening now
+          - generic [ref=e20]: Join today.
+          - generic [ref=e21]:
+            - generic [ref=e23]:
+              - button "Sign up with Google. Opens in new tab" [ref=e25] [cursor=pointer]:
+                - generic [ref=e27]:
+                  - img [ref=e29]
+                  - generic [ref=e36]: Sign up with Google
+              - iframe
+            - button "Sign up with Apple" [ref=e37] [cursor=pointer]:
+              - generic [ref=e38]:
+                - img [ref=e39]
+                - generic [ref=e43]: Sign up with Apple
+            - generic [ref=e49]: OR
+            - link "Create account" [ref=e52] [cursor=pointer]:
+              - /url: /i/flow/signup
+              - generic [ref=e55]: Create account
+            - generic [ref=e56]:
+              - text: By signing up, you agree to the
+              - link "Terms of Service" [ref=e57] [cursor=pointer]:
+                - /url: https://x.com/tos
+              - text: and
+              - link "Privacy Policy" [ref=e58] [cursor=pointer]:
+                - /url: https://x.com/privacy
+              - text: ", including"
+              - link "Cookie Use." [ref=e59] [cursor=pointer]:
+                - /url: https://help.x.com/rules-and-policies/twitter-cookies
+            - generic [ref=e60]:
+              - generic [ref=e61]: Already have an account?
+              - link "Sign in" [ref=e62] [cursor=pointer]:
+                - /url: /login
+                - generic [ref=e65]: Sign in
+          - link "Get Grok" [ref=e66] [cursor=pointer]:
+            - /url: https://grok.com/
+            - generic [ref=e67]:
+              - img [ref=e68]
+              - generic [ref=e73]: Get Grok
+        - img [ref=e76]
+      - navigation "Footer" [ref=e80]:
+        - generic [ref=e81]:
+          - link "About" [ref=e82] [cursor=pointer]:
+            - /url: https://about.x.com
+          - generic [ref=e83]: "|"
+        - generic [ref=e84]:
+          - link "Download the X app" [ref=e85] [cursor=pointer]:
+            - /url: https://help.x.com/using-x/download-the-x-app
+          - generic [ref=e86]: "|"
+        - generic [ref=e87]:
+          - link "Grok" [ref=e88] [cursor=pointer]:
+            - /url: https://grok.com/
+          - generic [ref=e89]: "|"
+        - generic [ref=e90]:
+          - link "Help Center" [ref=e91] [cursor=pointer]:
+            - /url: https://help.x.com
+          - generic [ref=e92]: "|"
+        - generic [ref=e93]:
+          - link "Terms of Service" [ref=e94] [cursor=pointer]:
+            - /url: https://x.com/tos
+          - generic [ref=e95]: "|"
+        - generic [ref=e96]:
+          - link "Privacy Policy" [ref=e97] [cursor=pointer]:
+            - /url: https://x.com/privacy
+          - generic [ref=e98]: "|"
+        - generic [ref=e99]:
+          - link "Cookie Policy" [ref=e100] [cursor=pointer]:
+            - /url: https://support.x.com/articles/20170514
+          - generic [ref=e101]: "|"
+        - generic [ref=e102]:
+          - link "Accessibility" [ref=e103] [cursor=pointer]:
+            - /url: https://help.x.com/resources/accessibility
+          - generic [ref=e104]: "|"
+        - generic [ref=e105]:
+          - link "Ads info" [ref=e106] [cursor=pointer]:
+            - /url: https://business.x.com/en/help/troubleshooting/how-twitter-ads-work.html?ref=web-twc-ao-gbl-adsinfo&utm_source=twc&utm_medium=web&utm_campaign=ao&utm_content=adsinfo
+          - generic [ref=e107]: "|"
+        - generic [ref=e108]:
+          - link "Blog" [ref=e109] [cursor=pointer]:
+            - /url: https://blog.x.com
+          - generic [ref=e110]: "|"
+        - generic [ref=e111]:
+          - link "Careers" [ref=e112] [cursor=pointer]:
+            - /url: https://careers.x.com
+          - generic [ref=e113]: "|"
+        - generic [ref=e114]:
+          - link "Brand Resources" [ref=e115] [cursor=pointer]:
+            - /url: https://about.x.com/press/brand-assets
+          - generic [ref=e116]: "|"
+        - generic [ref=e117]:
+          - link "Advertising" [ref=e118] [cursor=pointer]:
+            - /url: https://ads.x.com/?ref=gl-tw-tw-twitter-advertise
+          - generic [ref=e119]: "|"
+        - generic [ref=e120]:
+          - link "Marketing" [ref=e121] [cursor=pointer]:
+            - /url: https://marketing.x.com
+          - generic [ref=e122]: "|"
+        - generic [ref=e123]:
+          - link "X for Business" [ref=e124] [cursor=pointer]:
+            - /url: https://business.x.com/?ref=web-twc-ao-gbl-twitterforbusiness&utm_source=twc&utm_medium=web&utm_campaign=ao&utm_content=twitterforbusiness
+          - generic [ref=e125]: "|"
+        - generic [ref=e126]:
+          - link "Developers" [ref=e127] [cursor=pointer]:
+            - /url: https://developer.x.com
+          - generic [ref=e128]: "|"
+        - generic [ref=e129]:
+          - link "News" [ref=e130] [cursor=pointer]:
+            - /url: https://x.com/i/jf/stories/home
+          - generic [ref=e131]: "|"
+        - generic [ref=e132]:
+          - link "Settings" [ref=e133] [cursor=pointer]:
+            - /url: /settings
+          - generic [ref=e134]: "|"
+        - generic [ref=e135]: © 2026 X Corp.

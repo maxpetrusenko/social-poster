@@ -1,0 +1,352 @@
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - generic [ref=e4]:
+        - generic [ref=e5]:
+          - generic [ref=e6]:
+            - paragraph [ref=e7]: Menu
+            - paragraph [ref=e8]: Social Agent
+          - button "Collapse menu" [ref=e9]:
+            - img [ref=e10]
+        - generic [ref=e11]:
+          - generic [ref=e12]:
+            - paragraph [ref=e13]: Dashboard
+            - link "Dashboard" [ref=e15] [cursor=pointer]:
+              - /url: /dashboard
+              - img [ref=e17]
+              - generic [ref=e19]:
+                - generic [ref=e20]: Dashboard
+                - generic [ref=e21]: Main board and KPIs.
+          - generic [ref=e22]:
+            - paragraph [ref=e23]: Workspace
+            - generic [ref=e24]:
+              - link "Calendar" [ref=e25] [cursor=pointer]:
+                - /url: /dashboard/calendar
+                - img [ref=e27]
+                - generic [ref=e29]:
+                  - generic [ref=e30]: Calendar
+                  - generic [ref=e31]: Monthly cadence, runs, timing.
+              - link "Create Idea" [ref=e32] [cursor=pointer]:
+                - /url: /dashboard/create-idea
+                - img [ref=e34]
+                - generic [ref=e37]:
+                  - generic [ref=e38]: Create Idea
+                  - generic [ref=e39]: Composer, templates, feeds.
+              - link "Social Inbox" [ref=e40] [cursor=pointer]:
+                - /url: /dashboard/inbox
+                - img [ref=e42]
+                - generic [ref=e44]:
+                  - generic [ref=e45]: Social Inbox
+                  - generic [ref=e46]: Threads, assignment, replies.
+              - link "Replies" [ref=e47] [cursor=pointer]:
+                - /url: /dashboard/replies
+                - img [ref=e49]
+                - generic [ref=e53]:
+                  - generic [ref=e54]: Replies
+                  - generic [ref=e55]: X reply engine log.
+              - link "Notifications" [ref=e56] [cursor=pointer]:
+                - /url: /dashboard/notifications
+                - img [ref=e58]
+                - generic [ref=e61]:
+                  - generic [ref=e62]: Notifications
+                  - generic [ref=e63]: Alerts, approvals, failures.
+              - link "Schedules" [ref=e64] [cursor=pointer]:
+                - /url: /dashboard/schedules
+                - img [ref=e66]
+                - generic [ref=e70]:
+                  - generic [ref=e71]: Schedules
+                  - generic [ref=e72]: Cadence, drift, run control.
+              - link "Recurrent Posts" [ref=e73] [cursor=pointer]:
+                - /url: /dashboard/categories
+                - img [ref=e75]
+                - generic [ref=e79]:
+                  - generic [ref=e80]: Recurrent Posts
+                  - generic [ref=e81]: Recurring slots and content buckets.
+              - link "RSS" [ref=e82] [cursor=pointer]:
+                - /url: /dashboard/rss
+                - img [ref=e84]
+                - generic [ref=e88]:
+                  - generic [ref=e89]: RSS
+                  - generic [ref=e90]: Feeds, scoring, rewrite rules.
+          - generic [ref=e91]:
+            - paragraph [ref=e92]: Channels
+            - generic [ref=e93]:
+              - link "Social Accounts" [ref=e94] [cursor=pointer]:
+                - /url: /dashboard/workspace-settings/social-accounts
+                - img [ref=e96]
+                - generic [ref=e102]:
+                  - generic [ref=e103]: Social Accounts
+                  - generic [ref=e104]: Connect, verify, reconnect.
+              - link "Profiles" [ref=e105] [cursor=pointer]:
+                - /url: /dashboard/profiles
+                - img [ref=e107]
+                - generic [ref=e111]:
+                  - generic [ref=e112]: Profiles
+                  - generic [ref=e113]: Voice, face, tone presets.
+          - generic [ref=e114]:
+            - paragraph [ref=e115]: Operator
+            - link "Pipeline" [ref=e117] [cursor=pointer]:
+              - /url: /dashboard/pipeline
+              - img [ref=e119]
+              - generic [ref=e121]:
+                - generic [ref=e122]: Pipeline
+                - generic [ref=e123]: Run history and step truth.
+        - generic [ref=e125]:
+          - link "Manage Team" [ref=e126] [cursor=pointer]:
+            - /url: /dashboard/settings/team-members
+            - img [ref=e127]
+            - generic [ref=e131]: Manage Team
+          - link "Settings" [ref=e132] [cursor=pointer]:
+            - /url: /dashboard/settings/general
+            - img [ref=e133]
+            - generic [ref=e136]: Settings
+          - button "Log Out" [ref=e137]:
+            - img [ref=e138]
+            - generic [ref=e141]: Log Out
+    - generic [ref=e142]:
+      - banner [ref=e143]:
+        - generic [ref=e144]:
+          - generic [ref=e146]:
+            - paragraph [ref=e147]: Social Accounts
+            - paragraph [ref=e148]: Connect, verify, and manage channel access.
+          - generic [ref=e149]:
+            - link "New connection" [ref=e150] [cursor=pointer]:
+              - /url: /dashboard/workspace-settings/social-accounts?connect=1
+              - img [ref=e151]
+            - button "Open activity history" [ref=e152]:
+              - img [ref=e153]
+            - button "Open logs" [ref=e157]:
+              - img [ref=e158]
+            - button "Open notifications" [ref=e159]:
+              - img [ref=e160]
+            - button "Open account menu" [ref=e163]: SA
+      - main [ref=e164]:
+        - generic [ref=e165]:
+          - generic [ref=e166]:
+            - generic [ref=e167]:
+              - generic [ref=e168]:
+                - heading "Default Connections" [level=1] [ref=e170]
+                - generic [ref=e171]:
+                  - generic [ref=e172]:
+                    - combobox [ref=e173]:
+                      - option "All profiles" [selected]
+                      - option "Max Petrusenko"
+                    - combobox [ref=e174]:
+                      - option "All platforms" [selected]
+                      - option "X"
+                      - option "LinkedIn"
+                      - option "LinkedIn Personal"
+                      - option "LinkedIn Company"
+                      - option "Instagram"
+                      - option "Instagram Personal"
+                      - option "Facebook"
+                      - option "Threads"
+                      - option "Bluesky"
+                      - option "Google Business"
+                      - option "Mastodon"
+                      - option "WhatsApp"
+                      - option "TikTok"
+                      - option "YouTube"
+                      - option "Reddit"
+                    - combobox [ref=e175]:
+                      - option "All status" [selected]
+                      - option "Enabled"
+                      - option "Disabled"
+                  - button "Add connection" [active] [ref=e176]
+              - generic [ref=e177]:
+                - button "Native auth connections Connected through platform apps and OAuth tokens." [ref=e178]:
+                  - generic [ref=e179]: Native auth connections
+                  - generic [ref=e180]: Connected through platform apps and OAuth tokens.
+                - button "Proxy connections Connected through Late/GetLate or Bird." [ref=e181]:
+                  - generic [ref=e182]: Proxy connections
+                  - generic [ref=e183]: Connected through Late/GetLate or Bird.
+            - article [ref=e185]:
+              - generic [ref=e186]:
+                - generic [ref=e187]:
+                  - generic [ref=e188]:
+                    - img "@petrusenko_max avatar" [ref=e190]
+                    - img [ref=e192]
+                  - generic [ref=e194]:
+                    - generic [ref=e195]:
+                      - img [ref=e196]
+                      - paragraph [ref=e198]: Twitter/X
+                    - paragraph [ref=e199]: "@petrusenko_max"
+                    - paragraph [ref=e200]: Max Petrusenko
+                - generic [ref=e201]: connected
+              - generic [ref=e203]: No profile
+              - generic [ref=e204]:
+                - link "Manage Account" [ref=e205] [cursor=pointer]:
+                  - /url: /dashboard/platforms/d6beeabb-0d99-4e03-a3fd-f3b09d428c22
+                - button "Disconnect" [ref=e206]:
+                  - img [ref=e207]
+                  - text: Disconnect
+              - button "Pause posting" [ref=e214]:
+                - img [ref=e215]
+                - text: Pause posting
+          - generic [ref=e232]:
+            - generic [ref=e233]:
+              - generic [ref=e234]:
+                - heading "New Connection" [level=2] [ref=e235]
+                - paragraph [ref=e236]: Choose a profile, pick a network, then choose how this app should authenticate or route publishing.
+              - button [ref=e237]:
+                - img [ref=e238]
+            - generic [ref=e241]:
+              - generic [ref=e242]:
+                - generic [ref=e243]: Profile
+                - combobox [ref=e244]:
+                  - option "Select a profile" [selected]
+                  - option "Max Petrusenko"
+              - generic [ref=e245]:
+                - generic [ref=e246]:
+                  - paragraph [ref=e247]: Social
+                  - generic [ref=e248]:
+                    - button "Native" [ref=e249]
+                    - button "Proxy" [ref=e250]
+                - generic [ref=e251]:
+                  - generic [ref=e253]:
+                    - button "Twitter/X Direct API app or Bird session." [ref=e254]:
+                      - img [ref=e256]
+                      - generic [ref=e258]:
+                        - paragraph [ref=e259]: Twitter/X
+                        - paragraph [ref=e260]: Direct API app or Bird session.
+                    - 'link "Twitter/X: X developer apps" [ref=e262] [cursor=pointer]':
+                      - /url: https://docs.x.com/fundamentals/developer-apps
+                      - img [ref=e263]
+                      - generic [ref=e265]: "Twitter/X: X developer apps"
+                  - generic [ref=e268]:
+                    - button "LinkedIn Profile Member profile connection." [ref=e269]:
+                      - img [ref=e271]
+                      - generic [ref=e273]:
+                        - paragraph [ref=e274]: LinkedIn Profile
+                        - paragraph [ref=e275]: Member profile connection.
+                    - 'link "LinkedIn Profile: LinkedIn developer apps" [ref=e277] [cursor=pointer]':
+                      - /url: https://www.linkedin.com/developers/apps
+                      - img [ref=e278]
+                      - generic [ref=e280]: "LinkedIn Profile: LinkedIn developer apps"
+                  - generic [ref=e282]:
+                    - button "LinkedIn Page Company page connection." [ref=e283]:
+                      - img [ref=e285]
+                      - generic [ref=e287]:
+                        - paragraph [ref=e288]: LinkedIn Page
+                        - paragraph [ref=e289]: Company page connection.
+                    - 'link "LinkedIn Page: LinkedIn developer apps" [ref=e291] [cursor=pointer]':
+                      - /url: https://www.linkedin.com/developers/apps
+                      - img [ref=e292]
+                      - generic [ref=e294]: "LinkedIn Page: LinkedIn developer apps"
+                  - generic [ref=e296]:
+                    - button "Instagram Meta OAuth or managed relay." [ref=e297]:
+                      - img [ref=e299]
+                      - generic [ref=e301]:
+                        - paragraph [ref=e302]: Instagram
+                        - paragraph [ref=e303]: Meta OAuth or managed relay.
+                    - 'link "Instagram: Create a Meta app" [ref=e305] [cursor=pointer]':
+                      - /url: https://developers.facebook.com/docs/development/create-an-app/
+                      - img [ref=e306]
+                      - generic [ref=e308]: "Instagram: Create a Meta app"
+                  - generic [ref=e310]:
+                    - button "Instagram Personal Instagram direct OAuth for personal or creator workflows." [ref=e311]:
+                      - img [ref=e313]
+                      - generic [ref=e315]:
+                        - paragraph [ref=e316]: Instagram Personal
+                        - paragraph [ref=e317]: Instagram direct OAuth for personal or creator workflows.
+                    - 'link "Instagram Personal: Create a Meta app" [ref=e319] [cursor=pointer]':
+                      - /url: https://developers.facebook.com/docs/development/create-an-app/
+                      - img [ref=e320]
+                      - generic [ref=e322]: "Instagram Personal: Create a Meta app"
+                  - generic [ref=e324]:
+                    - button "Facebook Meta page connection or managed relay." [ref=e325]:
+                      - img [ref=e327]
+                      - generic [ref=e329]:
+                        - paragraph [ref=e330]: Facebook
+                        - paragraph [ref=e331]: Meta page connection or managed relay.
+                    - 'link "Facebook: Create a Meta app" [ref=e333] [cursor=pointer]':
+                      - /url: https://developers.facebook.com/docs/development/create-an-app/
+                      - img [ref=e334]
+                      - generic [ref=e336]: "Facebook: Create a Meta app"
+                  - generic [ref=e338]:
+                    - button "Threads Threads OAuth or managed relay." [ref=e339]:
+                      - img [ref=e341]
+                      - generic [ref=e343]:
+                        - paragraph [ref=e344]: Threads
+                        - paragraph [ref=e345]: Threads OAuth or managed relay.
+                    - 'link "Threads: Threads API" [ref=e347] [cursor=pointer]':
+                      - /url: https://developers.facebook.com/docs/threads
+                      - img [ref=e348]
+                      - generic [ref=e350]: "Threads: Threads API"
+                  - generic [ref=e352]:
+                    - button "TikTok Content Posting API via OAuth app." [ref=e353]:
+                      - img [ref=e355]
+                      - generic [ref=e357]:
+                        - paragraph [ref=e358]: TikTok
+                        - paragraph [ref=e359]: Content Posting API via OAuth app.
+                    - 'link "TikTok: TikTok app setup" [ref=e361] [cursor=pointer]':
+                      - /url: https://developers.tiktok.com/doc/login-kit-web/
+                      - img [ref=e362]
+                      - generic [ref=e364]: "TikTok: TikTok app setup"
+                  - generic [ref=e366]:
+                    - button "Bluesky AT Protocol session using handle and app password." [ref=e367]:
+                      - img [ref=e369]
+                      - generic [ref=e371]:
+                        - paragraph [ref=e372]: Bluesky
+                        - paragraph [ref=e373]: AT Protocol session using handle and app password.
+                    - 'link "Bluesky: Bluesky app passwords" [ref=e375] [cursor=pointer]':
+                      - /url: https://bsky.app/settings/app-passwords
+                      - img [ref=e376]
+                      - generic [ref=e378]: "Bluesky: Bluesky app passwords"
+                  - generic [ref=e380]:
+                    - button "Mastodon Per-instance OAuth app registration." [ref=e381]:
+                      - img [ref=e383]
+                      - generic [ref=e385]:
+                        - paragraph [ref=e386]: Mastodon
+                        - paragraph [ref=e387]: Per-instance OAuth app registration.
+                    - 'link "Mastodon: Mastodon OAuth" [ref=e389] [cursor=pointer]':
+                      - /url: https://docs.joinmastodon.org/client/token/
+                      - img [ref=e390]
+                      - generic [ref=e392]: "Mastodon: Mastodon OAuth"
+                  - generic [ref=e394]:
+                    - button "YouTube Google OAuth app for channel posting and video management." [ref=e395]:
+                      - img [ref=e397]
+                      - generic [ref=e399]:
+                        - paragraph [ref=e400]: YouTube
+                        - paragraph [ref=e401]: Google OAuth app for channel posting and video management.
+                    - 'link "YouTube: Google credentials console" [ref=e403] [cursor=pointer]':
+                      - /url: https://console.cloud.google.com/apis/credentials
+                      - img [ref=e404]
+                      - generic [ref=e406]: "YouTube: Google credentials console"
+                  - generic [ref=e408]:
+                    - button "Pinterest Custom OAuth or relay-managed account. Native deactivated" [ref=e409]:
+                      - img [ref=e411]
+                      - generic [ref=e413]:
+                        - paragraph [ref=e414]: Pinterest
+                        - paragraph [ref=e415]: Custom OAuth or relay-managed account.
+                        - paragraph [ref=e416]: Native deactivated
+                    - 'link "Pinterest: Pinterest app dashboard" [ref=e418] [cursor=pointer]':
+                      - /url: https://developers.pinterest.com/apps/
+                      - img [ref=e419]
+                      - generic [ref=e421]: "Pinterest: Pinterest app dashboard"
+                  - generic [ref=e423]:
+                    - button "Google Business Google OAuth for Business Profile locations." [ref=e424]:
+                      - img [ref=e426]
+                      - generic [ref=e428]:
+                        - paragraph [ref=e429]: Google Business
+                        - paragraph [ref=e430]: Google OAuth for Business Profile locations.
+                    - 'link "Google Business: Google credentials console" [ref=e432] [cursor=pointer]':
+                      - /url: https://console.cloud.google.com/apis/credentials
+                      - img [ref=e433]
+                      - generic [ref=e435]: "Google Business: Google credentials console"
+                  - generic [ref=e437]:
+                    - button "Reddit OAuth app or custom workflow depending on subreddit access." [ref=e438]:
+                      - img [ref=e440]
+                      - generic [ref=e442]:
+                        - paragraph [ref=e443]: Reddit
+                        - paragraph [ref=e444]: OAuth app or custom workflow depending on subreddit access.
+                    - 'link "Reddit: Reddit app preferences" [ref=e446] [cursor=pointer]':
+                      - /url: https://www.reddit.com/prefs/apps
+                      - img [ref=e447]
+                      - generic [ref=e449]: "Reddit: Reddit app preferences"
+      - button "Social Agent" [ref=e217]:
+        - img [ref=e218]
+        - text: Social Agent
+  - button "Open Next.js Dev Tools" [ref=e226] [cursor=pointer]:
+    - img [ref=e227]
+  - alert [ref=e230]
