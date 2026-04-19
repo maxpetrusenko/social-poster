@@ -11,7 +11,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { isEmailAllowedForAuth } from "@/lib/auth-allowlist";
 
 export const metadata = {
-  title: "Dashboard Sign In",
+  title: "ClawPoster — Sign In",
   robots: {
     index: false,
     follow: false,
@@ -67,15 +67,16 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
       <div className="absolute left-[-8rem] top-24 h-64 w-64 rounded-full bg-[#d86d36]/20 blur-3xl" />
       <div className="absolute right-[-6rem] top-12 h-72 w-72 rounded-full bg-[#0c5f6b]/18 blur-3xl" />
 
-      <div className="relative mx-auto flex min-h-screen w-full max-w-6xl items-center justify-center px-4 py-8 md:px-6 md:py-12">
+      <div className="relative mx-auto flex min-h-screen w-full max-w-6xl flex-col items-center justify-center px-4 py-8 md:px-6 md:py-12">
         <section className="w-full max-w-md rounded-[32px] bg-[#221a16] p-6 text-[#f6ecdc] shadow-[0_16px_40px_rgba(34,26,22,0.18)] md:p-7">
           {shouldResetSession ? <UnauthorizedSessionReset /> : null}
           <p className="section-eyebrow text-[#d2a35d]">Private Dashboard</p>
           <h1 className="mt-3 font-serif text-[2rem] leading-none text-[#f6ecdc]">
-            Social Agent
+            ClawPoster
           </h1>
           <p className="mt-3 text-sm leading-7 text-[#cbbba7]">
-            Google-gated admin for posting, schedules, pipeline, replies.
+            AI-powered social media management tool. Create, schedule,
+            and publish posts across multiple platforms from one dashboard.
           </p>
 
           <div className="mt-6">
@@ -113,6 +114,17 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
             </p>
           ) : null}
         </section>
+
+        <p className="mt-6 text-center text-xs text-[#8a7e6e]">
+          <a
+            href="https://www.maxpetrusenko.com/privacy-policy"
+            className="underline hover:text-[#d2a35d] transition-colors"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Privacy Policy
+          </a>
+        </p>
       </div>
     </div>
   );

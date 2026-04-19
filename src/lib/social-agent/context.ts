@@ -434,6 +434,13 @@ export async function loadSocialAgentContext(
         method: "GET or POST",
         guardrail: "Never expose credential values or internal account metadata.",
       },
+      {
+        label: "Create a support ticket",
+        endpoint: "/api/support-tickets or /api/social-agent",
+        method: "POST",
+        guardrail:
+          "Use /support type | topic | explanation | image-url in chat. Valid types: from_user_triage, from_bot, from_github_issue, from_me.",
+      },
       ...(canManageOrg
         ? [
             {

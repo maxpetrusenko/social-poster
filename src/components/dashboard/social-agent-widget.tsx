@@ -25,7 +25,7 @@ export function SocialAgentWidget() {
     {
       role: "assistant",
       content:
-        "How can I help?\n\nI can make a post, check connected accounts, or explain what we can do with this workspace.",
+        "How can I help?\n\nI can make a post, check connected accounts, or create a support ticket.",
     },
   ]);
 
@@ -166,7 +166,7 @@ export function SocialAgentWidget() {
                   }
                 }}
                 rows={2}
-                placeholder="Ask what is connected, or what to post."
+                placeholder="Ask what is connected, what to post, or /support."
                 className="min-h-12 flex-1 resize-none rounded-[0.9rem] border border-[#d8cab5] bg-white px-3 py-2 text-sm leading-6 text-[#171717] outline-none"
               />
               <button

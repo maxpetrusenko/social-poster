@@ -11,6 +11,10 @@ import {
   refreshExpiringPlatformTokens,
 } from "./providers/token-refresh";
 import {
+  getProfileRefreshSnapshot,
+  refreshPlatformProfiles,
+} from "./providers/profile-refresh";
+import {
   checkBirdSessions,
   getBirdSessionCheckSnapshot,
 } from "./replies/bird-session-health";
@@ -27,6 +31,8 @@ let didRecoverAbandonedRuns = false;
 let readyQueueInterval: NodeJS.Timeout | null = null;
 let tokenRefreshInterval: NodeJS.Timeout | null = null;
 let tokenRefreshBootTimer: NodeJS.Timeout | null = null;
+let profileRefreshInterval: NodeJS.Timeout | null = null;
+let profileRefreshBootTimer: NodeJS.Timeout | null = null;
 let birdSessionCheckInterval: NodeJS.Timeout | null = null;
 let birdSessionCheckBootTimer: NodeJS.Timeout | null = null;
 
@@ -35,6 +41,7 @@ export async function initScheduler(): Promise<void> {
   await ensureRecoveredAbandonedRuns();
   ensureReadyQueueWorker();
   ensureTokenRefreshWorker();
+  ensureProfileRefreshWorker();
   ensureBirdSessionCheckWorker();
   await reconcileSchedules("init");
 
@@ -102,6 +109,7 @@ export async function ensureSchedulerReady(): Promise<void> {
   await ensureRecoveredAbandonedRuns();
   ensureReadyQueueWorker();
   ensureTokenRefreshWorker();
+  ensureProfileRefreshWorker();
   ensureBirdSessionCheckWorker();
 
   if (tasks.size === 0) {
@@ -118,6 +126,7 @@ export function getSchedulerSnapshot() {
     runtimeRegisteredCount: tasks.size,
     runtimeRegisteredScheduleIds: getActiveScheduleIds(),
     tokenRefresh: getTokenRefreshSnapshot(),
+    profileRefresh: getProfileRefreshSnapshot(),
     birdSessionCheck: getBirdSessionCheckSnapshot(),
   };
 }
@@ -261,6 +270,34 @@ function ensureBirdSessionCheckWorker() {
   birdSessionCheckInterval.unref?.();
 }
 
+function ensureProfileRefreshWorker() {
+  if (profileRefreshInterval || profileRefreshBootTimer) return;
+
+  const runSweep = async () => {
+    try {
+      const summary = await refreshPlatformProfiles();
+      if (summary.failed > 0 || summary.avatarChanged > 0) {
+        console.log(
+          `[scheduler] profile refresh sweep: ${summary.refreshed} refreshed, ${summary.avatarChanged} avatar changed, ${summary.failed} failed`
+        );
+      }
+    } catch (error) {
+      console.error("[scheduler] profile refresh sweep failed:", error);
+    }
+  };
+
+  profileRefreshBootTimer = setTimeout(() => {
+    profileRefreshBootTimer = null;
+    void runSweep();
+  }, 20_000);
+  profileRefreshBootTimer.unref?.();
+
+  profileRefreshInterval = setInterval(() => {
+    void runSweep();
+  }, readProfileRefreshIntervalMs());
+  profileRefreshInterval.unref?.();
+}
+
 function readTokenRefreshIntervalMs() {
   const hours = Number(process.env.TOKEN_REFRESH_SWEEP_HOURS ?? 6);
   return (Number.isFinite(hours) && hours > 0 ? hours : 6) * 60 * 60 * 1000;
@@ -268,5 +305,10 @@ function readTokenRefreshIntervalMs() {
 
 function readBirdSessionCheckIntervalMs() {
   const hours = Number(process.env.BIRD_SESSION_CHECK_HOURS ?? 24);
+  return (Number.isFinite(hours) && hours > 0 ? hours : 24) * 60 * 60 * 1000;
+}
+
+function readProfileRefreshIntervalMs() {
+  const hours = Number(process.env.PROFILE_REFRESH_SWEEP_HOURS ?? 24);
   return (Number.isFinite(hours) && hours > 0 ? hours : 24) * 60 * 60 * 1000;
 }

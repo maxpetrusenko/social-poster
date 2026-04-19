@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="38%" r="72%">
+      <stop offset="0%" stop-color="#182331"/>
+      <stop offset="66%" stop-color="#0e1520"/>
+      <stop offset="100%" stop-color="#080c12"/>
+    </radialGradient>
+    <linearGradient id="gold" x1="113" y1="68" x2="401" y2="440" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#fff1a6"/>
+      <stop offset="34%" stop-color="#f0d078"/>
+      <stop offset="67%" stop-color="#d2a35d"/>
+      <stop offset="100%" stop-color="#9d6b22"/>
+    </linearGradient>
+    <linearGradient id="highlight" x1="132" y1="70" x2="365" y2="392" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#fff8ce" stop-opacity=".72"/>
+      <stop offset="100%" stop-color="#fff8ce" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="glow" x="-22%" y="-22%" width="144%" height="144%">
+      <feGaussianBlur stdDeviation="9" result="blur"/>
+      <feColorMatrix in="blur" type="matrix" values="1 0 0 0 0.95 0 1 0 0 0.58 0 0 1 0 0.14 0 0 0 .42 0" result="warm"/>
+      <feMerge>
+        <feMergeNode in="warm"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="shadow" x="-18%" y="-18%" width="136%" height="136%">
+      <feDropShadow dx="0" dy="12" stdDeviation="14" flood-color="#000" flood-opacity=".38"/>
+    </filter>
+  </defs>
+
+  <rect width="512" height="512" rx="104" fill="url(#bg)"/>
+  <path d="M72 392c61 45 142 67 226 57 83-9 151-47 190-101v60c0 39-32 72-72 72H104c-40 0-72-33-72-72v-43c12 10 25 20 40 27Z" fill="#05080d" opacity=".36"/>
+
+  <g filter="url(#glow)">
+    <path d="M164 75c-36 53-69 133-98 239-9 34-15 66-18 95-1 12 14 18 22 8 61-73 124-169 176-270 15-29 25-52 30-70 4-15-103-15-112-2Z" fill="#000" opacity=".32"/>
+    <path d="M158 73c-34 54-65 134-93 239-8 31-14 63-18 94-1 12 14 18 22 8 55-66 118-162 176-270 15-29 26-53 31-69 4-16-109-16-118-2Z" fill="url(#gold)"/>
+    <path d="M158 73c-23 37-45 86-67 146 44-52 91-98 141-137 8-7-66-21-74-9Z" fill="url(#highlight)"/>
+
+    <path d="M265 61c-29 70-51 165-63 285-4 43-4 78 1 105 2 12 18 15 24 4 45-86 87-202 122-340 5-21 8-38 8-51 0-16-86-17-92-3Z" fill="#000" opacity=".34"/>
+    <path d="M258 60c-27 69-48 165-60 286-4 39-4 75 1 102 2 12 18 15 24 4 39-76 81-191 124-338 6-21 9-38 9-51 0-16-92-17-98-3Z" fill="url(#gold)"/>
+    <path d="M258 60c-18 48-34 110-47 186 36-66 70-127 102-184 6-10-50-15-55-2Z" fill="url(#highlight)" opacity=".85"/>
+
+    <path d="M363 91c-12 67-12 156 0 267 5 41 13 72 24 94 5 11 21 9 24-3 22-88 35-205 39-314 0-21-1-37-5-49-5-14-79-9-82 5Z" fill="#000" opacity=".34"/>
+    <path d="M356 90c-10 67-10 156 2 267 4 38 12 69 23 92 5 11 21 9 24-3 20-78 34-194 42-313 1-21-1-37-5-49-5-14-84-8-86 6Z" fill="url(#gold)"/>
+    <path d="M356 90c-6 44-7 97-4 160 22-62 40-114 55-157 4-12-49-14-51-3Z" fill="url(#highlight)" opacity=".75"/>
+  </g>
+
+  <g filter="url(#shadow)" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M308 378h44l34-30" stroke="#fff3c8" stroke-width="15"/>
+    <circle cx="296" cy="378" r="20" fill="#fff3c8"/>
+    <circle cx="366" cy="378" r="18" fill="#fff3c8"/>
+    <circle cx="398" cy="338" r="16" fill="#fff3c8"/>
+    <circle cx="296" cy="378" r="7" fill="#0e1520"/>
+    <circle cx="366" cy="378" r="6" fill="#0e1520"/>
+    <circle cx="398" cy="338" r="5" fill="#0e1520"/>
+  </g>
+</svg>

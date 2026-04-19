@@ -21,29 +21,25 @@ export function credentialsFromEnv(platform: string): ProviderCredentials {
         ),
       };
     case "facebook":
-    case "instagram":
-    case "instagram_personal":
       return {
-        appId: envValue(
-          "META_APP_ID",
-          "PLATFORM_FACEBOOK_APP_ID",
-          "PLATFORM_INSTAGRAM_APP_ID"
-        ),
-        clientId: envValue(
-          "META_APP_ID",
-          "PLATFORM_FACEBOOK_APP_ID",
-          "PLATFORM_INSTAGRAM_APP_ID"
-        ),
-        appSecret: envValue(
-          "META_APP_SECRET",
-          "PLATFORM_FACEBOOK_APP_SECRET",
-          "PLATFORM_INSTAGRAM_APP_SECRET"
-        ),
-        clientSecret: envValue(
-          "META_APP_SECRET",
-          "PLATFORM_FACEBOOK_APP_SECRET",
-          "PLATFORM_INSTAGRAM_APP_SECRET"
-        ),
+        appId: envValue("META_APP_ID", "PLATFORM_FACEBOOK_APP_ID"),
+        clientId: envValue("META_APP_ID", "PLATFORM_FACEBOOK_APP_ID"),
+        appSecret: envValue("META_APP_SECRET", "PLATFORM_FACEBOOK_APP_SECRET"),
+        clientSecret: envValue("META_APP_SECRET", "PLATFORM_FACEBOOK_APP_SECRET"),
+      };
+    case "instagram":
+      // Facebook Login path — uses the Facebook/Meta app ID
+      return {
+        appId: envValue("META_APP_ID", "PLATFORM_FACEBOOK_APP_ID"),
+        clientId: envValue("META_APP_ID", "PLATFORM_FACEBOOK_APP_ID"),
+        appSecret: envValue("META_APP_SECRET", "PLATFORM_FACEBOOK_APP_SECRET"),
+        clientSecret: envValue("META_APP_SECRET", "PLATFORM_FACEBOOK_APP_SECRET"),
+      };
+    case "instagram_personal":
+      // Instagram Business Login — uses the Instagram app ID
+      return {
+        clientId: envValue("PLATFORM_INSTAGRAM_APP_ID", "META_APP_ID"),
+        clientSecret: envValue("PLATFORM_INSTAGRAM_APP_SECRET", "META_APP_SECRET"),
       };
     case "threads":
       return {

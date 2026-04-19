@@ -1,6 +1,6 @@
 # Social Agent — Tasks & Status
 
-Last updated: 2026-04-19
+Last updated: 2026-04-19 (OAuth refactor complete)
 
 ## Current State
 
@@ -75,6 +75,8 @@ Deploys to `social.maxpetrusenko.com` on Contabo/Coolify.
 - [x] Schedule detail preview now shows fixed, Agent Persona, or RSS-candidate mode with source visibility and per-platform generated copy
 - [x] RSS page now uses a tabbed operator UI: compact editable source table with per-source drilldowns, traction-aware candidate scoring, visible selection pipeline, editable transformation prompt/templates/image rules, and regenerateable X/LinkedIn previews for a chosen candidate
 - [x] Social Agent chat widget now answers from sanitized workspace context, including connected platforms, reply review/ready queues, recent reply events, post targets, pipeline runs, RSS setup, and current page hints
+- [x] Top-bar support intake now creates Linear tickets with source, topic, explanation, page context, and optional R2-hosted image attachments
+- [x] Social Agent can create the same Linear tickets through `/support`, with optional repair-agent webhook routing for `from_bot` issues
 - [x] Recurrent Posts exposed in left navigation for recurring content buckets and slot planning
 - [x] Settings — read-only config display
 
@@ -102,8 +104,15 @@ Deploys to `social.maxpetrusenko.com` on Contabo/Coolify.
 - [x] Server-side org/workspace role gates for team settings and high-risk mutating APIs
 - [x] Social Agent can invite current-workspace members inline via an admin-only `/invite` command
 - [x] Facebook native OAuth connection working (dev:https + per-platform callback rules)
-- [ ] Refactor OAuth callback to derive URL from request + per-platform routes (brightbean pattern)
+- [x] LinkedIn native OAuth connection working
+- [x] Refactor OAuth callback to brightbean pattern — request-derived URLs, HMAC-signed state, shared /api/auth/callback route
+- [x] Local HTTPS dev server (mkcert + `npm run dev:https`)
+- [x] OAuth portal automation script (Brave cookie extraction + rebrowser-playwright stealth)
 - [ ] Set Supabase env in production and verify live Google sign-in against allowlist
+- [ ] Test Instagram/Threads OAuth connection (same Meta app, should work)
+- [ ] Test Google/YouTube OAuth connection (needs portal URI check)
+- [ ] Test TikTok OAuth connection (needs real domain, no localhost)
+- [ ] Test Pinterest OAuth connection (needs portal URI check)
 
 ### Agent / Pipeline Engine
 - [x] Feed ingest logic ported into `src/lib/pipeline/feed-engine.ts`

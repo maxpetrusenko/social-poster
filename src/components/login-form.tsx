@@ -114,7 +114,7 @@ export function LoginForm({
         <div className="mb-8 flex items-center justify-center gap-2">
           <Share2 className="h-6 w-6 text-indigo-600" />
           <span className="text-lg font-semibold tracking-tight">
-            Social Agent
+            ClawPoster
           </span>
         </div>
 

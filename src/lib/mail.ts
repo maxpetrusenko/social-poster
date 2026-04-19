@@ -79,7 +79,7 @@ export async function sendMagicLinkEmail(
   const smtpPass = process.env.SMTP_PASS;
   const magicLinkHtml = `
       <div style="font-family: system-ui, sans-serif; max-width: 400px; margin: 0 auto; padding: 40px 20px;">
-        <h2 style="margin: 0 0 16px;">Sign in to Social Agent</h2>
+        <h2 style="margin: 0 0 16px;">Sign in to ClawPoster</h2>
         <p style="color: #666; margin: 0 0 24px;">Click the button below to sign in. This link expires in 15 minutes.</p>
         <a href="${url}" style="display: inline-block; background: #0f172a; color: #fff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 500;">
           Sign In
@@ -91,7 +91,7 @@ export async function sendMagicLinkEmail(
   if (hasResendConfig()) {
     await sendViaResend({
       to: email,
-      subject: "Sign in to Social Agent",
+      subject: "Sign in to ClawPoster",
       html: magicLinkHtml,
     });
     return;
@@ -105,7 +105,7 @@ export async function sendMagicLinkEmail(
   await transporter.sendMail({
     from: smtpUser,
     to: email,
-    subject: "Sign in to Social Agent",
+    subject: "Sign in to ClawPoster",
     html: magicLinkHtml,
   });
 }
@@ -124,7 +124,7 @@ export async function sendWorkspaceInvitationEmail(input: {
       <div style="font-family: system-ui, sans-serif; max-width: 480px; margin: 0 auto; padding: 40px 20px;">
         <h2 style="margin: 0 0 16px;">Join ${input.organizationName}</h2>
         <p style="color: #666; margin: 0 0 24px;">
-          ${input.inviterName} invited you to collaborate in Social Agent.
+          ${input.inviterName} invited you to collaborate in ClawPoster.
           This invite stays active for ${INVITE_TTL_DAYS} days.
         </p>
         <a href="${url}" style="display: inline-block; background: #0f172a; color: #fff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 500;">

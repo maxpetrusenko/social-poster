@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { LogoutButton } from "@/components/logout-button";
 import { SocialAgentWidget } from "@/components/dashboard/social-agent-widget";
+import { SupportTicketButton } from "@/components/dashboard/support-ticket-button";
 import { cn } from "@/lib/utils";
 import {
   channelShellNav,
@@ -191,7 +192,7 @@ export function DashboardDrawerShell({
                 Menu
               </p>
               <p className="mt-1 font-serif text-[2rem] leading-none tracking-[-0.05em] text-[#171717]">
-                Social Agent
+                ClawPoster
               </p>
             </div>
             <button
@@ -317,6 +318,7 @@ export function DashboardDrawerShell({
                   type="search"
                 />
               </label>
+              <SupportTicketButton />
               {currentHeader.createHref ? (
                 <Link
                   href={currentHeader.createHref}

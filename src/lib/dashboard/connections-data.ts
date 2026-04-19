@@ -1,6 +1,7 @@
 import { db } from "@/db";
 import { platforms, profiles } from "@/db/schema";
 import { getDashboardInsights } from "@/lib/dashboard/insights";
+import { refreshPlatformProfiles } from "@/lib/providers/profile-refresh";
 import { and, eq } from "drizzle-orm";
 import crypto from "node:crypto";
 import { PLATFORM_TYPES, type PlatformType } from "@/lib/platforms";
@@ -11,6 +12,9 @@ import type {
 
 export async function getConnectionsPageData(workspaceId: string) {
   await syncLateAccountsForWorkspace(workspaceId);
+  await refreshPlatformProfiles({ workspaceId }).catch((error) => {
+    console.error("[connections] profile refresh failed:", error);
+  });
 
   const [platformRows, profileRows, dashboard] = await Promise.all([
     db.select().from(platforms).where(eq(platforms.workspaceId, workspaceId)),

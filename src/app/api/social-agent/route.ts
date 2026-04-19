@@ -7,6 +7,13 @@ import {
   type SocialAgentContext,
 } from "@/lib/social-agent/context";
 import {
+  createSupportTicket,
+  isSupportTicketSource,
+  normalizeSupportTicketSource,
+  SUPPORT_TICKET_SOURCES,
+  type SupportTicketSource,
+} from "@/lib/support/tickets";
+import {
   createInvitation,
   requireTenantContext,
   WORKSPACE_ROLE_OPTIONS,
@@ -38,6 +45,11 @@ type ClientPageContext = {
   replyLanguage?: string | null;
 };
 
+type SupportTicketCommand = Pick<
+  Parameters<typeof createSupportTicket>[0],
+  "source" | "topic" | "explanation" | "imageUrl" | "sourceUrl" | "autoRepair"
+>;
+
 export async function GET() {
   const session = await requireApiSession();
   if (session instanceof NextResponse) return session;
@@ -50,7 +62,7 @@ export async function GET() {
   return NextResponse.json({
     context,
     reply:
-      "How can I help?\n\nI can make a post, check connected accounts, or explain what we can do with this workspace.",
+      "How can I help?\n\nI can make a post, check connected accounts, or create a support ticket.",
   });
 }
 
@@ -76,7 +88,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const inlineAction = await handleInlineAction(message, request);
+  const inlineAction = await handleInlineAction(message, request, pageContext);
   if (inlineAction) {
     const refreshedContext = await loadSocialAgentContext({
       replyLanguage: pageContext.replyLanguage,
@@ -92,7 +104,47 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({ context, reply });
 }
 
-async function handleInlineAction(message: string, request: NextRequest) {
+async function handleInlineAction(
+  message: string,
+  request: NextRequest,
+  pageContext: ClientPageContext
+) {
+  const supportTicket = parseSupportCommand(message) ?? parseNaturalSupportRequest(message);
+  if (supportTicket === "help") {
+    return `Use \`/support type | topic | explanation | image-url\` to create a Linear ticket. Types: ${SUPPORT_TICKET_SOURCES.join(", ")}. The image URL is optional.`;
+  }
+  if (supportTicket) {
+    try {
+      const tenant = await requireTenantContext();
+      const ticket = await createSupportTicket({
+        ...supportTicket,
+        sourceUrl: supportTicket.sourceUrl ?? pageContext.path ?? null,
+        pageTitle: pageContext.title ?? pageContext.heading ?? null,
+        reporter: {
+          email: tenant.user.email,
+          name: tenant.user.fullName,
+          userId: tenant.user.id,
+        },
+        workspace: {
+          id: tenant.currentWorkspace.id,
+          name: tenant.currentWorkspace.name,
+          organizationName: tenant.organization.name,
+        },
+      });
+      const repair =
+        ticket.repairAgent.status === "sent"
+          ? ` Repair sent to ${ticket.repairAgent.host}.`
+          : ticket.repairAgent.status === "not_configured"
+            ? " Repair agent not configured yet."
+            : "";
+      return `Created ${ticket.issue.identifier}: ${ticket.issue.url}.${repair}`;
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Support ticket could not be created.";
+      return `Support ticket failed: ${message}`;
+    }
+  }
+
   const invite = parseInviteCommand(message);
   if (invite === "help") {
     return "Use `/invite email@example.com as viewer|client|contributor|editor|manager` to invite someone to the current workspace. Org admin access required.";
@@ -156,6 +208,94 @@ function parseInviteCommand(
   };
 }
 
+function parseSupportCommand(
+  message: string
+): SupportTicketCommand | "help" | null {
+  const normalized = message.trim();
+  if (/^support\s+/i.test(normalized)) return "help";
+  if (!/^\/support\b/i.test(normalized)) return null;
+
+  const raw = normalized.replace(/^\/support\b/i, "").trim();
+  if (!raw) return "help";
+
+  const segments = raw
+    .split(/\s*\|\s*/g)
+    .map((segment) => segment.trim())
+    .filter(Boolean);
+  if (segments.length < 2) return "help";
+
+  const first = segments[0]?.replace(/[\s-]+/g, "_").toLowerCase() ?? "";
+  const hasExplicitSource = isSupportTicketSource(first);
+  const source = hasExplicitSource
+    ? normalizeSupportTicketSource(first, "from_bot")
+    : "from_bot";
+  const topic = hasExplicitSource ? segments[1] : segments[0];
+  const explanation = hasExplicitSource ? segments[2] : segments[1];
+  const imageUrl = hasExplicitSource ? segments[3] : segments[2];
+  if (!topic || !explanation) return "help";
+
+  return {
+    source: source as SupportTicketSource,
+    topic,
+    explanation,
+    imageUrl: isHttpUrl(imageUrl) ? imageUrl : null,
+    sourceUrl: isHttpUrl(imageUrl) ? null : imageUrl || null,
+    autoRepair: source === "from_bot" || /\b(fix|repair|pr|pull request)\b/i.test(raw),
+  };
+}
+
+function parseNaturalSupportRequest(message: string): SupportTicketCommand | null {
+  const normalized = message.replace(/\s+/g, " ").trim();
+  if (!normalized) return null;
+
+  const lowered = normalized.toLowerCase();
+  const asksForTicket =
+    lowered.includes("open ticket") ||
+    lowered.includes("create ticket") ||
+    lowered.includes("make ticket") ||
+    lowered.includes("support ticket") ||
+    lowered.includes("file ticket") ||
+    lowered.includes("report issue");
+  if (!asksForTicket) return null;
+
+  const looksLikeIssue =
+    lowered.includes("failed") ||
+    lowered.includes("error") ||
+    lowered.includes("can't") ||
+    lowered.includes("cannot") ||
+    lowered.includes("not working") ||
+    lowered.includes("broken") ||
+    lowered.includes("connect");
+  if (!looksLikeIssue) return null;
+
+  return {
+    source: lowered.includes("bot") || lowered.includes("agent")
+      ? "from_bot"
+      : "from_user_triage",
+    topic: inferSupportTopic(normalized),
+    explanation: normalized,
+    imageUrl: null,
+    sourceUrl: null,
+    autoRepair: /\b(fix|repair|pr|pull request)\b/i.test(normalized),
+  };
+}
+
+function inferSupportTopic(message: string) {
+  const lowered = message.toLowerCase();
+  if (lowered.includes("facebook") && lowered.includes("connect")) {
+    return "Facebook connection failed";
+  }
+  if (lowered.includes("failed to fetch")) {
+    return "Failed to fetch";
+  }
+
+  return message
+    .replace(/^.*?\b(?:open|create|make|file)\s+(?:a\s+)?ticket\b[:\s-]*/i, "")
+    .replace(/^.*?\breport\s+(?:an?\s+)?issue\b[:\s-]*/i, "")
+    .trim()
+    .slice(0, 120) || "Support issue";
+}
+
 async function answerWithContext(
   context: SocialAgentContext,
   message: string,
@@ -205,6 +345,7 @@ If user asks about X, Twitter, review replies, or reply queue, answer from the r
 Only say there are no review replies when context.summary.reviewReplyCount is 0.
 If user asks to post or schedule, ask for missing platform, copy, media URL, and time. Mention the API route but do not pretend an action already happened.
 If an org admin asks to invite a teammate, tell them to use the exact command /invite email@example.com as viewer|client|contributor|editor|manager. Do not invent invite links or claim an invite was sent unless the command succeeds.
+If user asks to report a bug, broken flow, failed connection, or support issue, tell them to use /support type | topic | explanation | image-url. Valid types are from_user_triage, from_bot, from_github_issue, and from_me. Do not claim a ticket exists unless the command succeeds.
 Keep answers concise and operational.
 
 Sanitized context:
@@ -234,6 +375,15 @@ function fallbackAnswer(context: SocialAgentContext, message: string) {
     return context.access.canInviteMembers
       ? "Use `/invite email@example.com as viewer|client|contributor|editor|manager` to invite someone to the current workspace."
       : "You can view this workspace, but inviting team members requires org admin access.";
+  }
+
+  if (
+    lowered.includes("support") ||
+    lowered.includes("bug") ||
+    lowered.includes("broken") ||
+    lowered.includes("not working")
+  ) {
+    return "Use `/support from_user_triage | topic | explanation | image-url` to create a Linear ticket. Use `from_bot` when the agent should route it to the repair flow. Image URL is optional.";
   }
 
   return "I can answer from workspace social accounts, replies, posts, schedules, pipeline runs, RSS setup, and safe API context. Ask what is connected, what needs review, or what can publish.";
@@ -321,6 +471,16 @@ function sanitizeShortText(value: string | undefined, maxLength: number) {
   if (!value) return undefined;
   const normalized = value.replace(/\s+/g, " ").trim();
   return normalized.length > maxLength ? normalized.slice(0, maxLength) : normalized;
+}
+
+function isHttpUrl(value: string | undefined) {
+  if (!value) return false;
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
 }
 
 function isReplyQuestion(lowered: string) {

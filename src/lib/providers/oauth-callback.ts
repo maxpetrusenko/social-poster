@@ -105,6 +105,10 @@ export async function handleNativeOAuthCallback(
           scope: tokens.scope ?? null,
         },
         providerProfile: profile,
+        profileRefresh: {
+          checkedAt: now.toISOString(),
+          avatarChangedAt: profile?.avatarUrl ? now.toISOString() : null,
+        },
         notes: "Connected through native OAuth callback.",
       },
       createdAt: now,
