@@ -19,7 +19,6 @@ import {
 import {
   ConnectionMethodOption,
   getBrowserOAuthCallbackUrl,
-  isAppManagedOAuthPlatform,
 } from "./connection-method-option";
 import { PlatformBrandIcon } from "./platform-brand-icon";
 
@@ -152,20 +151,15 @@ export function ConnectionsDrawer({
                 const active = definition.type === selectedPlatformType;
                 const expanded = definition.type === expandedPlatformType;
                 const meta = getPlatformMeta(definition.type);
-                const nativeAvailability =
-                  nativeAvailabilityByPlatform[definition.type];
                 const nativeOauthMethod = definition.methods.find(
                   (method) =>
                     method.provider === "direct" && method.authType === "oauth"
                 );
                 const useOneClickOAuth =
-                  selectedMethodMode === "native" &&
-                  nativeOauthMethod &&
-                  isAppManagedOAuthPlatform(definition.type, nativeAvailability);
+                  selectedMethodMode === "native" && Boolean(nativeOauthMethod);
                 const visibleMethods = definition.methods.filter((method) =>
                   selectedMethodMode === "native"
-                    ? method.provider === "direct" &&
-                      (!useOneClickOAuth || method.authType === "oauth")
+                    ? method.provider === "direct" && !useOneClickOAuth
                     : method.provider !== "direct"
                 );
                 const nativeDeactivated = hasDeactivatedOAuthMethod(
@@ -173,7 +167,10 @@ export function ConnectionsDrawer({
                   nativeAvailabilityByPlatform
                 );
                 const docs = getUniqueConnectionDocs(
-                  visibleMethods.flatMap((method) => method.docs)
+                  (useOneClickOAuth && nativeOauthMethod
+                    ? [nativeOauthMethod]
+                    : visibleMethods
+                  ).flatMap((method) => method.docs)
                 );
                 return (
                   <div
@@ -191,14 +188,7 @@ export function ConnectionsDrawer({
                           if (useOneClickOAuth) {
                             onPlatformChange(definition.type);
                             setExpandedPlatformType(null);
-                            if (
-                              nativeOauthMethod &&
-                              !isMethodDeactivated(
-                                definition.type,
-                                nativeOauthMethod,
-                                nativeAvailabilityByPlatform
-                              )
-                            ) {
+                            if (nativeOauthMethod) {
                               onOAuthConnect(
                                 definition.type,
                                 nativeOauthMethod.id
