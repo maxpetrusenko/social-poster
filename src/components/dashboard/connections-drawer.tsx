@@ -21,7 +21,6 @@ import {
   getBrowserOAuthCallbackUrl,
   isAppManagedOAuthPlatform,
 } from "./connection-method-option";
-import { ConnectionCapabilityBadges } from "./connection-capability-badges";
 import { PlatformBrandIcon } from "./platform-brand-icon";
 
 export function ConnectionsDrawer({
@@ -236,7 +235,6 @@ export function ConnectionsDrawer({
                           <p className="text-xs text-[#7a6756]">
                             {definition.summary}
                           </p>
-                          <ConnectionCapabilityBadges definition={definition} />
                           {nativeDeactivated ? (
                             <p className="mt-1 text-[11px] font-semibold text-[#a36211]">
                               Native deactivated
