@@ -118,6 +118,7 @@ Deploys to `social.maxpetrusenko.com` on Contabo/Coolify.
 - [x] Schedule runtime now reconciles by diff instead of full reload
 - [x] `/api/health` and dashboard expose DB-enabled vs runtime-registered schedule counts
 - [x] Manual and scheduled publishing now share one normalized publish service
+- [x] Screenshot fallback images upload to Cloudflare R2 when configured, with local `/api/screenshots` as fallback
 - [x] Mixed manual post delivery can resolve to `partial_failure`
 - [x] Cron schedule execution now uses a SQLite-backed minute lock to suppress duplicate scheduler fires across processes
 - [x] X publish now routes through Bird when the platform provider is `bird`, with dashboard credentials first and env fallback second

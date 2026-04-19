@@ -1,6 +1,7 @@
 import "server-only";
 import puppeteer, { type Browser } from "puppeteer-core";
 import { mkdirSync, existsSync } from "node:fs";
+import { readFile } from "node:fs/promises";
 import path from "node:path";
 import crypto from "node:crypto";
 
@@ -72,9 +73,31 @@ function launchBrowser(): Promise<Browser> {
 export type ScreenshotResult = {
   filePath: string;
   filename: string;
+  url?: string;
   width: number;
   height: number;
 };
+
+async function attachStoredUrl(result: ScreenshotResult): Promise<ScreenshotResult> {
+  try {
+    const { uploadImageAsset } = await import("@/lib/storage/r2");
+    const bytes = await readFile(result.filePath);
+    const stored = await uploadImageAsset({
+      bytes,
+      contentType: "image/png",
+      keyPrefix: "images/screenshots",
+      sourceName: result.filename,
+    });
+    return stored?.url ? { ...result, url: stored.url } : result;
+  } catch (err) {
+    console.warn(
+      `[screenshot] R2 upload failed for ${result.filename}: ${
+        err instanceof Error ? err.message : err
+      }`
+    );
+    return result;
+  }
+}
 
 /**
  * Capture a screenshot of a URL and save to data/screenshots/.
@@ -119,17 +142,17 @@ export async function captureScreenshot(
       if (element) {
         await element.screenshot({ path: filePath, type: "png" });
         const box = await element.boundingBox();
-        return {
+        return attachStoredUrl({
           filePath,
           filename,
           width: Math.round(box?.width ?? width),
           height: Math.round(box?.height ?? height),
-        };
+        });
       }
     }
 
     await page.screenshot({ path: filePath, type: "png", fullPage });
-    return { filePath, filename, width, height };
+    return attachStoredUrl({ filePath, filename, width, height });
   } finally {
     await page.close();
   }

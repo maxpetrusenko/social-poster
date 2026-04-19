@@ -589,6 +589,7 @@ async function screenshotFallback(url: string): Promise<string | null> {
       waitMs: 3000,
     });
     if (!result) return null;
+    if (result.url) return result.url;
     const appUrl = getAppUrlFromEnv();
     return `${appUrl}/api/screenshots/${result.filename}`;
   } catch {
