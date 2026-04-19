@@ -36,8 +36,10 @@ export function ConnectionMethodOption({
     value: string
   ) => void;
 }) {
-  const appManagedOAuth =
-    isAppManagedOAuth(definition.type) || availability?.configured === true;
+  const appManagedOAuth = isAppManagedOAuthPlatform(
+    definition.type,
+    availability
+  );
   const appManagedCopy = getAppManagedOAuthCopy(definition.type);
   const hasInlineCredentials =
     !appManagedOAuth && Boolean(clientId && clientSecret);
@@ -230,9 +232,14 @@ export function getBrowserOAuthCallbackUrl(
   return `${window.location.origin}${getOAuthCallbackPath(platformType)}`;
 }
 
-function isAppManagedOAuth(platformType: PlatformType) {
+export function isAppManagedOAuthPlatform(
+  platformType: PlatformType,
+  availability?: NativeConnectionAvailability
+) {
   return (
+    availability?.configured === true ||
     platformType === "facebook" ||
+    platformType === "twitter" ||
     platformType === "linkedin" ||
     platformType === "linkedin_personal" ||
     platformType === "linkedin_company"

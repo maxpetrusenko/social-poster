@@ -30,7 +30,6 @@ export default async function WorkspaceSettingsSocialAccountsPage({
   return (
     <ConnectionsPage
       workspaceName={tenant.currentWorkspace.name}
-      organizationName={tenant.organization.name}
       platforms={data.platforms}
       profiles={data.profiles}
       insights={data.insights}

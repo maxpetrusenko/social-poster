@@ -28,7 +28,6 @@ import type { NativeConnectionAvailability } from "@/lib/providers/env-availabil
 import { formatMethodLabel, formatProviderLabel, getAvailableMethodModes, getConnectionMethodMode, getManageLabel } from "./connections-page-utils";
 export function ConnectionsPage({
   workspaceName,
-  organizationName,
   profiles,
   platforms,
   insights,
@@ -38,7 +37,6 @@ export function ConnectionsPage({
   oauthCallbackUrlOverride,
 }: {
   workspaceName: string;
-  organizationName: string;
   profiles: ProfileRow[];
   platforms: PlatformRow[];
   insights: PlatformInsight[];
@@ -143,16 +141,6 @@ export function ConnectionsPage({
     selectedStatus,
     selectedViewMode,
   ]);
-
-  const totals = useMemo(() => {
-    const connected = localPlatforms.length;
-    const enabled = localPlatforms.filter((platform) => platform.enabled).length;
-    const deliveries = insights.reduce(
-      (sum, item) => sum + item.deliveryCount30d,
-      0
-    );
-    return { connected, enabled, deliveries };
-  }, [insights, localPlatforms]);
 
   const cardItems = useMemo<ConnectionCardItem[]>(() => {
     return filteredPlatforms
@@ -483,11 +471,6 @@ export function ConnectionsPage({
       <div className="mx-auto flex w-full max-w-[1500px] flex-col gap-6 px-5 py-6 md:px-8 md:py-8 xl:px-10">
         <ConnectionsWorkspaceHeader
           workspaceName={workspaceName}
-          organizationName={organizationName}
-          connectedCount={totals.connected}
-          enabledCount={totals.enabled}
-          deliveryCount30d={totals.deliveries}
-          profileCount={profiles.length}
           selectedProfileId={selectedProfileId}
           selectedPlatformType={selectedPlatformFilter}
           selectedStatus={selectedStatus}

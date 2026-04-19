@@ -19,6 +19,7 @@ import {
 import {
   ConnectionMethodOption,
   getBrowserOAuthCallbackUrl,
+  isAppManagedOAuthPlatform,
 } from "./connection-method-option";
 import { ConnectionCapabilityBadges } from "./connection-capability-badges";
 import { PlatformBrandIcon } from "./platform-brand-icon";
@@ -152,9 +153,20 @@ export function ConnectionsDrawer({
                 const active = definition.type === selectedPlatformType;
                 const expanded = definition.type === expandedPlatformType;
                 const meta = getPlatformMeta(definition.type);
+                const nativeAvailability =
+                  nativeAvailabilityByPlatform[definition.type];
+                const nativeOauthMethod = definition.methods.find(
+                  (method) =>
+                    method.provider === "direct" && method.authType === "oauth"
+                );
+                const useOneClickOAuth =
+                  selectedMethodMode === "native" &&
+                  nativeOauthMethod &&
+                  isAppManagedOAuthPlatform(definition.type, nativeAvailability);
                 const visibleMethods = definition.methods.filter((method) =>
                   selectedMethodMode === "native"
-                    ? method.provider === "direct"
+                    ? method.provider === "direct" &&
+                      (!useOneClickOAuth || method.authType === "oauth")
                     : method.provider !== "direct"
                 );
                 const nativeDeactivated = hasDeactivatedOAuthMethod(
@@ -177,6 +189,25 @@ export function ConnectionsDrawer({
                       <button
                         type="button"
                         onClick={() => {
+                          if (useOneClickOAuth) {
+                            onPlatformChange(definition.type);
+                            setExpandedPlatformType(null);
+                            if (
+                              nativeOauthMethod &&
+                              !isMethodDeactivated(
+                                definition.type,
+                                nativeOauthMethod,
+                                nativeAvailabilityByPlatform
+                              )
+                            ) {
+                              onOAuthConnect(
+                                definition.type,
+                                nativeOauthMethod.id
+                              );
+                            }
+                            return;
+                          }
+
                           if (expanded) {
                             setExpandedPlatformType(null);
                             return;

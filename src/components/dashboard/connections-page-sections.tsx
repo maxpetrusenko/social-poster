@@ -52,11 +52,6 @@ export type ConnectionCardItem = {
 
 export function ConnectionsWorkspaceHeader({
   workspaceName,
-  organizationName,
-  connectedCount,
-  enabledCount,
-  deliveryCount30d,
-  profileCount,
   selectedProfileId,
   selectedPlatformType,
   selectedStatus,
@@ -69,11 +64,6 @@ export function ConnectionsWorkspaceHeader({
   onCreateConnection,
 }: {
   workspaceName: string;
-  organizationName: string;
-  connectedCount: number;
-  enabledCount: number;
-  deliveryCount30d: number;
-  profileCount: number;
   selectedProfileId: string;
   selectedPlatformType: PlatformType | "all";
   selectedStatus: ConnectionStatus;
@@ -89,15 +79,9 @@ export function ConnectionsWorkspaceHeader({
     <section className="rounded-[1.9rem] border border-[#ddd2bf] bg-[rgba(255,252,247,0.92)] p-5 shadow-[0_14px_36px_rgba(23,23,23,0.05)] md:p-6">
       <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
         <div className="max-w-3xl">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#8e7556]">
-            {organizationName}
-          </p>
           <h1 className="text-[2.3rem] font-semibold tracking-[-0.06em] text-[#171717]">
             {workspaceName} Connections
           </h1>
-          <p className="mt-3 text-sm leading-7 text-[#786a55]">
-            {connectedCount} connected, {enabledCount} enabled, {deliveryCount30d} deliveries in the last 30 days, {profileCount} profiles available.
-          </p>
         </div>
 
         <div className="flex flex-col gap-3 xl:min-w-[360px] xl:max-w-[420px]">
