@@ -7,6 +7,16 @@ export type R2Config = {
   publicBaseUrl: string | null;
 };
 
+export type CloudflareR2ApiConfig = {
+  accountId: string;
+  bucket: string;
+  apiBaseUrl: string;
+  publicBaseUrl: string | null;
+  auth:
+    | { type: "bearer"; token: string }
+    | { type: "global"; email: string; key: string };
+};
+
 type Env = Record<string, string | undefined>;
 
 function pickEnv(env: Env, keys: string[]): string | null {
@@ -15,6 +25,30 @@ function pickEnv(env: Env, keys: string[]): string | null {
     if (value) return value;
   }
   return null;
+}
+
+function pickPublicBaseUrl(env: Env): string | null {
+  return normalizeBaseUrl(
+    pickEnv(env, [
+      "CLOUDFLARE_R2_PUBLIC_BASE_URL",
+      "CLOUDFLARE_R2_PUBLIC_URL",
+      "CLOUDFLARE_PUBLIC_URL",
+      "R2_PUBLIC_BASE_URL",
+      "R2_PUBLIC_URL",
+      "S3_CUSTOM_DOMAIN",
+      "MEDIA_PUBLIC_BASE_URL",
+    ])
+  );
+}
+
+function pickBucket(env: Env): string | null {
+  return pickEnv(env, [
+    "CLOUDFLARE_R2_BUCKET",
+    "CLOUDFLARE_BUCKET",
+    "R2_BUCKET",
+    "S3_BUCKET",
+    "S3_BUCKET_NAME",
+  ]);
 }
 
 function normalizeBaseUrl(value: string | null): string | null {
@@ -56,13 +90,7 @@ export function resolveR2Config(env: Env = process.env): R2Config | null {
 
   if (!endpointInput) return null;
 
-  const explicitBucket = pickEnv(env, [
-    "CLOUDFLARE_R2_BUCKET",
-    "CLOUDFLARE_BUCKET",
-    "R2_BUCKET",
-    "S3_BUCKET",
-    "S3_BUCKET_NAME",
-  ]);
+  const explicitBucket = pickBucket(env);
   const endpoint = splitR2EndpointAndBucket(endpointInput, explicitBucket);
   if (!endpoint?.bucket) return null;
 
@@ -89,17 +117,55 @@ export function resolveR2Config(env: Env = process.env): R2Config | null {
     region: pickEnv(env, ["CLOUDFLARE_R2_REGION", "R2_REGION", "S3_REGION_NAME", "AWS_REGION"]) ?? "auto",
     accessKeyId,
     secretAccessKey,
-    publicBaseUrl: normalizeBaseUrl(
-      pickEnv(env, [
-        "CLOUDFLARE_R2_PUBLIC_BASE_URL",
-        "CLOUDFLARE_R2_PUBLIC_URL",
-        "CLOUDFLARE_PUBLIC_URL",
-        "R2_PUBLIC_BASE_URL",
-        "R2_PUBLIC_URL",
-        "S3_CUSTOM_DOMAIN",
-        "MEDIA_PUBLIC_BASE_URL",
-      ])
-    ),
+    publicBaseUrl: pickPublicBaseUrl(env),
+  };
+}
+
+export function resolveCloudflareR2ApiConfig(env: Env = process.env): CloudflareR2ApiConfig | null {
+  const accountId = pickEnv(env, [
+    "ACC_ID_CLOUDFLARE",
+    "CLOUDFLARE_ACCOUNT_ID",
+    "CLOUDFARE_ACCOUNT_ID",
+    "CLOUDFARE_ACCOUNT",
+  ]);
+  const bucket = pickBucket(env);
+  if (!accountId || !bucket) return null;
+
+  const globalApiKey = pickEnv(env, [
+    "CLOUDFLARE_API_KEY_GLOBAL",
+    "CLOUDFARE_API_KEY_GLOBAL",
+    "CLOUDFLARE_GLOBAL_API_KEY",
+    "CLOUDFARE_GLOBAL_API_KEY",
+  ]);
+  const email = pickEnv(env, ["CLOUDFLARE_EMAIL", "CLOUDFARE_EMAIL", "AUTH_EMAIL"]);
+  if (globalApiKey && email) {
+    return {
+      accountId,
+      bucket,
+      apiBaseUrl: pickEnv(env, ["CLOUDFLARE_API_BASE_URL", "CLOUDFARE_API_BASE_URL"]) ??
+        "https://api.cloudflare.com/client/v4",
+      publicBaseUrl: pickPublicBaseUrl(env),
+      auth: { type: "global", email, key: globalApiKey },
+    };
+  }
+
+  const token = pickEnv(env, [
+    "CLOUDFLARE_API_TOKEN",
+    "CLOUDFARE_API_TOKEN",
+    "CLOUDFLARE_R2_API_TOKEN",
+    "CLOUDFARE_R2_API_TOKEN",
+    "CLOUDFLARE_USER_TOKEN",
+    "CLOUDFARE_USER_TOKEN",
+  ]);
+  if (!token) return null;
+
+  return {
+    accountId,
+    bucket,
+    apiBaseUrl: pickEnv(env, ["CLOUDFLARE_API_BASE_URL", "CLOUDFARE_API_BASE_URL"]) ??
+      "https://api.cloudflare.com/client/v4",
+    publicBaseUrl: pickPublicBaseUrl(env),
+    auth: { type: "bearer", token },
   };
 }
 

@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { buildR2ObjectUrl, resolveR2Config, splitR2EndpointAndBucket } from "./r2-config.ts";
+import {
+  buildR2ObjectUrl,
+  resolveCloudflareR2ApiConfig,
+  resolveR2Config,
+  splitR2EndpointAndBucket,
+} from "./r2-config.ts";
 
 test("splitR2EndpointAndBucket accepts a bucket path in CLOUDFLARE_ENDPOINT", () => {
   const result = splitR2EndpointAndBucket(
@@ -53,4 +58,17 @@ test("buildR2ObjectUrl uses public base url when provided", () => {
   );
 
   assert.equal(url, "https://media.example.com/assets/images/2026/04/card%20name.png");
+});
+
+test("resolveCloudflareR2ApiConfig prefers global key auth when available", () => {
+  const config = resolveCloudflareR2ApiConfig({
+    ACC_ID_CLOUDFLARE: "account",
+    R2_BUCKET: "social-agent",
+    CLOUDFARE_API_KEY_GLOBAL: "global-key",
+    AUTH_EMAIL: "max@example.com",
+  });
+
+  assert.equal(config?.accountId, "account");
+  assert.equal(config?.bucket, "social-agent");
+  assert.equal(config?.auth.type, "global");
 });
