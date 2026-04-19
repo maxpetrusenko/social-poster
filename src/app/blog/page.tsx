@@ -4,10 +4,14 @@ import { BLOG_POSTS } from "@/lib/blog/posts";
 import { LandingNav } from "@/components/landing/nav";
 import { LandingFooter } from "@/components/landing/footer";
 import { getSession } from "@/lib/auth";
+import { getProductCanonicalUrl } from "@/lib/site-domains";
 
 export const metadata: Metadata = {
   title: "Blog — ClawPoster",
   description: "Learn what ClawPoster can do for your social media presence.",
+  alternates: {
+    canonical: getProductCanonicalUrl("/blog"),
+  },
 };
 
 export default async function BlogPage() {

@@ -6,6 +6,7 @@ import { LandingNav } from "@/components/landing/nav";
 import { LandingFooter } from "@/components/landing/footer";
 import { WaitlistForm } from "@/components/landing/waitlist-form";
 import { getSession } from "@/lib/auth";
+import { getProductCanonicalUrl } from "@/lib/site-domains";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -17,7 +18,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const post = BLOG_POSTS.find((p) => p.slug === slug);
   if (!post) return {};
-  return { title: `${post.title} — ClawPoster`, description: post.excerpt };
+  return {
+    title: `${post.title} — ClawPoster`,
+    description: post.excerpt,
+    alternates: {
+      canonical: getProductCanonicalUrl(`/blog/${post.slug}`),
+    },
+  };
 }
 
 export default async function BlogPostPage({ params }: Props) {

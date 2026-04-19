@@ -1,12 +1,58 @@
-import { AUTH_MODE, SESSION_COOKIE } from "@/lib/auth-config";
-import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { NextRequest, NextResponse } from "next/server";
+import { AUTH_MODE, SESSION_COOKIE } from "@/lib/auth-config";
 import {
   getSupabasePublicEnv,
   isSupabaseConfigured,
 } from "@/lib/supabase/config";
+import {
+  SITE_DOMAINS,
+  getRedirectHost,
+  normalizeHost,
+} from "@/lib/site-domains";
+
+const PUBLIC_PRODUCT_PATHS = [
+  "/blog",
+  "/social-media-bot",
+  "/sitemap.xml",
+  "/robots.txt",
+];
+
+function isProductPath(pathname: string) {
+  return PUBLIC_PRODUCT_PATHS.some(
+    (path) => pathname === path || pathname.startsWith(`${path}/`)
+  );
+}
+
+function permanentHostRedirect(request: NextRequest, host: string) {
+  const url = request.nextUrl.clone();
+  url.protocol = "https:";
+  url.host = host;
+  url.port = "";
+  return NextResponse.redirect(url, 301);
+}
 
 export async function middleware(request: NextRequest) {
+  const host = normalizeHost(
+    request.headers.get("x-forwarded-host") ?? request.headers.get("host")
+  );
+  const redirectHost = getRedirectHost(host);
+
+  if (redirectHost) {
+    return permanentHostRedirect(request, redirectHost);
+  }
+
+  if (
+    (host === SITE_DOMAINS.app || host === SITE_DOMAINS.smm) &&
+    isProductPath(request.nextUrl.pathname)
+  ) {
+    return permanentHostRedirect(request, SITE_DOMAINS.product);
+  }
+
+  if (!request.nextUrl.pathname.startsWith("/dashboard")) {
+    return NextResponse.next();
+  }
+
   if (AUTH_MODE === "bypass") {
     return NextResponse.next();
   }
@@ -66,5 +112,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard", "/dashboard/:path*"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
 };

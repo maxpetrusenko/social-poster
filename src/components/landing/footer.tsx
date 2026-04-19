@@ -12,6 +12,7 @@ export function LandingFooter() {
           <a href="#features" className="hover:text-[var(--ink)] transition-colors">Features</a>
           <a href="#how-it-works" className="hover:text-[var(--ink)] transition-colors">How It Works</a>
           <a href="https://www.maxpetrusenko.com/privacy-policy" className="hover:text-[var(--ink)] transition-colors">Privacy Policy</a>
+          <a href="https://www.maxpetrusenko.com/terms-of-service" className="hover:text-[var(--ink)] transition-colors">Terms of Service</a>
         </div>
         <div>&copy; {new Date().getFullYear()} ClawPoster</div>
       </div>

@@ -1,0 +1,102 @@
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import type { Metadata } from "next";
+import { BLOG_POSTS } from "@/lib/blog/posts";
+import { LandingNav } from "@/components/landing/nav";
+import { LandingFooter } from "@/components/landing/footer";
+import { getSession } from "@/lib/auth";
+import { getProductCanonicalUrl } from "@/lib/site-domains";
+
+type Props = {
+  params: Promise<{ category: string }>;
+};
+
+function titleCase(value: string) {
+  return value
+    .split("-")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function decodeCategory(category: string) {
+  return decodeURIComponent(category).trim();
+}
+
+export function generateStaticParams() {
+  return Array.from(new Set(BLOG_POSTS.map((post) => post.category))).map((category) => ({
+    category: category.toLowerCase().replace(/\s+/g, "-"),
+  }));
+}
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { category } = await params;
+  const categoryName = titleCase(decodeCategory(category));
+  const posts = BLOG_POSTS.filter((post) => post.category.toLowerCase() === categoryName.toLowerCase());
+
+  if (!posts.length) return {};
+
+  return {
+    title: `${categoryName} Posts — ClawPoster`,
+    description: `Browse ${categoryName.toLowerCase()} posts from the ClawPoster blog.`,
+    alternates: {
+      canonical: getProductCanonicalUrl(`/blog/category/${category}`),
+    },
+  };
+}
+
+export default async function BlogCategoryPage({ params }: Props) {
+  const { category } = await params;
+  const categoryName = titleCase(decodeCategory(category));
+  const posts = BLOG_POSTS.filter((post) => post.category.toLowerCase() === categoryName.toLowerCase()).sort((a, b) =>
+    b.publishedAt.localeCompare(a.publishedAt)
+  );
+
+  if (!posts.length) notFound();
+
+  const session = await getSession();
+
+  return (
+    <>
+      <LandingNav isLoggedIn={!!session} />
+      <main className="pt-28 pb-20 px-6">
+        <div className="container">
+          <article className="max-w-4xl">
+            <Link href="/blog" className="text-sm text-[var(--accent-tech)] hover:underline mb-6 inline-block">
+              &larr; All Posts
+            </Link>
+
+            <p className="section-eyebrow text-[var(--accent-tech)] mb-4">{categoryName}</p>
+            <h1 className="text-4xl md:text-6xl font-bold leading-[1.05] max-w-3xl">
+              {categoryName} posts from the ClawPoster blog
+            </h1>
+            <p className="mt-6 text-lg text-[var(--muted)] leading-relaxed max-w-2xl">
+              A focused list of posts in this category, arranged for readers looking to compare the same theme across the blog.
+            </p>
+          </article>
+
+          <section className="mt-16 grid grid-cols-1 md:grid-cols-2 gap-6">
+            {posts.map((post) => (
+              <Link
+                key={post.slug}
+                href={`/blog/${post.slug}`}
+                className="group rounded-2xl border border-[var(--line)] bg-[var(--paper)] p-6 hover:border-[var(--accent-tech)]/30 transition-colors"
+              >
+                <div className="flex items-center gap-3 mb-3">
+                  <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-[var(--accent-tech)]/10 text-[var(--accent-tech)]">
+                    {post.category}
+                  </span>
+                  <span className="text-xs text-[var(--muted)]">{post.publishedAt}</span>
+                </div>
+                <h2 className="text-lg font-semibold mb-2 group-hover:text-[var(--accent-tech)] transition-colors font-[family-name:var(--font-sans)]">
+                  {post.title}
+                </h2>
+                <p className="text-sm text-[var(--muted)] leading-relaxed">{post.excerpt}</p>
+              </Link>
+            ))}
+          </section>
+        </div>
+      </main>
+      <LandingFooter />
+    </>
+  );
+}

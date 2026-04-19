@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Cormorant_Garamond, DM_Sans } from "next/font/google";
+import { PRODUCT_ORIGIN } from "@/lib/site-domains";
 import "./globals.css";
 
 const sans = DM_Sans({
@@ -14,6 +15,7 @@ const serif = Cormorant_Garamond({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(PRODUCT_ORIGIN),
   title: "ClawPoster — AI Social Posting Agent",
   description: "Your AI agent for social posting. Writes your posts, adapts per platform, publishes while you sleep. 16 platforms, one claw.",
   openGraph: {
