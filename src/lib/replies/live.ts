@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { and, desc, eq, ne } from "drizzle-orm";
+import { and, desc, eq, inArray, ne } from "drizzle-orm";
 import { db } from "@/db";
 import { platforms, replyCandidates, replyEvents } from "@/db/schema";
 import {
@@ -19,8 +19,11 @@ import {
 import { generateAiReplyDraftsBatch } from "@/lib/replies/ai";
 import { REPLY_TARGETS } from "@/lib/replies/config";
 import {
+  claimReplySlot,
   filterUntriedReplyDrafts,
   isDuplicateReplyError,
+  markReplySlotFailed,
+  markReplySlotSent,
   normalizeReplyText,
 } from "@/lib/replies/duplicate-guard";
 import {
@@ -495,8 +498,33 @@ async function postReplyCandidateInternal(
     let lastError: Error | null = null;
 
     for (const draftEntry of draftsToTry) {
+      // Atomically claim the reply slot before calling the API
+      const eventId = await claimReplySlot(db, {
+        workspaceId: row.workspaceId,
+        runId: null,
+        scheduleId: null,
+        platformId: platform.id,
+        tweetUrl: row.tweetUrl,
+        authorHandle: row.authorHandle,
+        category: "live_queue",
+        lane: "operator_queue",
+        replyText: draftEntry.text,
+        metadata: {
+          score: row.score,
+          riskLevel: row.riskLevel,
+        },
+      });
+
+      if (!eventId) {
+        const error = "Reply slot already claimed by another caller";
+        attemptedDrafts.add(normalizeReplyText(draftEntry.text));
+        lastError = new Error(error);
+        continue;
+      }
+
       try {
         const { replyUrl } = await sendReplyViaPlatform(platform, row.tweetUrl, draftEntry.text);
+        await markReplySlotSent(db, eventId, replyUrl);
 
         await db.update(replyCandidates).set({
           status: "posted",
@@ -511,26 +539,6 @@ async function postReplyCandidateInternal(
           error: null,
         }).where(eq(replyCandidates.id, candidateId));
 
-        await db.insert(replyEvents).values({
-          id: crypto.randomUUID(),
-          workspaceId: row.workspaceId,
-          runId: null,
-          scheduleId: null,
-          platformId: platform.id,
-          tweetUrl: row.tweetUrl,
-          replyUrl,
-          authorHandle: row.authorHandle,
-          category: "live_queue",
-          lane: "operator_queue",
-          replyText: draftEntry.text,
-          status: "sent",
-          metadata: {
-            score: row.score,
-            riskLevel: row.riskLevel,
-          },
-          createdAt: new Date(),
-        });
-
         if (continueQueue) {
           await processReadyReplyQueue(platform.id, workspaceId);
         }
@@ -543,6 +551,7 @@ async function postReplyCandidateInternal(
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         lastError = error instanceof Error ? error : new Error(message);
+        await markReplySlotFailed(db, eventId, message);
 
         if (isDuplicateReplyError(message)) {
           attemptedDrafts.add(normalizeReplyText(draftEntry.text));
@@ -584,14 +593,14 @@ async function discoverLiveCandidates(
         .from(replyEvents)
         .where(
           and(
-            eq(replyEvents.status, "sent"),
+            inArray(replyEvents.status, ["sent", "pending"]),
             eq(replyEvents.workspaceId, workspaceId)
           )
         )
     : await db
         .select({ tweetUrl: replyEvents.tweetUrl })
         .from(replyEvents)
-        .where(eq(replyEvents.status, "sent"));
+        .where(inArray(replyEvents.status, ["sent", "pending"]));
   const alreadyReplied = new Set(alreadyRepliedRows.map((row) => row.tweetUrl));
 
   const found = new Map<string, LiveCandidate>();

@@ -32,6 +32,15 @@ export type ConnectionMethod = {
   }>;
 };
 
+export type OAuthCallbackRules = {
+  /** Force HTTPS on loopback (e.g. Meta requires it) */
+  requireHttps?: boolean;
+  /** Rewrite "localhost" → "127.0.0.1" (e.g. Meta rejects "localhost") */
+  rewriteLocalhostTo127?: boolean;
+  /** Platform rejects all loopback URIs (e.g. TikTok) — must use real domain or tunnel */
+  noLoopback?: boolean;
+};
+
 export type ConnectionPlatformDefinition = {
   type: PlatformType;
   label: string;
@@ -40,6 +49,8 @@ export type ConnectionPlatformDefinition = {
   capabilities?: PlatformCapability[];
   futureCapabilities?: PlatformCapability[];
   methods: ConnectionMethod[];
+  /** Per-platform OAuth callback URL adjustments */
+  oauthCallbackRules?: OAuthCallbackRules;
 };
 
 export function textField(

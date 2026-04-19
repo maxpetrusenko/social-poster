@@ -101,6 +101,8 @@ Deploys to `social.maxpetrusenko.com` on Contabo/Coolify.
 - [x] Middleware to protect /dashboard routes (next middleware.ts)
 - [x] Server-side org/workspace role gates for team settings and high-risk mutating APIs
 - [x] Social Agent can invite current-workspace members inline via an admin-only `/invite` command
+- [x] Facebook native OAuth connection working (dev:https + per-platform callback rules)
+- [ ] Refactor OAuth callback to derive URL from request + per-platform routes (brightbean pattern)
 - [ ] Set Supabase env in production and verify live Google sign-in against allowlist
 
 ### Agent / Pipeline Engine

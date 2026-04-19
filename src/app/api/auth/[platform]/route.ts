@@ -119,10 +119,22 @@ function oauthStartError(request: NextRequest, appUrl: string, message: string) 
 
 function sameOrigin(left: string, right: string) {
   try {
-    return new URL(left).origin === new URL(right).origin;
+    const l = new URL(left);
+    const r = new URL(right);
+    if (l.origin === r.origin) return true;
+    // Treat localhost ↔ 127.0.0.1 as equivalent (same machine, different names)
+    if (isLoopback(l.hostname) && isLoopback(r.hostname) && l.port === r.port) {
+      return true;
+    }
+    return false;
   } catch {
     return false;
   }
+}
+
+function isLoopback(hostname: string) {
+  const h = hostname.toLowerCase();
+  return h === "localhost" || h === "127.0.0.1" || h === "::1" || h === "[::1]";
 }
 
 async function readBodyCredentials(request: NextRequest) {

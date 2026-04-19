@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "NEXT_DIST_DIR=.next-dev next dev --turbopack",
+    "dev:https": "APP_URL=https://127.0.0.1:3000 NEXT_DIST_DIR=.next-dev next dev --turbopack --experimental-https --experimental-https-key certs/localhost+2-key.pem --experimental-https-cert certs/localhost+2.pem",
     "build": "next build",
     "start": "next start",
     "lint": "eslint . --max-warnings=0",

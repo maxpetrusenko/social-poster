@@ -108,9 +108,43 @@ export function oauthCallbackUrl(platform: string, appUrl: string) {
     process.env.SOCIAL_POSTER_OAUTH_CALLBACK_URL,
     appUrl
   );
-  if (override) return override;
+  if (override) return applyCallbackRules(platform, override);
 
-  return new URL(oauthCallbackPath(platform), appUrl).toString();
+  const base = new URL(oauthCallbackPath(platform), appUrl).toString();
+  return applyCallbackRules(platform, base);
+}
+
+/**
+ * Apply per-platform callback URL rules from the platform's connection config.
+ * Falls back to no-op if the platform has no rules defined.
+ */
+function applyCallbackRules(platform: string, url: string) {
+  try {
+    // Dynamic import would create circular deps; use lazy require pattern
+    const { getConnectionDefinition } = require("@/platforms/registry") as {
+      getConnectionDefinition: (type: string) => { oauthCallbackRules?: import("@/platforms/_shared/connection-config").OAuthCallbackRules } | undefined;
+    };
+    const def = getConnectionDefinition(platform);
+    const rules = def?.oauthCallbackRules;
+    if (!rules) return url;
+
+    const parsed = new URL(url);
+    if (!isLoopbackHost(parsed.hostname)) return url;
+
+    if (rules.noLoopback) {
+      // Platform rejects all loopback — return as-is, caller will show error
+      return url;
+    }
+    if (rules.rewriteLocalhostTo127 && parsed.hostname === "localhost") {
+      parsed.hostname = "127.0.0.1";
+    }
+    if (rules.requireHttps) {
+      parsed.protocol = "https:";
+    }
+    return parsed.toString();
+  } catch {
+    return url;
+  }
 }
 
 export function resolveOAuthCallbackOverride(

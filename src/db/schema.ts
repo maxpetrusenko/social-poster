@@ -1,4 +1,5 @@
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { sql } from "drizzle-orm";
 
 export const users = sqliteTable("users", {
   id: text("id").primaryKey(),
@@ -247,11 +248,15 @@ export const replyEvents = sqliteTable("reply_events", {
   category: text("category"),
   lane: text("lane").notNull(),
   replyText: text("reply_text"),
-  status: text("status").notNull().default("sent"), // "sent" | "failed" | "skipped"
+  status: text("status").notNull().default("sent"), // "pending" | "sent" | "failed" | "skipped"
   error: text("error"),
   metadata: text("metadata", { mode: "json" }).$type<Record<string, unknown>>(),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-});
+}, (table) => [
+  uniqueIndex("reply_events_tweet_url_sent_unique")
+    .on(table.tweetUrl)
+    .where(sql`status IN ('sent', 'pending')`),
+]);
 
 export const replyCandidates = sqliteTable("reply_candidates", {
   id: text("id").primaryKey(),

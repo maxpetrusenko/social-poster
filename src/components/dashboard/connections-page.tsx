@@ -181,6 +181,7 @@ export function ConnectionsPage({
           platformType: platform.type,
           accountLabel,
           secondaryLabel,
+          avatarUrl: getConnectionAvatarUrl(platform.config),
           platformLabel: definition?.label ?? platform.name,
           handle: platform.handle,
           provider: platform.provider,
@@ -606,6 +607,60 @@ function formatBirdSessionStatus(
     checkedAtLabel,
     message: session.error ?? session.message ?? null,
   };
+}
+
+function getConnectionAvatarUrl(config: Record<string, unknown> | null) {
+  const source = config ?? {};
+  return (
+    readNestedString(source, ["avatarUrl"]) ||
+    readNestedString(source, ["profilePicture"]) ||
+    readNestedString(source, ["providerProfile", "avatarUrl"]) ||
+    readNestedString(source, ["providerProfile", "profilePicture"]) ||
+    readNestedString(source, ["lateAccount", "profilePicture"]) ||
+    readNestedString(source, ["lateAccount", "metadata", "profilePicture"]) ||
+    readNestedString(source, ["lateAccount", "metadata", "avatarUrl"]) ||
+    readNestedString(source, [
+      "lateAccount",
+      "metadata",
+      "profileData",
+      "avatarUrl",
+    ]) ||
+    readNestedString(source, [
+      "lateAccount",
+      "metadata",
+      "profileData",
+      "profilePicture",
+    ]) ||
+    readNestedString(source, [
+      "lateAccount",
+      "metadata",
+      "userProfile",
+      "avatarUrl",
+    ]) ||
+    readNestedString(source, [
+      "lateAccount",
+      "metadata",
+      "userProfile",
+      "profilePicture",
+    ]) ||
+    null
+  );
+}
+
+function readNestedString(
+  source: Record<string, unknown>,
+  path: string[]
+): string | null {
+  let current: unknown = source;
+
+  for (const key of path) {
+    if (!current || typeof current !== "object" || Array.isArray(current)) {
+      return null;
+    }
+    current = (current as Record<string, unknown>)[key];
+  }
+
+  return typeof current === "string" && current.trim() ? current.trim() : null;
 }
 
 function getOAuthStartUrl(

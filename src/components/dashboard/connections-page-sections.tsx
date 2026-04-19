@@ -24,6 +24,7 @@ export type ConnectionCardItem = {
   platformType: PlatformType;
   accountLabel: string;
   secondaryLabel: string | null;
+  avatarUrl: string | null;
   platformLabel: string;
   handle: string | null;
   provider: PlatformRow["provider"];
@@ -257,13 +258,7 @@ function ConnectionCard({
         <div className="flex min-w-0 items-start gap-3">
           <ConnectionAvatar item={item} />
           <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <PlatformBrandIcon type={item.platformType} className="h-5 w-5" />
-              <p className="text-[1.02rem] font-semibold leading-none text-[#171717]">
-                {item.platformLabel}
-              </p>
-            </div>
-            <p className="mt-3 text-[1.05rem] font-semibold leading-tight text-[#171717]">
+            <p className="text-[1.05rem] font-semibold leading-tight text-[#171717]">
               {item.accountLabel}
             </p>
             <p className="mt-2 text-sm text-[#7b6b56]">
@@ -273,10 +268,6 @@ function ConnectionCard({
         </div>
 
         <StatusPill connected={item.enabled} />
-      </div>
-
-      <div className="mt-3 flex flex-wrap gap-2">
-        <InlineChip>{item.profileLabel}</InlineChip>
       </div>
 
       {item.customInstructions ? (
@@ -400,14 +391,6 @@ function BirdSessionPanel({
   );
 }
 
-function InlineChip({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="rounded-[0.55rem] bg-[#f5f3ef] px-2.5 py-1 text-[11px] font-medium text-[#756756]">
-      {children}
-    </span>
-  );
-}
-
 function StatusPill({ connected }: { connected: boolean }) {
   return (
     <span
@@ -425,7 +408,7 @@ function StatusPill({ connected }: { connected: boolean }) {
 
 function ConnectionAvatar({ item }: { item: ConnectionCardItem }) {
   const [failed, setFailed] = useState(false);
-  const avatarUrl = getAccountAvatarUrl(item.platformType, item.handle);
+  const avatarUrl = item.avatarUrl || getAccountAvatarUrl(item.platformType, item.handle);
 
   return (
     <div className="relative h-12 w-12 shrink-0">

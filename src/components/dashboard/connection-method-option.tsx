@@ -97,12 +97,14 @@ export function ConnectionMethodOption({
             <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#7a6756]">
               {appManagedOAuth ? "Account authorization" : "App credentials"}
             </p>
-            <ConnectionSetupGuideButton
-              definition={definition}
-              method={method}
-              callbackUrl={callbackUrl}
-              availability={availability}
-            />
+            {!appManagedOAuth ? (
+              <ConnectionSetupGuideButton
+                definition={definition}
+                method={method}
+                callbackUrl={callbackUrl}
+                availability={availability}
+              />
+            ) : null}
           </div>
           {appManagedOAuth ? (
             <p className="text-sm leading-6 text-[#4d3f34]">

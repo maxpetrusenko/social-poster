@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { and, eq, gte } from "drizzle-orm";
+import { and, eq, gte, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import { pipelineRuns, platforms, replyEvents, schedules } from "@/db/schema";
 import type { PipelineStep } from "@/db/schema";
@@ -15,8 +15,11 @@ import {
 } from "@/lib/replies/bird";
 import { generateAiReplyDraftsBatch } from "@/lib/replies/ai";
 import {
+  claimReplySlot,
   filterUntriedReplyDrafts,
   isDuplicateReplyError,
+  markReplySlotFailed,
+  markReplySlotSent,
   normalizeReplyText,
 } from "@/lib/replies/duplicate-guard";
 import { inferReplyDirection } from "@/lib/replies/strategy";
@@ -29,12 +32,19 @@ type SkippedReplyAttempt = {
   replyText: string | null;
   error: string;
 };
+type ReplyClaimContext = {
+  workspaceId?: string | null;
+  runId?: string | null;
+  scheduleId?: string | null;
+  platformId?: string | null;
+};
 type ReplySendResult =
   | {
       kind: "sent";
       candidate: ReplyCandidate;
       replyText: string;
       replyUrl: string;
+      claimEventId: string;
       skippedErrors: string[];
       skippedAttempts: SkippedReplyAttempt[];
     }
@@ -105,7 +115,12 @@ export async function runReplyEngineJob(
     const sendStep = step("publish");
     steps.push(sendStep);
 
-    const sendResult = await sendFirstAvailableReply(candidates, targetPlatform);
+    const sendResult = await sendFirstAvailableReply(candidates, targetPlatform, {
+      workspaceId: schedule.workspaceId,
+      runId,
+      scheduleId: schedule.id,
+      platformId: targetPlatformId,
+    });
 
     if (sendResult.kind === "skipped") {
       complete(sendStep, {
@@ -175,25 +190,8 @@ export async function runReplyEngineJob(
       errors: sendResult.skippedErrors,
     });
 
-    await db.insert(replyEvents).values({
-      id: crypto.randomUUID(),
-      workspaceId: schedule.workspaceId,
-      runId,
-      scheduleId: schedule.id,
-      platformId: targetPlatformId,
-      tweetUrl: sendResult.candidate.tweetUrl,
-      replyUrl: sendResult.replyUrl,
-      authorHandle: sendResult.candidate.author,
-      category: sendResult.candidate.category,
-      lane: sendResult.candidate.lane,
-      replyText: sendResult.replyText,
-      status: "sent",
-      metadata: {
-        riskScore: sendResult.candidate.riskScore,
-        reason: sendResult.candidate.reason,
-      },
-      createdAt: new Date(),
-    });
+    // Reply event row already created by claimReplySlot + markReplySlotSent
+    // inside sendFirstAvailableReply — no duplicate insert needed.
 
     const now = new Date();
     await db
@@ -225,7 +223,8 @@ export async function runReplyEngineJob(
 
 async function sendFirstAvailableReply(
   candidates: ReplyCandidate[],
-  targetPlatform: Pick<typeof platforms.$inferSelect, "provider" | "config" | "handle">
+  targetPlatform: Pick<typeof platforms.$inferSelect, "provider" | "config" | "handle">,
+  claimCtx: ReplyClaimContext
 ): Promise<ReplySendResult> {
   const skippedErrors: string[] = [];
   const skippedAttempts: SkippedReplyAttempt[] = [];
@@ -242,19 +241,43 @@ async function sendFirstAvailableReply(
     }
 
     for (const draft of drafts) {
+      // Atomically claim the reply slot before calling the API
+      const eventId = await claimReplySlot(db, {
+        ...claimCtx,
+        tweetUrl: candidate.tweetUrl,
+        authorHandle: candidate.author,
+        category: candidate.category,
+        lane: candidate.lane,
+        replyText: draft,
+        metadata: {
+          riskScore: candidate.riskScore,
+          reason: candidate.reason,
+        },
+      });
+
+      if (!eventId) {
+        const error = "Reply slot already claimed by another runner";
+        skippedErrors.push(`${candidate.author}: ${error}`);
+        skippedAttempts.push({ candidate, replyText: draft, error });
+        continue;
+      }
+
       try {
         const { replyUrl } = await sendReplyViaPlatform(targetPlatform, candidate.tweetUrl, draft);
+        await markReplySlotSent(db, eventId, replyUrl);
 
         return {
           kind: "sent",
           candidate,
           replyText: draft,
           replyUrl,
+          claimEventId: eventId,
           skippedErrors,
           skippedAttempts,
         };
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
+        await markReplySlotFailed(db, eventId, message);
         skippedErrors.push(`${candidate.author}: ${message}`);
 
         if (isDuplicateReplyError(message)) {
@@ -367,7 +390,10 @@ async function buildCandidate(
   if (!isFreshTweet(tweet.createdAt)) return null;
 
   const alreadyReplied = await db.query.replyEvents.findFirst({
-    where: and(eq(replyEvents.tweetUrl, tweetUrl), eq(replyEvents.status, "sent")),
+    where: and(
+      eq(replyEvents.tweetUrl, tweetUrl),
+      inArray(replyEvents.status, ["sent", "pending"])
+    ),
   });
   if (alreadyReplied) return null;
 

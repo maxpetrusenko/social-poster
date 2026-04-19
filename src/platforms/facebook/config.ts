@@ -65,6 +65,7 @@ export const connectionDefinition: ConnectionPlatformDefinition = {
     },
     relayMethod("Facebook", "Max Petrusenko"),
   ],
+  oauthCallbackRules: { requireHttps: true, rewriteLocalhostTo127: true },
 };
 
 export const connectionDefinitions = [connectionDefinition];
