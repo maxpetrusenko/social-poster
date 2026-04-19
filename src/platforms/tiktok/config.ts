@@ -66,7 +66,6 @@ export const connectionDefinition: ConnectionPlatformDefinition = {
     },
     relayMethod("TikTok", "@max_petrusenko"),
   ],
-  oauthCallbackRules: { requireHttps: true, noLoopback: true },
 };
 
 export const connectionDefinitions = [connectionDefinition];

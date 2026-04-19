@@ -41,7 +41,6 @@ export function ConnectionsPage({
   insights,
   initialDrawerOpen,
   initialPlatformType,
-  initialConnectedPlatform,
   initialError,
   nativeAvailabilityByPlatform,
   oauthCallbackUrlOverride,
@@ -52,7 +51,6 @@ export function ConnectionsPage({
   insights: PlatformInsight[];
   initialDrawerOpen: boolean;
   initialPlatformType: PlatformType | null;
-  initialConnectedPlatform: PlatformType | null;
   initialError: string | null;
   nativeAvailabilityByPlatform: Record<PlatformType, NativeConnectionAvailability>;
   oauthCallbackUrlOverride: string | null;
@@ -79,9 +77,6 @@ export function ConnectionsPage({
     threadLongPosts: true,
   });
   const [error, setError] = useState<string | null>(initialError);
-  const [connectedNotice, setConnectedNotice] = useState<PlatformType | null>(
-    initialConnectedPlatform
-  );
   const [isSaving, startSaving] = useTransition();
   const [disconnectingId, setDisconnectingId] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
@@ -222,13 +217,11 @@ export function ConnectionsPage({
       setRequestedMethodMode(selectedViewMode);
     }
     setError(null);
-    setConnectedNotice(null);
   }
 
   function closeDrawer() {
     setDrawerOpen(false);
     setError(null);
-    setConnectedNotice(null);
   }
 
   function updateField(id: string, value: string | boolean) {
@@ -247,7 +240,6 @@ export function ConnectionsPage({
       threadLongPosts: true,
     });
     setError(null);
-    setConnectedNotice(null);
   }
 
   async function startOAuthConnection(
@@ -518,15 +510,6 @@ export function ConnectionsPage({
             className="rounded-[14px] border border-[#e5c7ba] bg-[#f8e8e1] px-4 py-3 text-sm font-semibold text-[#9a5947]"
           >
             {error}
-          </div>
-        ) : null}
-
-        {connectedNotice ? (
-          <div className="rounded-[14px] border border-[#b7ddc2] bg-[#e8f6ed] px-4 py-3 text-sm font-semibold text-[#2f7b4f]">
-            Connected{" "}
-            {getConnectionPlatformDefinition(connectedNotice)?.label ??
-              connectedNotice}
-            .
           </div>
         ) : null}
 

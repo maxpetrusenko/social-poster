@@ -408,7 +408,8 @@ function StatusPill({ connected }: { connected: boolean }) {
 
 function ConnectionAvatar({ item }: { item: ConnectionCardItem }) {
   const [failed, setFailed] = useState(false);
-  const avatarUrl = item.avatarUrl || getAccountAvatarUrl(item.platformType, item.handle);
+  const avatarUrl =
+    item.avatarUrl || getAccountAvatarUrl(item.platformType, item.handle);
 
   return (
     <div className="relative h-12 w-12 shrink-0">

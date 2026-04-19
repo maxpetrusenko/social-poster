@@ -11,7 +11,7 @@ import { PLATFORM_TYPES, type PlatformType } from "@/lib/platforms";
 import { mergeProviderCredentials } from "@/lib/providers/credentials";
 import { getProvider } from "@/lib/providers/registry";
 import {
-  decodeNativeOAuthState,
+  type NativeOAuthState,
   decodeNativeOAuthCookie,
   NATIVE_OAUTH_COOKIE,
   oauthCallbackUrl,
@@ -20,7 +20,8 @@ import {
 
 export async function handleNativeOAuthCallback(
   request: NextRequest,
-  platform: string
+  platform: string,
+  state: NativeOAuthState | null = null
 ) {
   const appUrl = getRequestAppUrl(request);
   const tenant = await requireApiWorkspaceManager();
@@ -28,7 +29,6 @@ export async function handleNativeOAuthCallback(
     return NextResponse.redirect(new URL("/login", appUrl));
   }
 
-  const state = decodeNativeOAuthState(request.nextUrl.searchParams.get("state"));
   const cookieStore = await cookies();
   const oauthCookie = decodeNativeOAuthCookie(
     cookieStore.get(NATIVE_OAUTH_COOKIE)?.value ?? null
@@ -64,7 +64,7 @@ export async function handleNativeOAuthCallback(
     return NextResponse.redirect(fallback);
   }
 
-  const redirectUri = oauthCallbackUrl(platform, appUrl);
+  const redirectUri = oauthCallbackUrl(platform, request);
 
   try {
     const provider = getProvider(

@@ -24,12 +24,6 @@ export default async function WorkspaceSettingsSocialAccountsPage({
   )
     ? ((params.platform as (typeof PLATFORM_TYPES)[number]) ?? null)
     : null;
-  const initialConnectedPlatform = PLATFORM_TYPES.includes(
-    params.connected as (typeof PLATFORM_TYPES)[number]
-  )
-    ? (params.connected as (typeof PLATFORM_TYPES)[number])
-    : null;
-
   const data = await getConnectionsPageData(tenant.currentWorkspace.id);
   const nativeAvailabilityByPlatform = getNativeConnectionAvailabilityByPlatform();
   const requestHeaders = await headers();
@@ -47,7 +41,6 @@ export default async function WorkspaceSettingsSocialAccountsPage({
       insights={data.insights}
       initialDrawerOpen={Boolean(params.connect)}
       initialPlatformType={initialPlatformType}
-      initialConnectedPlatform={initialConnectedPlatform}
       initialError={params.error ?? null}
       nativeAvailabilityByPlatform={nativeAvailabilityByPlatform}
       oauthCallbackUrlOverride={oauthCallbackUrlOverride}

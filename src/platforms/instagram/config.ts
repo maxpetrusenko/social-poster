@@ -69,7 +69,6 @@ export const connectionDefinition: ConnectionPlatformDefinition = {
     },
     relayMethod("Instagram", "@max.petrusenko"),
   ],
-  oauthCallbackRules: { requireHttps: true, rewriteLocalhostTo127: true },
 };
 
 export const connectionDefinitionPersonal: ConnectionPlatformDefinition = {
@@ -108,7 +107,6 @@ export const connectionDefinitionPersonal: ConnectionPlatformDefinition = {
     },
     relayMethod("Instagram Personal", "@max.petrusenko"),
   ],
-  oauthCallbackRules: { requireHttps: true, rewriteLocalhostTo127: true },
 };
 
 export const connectionDefinitions = [

@@ -33,7 +33,7 @@ export {
   type PlatformConfig,
 } from "./config-registry";
 
-export { getConnectionDefinition } from "./connection-registry";
+
 
 // ---------------------------------------------------------------------------
 // New-style platform module factories

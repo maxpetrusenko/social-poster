@@ -1,9 +1,12 @@
+import crypto from "node:crypto";
+
 export type NativeOAuthState = {
   nonce: string;
   platform: string;
   profileId?: string | null;
   methodId?: string | null;
   next?: string | null;
+  timestamp?: number;
 };
 
 export const NATIVE_OAUTH_COOKIE = "sp_native_oauth";
@@ -98,53 +101,66 @@ export function storedPlatformType(platform: string) {
   return platform;
 }
 
-export function oauthCallbackPath(platform: string) {
-  void platform;
-  return "/api/auth/callback";
+export function signOAuthState(payload: NativeOAuthState): string {
+  const data = JSON.stringify(payload);
+  const secret =
+    process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET ?? "dev-oauth-secret";
+  const sig = crypto
+    .createHmac("sha256", secret)
+    .update(data)
+    .digest("base64url");
+  return `${Buffer.from(data).toString("base64url")}.${sig}`;
 }
 
-export function oauthCallbackUrl(platform: string, appUrl: string) {
-  const override = resolveOAuthCallbackOverride(
-    process.env.SOCIAL_POSTER_OAUTH_CALLBACK_URL,
-    appUrl
-  );
-  if (override) return applyCallbackRules(platform, override);
+export function verifyOAuthState(
+  signed: string,
+  maxAgeMs = 600_000
+): NativeOAuthState | null {
+  const dotIdx = signed.lastIndexOf(".");
+  if (dotIdx < 1) return null;
+  const dataB64 = signed.slice(0, dotIdx);
+  const sig = signed.slice(dotIdx + 1);
+  if (!dataB64 || !sig) return null;
 
-  const base = new URL(oauthCallbackPath(platform), appUrl).toString();
-  return applyCallbackRules(platform, base);
-}
+  const data = Buffer.from(dataB64, "base64url").toString("utf8");
+  const secret =
+    process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET ?? "dev-oauth-secret";
+  const expected = crypto
+    .createHmac("sha256", secret)
+    .update(data)
+    .digest("base64url");
 
-/**
- * Apply per-platform callback URL rules from the platform's connection config.
- * Falls back to no-op if the platform has no rules defined.
- */
-function applyCallbackRules(platform: string, url: string) {
-  try {
-    // Dynamic import would create circular deps; use lazy require pattern
-    const { getConnectionDefinition } = require("@/platforms/registry") as {
-      getConnectionDefinition: (type: string) => { oauthCallbackRules?: import("@/platforms/_shared/connection-config").OAuthCallbackRules } | undefined;
-    };
-    const def = getConnectionDefinition(platform);
-    const rules = def?.oauthCallbackRules;
-    if (!rules) return url;
-
-    const parsed = new URL(url);
-    if (!isLoopbackHost(parsed.hostname)) return url;
-
-    if (rules.noLoopback) {
-      // Platform rejects all loopback — return as-is, caller will show error
-      return url;
-    }
-    if (rules.rewriteLocalhostTo127 && parsed.hostname === "localhost") {
-      parsed.hostname = "127.0.0.1";
-    }
-    if (rules.requireHttps) {
-      parsed.protocol = "https:";
-    }
-    return parsed.toString();
-  } catch {
-    return url;
+  if (
+    sig.length !== expected.length ||
+    !crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))
+  ) {
+    return null;
   }
+
+  try {
+    const parsed = JSON.parse(data) as NativeOAuthState;
+    if (parsed.timestamp && Date.now() - parsed.timestamp > maxAgeMs) {
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+export function oauthCallbackUrl(
+  platform: string,
+  request: { headers: Headers; url?: string }
+): string {
+  const proto =
+    request.headers.get("x-forwarded-proto") ??
+    (request.url?.startsWith("https") ? "https" : "http");
+  const host =
+    request.headers.get("x-forwarded-host") ??
+    request.headers.get("host") ??
+    "localhost:3000";
+  const base = `${proto}://${host}`;
+  return `${base}/api/auth/callback/${platform.replace(/_/g, "-")}`;
 }
 
 export function resolveOAuthCallbackOverride(

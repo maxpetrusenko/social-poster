@@ -61,7 +61,6 @@ export const connectionDefinition: ConnectionPlatformDefinition = {
     },
     relayMethod("Threads", "@maxpetrusenko"),
   ],
-  oauthCallbackRules: { requireHttps: true, rewriteLocalhostTo127: true },
 };
 
 export const connectionDefinitions = [connectionDefinition];

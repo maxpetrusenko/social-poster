@@ -6,7 +6,7 @@ import { getRequestAppUrl } from "@/lib/app-url";
 import { mergeProviderCredentials } from "@/lib/providers/credentials";
 import { getProvider } from "@/lib/providers/registry";
 import {
-  encodeNativeOAuthState,
+  signOAuthState,
   encodeNativeOAuthCookie,
   NATIVE_OAUTH_COOKIE,
   oauthCallbackUrl,
@@ -41,7 +41,7 @@ async function startNativeOAuth(
 
   const nonce = crypto.randomBytes(24).toString("base64url");
   const codeVerifier = crypto.randomBytes(48).toString("base64url");
-  const state = encodeNativeOAuthState({
+  const state = signOAuthState({
     nonce,
     platform,
     profileId: request.nextUrl.searchParams.get("profileId"),
@@ -49,8 +49,9 @@ async function startNativeOAuth(
     next:
       request.nextUrl.searchParams.get("next") ??
       "/dashboard/workspace-settings/social-accounts",
+    timestamp: Date.now(),
   });
-  const redirectUri = oauthCallbackUrl(platform, appUrl);
+  const redirectUri = oauthCallbackUrl(platform, request);
   const oauthCredentials = isAppManagedOAuth(platform)
     ? null
     : transientCredentials;
