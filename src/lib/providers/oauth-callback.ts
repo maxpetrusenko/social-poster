@@ -1,13 +1,11 @@
 import "server-only";
 
-import crypto from "node:crypto";
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/db";
-import { platforms } from "@/db/schema";
 import { requireApiWorkspaceManager } from "@/lib/api-authorization";
 import { getRequestAppUrl } from "@/lib/app-url";
 import { PLATFORM_TYPES, type PlatformType } from "@/lib/platforms";
+import { upsertPlatformConnection } from "@/lib/platform-connections";
 import { mergeProviderCredentials } from "@/lib/providers/credentials";
 import { getProvider } from "@/lib/providers/registry";
 import {
@@ -85,8 +83,7 @@ export async function handleNativeOAuthCallback(
       ? now.getTime() + tokens.expiresIn * 1000
       : null;
 
-    await db.insert(platforms).values({
-      id: crypto.randomUUID(),
+    const result = await upsertPlatformConnection({
       workspaceId: tenant.currentWorkspace.id,
       name: profile?.name ?? `${provider.platformName} Connection`,
       type,
@@ -111,12 +108,11 @@ export async function handleNativeOAuthCallback(
         },
         notes: "Connected through native OAuth callback.",
       },
-      createdAt: now,
-      updatedAt: now,
+      now,
     });
 
     fallback.searchParams.set("connected", platform);
-    console.log(`[oauth-callback] ✅ Saved ${platform} connection for workspace ${tenant.currentWorkspace.id}`);
+    console.log(`[oauth-callback] ✅ ${result.created ? "Saved" : "Updated"} ${platform} connection for workspace ${tenant.currentWorkspace.id}`);
     return NextResponse.redirect(fallback);
   } catch (callbackError) {
     console.error(`[oauth-callback] ❌ ${platform} callback failed:`, callbackError);

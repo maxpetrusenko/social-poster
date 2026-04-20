@@ -33,10 +33,7 @@ export class TikTokProvider extends OAuthProvider {
   supportedMediaTypes: MediaType[] = ["mp4", "mov"];
   requiredScopes = [
     "user.info.basic",
-    "video.publish",
     "video.upload",
-    "comment.list",
-    "comment.list.manage",
   ];
 
   get rateLimits(): RateLimitConfig {

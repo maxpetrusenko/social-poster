@@ -4,6 +4,7 @@ import { AiNewsVideo } from "./AiNewsVideo";
 import { AiNewsVideoProps } from "./lib/types";
 import { TikTokAppReview } from "./TikTokAppReview";
 import type { TikTokDemoProps } from "./tiktok-demo/types";
+import { DemoWalkthrough } from "./DemoWalkthrough";
 
 const defaultProps: AiNewsVideoProps = {
   headline: "AI Breakthrough",
@@ -46,6 +47,14 @@ const RootComponent = () => {
         calculateMetadata={({ props }) => ({
           durationInFrames: Math.round(props.durationInSeconds * 30),
         })}
+      />
+      <Composition
+        id="DemoWalkthrough"
+        component={DemoWalkthrough}
+        durationInFrames={300}
+        fps={30}
+        width={1920}
+        height={1080}
       />
     </>
   );

@@ -60,6 +60,7 @@ Deploys to `social.maxpetrusenko.com` on Contabo/Coolify.
 - [x] Platforms native connection flow starts configured OAuth providers directly and exposes credential setup docs from each method
 - [x] LinkedIn native OAuth now uses app-managed auth connections: users approve LinkedIn access without pasting client IDs or secrets
 - [x] Connections filter groups LinkedIn native profile/page rows under LinkedIn, so saved OAuth profiles remain visible beside X native connections
+- [x] Native/proxy connections now collapse duplicate same-account rows and enforce one row per workspace, provider, platform, and account ID
 - [x] Local OAuth setup guide shows both localhost and 127.0.0.1 redirect URIs for native providers
 - [x] Connection catalog now lives in per-platform configs, with method info tooltips and live/planned capability badges in the connection drawer
 - [x] X proxy/Bird setup now only asks for `X_AUTH_TOKEN` and `X_CT0`, includes cookie-copy guidance, and exposes a read-only connection test
@@ -75,7 +76,7 @@ Deploys to `social.maxpetrusenko.com` on Contabo/Coolify.
 - [x] Schedule detail preview now shows fixed, Agent Persona, or RSS-candidate mode with source visibility and per-platform generated copy
 - [x] RSS page now uses a tabbed operator UI: compact editable source table with per-source drilldowns, traction-aware candidate scoring, visible selection pipeline, editable transformation prompt/templates/image rules, and regenerateable X/LinkedIn previews for a chosen candidate
 - [x] Social Agent chat widget now answers from sanitized workspace context, including connected platforms, reply review/ready queues, recent reply events, post targets, pipeline runs, RSS setup, and current page hints
-- [x] Top-bar support intake now creates Linear tickets with source, topic, explanation, page context, and optional R2-hosted image attachments
+- [x] Top-bar support intake now creates Linear tickets with source, topic, explanation, page context, selected-image preview, and optional Linear-hosted image links attached to Linear
 - [x] Social Agent can create the same Linear tickets through `/support`, with optional repair-agent webhook routing for `from_bot` issues
 - [x] Recurrent Posts exposed in left navigation for recurring content buckets and slot planning
 - [x] Settings — read-only config display

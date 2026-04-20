@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState, type DragEvent } from "react";
 import { Camera, LifeBuoy, Loader2, Send, X } from "lucide-react";
 
 type SupportSource = "from_user_triage" | "from_bot" | "from_github_issue" | "from_me";
@@ -8,8 +8,24 @@ type SupportSource = "from_user_triage" | "from_bot" | "from_github_issue" | "fr
 type SubmitState =
   | { status: "idle" }
   | { status: "submitting" }
-  | { status: "success"; issue: { identifier: string; url: string } }
+  | {
+      status: "success";
+      issue: { identifier: string; url: string };
+      attachment?: {
+        status: "skipped" | "linked" | "failed";
+        attachment?: { url: string };
+        reason?: string;
+      };
+      imageUrl?: string | null;
+    }
   | { status: "error"; message: string };
+
+type SupportTicketResponse = {
+  issue?: { identifier: string; url: string };
+  attachment?: Extract<SubmitState, { status: "success" }>["attachment"];
+  imageUrl?: string | null;
+  error?: string;
+};
 
 const SOURCE_OPTIONS: Array<{ value: SupportSource; label: string }> = [
   { value: "from_user_triage", label: "User triage" },
@@ -23,8 +39,61 @@ export function SupportTicketButton() {
   const [source, setSource] = useState<SupportSource>("from_user_triage");
   const [topic, setTopic] = useState("");
   const [explanation, setExplanation] = useState("");
+  const [selectedImage, setSelectedImage] = useState<{
+    file: File;
+    name: string;
+    size: number;
+    previewUrl: string;
+  } | null>(null);
+  const [isDraggingImage, setIsDraggingImage] = useState(false);
   const [state, setState] = useState<SubmitState>({ status: "idle" });
   const fileRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    return () => {
+      if (selectedImage) URL.revokeObjectURL(selectedImage.previewUrl);
+    };
+  }, [selectedImage]);
+
+  function selectImage(file: File | null) {
+    if (!file) {
+      setSelectedImage(null);
+      return;
+    }
+    if (!file.type.startsWith("image/")) {
+      setState({ status: "error", message: "Attachment must be an image." });
+      return;
+    }
+    setSelectedImage({
+      file,
+      name: file.name,
+      size: file.size,
+      previewUrl: URL.createObjectURL(file),
+    });
+    setState({ status: "idle" });
+  }
+
+  function clearImage() {
+    if (fileRef.current) fileRef.current.value = "";
+    selectImage(null);
+  }
+
+  function handleImageDrag(event: DragEvent<HTMLLabelElement>) {
+    event.preventDefault();
+    event.stopPropagation();
+    if (event.type === "dragenter" || event.type === "dragover") {
+      setIsDraggingImage(true);
+      return;
+    }
+    setIsDraggingImage(false);
+  }
+
+  function handleImageDrop(event: DragEvent<HTMLLabelElement>) {
+    event.preventDefault();
+    event.stopPropagation();
+    setIsDraggingImage(false);
+    selectImage(event.dataTransfer.files?.[0] ?? null);
+  }
 
   async function submit() {
     const trimmedTopic = topic.trim();
@@ -37,7 +106,7 @@ export function SupportTicketButton() {
     formData.set("explanation", trimmedExplanation);
     formData.set("pageUrl", window.location.href);
     formData.set("pageTitle", document.title);
-    const file = fileRef.current?.files?.[0];
+    const file = selectedImage?.file ?? fileRef.current?.files?.[0];
     if (file) formData.set("image", file);
 
     setState({ status: "submitting" });
@@ -46,17 +115,19 @@ export function SupportTicketButton() {
         method: "POST",
         body: formData,
       });
-      const body = (await response.json().catch(() => ({}))) as {
-        issue?: { identifier: string; url: string };
-        error?: string;
-      };
+      const body = (await response.json().catch(() => ({}))) as SupportTicketResponse;
       if (!response.ok || !body.issue) {
         throw new Error(body.error ?? "Support ticket failed.");
       }
-      setState({ status: "success", issue: body.issue });
+      setState({
+        status: "success",
+        issue: body.issue,
+        attachment: body.attachment,
+        imageUrl: body.imageUrl ?? null,
+      });
       setTopic("");
       setExplanation("");
-      if (fileRef.current) fileRef.current.value = "";
+      clearImage();
     } catch (error) {
       setState({
         status: "error",
@@ -141,11 +212,57 @@ export function SupportTicketButton() {
                 />
               </label>
 
-              <label className="flex cursor-pointer items-center gap-3 rounded-[0.85rem] border border-dashed border-[#d8cab5] bg-white px-3 py-3 text-sm font-semibold text-[#5f523f]">
+              <label
+                data-testid="support-image-dropzone"
+                onDragEnter={handleImageDrag}
+                onDragOver={handleImageDrag}
+                onDragLeave={handleImageDrag}
+                onDrop={handleImageDrop}
+                className={`flex cursor-pointer items-center gap-3 rounded-[0.85rem] border border-dashed px-3 py-3 text-sm font-semibold transition ${
+                  isDraggingImage
+                    ? "border-[#171717] bg-[#f4ead9] text-[#171717]"
+                    : "border-[#d8cab5] bg-white text-[#5f523f]"
+                }`}
+              >
                 <Camera className="h-4 w-4" />
-                <span>Attach image</span>
-                <input ref={fileRef} type="file" accept="image/*" className="sr-only" />
+                <span>{isDraggingImage ? "Drop image" : "Attach image"}</span>
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="image/*"
+                  className="sr-only"
+                  onChange={(event) => selectImage(event.target.files?.[0] ?? null)}
+                />
               </label>
+
+              {selectedImage ? (
+                <div className="rounded-[0.85rem] border border-[#d8cab5] bg-white p-3">
+                  <div className="flex items-start gap-3">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={selectedImage.previewUrl}
+                      alt=""
+                      className="h-16 w-16 shrink-0 rounded-[0.65rem] object-cover"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-[#171717]">
+                        {selectedImage.name}
+                      </p>
+                      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#8b7a63]">
+                        Ready to attach - {formatFileSize(selectedImage.size)}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={clearImage}
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#d8cab5] text-[#5f523f]"
+                      aria-label="Remove attached image"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              ) : null}
 
               {state.status === "success" ? (
                 <p className="rounded-[0.85rem] border border-[#b7ddc2] bg-[#e8f6ed] px-3 py-2 text-sm font-semibold text-[#2f7b4f]">
@@ -158,6 +275,13 @@ export function SupportTicketButton() {
                   >
                     {state.issue.identifier}
                   </a>
+                  {state.attachment?.status === "linked" ? " with image attached" : null}
+                </p>
+              ) : null}
+              {state.status === "success" && state.attachment?.status === "failed" ? (
+                <p className="rounded-[0.85rem] border border-[#eadfce] bg-white px-3 py-2 text-sm font-semibold text-[#7b6b54]">
+                  Image uploaded, but Linear attachment card failed. The image URL is still in
+                  the ticket description.
                 </p>
               ) : null}
               {state.status === "error" ? (
@@ -196,4 +320,12 @@ export function SupportTicketButton() {
       ) : null}
     </>
   );
+}
+
+function formatFileSize(size: number) {
+  if (size < 1024) return `${size} B`;
+  const kb = size / 1024;
+  if (kb < 1024) return `${kb.toFixed(kb >= 10 ? 0 : 1)} KB`;
+  const mb = kb / 1024;
+  return `${mb.toFixed(mb >= 10 ? 0 : 1)} MB`;
 }

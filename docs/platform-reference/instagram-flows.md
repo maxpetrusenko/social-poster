@@ -45,9 +45,9 @@ Both require an **Instagram Business** or **Creator** account linked to a Facebo
      │────────────────>│                 │
      │                 │                 │
      │  Redirect to    │                 │
-     │  instagram.com/ │                 │
-     │  oauth/authorize│                 │
-     │  /v2?...        │                 │
+     │  www.instagram  │                 │
+     │  .com/oauth/    │                 │
+     │  authorize?...  │                 │
      │<────────────────│                 │
      │                 │                 │
      │  User logs in   │                 │
@@ -97,7 +97,7 @@ Token lifecycle:
 ### 2B. Authorization URL
 
 ```
-GET https://www.instagram.com/oauth/authorize/v2
+GET https://www.instagram.com/oauth/authorize
   ?client_id={APP_ID}
   &redirect_uri={REDIRECT_URI}
   &response_type=code

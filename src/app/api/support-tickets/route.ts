@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
-import { uploadImageAsset } from "@/lib/storage/r2";
 import {
   createSupportTicket,
   normalizeSupportTicketSource,
+  uploadLinearFileAsset,
   type SupportTicketSource,
 } from "@/lib/support/tickets";
 import { requireTenantContext } from "@/lib/tenancy";
@@ -37,27 +37,28 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  const parsed = await parseTicketRequest(request);
-  if (!parsed.topic || !parsed.explanation) {
-    return NextResponse.json(
-      { error: "Topic and explanation are required." },
-      { status: 400 }
-    );
-  }
-
-  let imageUrl = parsed.imageUrl ?? null;
-  if (parsed.imageFile) {
-    const upload = await uploadSupportImage(parsed.imageFile);
-    if (upload instanceof NextResponse) return upload;
-    imageUrl = upload;
-  }
-
   try {
+    const parsed = await parseTicketRequest(request);
+    if (!parsed.topic || !parsed.explanation) {
+      return NextResponse.json(
+        { error: "Topic and explanation are required." },
+        { status: 400 }
+      );
+    }
+
+    let imageUrl = parsed.imageUrl ?? null;
+    if (parsed.imageFile) {
+      const upload = await uploadSupportImage(parsed.imageFile);
+      if (upload instanceof NextResponse) return upload;
+      imageUrl = upload;
+    }
+
     const ticket = await createSupportTicket({
       source: parsed.source,
       topic: parsed.topic,
       explanation: parsed.explanation,
       imageUrl,
+      imageName: parsed.imageFile?.name ?? null,
       sourceUrl: parsed.sourceUrl,
       pageTitle: parsed.pageTitle,
       autoRepair: parsed.autoRepair,
@@ -80,8 +81,15 @@ export async function POST(request: NextRequest) {
         : null,
     });
 
-    return NextResponse.json(ticket);
+    return NextResponse.json({ ...ticket, imageUrl });
   } catch (error) {
+    if (error instanceof Error && /formdata|multipart/i.test(error.message)) {
+      return NextResponse.json(
+        { error: "Image upload could not be read. Try attaching the image again." },
+        { status: 400 }
+      );
+    }
+
     return NextResponse.json(
       {
         error:
@@ -135,16 +143,15 @@ async function uploadSupportImage(file: File): Promise<string | NextResponse> {
   }
 
   const bytes = Buffer.from(await file.arrayBuffer());
-  const stored = await uploadImageAsset({
+  const stored = await uploadLinearFileAsset({
     bytes,
     contentType: file.type,
-    keyPrefix: "support-tickets",
-    sourceName: file.name,
+    filename: file.name,
   });
 
   if (!stored) {
     return NextResponse.json(
-      { error: "Image storage is not configured. Add R2 env or send an image URL." },
+      { error: "Linear file upload is not configured. Add LINEAR_API_KEY or send an image URL." },
       { status: 503 }
     );
   }

@@ -81,6 +81,7 @@ export function ConnectionsPage({
   const [disconnectingId, setDisconnectingId] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [checkingBirdId, setCheckingBirdId] = useState<string | null>(null);
+  const [reconnectingBirdId, setReconnectingBirdId] = useState<string | null>(null);
 
   const insightById = useMemo(
     () => new Map(insights.map((item) => [item.id, item])),
@@ -477,6 +478,36 @@ export function ConnectionsPage({
     }
   }
 
+  async function handleReconnectBird(platformId: string, authToken: string, ct0: string) {
+    setReconnectingBirdId(platformId);
+
+    try {
+      const response = await fetch(`/api/platforms/${platformId}/reconnect`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ authToken, ct0 }),
+      });
+      const body = (await response.json().catch(() => ({}))) as {
+        message?: string;
+        error?: string;
+      };
+
+      if (!response.ok) {
+        alert(body.error ?? "Reconnect failed — cookies may be invalid.");
+      }
+
+      router.refresh();
+    } catch (reconnectError) {
+      alert(
+        reconnectError instanceof Error
+          ? reconnectError.message
+          : "Reconnect failed."
+      );
+    } finally {
+      setReconnectingBirdId(null);
+    }
+  }
+
   return (
     <div className="bg-[radial-gradient(circle_at_top_left,#fff8ef_0%,transparent_32%),linear-gradient(180deg,#f5f0e6_0%,#eee5d7_100%)]">
       <div className="mx-auto flex w-full max-w-[1500px] flex-col gap-6 px-5 py-6 md:px-8 md:py-8 xl:px-10">
@@ -518,12 +549,14 @@ export function ConnectionsPage({
           togglingId={togglingId}
           disconnectingId={disconnectingId}
           checkingBirdId={checkingBirdId}
+          reconnectingBirdId={reconnectingBirdId}
           onToggle={(platformId) => {
             const platform = platforms.find((item) => item.id === platformId);
             if (platform) handleToggleEnabled(platform);
           }}
           onDisconnect={handleDisconnect}
           onCheckBirdSession={handleCheckBirdSession}
+          onReconnectBird={handleReconnectBird}
         />
       </div>
 

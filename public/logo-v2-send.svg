@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="38%" r="72%">
+      <stop offset="0%" stop-color="#182331"/>
+      <stop offset="66%" stop-color="#0e1520"/>
+      <stop offset="100%" stop-color="#080c12"/>
+    </radialGradient>
+    <linearGradient id="gold" x1="80" y1="60" x2="420" y2="460" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#fff1a6"/>
+      <stop offset="30%" stop-color="#f0d078"/>
+      <stop offset="65%" stop-color="#d2a35d"/>
+      <stop offset="100%" stop-color="#9d6b22"/>
+    </linearGradient>
+    <linearGradient id="hi" x1="100" y1="60" x2="320" y2="340" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#fff8ce" stop-opacity=".7"/>
+      <stop offset="100%" stop-color="#fff8ce" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="arrow-g" x1="280" y1="180" x2="440" y2="100" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#f0d078"/>
+      <stop offset="100%" stop-color="#fff1a6"/>
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feColorMatrix in="blur" type="matrix"
+        values="1 0 0 0 0.92  0 1 0 0 0.56  0 0 1 0 0.12  0 0 0 .38 0" result="warm"/>
+      <feMerge><feMergeNode in="warm"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="arrow-glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="12" result="blur"/>
+      <feColorMatrix in="blur" type="matrix"
+        values="1 0 0 0 0.95  0 1 0 0 0.7  0 0 1 0 0.2  0 0 0 .5 0" result="warm"/>
+      <feMerge><feMergeNode in="warm"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="512" height="512" rx="104" fill="url(#bg)"/>
+
+  <!-- Claw marks — 3 tapered slashes, left side, angled -->
+  <g filter="url(#glow)">
+    <!-- Scratch 1 — leftmost -->
+    <path d="M100 100c-20 60-42 148-52 248-3 28-3 52 2 70 2 9 14 11 18 3
+             42-64 88-148 128-238 10-22 17-40 19-54 2-11-108-42-115-29Z"
+          fill="url(#gold)"/>
+    <path d="M100 100c-12 38-26 86-38 144 32-42 66-78 102-108 5-5-58-46-64-36Z"
+          fill="url(#hi)"/>
+
+    <!-- Scratch 2 — middle -->
+    <path d="M172 78c-16 64-26 152-24 262 1 34 6 62 15 82 3 9 16 10 19 1
+             28-70 56-168 78-280 3-16 4-30 3-40-1-12-86-38-91-25Z"
+          fill="url(#gold)"/>
+    <path d="M172 78c-10 42-18 96-22 160 24-52 48-98 72-138 4-8-46-32-50-22Z"
+          fill="url(#hi)" opacity=".85"/>
+
+    <!-- Scratch 3 — rightmost -->
+    <path d="M240 102c-6 58 0 140 18 244 6 34 16 60 27 78 4 8 18 6 19-4
+             12-68 20-162 22-262 0-16-2-30-6-40-4-12-76-28-80-16Z"
+          fill="url(#gold)"/>
+    <path d="M240 102c-2 38 0 84 8 138 16-50 30-94 42-132 3-10-48-18-50-6Z"
+          fill="url(#hi)" opacity=".75"/>
+  </g>
+
+  <!-- Send arrow — paper plane, upper right, angled up-right -->
+  <g filter="url(#arrow-glow)">
+    <path d="M290 310 L440 120 L380 340 L330 290 L440 120 L290 310 L330 290Z"
+          fill="url(#arrow-g)" opacity=".15"/>
+    <path d="M296 306 L436 124 L376 332Z" fill="url(#arrow-g)"/>
+    <path d="M296 306 L436 124 L338 242Z" fill="#fff8ce" opacity=".4"/>
+    <!-- trail line from arrow -->
+    <line x1="290" y1="310" x2="324" y2="370" stroke="#d2a35d" stroke-width="6"
+          stroke-linecap="round" opacity=".5"/>
+    <line x1="306" y1="326" x2="362" y2="350" stroke="#d2a35d" stroke-width="5"
+          stroke-linecap="round" opacity=".4"/>
+  </g>
+</svg>

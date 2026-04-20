@@ -66,10 +66,13 @@ export function credentialsFromEnv(platform: string): ProviderCredentials {
       };
     case "tiktok":
       return {
-        clientId: envValue("TIKTOK_CLIENT_KEY", "PLATFORM_TIKTOK_CLIENT_KEY"),
-        clientSecret: envValue(
-          "TIKTOK_CLIENT_SECRET",
-          "PLATFORM_TIKTOK_CLIENT_SECRET"
+        clientId: envValueForRuntime(
+          ["TIKTOK_CLIENT_KEY_DEV", "PLATFORM_TIKTOK_CLIENT_KEY_DEV"],
+          ["TIKTOK_CLIENT_KEY", "PLATFORM_TIKTOK_CLIENT_KEY"]
+        ),
+        clientSecret: envValueForRuntime(
+          ["TIKTOK_CLIENT_SECRET_DEV", "PLATFORM_TIKTOK_CLIENT_SECRET_DEV"],
+          ["TIKTOK_CLIENT_SECRET", "PLATFORM_TIKTOK_CLIENT_SECRET"]
         ),
       };
     case "youtube":
@@ -150,6 +153,18 @@ function envValue(...keys: string[]) {
   }
 
   return undefined;
+}
+
+function envValueForRuntime(devKeys: string[], prodKeys: string[]) {
+  return isLocalRuntime()
+    ? envValue(...devKeys, ...prodKeys)
+    : envValue(...prodKeys);
+}
+
+function isLocalRuntime() {
+  if (process.env.NODE_ENV !== "production") return true;
+  const appUrl = process.env.APP_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? "";
+  return /https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(?::|\/|$)/i.test(appUrl);
 }
 
 export function readAccessToken(

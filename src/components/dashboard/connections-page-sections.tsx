@@ -189,17 +189,21 @@ export function ConnectionsGrid({
   togglingId,
   disconnectingId,
   checkingBirdId,
+  reconnectingBirdId,
   onToggle,
   onDisconnect,
   onCheckBirdSession,
+  onReconnectBird,
 }: {
   items: ConnectionCardItem[];
   togglingId: string | null;
   disconnectingId: string | null;
   checkingBirdId: string | null;
+  reconnectingBirdId: string | null;
   onToggle: (platformId: string) => void;
   onDisconnect: (platformId: string) => void;
   onCheckBirdSession: (platformId: string) => void;
+  onReconnectBird: (platformId: string, authToken: string, ct0: string) => void;
 }) {
   if (items.length === 0) {
     return (
@@ -223,9 +227,11 @@ export function ConnectionsGrid({
           toggling={togglingId === item.id}
           disconnecting={disconnectingId === item.id}
           checkingBird={checkingBirdId === item.id}
+          reconnectingBird={reconnectingBirdId === item.id}
           onToggle={onToggle}
           onDisconnect={onDisconnect}
           onCheckBirdSession={onCheckBirdSession}
+          onReconnectBird={onReconnectBird}
         />
       ))}
     </section>
@@ -237,17 +243,21 @@ function ConnectionCard({
   toggling,
   disconnecting,
   checkingBird,
+  reconnectingBird,
   onToggle,
   onDisconnect,
   onCheckBirdSession,
+  onReconnectBird,
 }: {
   item: ConnectionCardItem;
   toggling: boolean;
   disconnecting: boolean;
   checkingBird: boolean;
+  reconnectingBird: boolean;
   onToggle: (platformId: string) => void;
   onDisconnect: (platformId: string) => void;
   onCheckBirdSession: (platformId: string) => void;
+  onReconnectBird: (platformId: string, authToken: string, ct0: string) => void;
 }) {
   const canCheckBirdSession =
     item.provider === "bird" && item.platformType === "twitter";
@@ -277,7 +287,7 @@ function ConnectionCard({
       ) : null}
 
       {canCheckBirdSession ? (
-        <BirdSessionPanel item={item} checking={checkingBird} onCheck={onCheckBirdSession} />
+        <BirdSessionPanel item={item} checking={checkingBird} reconnecting={reconnectingBird} onCheck={onCheckBirdSession} onReconnect={onReconnectBird} />
       ) : null}
 
       {!item.enabled ? (
@@ -334,15 +344,22 @@ function ConnectionCard({
 function BirdSessionPanel({
   item,
   checking,
+  reconnecting,
   onCheck,
+  onReconnect,
 }: {
   item: ConnectionCardItem;
   checking: boolean;
+  reconnecting: boolean;
   onCheck: (platformId: string) => void;
+  onReconnect: (platformId: string, authToken: string, ct0: string) => void;
 }) {
   const session = item.birdSession;
   const ok = session?.status === "ok";
   const failed = session?.status === "failed";
+  const [showForm, setShowForm] = useState(false);
+  const [authToken, setAuthToken] = useState("");
+  const [ct0, setCt0] = useState("");
 
   return (
     <div
@@ -378,15 +395,69 @@ function BirdSessionPanel({
           ) : null}
         </div>
       </div>
-      <button
-        type="button"
-        onClick={() => onCheck(item.id)}
-        disabled={checking}
-        className="mt-2 inline-flex items-center gap-2 rounded-[0.75rem] border border-current/20 bg-white/70 px-3 py-1.5 text-xs font-semibold disabled:opacity-60"
-      >
-        <RefreshCw className={cn("h-3.5 w-3.5", checking ? "animate-spin" : "")} />
-        {checking ? "Checking..." : "Check Bird session"}
-      </button>
+
+      {showForm ? (
+        <div className="mt-2 space-y-2">
+          <input
+            type="text"
+            placeholder="auth_token cookie"
+            value={authToken}
+            onChange={(e) => setAuthToken(e.target.value)}
+            className="w-full rounded-lg border border-[#ddd2bf] bg-white px-2.5 py-1.5 text-xs text-[#171717] placeholder:text-[#a89b86] focus:border-[#c9b899] focus:outline-none"
+          />
+          <input
+            type="text"
+            placeholder="ct0 cookie"
+            value={ct0}
+            onChange={(e) => setCt0(e.target.value)}
+            className="w-full rounded-lg border border-[#ddd2bf] bg-white px-2.5 py-1.5 text-xs text-[#171717] placeholder:text-[#a89b86] focus:border-[#c9b899] focus:outline-none"
+          />
+          <div className="flex gap-2">
+            <button
+              type="button"
+              disabled={reconnecting || !authToken.trim() || !ct0.trim()}
+              onClick={() => {
+                onReconnect(item.id, authToken.trim(), ct0.trim());
+                setAuthToken("");
+                setCt0("");
+                setShowForm(false);
+              }}
+              className="inline-flex items-center gap-2 rounded-[0.75rem] border border-[#c9b899] bg-[#f5edd9] px-3 py-1.5 text-xs font-semibold text-[#6c5d48] disabled:opacity-60"
+            >
+              {reconnecting ? "Reconnecting..." : "Save & verify"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowForm(false)}
+              className="inline-flex items-center rounded-[0.75rem] px-3 py-1.5 text-xs font-semibold opacity-70 hover:opacity-100"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="mt-2 flex flex-wrap gap-2">
+          {failed ? (
+            <button
+              type="button"
+              onClick={() => setShowForm(true)}
+              disabled={reconnecting}
+              className="inline-flex items-center gap-2 rounded-[0.75rem] border border-[#c9b899] bg-[#f5edd9] px-3 py-1.5 text-xs font-semibold text-[#6c5d48] disabled:opacity-60"
+            >
+              Reconnect
+            </button>
+          ) : null}
+          <button
+            type="button"
+            onClick={() => onCheck(item.id)}
+            disabled={checking}
+            className="inline-flex items-center gap-2 rounded-[0.75rem] border border-current/20 bg-white/70 px-3 py-1.5 text-xs font-semibold disabled:opacity-60"
+          >
+            <RefreshCw className={cn("h-3.5 w-3.5", checking ? "animate-spin" : "")} />
+            {checking ? "Checking..." : "Check Bird session"}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

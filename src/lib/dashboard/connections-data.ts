@@ -2,9 +2,13 @@ import { db } from "@/db";
 import { platforms, profiles } from "@/db/schema";
 import { getDashboardInsights } from "@/lib/dashboard/insights";
 import { refreshPlatformProfiles } from "@/lib/providers/profile-refresh";
-import { and, eq } from "drizzle-orm";
-import crypto from "node:crypto";
+import { eq } from "drizzle-orm";
 import { PLATFORM_TYPES, type PlatformType } from "@/lib/platforms";
+import { dedupePlatformRows } from "@/lib/platform-dedupe";
+import {
+  findPlatformByExternalAccount,
+  upsertPlatformConnection,
+} from "@/lib/platform-connections";
 import type {
   PlatformRow as ConnectionPlatformRow,
   ProfileRow as ConnectionProfileRow,
@@ -23,7 +27,7 @@ export async function getConnectionsPageData(workspaceId: string) {
   ]);
 
   return {
-    platforms: platformRows as ConnectionPlatformRow[],
+    platforms: dedupePlatformRows(platformRows) as ConnectionPlatformRow[],
     profiles: profileRows as ConnectionProfileRow[],
     insights: dashboard.platformInsights,
   };
@@ -50,17 +54,12 @@ async function syncLateAccountsForWorkspace(workspaceId: string) {
     const platformType = normalizeLatePlatform(account.platform);
     if (!accountId || !platformType) continue;
 
-    const existing = await db
-      .select()
-      .from(platforms)
-      .where(
-        and(
-          eq(platforms.workspaceId, workspaceId),
-          eq(platforms.provider, "zernio"),
-          eq(platforms.accountId, accountId)
-        )
-      )
-      .get();
+    const existing = await findPlatformByExternalAccount({
+      workspaceId,
+      provider: "zernio",
+      type: platformType,
+      accountId,
+    });
 
     const displayName =
       account.displayName?.trim() ||
@@ -78,23 +77,7 @@ async function syncLateAccountsForWorkspace(workspaceId: string) {
       notes: "Synced from Late / GetLate connected accounts.",
     };
 
-    if (existing) {
-      await db
-        .update(platforms)
-        .set({
-          name: displayName,
-          type: platformType,
-          handle,
-          config,
-          enabled,
-          updatedAt: now,
-        })
-        .where(eq(platforms.id, existing.id));
-      continue;
-    }
-
-    await db.insert(platforms).values({
-      id: crypto.randomUUID(),
+    await upsertPlatformConnection({
       workspaceId,
       name: displayName,
       type: platformType,
@@ -103,8 +86,7 @@ async function syncLateAccountsForWorkspace(workspaceId: string) {
       provider: "zernio",
       config,
       enabled,
-      createdAt: now,
-      updatedAt: now,
+      now,
     });
   }
 }

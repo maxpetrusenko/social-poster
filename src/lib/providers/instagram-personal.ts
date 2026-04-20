@@ -10,9 +10,11 @@ import type {
   RateLimitConfig,
 } from "./types";
 
-const AUTH_URL = "https://api.instagram.com/oauth/authorize";
+const AUTH_URL = "https://www.instagram.com/oauth/authorize";
 const TOKEN_URL = "https://api.instagram.com/oauth/access_token";
-const API_BASE = "https://graph.instagram.com/v21.0";
+const API_BASE = "https://graph.instagram.com/v25.0";
+const LONG_LIVED_TOKEN_URL = "https://graph.instagram.com/access_token";
+const REFRESH_TOKEN_URL = "https://graph.instagram.com/refresh_access_token";
 const CONTAINER_POLL_INTERVAL_MS = 2000;
 const CONTAINER_POLL_MAX_ATTEMPTS = 60;
 
@@ -73,7 +75,7 @@ export class InstagramPersonalProvider extends OAuthProvider {
   async refreshToken(refreshToken: string): Promise<OAuthTokens> {
     const body = await this.requestJson<Record<string, unknown>>(
       "GET",
-      `${API_BASE}/refresh_access_token`,
+      REFRESH_TOKEN_URL,
       {
         params: {
           grant_type: "ig_refresh_token",
@@ -85,14 +87,14 @@ export class InstagramPersonalProvider extends OAuthProvider {
   }
 
   async getProfile(accessToken: string): Promise<AccountProfile> {
-    const body = await this.requestJson<Record<string, unknown>>(
+    const body = await this.requestInstagramGraphJson<Record<string, unknown>>(
       "GET",
       `${API_BASE}/me`,
       {
         accessToken,
         params: {
           fields:
-            "user_id,username,name,profile_picture_url,followers_count,biography",
+            "user_id,username,name,profile_picture_url,followers_count",
         },
       }
     );
@@ -131,7 +133,7 @@ export class InstagramPersonalProvider extends OAuthProvider {
   ): Promise<OAuthTokens> {
     const body = await this.requestJson<Record<string, unknown>>(
       "GET",
-      `${API_BASE}/access_token`,
+      LONG_LIVED_TOKEN_URL,
       {
         params: {
           grant_type: "ig_exchange_token",
@@ -226,7 +228,7 @@ export class InstagramPersonalProvider extends OAuthProvider {
     accessToken: string,
     payload: Record<string, string | boolean>
   ) {
-    const body = await this.requestJson<Record<string, unknown>>(
+    const body = await this.requestInstagramGraphJson<Record<string, unknown>>(
       "POST",
       `${API_BASE}/me/media`,
       { accessToken, json: payload }
@@ -243,7 +245,7 @@ export class InstagramPersonalProvider extends OAuthProvider {
 
   private async waitForContainer(accessToken: string, containerId: string) {
     for (let attempt = 0; attempt < CONTAINER_POLL_MAX_ATTEMPTS; attempt += 1) {
-      const body = await this.requestJson<Record<string, unknown>>(
+      const body = await this.requestInstagramGraphJson<Record<string, unknown>>(
         "GET",
         `${API_BASE}/${containerId}`,
         { accessToken, params: { fields: "status_code,status" } }
@@ -268,7 +270,7 @@ export class InstagramPersonalProvider extends OAuthProvider {
     accessToken: string,
     containerId: string
   ): Promise<PublishResult> {
-    const body = await this.requestJson<Record<string, unknown>>(
+    const body = await this.requestInstagramGraphJson<Record<string, unknown>>(
       "POST",
       `${API_BASE}/me/media_publish`,
       { accessToken, json: { creation_id: containerId } }
@@ -279,6 +281,25 @@ export class InstagramPersonalProvider extends OAuthProvider {
       url: mediaId ? `https://www.instagram.com/p/${mediaId}/` : undefined,
       extra: body,
     };
+  }
+
+  private requestInstagramGraphJson<T>(
+    method: string,
+    url: string,
+    options: {
+      accessToken?: string;
+      params?: Record<string, string | number | boolean | undefined | null>;
+      json?: unknown;
+    } = {}
+  ) {
+    const { accessToken, params, ...rest } = options;
+    return this.requestJson<T>(method, url, {
+      ...rest,
+      params: {
+        ...(params ?? {}),
+        ...(accessToken ? { access_token: accessToken } : {}),
+      },
+    });
   }
 }
 

@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+
 const DEFAULT_TWEET_CHAR_LIMIT = 280;
 const DEFAULT_THREAD_CHUNK_LIMIT = 260;
 
@@ -6,6 +8,7 @@ export type BirdCredentialSource = {
   X_CT0?: string | null;
   authToken?: string | null;
   ct0?: string | null;
+  cookieFile?: string | null;
   useInstalledBirdSession?: boolean | null;
   chromeProfile?: string | null;
   chromeProfileDir?: string | null;
@@ -22,6 +25,7 @@ export type BirdCredentialSource = {
 export type BirdCredentials = {
   authToken: string | null;
   ct0: string | null;
+  cookieFile: string | null;
   useInstalledBirdSession: boolean;
   chromeProfile: string | null;
   chromeProfileDir: string | null;
@@ -115,6 +119,26 @@ function readCredentialNumber(
   return fallback;
 }
 
+function readCookieFile(
+  filePath: string
+): { authToken: string; ct0: string } | null {
+  try {
+    const raw = readFileSync(filePath, "utf8");
+    const parsed = JSON.parse(raw);
+    const cookies: Array<{ name: string; value: string }> = Array.isArray(
+      parsed
+    )
+      ? parsed
+      : parsed?.cookies ?? [];
+    const authToken = cookies.find((c) => c.name === "auth_token")?.value;
+    const ct0 = cookies.find((c) => c.name === "ct0")?.value;
+    if (authToken && ct0) return { authToken, ct0 };
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 function readCredentialStringArray(
   credentials: BirdCredentialSource,
   key: keyof BirdCredentialSource
@@ -150,16 +174,33 @@ export function resolveBirdCredentialsFromSource(
     "ct0",
     "accessTokenSecret"
   );
+  const cookieFile =
+    readCredentialString(credentials, "cookieFile") ||
+    env.BIRD_COOKIE_FILE ||
+    null;
+
   const allowEnvAuthFallback =
     env.BIRD_FORCE_ENV_AUTH === "true" || !useInstalledBirdSession;
 
+  let authToken =
+    explicitAuthToken ||
+    (allowEnvAuthFallback ? env.X_AUTH_TOKEN || env.AUTH_TOKEN || null : null);
+  let ct0 =
+    explicitCt0 ||
+    (allowEnvAuthFallback ? env.X_CT0 || env.CT0 || null : null);
+
+  if ((!authToken || !ct0) && cookieFile) {
+    const fromFile = readCookieFile(cookieFile);
+    if (fromFile) {
+      authToken = authToken || fromFile.authToken;
+      ct0 = ct0 || fromFile.ct0;
+    }
+  }
+
   return {
-    authToken:
-      explicitAuthToken ||
-      (allowEnvAuthFallback ? env.X_AUTH_TOKEN || env.AUTH_TOKEN || null : null),
-    ct0:
-      explicitCt0 ||
-      (allowEnvAuthFallback ? env.X_CT0 || env.CT0 || null : null),
+    authToken,
+    ct0,
+    cookieFile,
     useInstalledBirdSession,
     chromeProfile: readCredentialString(credentials, "chromeProfile"),
     chromeProfileDir:

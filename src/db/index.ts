@@ -4,6 +4,7 @@ import Database from "better-sqlite3";
 import * as schema from "./schema";
 import path from "node:path";
 import fs from "node:fs";
+import { collapseDuplicatePlatformConnections } from "./platform-dedupe";
 
 function columnExists(sqlite: Database.Database, table: string, column: string) {
   const columns = sqlite
@@ -329,6 +330,15 @@ function ensureSchema(sqlite: Database.Database) {
   addColumnIfMissing(sqlite, "reply_candidates", "workspace_id", "workspace_id TEXT");
   addColumnIfMissing(sqlite, "rss_settings", "traction_weight", "traction_weight INTEGER NOT NULL DEFAULT 35");
   addColumnIfMissing(sqlite, "rss_settings", "transformation_prompt", "transformation_prompt TEXT NOT NULL DEFAULT ''");
+
+  collapseDuplicatePlatformConnections(sqlite);
+  sqlite.exec(`
+    CREATE UNIQUE INDEX IF NOT EXISTS platforms_account_identity_unique
+    ON platforms(workspace_id, provider, type, account_id)
+    WHERE workspace_id IS NOT NULL
+      AND account_id IS NOT NULL
+      AND account_id != '';
+  `);
 }
 
 function checkIntegrity(sqlite: Database.Database): {

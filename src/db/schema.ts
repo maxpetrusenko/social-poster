@@ -144,7 +144,11 @@ export const platforms = sqliteTable("platforms", {
   enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
-});
+}, (table) => [
+  uniqueIndex("platforms_account_identity_unique")
+    .on(table.workspaceId, table.provider, table.type, table.accountId)
+    .where(sql`workspace_id IS NOT NULL AND account_id IS NOT NULL AND account_id != ''`),
+]);
 
 // ── Social Profile ────────────────────────────────────────────────────
 // Your brand identity / voice settings
