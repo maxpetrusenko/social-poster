@@ -15,8 +15,9 @@ export default async function SchedulesPage() {
   const tenant = await getTenantContext();
   if (!tenant) redirect("/login");
 
-  const { scheduleInsights, runtimeScheduleCount, scheduleRuntimeDrift } =
+  const { scheduleInsights: allScheduleInsights, runtimeScheduleCount, scheduleRuntimeDrift } =
     await getDashboardInsights(tenant.currentWorkspace.id);
+  const scheduleInsights = allScheduleInsights.filter((s) => s.jobType !== "reply_engine");
   const activeCount = scheduleInsights.filter((schedule) => schedule.enabled).length;
   const failedCount = scheduleInsights.filter((schedule) => schedule.lastStatus === "failed").length;
   const nextRun = scheduleInsights

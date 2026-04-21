@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { DashboardDrawerShell } from "@/components/dashboard/drawer-shell";
 import { getSession } from "@/lib/auth";
+import { isAdmin } from "@/lib/admin-auth";
 
 export default async function DashboardLayout({
   children,
@@ -11,8 +12,7 @@ export default async function DashboardLayout({
   if (!session) redirect("/login");
 
   return (
-    <DashboardDrawerShell
-    >
+    <DashboardDrawerShell showAdminLink={isAdmin(session.email)}>
       {children}
     </DashboardDrawerShell>
   );

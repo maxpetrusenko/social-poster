@@ -3,6 +3,7 @@ import type { ProviderCredentials } from "../_shared/base-platform";
 import { config } from "./config";
 import { createAuth } from "./auth";
 import { createPosting } from "./posting";
+import { createComments } from "./comments";
 
 export { config } from "./config";
 export type { PlatformModule } from "../_shared/types";
@@ -18,5 +19,6 @@ export function createPlatformModule(
     rateLimits: { requestsPerHour: 200, requestsPerDay: 100, publishPerDay: 100 },
     auth: createAuth(credentials, variant),
     posting: createPosting(credentials, variant),
+    comments: createComments(),
   };
 }

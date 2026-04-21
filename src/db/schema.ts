@@ -20,6 +20,13 @@ export const organizations = sqliteTable("organizations", {
   slug: text("slug").notNull().unique(),
   logoUrl: text("logo_url"),
   defaultTimezone: text("default_timezone").notNull().default("UTC"),
+  plan: text("plan").notNull().default("free"), // "free" | "starter" | "pro" | "business"
+  planLabel: text("plan_label").notNull().default("Free"),
+  maxProfiles: integer("max_profiles").notNull().default(5),
+  maxPlatforms: integer("max_platforms").notNull().default(3),
+  maxPostsPerMonth: integer("max_posts_per_month").notNull().default(50),
+  billingEmail: text("billing_email"),
+  billingCycleStart: integer("billing_cycle_start", { mode: "timestamp" }),
   deletionRequestedAt: integer("deletion_requested_at", { mode: "timestamp" }),
   deletionScheduledFor: integer("deletion_scheduled_for", { mode: "timestamp" }),
   deletedAt: integer("deleted_at", { mode: "timestamp" }),
@@ -291,6 +298,62 @@ export const replyCandidates = sqliteTable("reply_candidates", {
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
 });
 
+// ── Social Inbox ─────────────────────────────────────────────────────
+export const inboxConversations = sqliteTable("inbox_conversations", {
+  id: text("id").primaryKey(),
+  workspaceId: text("workspace_id").references(() => workspaces.id, {
+    onDelete: "set null",
+  }),
+  platformId: text("platform_id").references(() => platforms.id, {
+    onDelete: "set null",
+  }),
+  provider: text("provider").notNull(),
+  surface: text("surface").notNull(), // "replies" | "comments" | "dms"
+  externalThreadId: text("external_thread_id").notNull(),
+  externalUrl: text("external_url"),
+  subject: text("subject"),
+  status: text("status").notNull().default("needs_reply"),
+  priority: text("priority").notNull().default("normal"),
+  assigneeUserId: text("assignee_user_id").references(() => users.id, {
+    onDelete: "set null",
+  }),
+  lastMessageAt: integer("last_message_at", { mode: "timestamp" }),
+  firstMessageAt: integer("first_message_at", { mode: "timestamp" }),
+  metadata: text("metadata", { mode: "json" }).$type<Record<string, unknown>>(),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+}, (table) => [
+  uniqueIndex("inbox_conversations_external_unique")
+    .on(table.workspaceId, table.platformId, table.surface, table.externalThreadId)
+    .where(sql`workspace_id IS NOT NULL AND platform_id IS NOT NULL`),
+]);
+
+export const inboxMessages = sqliteTable("inbox_messages", {
+  id: text("id").primaryKey(),
+  conversationId: text("conversation_id")
+    .notNull()
+    .references(() => inboxConversations.id, { onDelete: "cascade" }),
+  workspaceId: text("workspace_id").references(() => workspaces.id, {
+    onDelete: "set null",
+  }),
+  platformId: text("platform_id").references(() => platforms.id, {
+    onDelete: "set null",
+  }),
+  surface: text("surface").notNull(),
+  providerMessageId: text("provider_message_id").notNull(),
+  direction: text("direction").notNull().default("incoming"),
+  authorHandle: text("author_handle").notNull().default(""),
+  authorName: text("author_name"),
+  body: text("body").notNull(),
+  sourceUrl: text("source_url"),
+  sentAt: integer("sent_at", { mode: "timestamp" }),
+  metadata: text("metadata", { mode: "json" }).$type<Record<string, unknown>>(),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+}, (table) => [
+  uniqueIndex("inbox_messages_provider_unique")
+    .on(table.conversationId, table.providerMessageId),
+]);
+
 // ── Dedup Cache ───────────────────────────────────────────────────────
 export const dedupCache = sqliteTable("dedup_cache", {
   id: text("id").primaryKey(),
@@ -348,6 +411,147 @@ export const waitlistSignups = sqliteTable("waitlist_signups", {
   id: text("id").primaryKey(),
   email: text("email").notNull().unique(),
   source: text("source").notNull().default("landing"), // "landing" | "blog" | "social"
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+});
+
+// ── API Keys ─────────────────────────────────────────────────────────
+export const apiKeys = sqliteTable("api_keys", {
+  id: text("id").primaryKey(),
+  workspaceId: text("workspace_id").notNull().references(() => workspaces.id),
+  name: text("name").notNull(),
+  keyHash: text("key_hash").notNull(),
+  keyPrefix: text("key_prefix").notNull(),
+  keySuffix: text("key_suffix").notNull(),
+  scope: text("scope").notNull().default("all"), // "all" | "profile:{id}"
+  permission: text("permission").notNull().default("read"), // "read" | "read_write"
+  status: text("status").notNull().default("active"), // "active" | "revoked"
+  lastUsedAt: integer("last_used_at", { mode: "timestamp" }),
+  revokedAt: integer("revoked_at", { mode: "timestamp" }),
+  createdBy: text("created_by").notNull().references(() => users.id),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+});
+
+// ── Notification Preferences ─────────────────────────────────────────
+export const notificationPreferences = sqliteTable("notification_preferences", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull().references(() => users.id),
+  workspaceId: text("workspace_id").notNull().references(() => workspaces.id),
+  postFailures: integer("post_failures", { mode: "boolean" }).notNull().default(true),
+  accountDisconnects: integer("account_disconnects", { mode: "boolean" }).notNull().default(true),
+  paymentAlerts: integer("payment_alerts", { mode: "boolean" }).notNull().default(true),
+  usageAlerts: integer("usage_alerts", { mode: "boolean" }).notNull().default(true),
+  marketingEmails: integer("marketing_emails", { mode: "boolean" }).notNull().default(true),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+}, (table) => ({
+  userWorkspaceUnique: uniqueIndex("notification_prefs_user_workspace_idx").on(table.userId, table.workspaceId),
+}));
+
+// ── Activity + Email Delivery ────────────────────────────────────────
+export const activityLog = sqliteTable("activity_log", {
+  id: text("id").primaryKey(),
+  workspaceId: text("workspace_id").references(() => workspaces.id, { onDelete: "set null" }),
+  actorUserId: text("actor_user_id").references(() => users.id, { onDelete: "set null" }),
+  eventType: text("event_type").notNull(),
+  severity: text("severity").notNull().default("info"),
+  entityType: text("entity_type"),
+  entityId: text("entity_id"),
+  subject: text("subject").notNull(),
+  body: text("body").notNull().default(""),
+  metadata: text("metadata", { mode: "json" }).$type<Record<string, unknown>>(),
+  correlationId: text("correlation_id"),
+  dedupeKey: text("dedupe_key"),
+  source: text("source").notNull().default("app"),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+}, (table) => [
+  uniqueIndex("activity_log_workspace_dedupe_idx")
+    .on(table.workspaceId, table.dedupeKey)
+    .where(sql`dedupe_key IS NOT NULL AND dedupe_key != ''`),
+]);
+
+export const notifications = sqliteTable("notifications", {
+  id: text("id").primaryKey(),
+  workspaceId: text("workspace_id").references(() => workspaces.id, { onDelete: "cascade" }),
+  activityLogId: text("activity_log_id").references(() => activityLog.id, { onDelete: "cascade" }),
+  recipientUserId: text("recipient_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  channel: text("channel").notNull().default("in_app"),
+  title: text("title").notNull(),
+  body: text("body").notNull().default(""),
+  severity: text("severity").notNull().default("info"),
+  status: text("status").notNull().default("unread"),
+  readAt: integer("read_at", { mode: "timestamp" }),
+  dismissedAt: integer("dismissed_at", { mode: "timestamp" }),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+});
+
+export const notificationDeliveries = sqliteTable("notification_deliveries", {
+  id: text("id").primaryKey(),
+  notificationId: text("notification_id").references(() => notifications.id, { onDelete: "cascade" }),
+  channel: text("channel").notNull().default("email"),
+  provider: text("provider").notNull().default("resend"),
+  status: text("status").notNull().default("pending"),
+  attemptCount: integer("attempt_count").notNull().default(0),
+  externalMessageId: text("external_message_id"),
+  idempotencyKey: text("idempotency_key"),
+  errorClassification: text("error_classification"),
+  errorMessage: text("error_message"),
+  sentAt: integer("sent_at", { mode: "timestamp" }),
+  deliveredAt: integer("delivered_at", { mode: "timestamp" }),
+  failedAt: integer("failed_at", { mode: "timestamp" }),
+  nextRetryAt: integer("next_retry_at", { mode: "timestamp" }),
+  metadata: text("metadata", { mode: "json" }).$type<Record<string, unknown>>(),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+}, (table) => [
+  uniqueIndex("notification_deliveries_idempotency_idx")
+    .on(table.idempotencyKey)
+    .where(sql`idempotency_key IS NOT NULL AND idempotency_key != ''`),
+]);
+
+export const emailEvents = sqliteTable("email_events", {
+  id: text("id").primaryKey(),
+  deliveryId: text("delivery_id").references(() => notificationDeliveries.id, { onDelete: "set null" }),
+  provider: text("provider").notNull(),
+  providerEventId: text("provider_event_id").notNull(),
+  eventType: text("event_type").notNull(),
+  recipientEmail: text("recipient_email"),
+  externalMessageId: text("external_message_id"),
+  payload: text("payload", { mode: "json" }).$type<Record<string, unknown>>(),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+}, (table) => [
+  uniqueIndex("email_events_provider_event_idx").on(table.provider, table.providerEventId),
+]);
+
+export const emailSuppressions = sqliteTable("email_suppressions", {
+  id: text("id").primaryKey(),
+  email: text("email").notNull(),
+  scope: text("scope").notNull().default("marketing"),
+  reason: text("reason").notNull(),
+  provider: text("provider"),
+  eventId: text("event_id"),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+}, (table) => [
+  uniqueIndex("email_suppressions_email_scope_idx").on(table.email, table.scope),
+]);
+
+export const leadMagnetDownloads = sqliteTable("lead_magnet_downloads", {
+  id: text("id").primaryKey(),
+  email: text("email").notNull(),
+  leadMagnetKey: text("lead_magnet_key").notNull(),
+  source: text("source").notNull().default("landing"),
+  marketingConsent: integer("marketing_consent", { mode: "boolean" }).notNull().default(false),
+  metadata: text("metadata", { mode: "json" }).$type<Record<string, unknown>>(),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+});
+
+// ── Usage Events ─────────────────────────────────────────────────────
+export const usageEvents = sqliteTable("usage_events", {
+  id: text("id").primaryKey(),
+  workspaceId: text("workspace_id").notNull().references(() => workspaces.id),
+  platformId: text("platform_id").references(() => platforms.id),
+  eventType: text("event_type").notNull(), // "post_published" | "reply_sent" | "comment_sent" | "dm_sent" | "upload" | "api_call" | "schedule_run"
+  metadata: text("metadata"), // JSON blob
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
 });
 

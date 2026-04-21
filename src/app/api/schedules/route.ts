@@ -1,6 +1,7 @@
 import { db } from "@/db";
 import { platforms, profiles, schedules } from "@/db/schema";
 import { requireApiWorkspaceEditor } from "@/lib/api-authorization";
+import { recordTenantAuditEvent } from "@/lib/audit";
 import { reconcileSchedules } from "@/lib/scheduler";
 import crypto from "node:crypto";
 import { and, eq, inArray } from "drizzle-orm";
@@ -86,6 +87,18 @@ export async function POST(request: Request) {
       .returning();
 
     await reconcileSchedules("schedule:create");
+
+    await recordTenantAuditEvent(tenant, {
+      action: "schedule.create",
+      targetType: "schedule",
+      targetId: id,
+      metadata: {
+        status: enabled !== false ? "scheduled" : "paused",
+        endpoint: "POST /api/schedules",
+        jobType,
+        platformTargetCount: normalizedPlatformIds.length,
+      },
+    });
 
     return Response.json(result[0], { status: 201 });
   } catch (error) {
