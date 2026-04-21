@@ -37,6 +37,27 @@ export const PLATFORM_SPECS: Record<string, PlatformSpec> = {
     supportsMultiImage: true,
     maxImages: 10,
   },
+  instagram_personal: {
+    label: "Instagram",
+    formats: ["Feed", "Story", "Reel", "Carousel"],
+    imageDimensions: {
+      Feed: [
+        { label: "Square", width: 1080, height: 1080, aspect: "1:1" },
+        { label: "Portrait", width: 1080, height: 1350, aspect: "4:5" },
+        { label: "Landscape", width: 1080, height: 566, aspect: "1.91:1" },
+      ],
+      Story: [{ label: "Story", width: 1080, height: 1920, aspect: "9:16" }],
+      Reel: [{ label: "Reel", width: 1080, height: 1920, aspect: "9:16" }],
+      Carousel: [
+        { label: "Square", width: 1080, height: 1080, aspect: "1:1" },
+        { label: "Portrait", width: 1080, height: 1350, aspect: "4:5" },
+      ],
+    },
+    charLimit: 2200,
+    firstCommentLimit: 2200,
+    supportsMultiImage: true,
+    maxImages: 10,
+  },
   facebook: {
     label: "Facebook",
     formats: ["Feed", "Story", "Reel"],
@@ -137,6 +158,56 @@ export const PLATFORM_SPECS: Record<string, PlatformSpec> = {
       default: [{ label: "Thumbnail", width: 1280, height: 720, aspect: "16:9" }],
     },
     charLimit: 5000,
+    supportsMultiImage: false,
+    maxImages: 1,
+  },
+  threads: {
+    label: "Threads",
+    formats: [],
+    imageDimensions: {
+      default: [{ label: "Post", width: 1080, height: 1350, aspect: "4:5" }],
+    },
+    charLimit: 500,
+    supportsMultiImage: true,
+    maxImages: 10,
+  },
+  bluesky: {
+    label: "Bluesky",
+    formats: [],
+    imageDimensions: {
+      default: [{ label: "Post", width: 1200, height: 675, aspect: "16:9" }],
+    },
+    charLimit: 300,
+    supportsMultiImage: true,
+    maxImages: 4,
+  },
+  google_business: {
+    label: "Google Business",
+    formats: [],
+    imageDimensions: {
+      default: [{ label: "Post", width: 1200, height: 900, aspect: "4:3" }],
+    },
+    charLimit: 1500,
+    supportsMultiImage: true,
+    maxImages: 10,
+  },
+  mastodon: {
+    label: "Mastodon",
+    formats: [],
+    imageDimensions: {
+      default: [{ label: "Post", width: 1200, height: 675, aspect: "16:9" }],
+    },
+    charLimit: 500,
+    supportsMultiImage: true,
+    maxImages: 4,
+  },
+  whatsapp: {
+    label: "WhatsApp",
+    formats: [],
+    imageDimensions: {
+      default: [{ label: "Status", width: 1080, height: 1920, aspect: "9:16" }],
+    },
+    charLimit: 700,
     supportsMultiImage: false,
     maxImages: 1,
   },

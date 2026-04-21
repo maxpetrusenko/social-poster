@@ -3,6 +3,7 @@
 import { ChevronRight } from "lucide-react";
 import { useEffect, useState } from "react";
 import { PlatformBrandIcon } from "./platform-brand-icon";
+import { PlatformPostPreviewCard } from "@/components/platform-post-preview";
 
 // ── OG metadata lazy loader ──────────────────────────────────────────
 
@@ -163,32 +164,15 @@ export function XPreviewCard({
   const displayHandle = handle || "@you";
 
   return (
-    <div className="rounded-[18px] border border-slate-200 bg-white p-4 text-[13px] leading-6 text-slate-900">
-      <div className="mb-2 flex items-center gap-2">
-        <div className="h-9 w-9 rounded-full bg-slate-200" aria-hidden />
-        <div className="flex-1">
-          <div className="flex items-center gap-1">
-            <span className="font-semibold">You</span>
-            <span className="text-slate-500">{displayHandle}</span>
-          </div>
-          <span className="text-xs text-slate-500">now</span>
-        </div>
-      </div>
-      {content ? (
-        <p className="whitespace-pre-wrap">{content}</p>
-      ) : (
-        <p className="italic text-slate-400">No caption available yet.</p>
-      )}
-      {mediaUrl ? (
-        <div className="mt-3 overflow-hidden rounded-[14px] border border-slate-200">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={mediaUrl}
-            alt=""
-            className="max-h-80 w-full object-cover"
-          />
-        </div>
-      ) : sourceUrl ? (
+    <div>
+      <PlatformPostPreviewCard
+        type="x"
+        content={content}
+        mediaUrls={mediaUrl ? [mediaUrl] : []}
+        handle={displayHandle}
+        name="You"
+      />
+      {!mediaUrl && sourceUrl ? (
         <div className="mt-3">
           <OgLinkCard
             sourceUrl={sourceUrl}
@@ -218,34 +202,16 @@ export function LinkedInPreviewCard({
   handle: string | null;
 }) {
   return (
-    <div className="rounded-[18px] border border-slate-200 bg-white p-0 text-[13px] leading-6 text-slate-900">
-      <div className="flex items-center gap-3 px-4 pt-3">
-        <div className="h-10 w-10 rounded-full bg-slate-200" aria-hidden />
-        <div className="flex-1">
-          <div className="font-semibold">You</div>
-          <div className="text-xs text-slate-500">
-            {handle || "Your headline"} · now
-          </div>
-        </div>
-      </div>
-      <div className="px-4 pb-3 pt-2">
-        {content ? (
-          <p className="whitespace-pre-wrap">{content}</p>
-        ) : (
-          <p className="italic text-slate-400">No caption available yet.</p>
-        )}
-      </div>
-      {mediaUrl ? (
-        <div className="border-t border-slate-200">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={mediaUrl}
-            alt=""
-            className="max-h-96 w-full object-cover"
-          />
-        </div>
-      ) : sourceUrl ? (
-        <div className="border-t border-slate-200">
+    <div>
+      <PlatformPostPreviewCard
+        type="linkedin"
+        content={content}
+        mediaUrls={mediaUrl ? [mediaUrl] : []}
+        handle={handle}
+        name="You"
+      />
+      {!mediaUrl && sourceUrl ? (
+        <div className="mt-3">
           <OgLinkCard
             sourceUrl={sourceUrl}
             sourceHost={sourceHost}
@@ -253,12 +219,6 @@ export function LinkedInPreviewCard({
           />
         </div>
       ) : null}
-      <div className="flex items-center gap-4 border-t border-slate-200 px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-slate-500">
-        <span>Like</span>
-        <span>Comment</span>
-        <span>Repost</span>
-        <span>Send</span>
-      </div>
     </div>
   );
 }
@@ -277,22 +237,15 @@ export function GenericPreviewCard({
   sourceHost: string | null;
 }) {
   return (
-    <div className="rounded-[18px] border border-slate-200 bg-white p-4 text-[13px] leading-6 text-slate-900">
-      {content ? (
-        <p className="whitespace-pre-wrap">{content}</p>
-      ) : (
-        <p className="italic text-slate-400">No caption available yet.</p>
-      )}
-      {mediaUrl ? (
-        <div className="mt-3 overflow-hidden rounded-[14px] border border-slate-200">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={mediaUrl}
-            alt=""
-            className="max-h-80 w-full object-cover"
-          />
-        </div>
-      ) : sourceUrl ? (
+    <div>
+      <PlatformPostPreviewCard
+        type="generic"
+        content={content}
+        mediaUrls={mediaUrl ? [mediaUrl] : []}
+        handle={null}
+        name="Preview"
+      />
+      {!mediaUrl && sourceUrl ? (
         <div className="mt-3">
           <OgLinkCard
             sourceUrl={sourceUrl}
@@ -323,11 +276,27 @@ export function PlatformPreview({
   sourceHost: string | null;
   handle: string | null;
 }) {
-  const props = { content, mediaUrl, sourceUrl, sourceHost, handle };
-
-  if (type === "x" || type === "twitter") return <XPreviewCard {...props} />;
-  if (type === "linkedin") return <LinkedInPreviewCard {...props} />;
-  return <GenericPreviewCard {...props} />;
+  return (
+    <div>
+      <PlatformPostPreviewCard
+        type={type}
+        content={content}
+        mediaUrls={mediaUrl ? [mediaUrl] : []}
+        handle={handle}
+        name="You"
+      />
+      {!mediaUrl && sourceUrl ? (
+        <div className="mt-3">
+          <OgLinkCard
+            sourceUrl={sourceUrl}
+            sourceHost={sourceHost}
+            imageUrl={null}
+            compact
+          />
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 // ── Collapsible section wrapper ──────────────────────────────────────

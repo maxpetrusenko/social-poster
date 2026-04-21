@@ -1,7 +1,7 @@
 import "server-only";
 
 import { randomUUID } from "node:crypto";
-import { and, desc, eq } from "drizzle-orm";
+import { and, count, desc, eq, isNull } from "drizzle-orm";
 import { db } from "@/db";
 import {
   inboxConversations,
@@ -55,13 +55,17 @@ export type InboxDisplayRow = {
   platformLabel: string;
   platformId: string;
   author: string;
+  authorAvatarUrl: string | null;
   text: string;
   sourceUrl: string | null;
   receivedAt: string | null;
   status: string;
   direction: string;
   canReply: boolean;
+  isUnread: boolean;
 };
+
+export type InboxUnreadCounts = Record<InboxSurface, number>;
 
 export type InboxPullResult = {
   pulled: number;
@@ -95,6 +99,50 @@ export async function getSocialInboxSurfaceData(
 
   const rows = await listInboxRows(workspaceId, surface);
   return { platforms: summaries, rows };
+}
+
+export async function getInboxUnreadCounts(
+  workspaceId: string
+): Promise<InboxUnreadCounts> {
+  const rows = await db
+    .select({
+      surface: inboxMessages.surface,
+      total: count(),
+    })
+    .from(inboxMessages)
+    .where(
+      and(
+        eq(inboxMessages.workspaceId, workspaceId),
+        eq(inboxMessages.direction, "incoming"),
+        isNull(inboxMessages.readAt)
+      )
+    )
+    .groupBy(inboxMessages.surface);
+
+  const counts: InboxUnreadCounts = { replies: 0, comments: 0, dms: 0 };
+  for (const row of rows) {
+    if (row.surface === "replies" || row.surface === "comments" || row.surface === "dms") {
+      counts[row.surface] = row.total;
+    }
+  }
+  return counts;
+}
+
+export async function markInboxSurfaceSeen(
+  workspaceId: string,
+  surface: InboxSurface
+) {
+  await db
+    .update(inboxMessages)
+    .set({ readAt: new Date() })
+    .where(
+      and(
+        eq(inboxMessages.workspaceId, workspaceId),
+        eq(inboxMessages.surface, surface),
+        eq(inboxMessages.direction, "incoming"),
+        isNull(inboxMessages.readAt)
+      )
+    );
 }
 
 export async function pullInboxSurface(
@@ -263,7 +311,7 @@ async function listInboxRows(
     )
     .innerJoin(platforms, eq(inboxMessages.platformId, platforms.id))
     .where(and(eq(inboxMessages.workspaceId, workspaceId), eq(inboxMessages.surface, surface)))
-    .orderBy(desc(inboxMessages.createdAt));
+    .orderBy(desc(inboxMessages.sentAt), desc(inboxMessages.createdAt));
 
   return rows.map(({ message, conversation, platform }) =>
     toDisplayRow(message, conversation, platform)
@@ -339,7 +387,7 @@ async function pullXBirdMentionsForPlatform(
   workspaceId: string,
   platform: PlatformRow
 ) {
-  const tweets = await getMentionsForPlatform(platform);
+  const tweets = await getMentionsForPlatform(platform, 50, true);
   let pulled = 0;
   for (const tweet of tweets.slice(0, 50)) {
     const comment = mapBirdMentionToComment(tweet);
@@ -376,7 +424,7 @@ async function pullXApiMentionsForPlatform(
 
   url.searchParams.set("tweet.fields", "author_id,created_at,conversation_id,public_metrics,text");
   url.searchParams.set("expansions", "author_id");
-  url.searchParams.set("user.fields", "id,name,username");
+  url.searchParams.set("user.fields", "id,name,username,profile_image_url");
 
   const response = await fetch(url, {
     headers: { Authorization: `Bearer ${accessToken}` },
@@ -468,6 +516,7 @@ async function upsertComment(
       likeCount: comment.likeCount ?? null,
       replyCount: comment.replyCount ?? null,
       parentId: comment.parentId ?? null,
+      authorAvatarUrl: stringOrNull(comment.extra?.authorAvatarUrl),
     },
     createdAt: now,
   }).onConflictDoNothing();
@@ -504,7 +553,10 @@ async function upsertDm(
     body: message.text,
     sourceUrl: null,
     sentAt: parseDate(message.createdAt),
-    metadata: message.extra,
+    metadata: {
+      ...(message.extra ?? {}),
+      authorAvatarUrl: stringOrNull(message.extra?.authorAvatarUrl),
+    },
     createdAt: now,
   }).onConflictDoNothing();
 }
@@ -584,12 +636,14 @@ function toDisplayRow(
     platformLabel: group?.label ?? getPlatformMeta(platform.type).label,
     platformId: platform.id,
     author: message.authorName || message.authorHandle || "Unknown",
+    authorAvatarUrl: stringOrNull(message.metadata?.authorAvatarUrl),
     text: message.body,
     sourceUrl: message.sourceUrl ?? conversation.externalUrl,
     receivedAt: (message.sentAt ?? message.createdAt)?.toISOString() ?? null,
     status: conversation.status,
     direction: message.direction,
     canReply: message.direction === "incoming",
+    isUnread: message.direction === "incoming" && !message.readAt,
   };
 }
 
@@ -634,6 +688,7 @@ function mapBirdMentionToComment(
       raw: tweet,
       url: getTweetUrl(tweet),
       source: "bird_mentions",
+      authorAvatarUrl: getBirdAuthorAvatarUrl(tweet),
     },
   };
 }
@@ -648,6 +703,7 @@ function mapXApiMentionToComment(
   const user = usersById.get(authorId);
   const username = optionalString(user?.username);
   const metrics = readRecord(tweet, "public_metrics");
+  const authorAvatarUrl = optionalString(user?.profile_image_url);
 
   return {
     id,
@@ -662,8 +718,22 @@ function mapXApiMentionToComment(
       raw: tweet,
       url: username ? `https://x.com/${username}/status/${id}` : `https://x.com/i/web/status/${id}`,
       source: "x_mentions",
+      authorAvatarUrl,
     },
   };
+}
+
+function getBirdAuthorAvatarUrl(tweet: Awaited<ReturnType<typeof getMentionsForPlatform>>[number]) {
+  const tweetRecord = tweet as Record<string, unknown>;
+  const author = readRecord(tweetRecord, "author");
+  return (
+    optionalString(author.profileImageUrl) ||
+    optionalString(author.profile_image_url) ||
+    optionalString(author.avatarUrl) ||
+    optionalString(author.avatar_url) ||
+    optionalString(readRecord(readRecord(readRecord(readRecord(tweetRecord._raw, "core"), "user_results"), "result"), "legacy").profile_image_url_https) ||
+    null
+  );
 }
 
 function isXPlatform(platform: Pick<PlatformRow, "type">) {

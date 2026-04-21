@@ -18,13 +18,15 @@ export type StoredImageAsset = {
   url: string;
 };
 
-type UploadImageAssetInput = {
+type UploadMediaAssetInput = {
   bytes: Buffer | Uint8Array;
   contentType: string;
   key?: string;
   keyPrefix?: string;
   sourceName?: string;
 };
+
+type UploadImageAssetInput = UploadMediaAssetInput;
 
 let cachedClient: { key: string; client: S3Client } | null = null;
 
@@ -110,6 +112,9 @@ function extensionForContentType(contentType: string): string {
   if (contentType.includes("png")) return "png";
   if (contentType.includes("webp")) return "webp";
   if (contentType.includes("gif")) return "gif";
+  if (contentType.includes("mp4")) return "mp4";
+  if (contentType.includes("quicktime")) return "mov";
+  if (contentType.includes("webm")) return "webm";
   return "jpg";
 }
 
@@ -138,7 +143,7 @@ export function buildImageAssetKey(input: {
   return `${prefix}/${year}/${month}/${source}${hash}.${extensionForContentType(input.contentType)}`;
 }
 
-export async function uploadImageAsset(input: UploadImageAssetInput): Promise<StoredImageAsset | null> {
+export async function uploadMediaAsset(input: UploadMediaAssetInput): Promise<StoredImageAsset | null> {
   const config = resolveR2Config();
   const apiConfig = resolveCloudflareR2ApiConfig();
   if (!config && !apiConfig) return null;
@@ -177,4 +182,8 @@ export async function uploadImageAsset(input: UploadImageAssetInput): Promise<St
     key,
     url: buildR2ObjectUrl(config, key),
   };
+}
+
+export async function uploadImageAsset(input: UploadImageAssetInput): Promise<StoredImageAsset | null> {
+  return uploadMediaAsset(input);
 }

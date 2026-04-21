@@ -24,6 +24,8 @@ export type NotificationEmailType =
   | "marketing";
 
 type NotificationData = {
+  subject?: string | null;
+  html?: string | null;
   title?: string | null;
   platform?: string | null;
   handle?: string | null;
@@ -49,6 +51,11 @@ const subjectByType = {
   usage_alert: "Usage limit alert",
   marketing: "ClawPoster update",
 } as const;
+
+function subjectFor(type: NotificationEmailType, data: NotificationData) {
+  if (type === "marketing" && data.subject?.trim()) return data.subject.trim();
+  return subjectByType[type];
+}
 
 function escapeHtml(value: string) {
   return value
@@ -80,7 +87,11 @@ function renderBody(type: NotificationEmailType, data: NotificationData) {
 }
 
 function renderEmailHtml(type: NotificationEmailType, data: NotificationData) {
-  const title = escapeHtml(subjectByType[type]);
+  if (type === "marketing" && data.html) {
+    return data.html;
+  }
+
+  const title = escapeHtml(subjectFor(type, data));
   const body = escapeHtml(renderBody(type, data));
   const href = data.href ?? "/dashboard";
   const cta = type === "account_disconnect" ? "Reconnect" : type === "usage_alert" ? "View usage" : "Open ClawPoster";
@@ -139,7 +150,7 @@ async function ensureActivity(input: {
     severity: input.type === "marketing" ? "info" : "warning",
     entityType: null,
     entityId: null,
-    subject: subjectByType[input.type],
+    subject: subjectFor(input.type, input.data),
     body: renderBody(input.type, input.data),
     metadata: input.data as Record<string, unknown>,
     correlationId: null,
@@ -169,49 +180,70 @@ export async function sendNotificationEmail(input: {
 
   const activity = await ensureActivity(input);
   const now = new Date();
-  const notificationId = crypto.randomUUID();
   const idempotencyKey = `${input.type}:${input.workspaceId}:${input.userId}:${input.dedupeKey}:v1`;
   const [existingDelivery] = await db
     .select()
     .from(notificationDeliveries)
     .where(eq(notificationDeliveries.idempotencyKey, idempotencyKey));
-  if (existingDelivery) {
-    return { skipped: "duplicate" as const };
+  const isRetry =
+    existingDelivery?.status === "failed_retryable" ||
+    isStalePendingDelivery(existingDelivery);
+  if (existingDelivery && !isRetry) {
+    return { skipped: "duplicate" as const, deliveryStatus: existingDelivery.status };
   }
 
-  await db
-    .insert(notifications)
-    .values({
-      id: notificationId,
-      workspaceId: input.workspaceId,
-      activityLogId: activity.id,
-      recipientUserId: input.userId,
-      channel: "email",
-      title: subjectByType[input.type],
-      body: renderBody(input.type, input.data),
-      severity: input.type === "marketing" ? "info" : "warning",
-      status: "unread",
-      createdAt: now,
-      updatedAt: now,
-    })
-    .onConflictDoNothing();
+  const notificationId = existingDelivery?.notificationId ?? crypto.randomUUID();
+  const deliveryId = existingDelivery?.id ?? crypto.randomUUID();
+  const attemptCount = (existingDelivery?.attemptCount ?? 0) + 1;
 
-  const deliveryId = crypto.randomUUID();
-  await db
-    .insert(notificationDeliveries)
-    .values({
-      id: deliveryId,
-      notificationId,
-      channel: "email",
-      provider: "resend",
-      status: "pending",
-      attemptCount: 0,
-      idempotencyKey,
-      metadata: input.data as Record<string, unknown>,
-      createdAt: now,
-      updatedAt: now,
-    })
-    .onConflictDoNothing();
+  if (isRetry) {
+    await db
+      .update(notificationDeliveries)
+      .set({
+        status: "pending",
+        provider: "resend",
+        metadata: input.data as Record<string, unknown>,
+        errorClassification: null,
+        errorMessage: null,
+        failedAt: null,
+        nextRetryAt: null,
+        updatedAt: now,
+      })
+      .where(eq(notificationDeliveries.id, deliveryId));
+  } else {
+    await db
+      .insert(notifications)
+      .values({
+        id: notificationId,
+        workspaceId: input.workspaceId,
+        activityLogId: activity.id,
+        recipientUserId: input.userId,
+        channel: "email",
+        title: subjectFor(input.type, input.data),
+        body: renderBody(input.type, input.data),
+        severity: input.type === "marketing" ? "info" : "warning",
+        status: "unread",
+        createdAt: now,
+        updatedAt: now,
+      })
+      .onConflictDoNothing();
+
+    await db
+      .insert(notificationDeliveries)
+      .values({
+        id: deliveryId,
+        notificationId,
+        channel: "email",
+        provider: "resend",
+        status: "pending",
+        attemptCount: 0,
+        idempotencyKey,
+        metadata: input.data as Record<string, unknown>,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .onConflictDoNothing();
+  }
 
   const headers: Record<string, string> = {};
   if (input.type === "marketing") {
@@ -223,7 +255,7 @@ export async function sendNotificationEmail(input: {
   try {
     const result = await sendEmail({
       to: user.email,
-      subject: subjectByType[input.type],
+      subject: subjectFor(input.type, input.data),
       html: renderEmailHtml(input.type, input.data),
       headers,
       idempotencyKey,
@@ -234,9 +266,13 @@ export async function sendNotificationEmail(input: {
       .set({
         provider: result.provider,
         status: "sent_to_provider",
-        attemptCount: 1,
+        attemptCount,
         externalMessageId: result.externalMessageId,
+        errorClassification: null,
+        errorMessage: null,
         sentAt: new Date(),
+        failedAt: null,
+        nextRetryAt: null,
         updatedAt: new Date(),
       })
       .where(eq(notificationDeliveries.id, deliveryId));
@@ -246,7 +282,7 @@ export async function sendNotificationEmail(input: {
       .update(notificationDeliveries)
       .set({
         status: "failed_retryable",
-        attemptCount: 1,
+        attemptCount,
         errorClassification: "provider_error",
         errorMessage: error instanceof Error ? error.message : String(error),
         failedAt: new Date(),
@@ -256,6 +292,16 @@ export async function sendNotificationEmail(input: {
       .where(eq(notificationDeliveries.id, deliveryId));
     return { error };
   }
+}
+
+function isStalePendingDelivery(
+  delivery: typeof notificationDeliveries.$inferSelect | undefined
+) {
+  if (!delivery || delivery.status !== "pending") return false;
+  const updatedAt = delivery.updatedAt instanceof Date
+    ? delivery.updatedAt.getTime()
+    : new Date(delivery.updatedAt).getTime();
+  return Number.isFinite(updatedAt) && Date.now() - updatedAt > 15 * 60 * 1000;
 }
 
 export async function sendWorkspaceNotificationEmail(input: {

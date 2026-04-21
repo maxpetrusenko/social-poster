@@ -24,9 +24,14 @@ export async function POST(request: NextRequest) {
       mediaUrl,
     } = body;
 
-    if (!content) {
+    const normalizedMediaUrl =
+      typeof mediaUrl === "string" && mediaUrl.trim() ? mediaUrl.trim() : null;
+    const normalizedContent =
+      typeof content === "string" && content.trim() ? content : "";
+
+    if (!normalizedContent && !normalizedMediaUrl) {
       return NextResponse.json(
-        { error: "Content is required" },
+        { error: "Content or media is required" },
         { status: 400 }
       );
     }
@@ -105,9 +110,9 @@ export async function POST(request: NextRequest) {
       id: postId,
       workspaceId: tenant.currentWorkspace.id,
       title: title || null,
-      content,
+      content: normalizedContent,
       contentType: contentType || "text",
-      mediaUrl: mediaUrl || null,
+      mediaUrl: normalizedMediaUrl,
       sourceUrl: sourceUrl || null,
       sourceTitle: null,
       profileId: normalizedProfileId,

@@ -7,7 +7,7 @@ import { ALLOWED_EMAIL } from "@/lib/auth-config";
 function getAdminEmails(): string[] {
   const explicit = process.env.ADMIN_EMAILS?.trim();
   if (explicit) {
-    return explicit.split(",").map((e) => e.trim().toLowerCase()).filter(Boolean);
+    return explicit.split(",").map((email) => email.trim().toLowerCase()).filter(Boolean);
   }
   return [ALLOWED_EMAIL.toLowerCase()];
 }

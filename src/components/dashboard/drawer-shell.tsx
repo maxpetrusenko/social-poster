@@ -38,6 +38,12 @@ import {
   type ShellNavItem,
 } from "@/lib/dashboard-shell";
 
+type InboxUnreadCounts = {
+  replies: number;
+  comments: number;
+  dms: number;
+};
+
 const iconMap = {
   publish: CalendarDays,
   create: PenSquare,
@@ -108,16 +114,48 @@ const headerCopy: HeaderConfig[] = [
   { match: "/dashboard", title: "Dashboard", description: "See the main board, current metrics, and workspace status." },
 ];
 
+function UnreadBadge({ count }: { count: number }) {
+  return (
+    <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-[#d93f21] px-1.5 py-0.5 text-[0.68rem] font-bold leading-none text-white">
+      {count > 99 ? "99+" : count}
+    </span>
+  );
+}
+
+function buildBadges(
+  counts: InboxUnreadCounts | undefined,
+  pathname: string
+): Record<string, number> {
+  const comments = pathname.startsWith("/dashboard/inbox/comments")
+    ? 0
+    : counts?.comments ?? 0;
+  const dms = pathname.startsWith("/dashboard/inbox/dms")
+    ? 0
+    : counts?.dms ?? 0;
+  const replies = pathname.startsWith("/dashboard/inbox/replies")
+    ? 0
+    : counts?.replies ?? 0;
+
+  return {
+    "/dashboard/inbox": comments + dms + replies,
+    "/dashboard/inbox/replies": replies,
+    "/dashboard/inbox/comments": comments,
+    "/dashboard/inbox/dms": dms,
+  };
+}
+
 function NavItem({
   item,
   pathname,
   onNavigate,
   compact,
+  badges,
 }: {
   item: ShellNavItem;
   pathname: string;
   onNavigate: () => void;
   compact: boolean;
+  badges: Record<string, number>;
 }) {
   const Icon = iconMap[item.icon];
   const active = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
@@ -127,6 +165,7 @@ function NavItem({
   );
   const isOpen = active || childActive;
   const [expanded, setExpanded] = useState(isOpen);
+  const badgeCount = badges[item.href] ?? 0;
 
   if (hasChildren) {
     return (
@@ -155,7 +194,10 @@ function NavItem({
           <span className={cn("min-w-0 flex-1 text-left", compact && "lg:hidden")}>
             <span className="flex items-center justify-between">
               <span className="text-sm font-semibold">{item.label}</span>
-              <ChevronDown className={cn("h-3.5 w-3.5 text-[#8d7c64] transition-transform", expanded && "rotate-180")} />
+              <span className="flex items-center gap-2">
+                {badgeCount > 0 ? <UnreadBadge count={badgeCount} /> : null}
+                <ChevronDown className={cn("h-3.5 w-3.5 text-[#8d7c64] transition-transform", expanded && "rotate-180")} />
+              </span>
             </span>
             <span className="mt-1 block text-xs leading-5 text-[#8d7c64]">{item.blurb}</span>
           </span>
@@ -165,6 +207,7 @@ function NavItem({
             {item.children!.map((child) => {
               const ChildIcon = iconMap[child.icon];
               const childIsActive = pathname === child.href || (child.href !== "/dashboard" && pathname.startsWith(child.href));
+              const childBadgeCount = badges[child.href] ?? 0;
 
               return (
                 <Link
@@ -178,6 +221,11 @@ function NavItem({
                 >
                   <ChildIcon className="h-3.5 w-3.5 shrink-0" />
                   <span className={cn(compact && "lg:hidden")}>{child.label}</span>
+                  {childBadgeCount > 0 ? (
+                    <span className={cn("ml-auto", compact && "lg:hidden")}>
+                      <UnreadBadge count={childBadgeCount} />
+                    </span>
+                  ) : null}
                 </Link>
               );
             })}
@@ -210,7 +258,10 @@ function NavItem({
         <Icon className="h-4 w-4" />
       </span>
       <span className={cn("min-w-0", compact && "lg:hidden")}>
-        <span className="block text-sm font-semibold">{item.label}</span>
+        <span className="flex items-center gap-2 text-sm font-semibold">
+          <span>{item.label}</span>
+          {badgeCount > 0 ? <UnreadBadge count={badgeCount} /> : null}
+        </span>
         <span className="mt-1 block text-xs leading-5 text-[#8d7c64]">{item.blurb}</span>
       </span>
     </Link>
@@ -223,12 +274,14 @@ function NavSection({
   pathname,
   onNavigate,
   compact,
+  badges,
 }: {
   title: string;
   items: ShellNavItem[];
   pathname: string;
   onNavigate: () => void;
   compact: boolean;
+  badges: Record<string, number>;
 }) {
   return (
     <div>
@@ -243,6 +296,7 @@ function NavSection({
             pathname={pathname}
             onNavigate={onNavigate}
             compact={compact}
+            badges={badges}
           />
         ))}
       </div>
@@ -253,9 +307,11 @@ function NavSection({
 export function DashboardDrawerShell({
   children,
   showAdminLink,
+  inboxUnreadCounts,
 }: {
   children: React.ReactNode;
   showAdminLink?: boolean;
+  inboxUnreadCounts?: InboxUnreadCounts;
 }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
@@ -265,6 +321,7 @@ export function DashboardDrawerShell({
   const currentHeader =
     headerCopy.find((item) => pathname === item.match || (item.match !== "/dashboard" && pathname.startsWith(item.match))) ??
     headerCopy[headerCopy.length - 1];
+  const badges = buildBadges(inboxUnreadCounts, pathname);
 
   return (
     <div className="min-h-screen bg-[#f5f0e6] text-[#171717] lg:flex">
@@ -323,6 +380,7 @@ export function DashboardDrawerShell({
                 pathname={pathname}
                 onNavigate={() => setOpen(false)}
                 compact={compact}
+                badges={badges}
               />
             ) : null}
             <NavSection
@@ -331,6 +389,7 @@ export function DashboardDrawerShell({
               pathname={pathname}
               onNavigate={() => setOpen(false)}
               compact={compact}
+              badges={badges}
             />
             <NavSection
               title="Channels"
@@ -338,6 +397,7 @@ export function DashboardDrawerShell({
               pathname={pathname}
               onNavigate={() => setOpen(false)}
               compact={compact}
+              badges={badges}
             />
             {secondaryUtilityItems.length > 0 ? (
               <NavSection
@@ -346,6 +406,7 @@ export function DashboardDrawerShell({
                 pathname={pathname}
                 onNavigate={() => setOpen(false)}
                 compact={compact}
+                badges={badges}
               />
             ) : null}
           </div>

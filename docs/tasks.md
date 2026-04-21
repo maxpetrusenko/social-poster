@@ -1,6 +1,6 @@
 # Social Agent — Tasks & Status
 
-Last updated: 2026-04-20 (Notifications, admin, and marketing email foundation)
+Last updated: 2026-04-21 (Create Post media upload, platform icons, and Social Inbox)
 
 ## Current State
 
@@ -68,7 +68,7 @@ Deploys to `social.maxpetrusenko.com` on Contabo/Coolify.
 - [x] Profiles — list, create, edit, delete (voice ID, face ID, tone)
 - [x] Posts — Zernio-style card grid with media thumbnails, status badges, platform dots, status filter tabs
 - [x] Posts nav restructured: Posts parent with collapsible submenu (All Posts, Create Post, Recurrent Posts)
-- [x] Create Post composer: two-column layout, platform-specific options (Instagram Feed/Story/Reel/Carousel + collaborators + first comment, Facebook Feed/Story/Reel, X thread toggle, Reddit subreddit), multi-image URLs, image dimension hints per platform, live platform preview (Instagram/X/Facebook/LinkedIn native-style cards), Schedule/Now/Queue/Draft publishing modes with timezone
+- [x] Create Post composer: two-column layout, platform-specific options (Instagram Feed/Story/Reel/Carousel + collaborators + first comment, Facebook Feed/Story/Reel, X thread toggle, Reddit subreddit), URL/file/drag-drop media upload, X/OG page URL image resolution, image dimension hints per platform, shared platform icon badges, shared live platform previews with attached media grids across create/edit/calendar surfaces, Schedule/Now/Queue/Draft publishing modes with timezone
 - [x] Calendar — monthly grid view with schedule recurrences + actual pipeline runs
 - [x] Calendar recurring forecast cards now show source-title/image predictions with a debug panel instead of synthetic generated captions
 - [x] Calendar recurring cron slots now resolve in UTC, suppress past forecast shells, and label predictions as candidate-only without implying a draft exists
@@ -89,6 +89,7 @@ Deploys to `social.maxpetrusenko.com` on Contabo/Coolify.
 
 ### API Routes
 - [x] CRUD for platforms, profiles, posts, schedules
+- [x] Media upload route for composer file picker/drag-drop using R2/S3 storage when configured
 - [x] Platform/profile create/update/delete now respect active workspace
 - [x] Manual schedule run endpoint
 - [x] Post deletion cascades to targets
@@ -184,6 +185,7 @@ Deploys to `social.maxpetrusenko.com` on Contabo/Coolify.
 - [x] Social Inbox now has `X Replies`, Comments, and DMs subheader tabs; `/dashboard/replies` redirects into Social Inbox X Replies
 - [x] Comments and DMs have shared platform inbox tables, pull action, and reply action plumbing backed by `inbox_conversations` / `inbox_messages`
 - [x] X Replies remains outbound outreach; X / Twitter inbound mentions now pull into Comments through Bird-backed access or X API mentions/search
+- [x] Social Inbox Comments/DMs now track unread state, clear notification counts when viewed, and render newest-first vertical cards with sender avatars
 - [x] Comment pull/reply adapters added for X, YouTube, LinkedIn, Instagram, Facebook, Threads, and Mastodon where connected account scopes allow it
 - [x] DM pull/reply adapters added for X, Instagram, Facebook, and Mastodon where platform access is approved
 - [ ] Add live DM adapters for Bluesky, Reddit modmail, Google Business messages, and WhatsApp where platform access is approved

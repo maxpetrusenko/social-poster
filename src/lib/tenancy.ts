@@ -525,6 +525,14 @@ async function ensureDefaultTenantForEmail(email: string) {
 
   await ensureLegacyPlatformsBound(workspaceId);
 
+  // Enqueue welcome drip sequence for new users
+  try {
+    const { enqueueDrip } = await import("@/lib/marketing/drip");
+    enqueueDrip(user.id, workspaceId);
+  } catch (e) {
+    console.warn("[tenancy] failed to enqueue drip:", e);
+  }
+
   return {
     user: {
       ...user,

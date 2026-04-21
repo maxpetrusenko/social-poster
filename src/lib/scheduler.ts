@@ -35,6 +35,7 @@ let profileRefreshInterval: NodeJS.Timeout | null = null;
 let profileRefreshBootTimer: NodeJS.Timeout | null = null;
 let birdSessionCheckInterval: NodeJS.Timeout | null = null;
 let birdSessionCheckBootTimer: NodeJS.Timeout | null = null;
+let dripQueueInterval: NodeJS.Timeout | null = null;
 
 export async function initScheduler(): Promise<void> {
   console.log("[scheduler] init");
@@ -43,6 +44,7 @@ export async function initScheduler(): Promise<void> {
   ensureTokenRefreshWorker();
   ensureProfileRefreshWorker();
   ensureBirdSessionCheckWorker();
+  ensureDripQueueWorker();
   await reconcileSchedules("init");
 
   console.log("[scheduler] ready");
@@ -311,4 +313,29 @@ function readBirdSessionCheckIntervalMs() {
 function readProfileRefreshIntervalMs() {
   const hours = Number(process.env.PROFILE_REFRESH_SWEEP_HOURS ?? 24);
   return (Number.isFinite(hours) && hours > 0 ? hours : 24) * 60 * 60 * 1000;
+}
+
+function ensureDripQueueWorker() {
+  if (dripQueueInterval) return;
+
+  const runSweep = async () => {
+    try {
+      const { processDripQueue } = await import("@/lib/marketing/drip");
+      await processDripQueue();
+    } catch (error) {
+      console.error("[scheduler] drip queue sweep failed:", error);
+    }
+  };
+
+  // First run after 30s boot delay
+  const bootTimer = setTimeout(() => {
+    void runSweep();
+  }, 30_000);
+  bootTimer.unref?.();
+
+  // Then every 10 minutes
+  dripQueueInterval = setInterval(() => {
+    void runSweep();
+  }, 10 * 60 * 1000);
+  dripQueueInterval.unref?.();
 }

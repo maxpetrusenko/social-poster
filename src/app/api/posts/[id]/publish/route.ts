@@ -168,6 +168,14 @@ export async function POST(
     }
   }
 
+  // Cancel "first post" drip if this was a successful publish
+  if (postStatus === "published" || postStatus === "partial_failure") {
+    try {
+      const { cancelDripIfDone } = await import("@/lib/marketing/drip");
+      cancelDripIfDone(tenant.user.id, "welcome_3_first_post");
+    } catch { /* non-critical */ }
+  }
+
   await recordTenantAuditEvent(tenant, {
     action: "post.publish",
     targetType: "post",

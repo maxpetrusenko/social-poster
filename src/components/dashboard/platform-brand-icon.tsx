@@ -1,4 +1,6 @@
 import { PLATFORM_TYPES, type PlatformType } from "@/lib/platforms";
+import { getPlatformMeta } from "@/lib/dashboard/platforms";
+import { cn } from "@/lib/utils";
 
 export function getPlatformBrandIconType(
   type: PlatformType | string | null | undefined
@@ -111,4 +113,36 @@ export function PlatformBrandIcon({
         </svg>
       );
   }
+}
+
+export function PlatformBrandBadge({
+  type,
+  label,
+  className,
+  iconClassName,
+}: {
+  type: PlatformType | string;
+  label?: string;
+  className?: string;
+  iconClassName?: string;
+}) {
+  const meta = getPlatformMeta(type);
+  const brandType = getPlatformBrandIconType(type);
+
+  return (
+    <span
+      className={cn(
+        "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border bg-white shadow-[0_1px_0_rgba(255,255,255,0.75)_inset]",
+        className
+      )}
+      style={{ borderColor: `${meta.accent}33`, color: meta.accent }}
+      title={label ?? meta.label}
+    >
+      {brandType ? (
+        <PlatformBrandIcon type={brandType} className={cn("h-4 w-4", iconClassName)} />
+      ) : (
+        <span className="text-[10px] font-bold uppercase">{meta.shortLabel}</span>
+      )}
+    </span>
+  );
 }

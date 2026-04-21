@@ -15,6 +15,7 @@ import {
   Video,
 } from "lucide-react";
 import { StatusBadge } from "@/components/dashboard/ui";
+import { PlatformPostPreview } from "@/components/platform-post-preview";
 import type {
   ComposerInitialValues,
   ComposerPlatform,
@@ -99,9 +100,6 @@ export function NewPostForm({
     mediaUrl: initialValues?.mediaUrl || "",
   });
 
-  const mediaPreviewUrl = formData.mediaUrl
-    ? `/api/og-image?${new URLSearchParams({ url: formData.mediaUrl }).toString()}`
-    : "";
   const selectedPlatforms = platforms.filter((platform) =>
     formData.platformIds.includes(platform.id)
   );
@@ -438,7 +436,7 @@ export function NewPostForm({
               <div className="mt-5 overflow-hidden rounded-[20px] border border-[rgba(12,17,21,0.08)] bg-[rgba(12,17,21,0.04)]">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={mediaPreviewUrl}
+                  src={formData.mediaUrl}
                   alt="Composer media preview"
                   className="h-64 w-full object-cover"
                 />
@@ -557,30 +555,18 @@ export function NewPostForm({
               <p className="section-eyebrow text-[var(--accent-gold)]">Live Preview</p>
               <StatusBadge tone="neutral">{contentTypeOptions.find((option) => option.value === formData.contentType)?.label || "Text"}</StatusBadge>
             </div>
-            <div className="mt-4 rounded-[20px] border border-white/10 bg-white/[0.04] p-4">
-              <p className="text-sm font-semibold text-white/90">
-                {formData.title || "Untitled post"}
-              </p>
-              <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-[#d6dfeb]">
-                {formData.content || "Your draft preview appears here."}
-              </p>
-              {formData.mediaUrl ? (
-                <div className="mt-4 rounded-[16px] border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-[#d6dfeb]">
-                  Media attached
-                </div>
-              ) : null}
-            </div>
-
-            <div className="mt-4 flex flex-wrap gap-2">
-              {selectedPlatforms.length > 0 ? (
-                selectedPlatforms.map((platform) => (
-                  <StatusBadge key={platform.id} tone="neutral">
-                    {platform.handle || platform.name}
-                  </StatusBadge>
-                ))
-              ) : (
-                <StatusBadge tone="warn">No channels selected</StatusBadge>
-              )}
+            <div className="mt-4 text-gray-900">
+              <PlatformPostPreview
+                content={formData.content}
+                mediaUrls={formData.mediaUrl ? [formData.mediaUrl] : []}
+                platforms={selectedPlatforms.map((platform) => ({
+                  id: platform.id,
+                  type: platform.type,
+                  handle: platform.handle,
+                  name: platform.name,
+                }))}
+                overrides={{}}
+              />
             </div>
           </section>
 

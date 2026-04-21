@@ -145,76 +145,92 @@ export function SocialInboxSurface({
           </div>
         ) : null}
 
-        <div className="mt-6 overflow-hidden rounded-[1.1rem] border border-[#e4d7c5]">
-          <div className="grid grid-cols-[1fr_1.6fr_120px] gap-4 bg-[#f4ebdd] px-4 py-3 text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7c64] md:grid-cols-[180px_1fr_140px_260px]">
-            <span>Author</span>
-            <span>Message</span>
-            <span>Status</span>
-            <span className="hidden md:block">Reply</span>
+        {visibleRows.length === 0 ? (
+          <div className="mt-6 rounded-[1.1rem] border border-[#e4d7c5] px-4 py-12 text-center text-sm leading-6 text-[#6f604d]">
+            No pulled {surfaceLabel(surface)} yet for {active?.label}. Use Pull latest when the account is connected and supported.
           </div>
-
-          {visibleRows.length === 0 ? (
-            <div className="px-4 py-12 text-center text-sm leading-6 text-[#6f604d]">
-              No pulled {surfaceLabel(surface)} yet for {active?.label}. Use Pull latest when the account is connected and supported.
-            </div>
-          ) : (
-            visibleRows.map((row) => (
-              <div
+        ) : (
+          <div className="mt-6 max-h-[calc(100vh-18rem)] overflow-y-auto rounded-[1.1rem] border border-[#e4d7c5] bg-white">
+            {visibleRows.map((row) => (
+              <article
                 key={row.id}
-                className="grid grid-cols-[1fr_1.6fr_120px] gap-4 border-t border-[#eadfce] px-4 py-4 text-sm md:grid-cols-[180px_1fr_140px_260px]"
+                className="border-b border-[#eadfce] px-4 py-4 last:border-b-0 md:px-5"
               >
-                <div className="min-w-0">
-                  <p className="truncate font-semibold text-[#171717]">{row.author}</p>
-                  <p className="mt-1 text-xs text-[#8d7c64]">
-                    {row.receivedAt ? new Date(row.receivedAt).toLocaleString() : "unknown time"}
-                  </p>
+                <div className="flex gap-3">
+                  <Avatar name={row.author} src={row.authorAvatarUrl} />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                      <p className="truncate font-semibold text-[#171717]">{row.author}</p>
+                      <span className="text-xs text-[#9b8c78]">
+                        {row.receivedAt ? new Date(row.receivedAt).toLocaleString() : "unknown time"}
+                      </span>
+                      {row.isUnread ? (
+                        <span className="rounded-full bg-[#d93f21] px-2 py-0.5 text-[0.68rem] font-bold uppercase tracking-[0.08em] text-white">
+                          New
+                        </span>
+                      ) : null}
+                    </div>
+                    <p className="mt-2 whitespace-pre-wrap break-words text-[0.98rem] leading-7 text-[#2d251d]">
+                      {row.text}
+                    </p>
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <span className="rounded-full border border-[#d8cab5] bg-[#fbf7f0] px-2.5 py-1 text-xs font-semibold text-[#5f523f]">
+                        {row.status}
+                      </span>
+                      {row.sourceUrl ? (
+                        <a
+                          href={row.sourceUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1.5 rounded-full border border-[#cbe1e8] bg-[#eef8fb] px-2.5 py-1 text-xs font-semibold text-[#0f7ea9]"
+                        >
+                          Open source <ExternalLink className="h-3.5 w-3.5" />
+                        </a>
+                      ) : null}
+                    </div>
+                    <div className="mt-4">
+                      <textarea
+                        value={draftById[row.id] ?? ""}
+                        onChange={(event) =>
+                          setDraftById((current) => ({
+                            ...current,
+                            [row.id]: event.target.value,
+                          }))
+                        }
+                        rows={3}
+                        placeholder="Reply..."
+                        className="w-full resize-none rounded-[0.9rem] border border-[#dfd1bc] bg-[#fffaf2] px-3 py-2 text-sm outline-none focus:border-[#af987b]"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => sendReply(row)}
+                        disabled={isPending || !row.canReply}
+                        className="mt-2 inline-flex items-center justify-center gap-2 rounded-full bg-[#171717] px-4 py-2 text-sm font-semibold text-[#fffaf2] disabled:opacity-50"
+                      >
+                        <Send className="h-4 w-4" />
+                        Reply
+                      </button>
+                    </div>
+                  </div>
                 </div>
-                <div className="min-w-0">
-                  <p className="line-clamp-4 leading-6 text-[#3e3428]">{row.text}</p>
-                  {row.sourceUrl ? (
-                    <a
-                      href={row.sourceUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-[#0f7ea9]"
-                    >
-                      Open source <ExternalLink className="h-3.5 w-3.5" />
-                    </a>
-                  ) : null}
-                </div>
-                <div>
-                  <span className="rounded-full border border-[#d8cab5] bg-[#fbf7f0] px-2.5 py-1 text-xs font-semibold text-[#5f523f]">
-                    {row.status}
-                  </span>
-                </div>
-                <div className="col-span-3 md:col-span-1">
-                  <textarea
-                    value={draftById[row.id] ?? ""}
-                    onChange={(event) =>
-                      setDraftById((current) => ({
-                        ...current,
-                        [row.id]: event.target.value,
-                      }))
-                    }
-                    rows={3}
-                    placeholder="Reply..."
-                    className="w-full resize-none rounded-[0.9rem] border border-[#dfd1bc] bg-white px-3 py-2 text-sm outline-none focus:border-[#af987b]"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => sendReply(row)}
-                    disabled={isPending || !row.canReply}
-                    className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#171717] px-3 py-2 text-sm font-semibold text-[#fffaf2] disabled:opacity-50"
-                  >
-                    <Send className="h-4 w-4" />
-                    Reply
-                  </button>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
+              </article>
+            ))}
+          </div>
+        )}
       </section>
+    </div>
+  );
+}
+
+function Avatar({ name, src }: { name: string; src: string | null }) {
+  const initial = name.trim().charAt(0).toUpperCase() || "?";
+  return (
+    <div
+      className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-[#dfd1bc] bg-[#f4ebdd] bg-cover bg-center text-sm font-bold text-[#5f523f]"
+      style={src ? { backgroundImage: `url("${src.replaceAll('"', "%22")}")` } : undefined}
+      aria-label={name}
+    >
+      {src ? null : initial}
     </div>
   );
 }

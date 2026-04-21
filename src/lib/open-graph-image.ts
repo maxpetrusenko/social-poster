@@ -1,4 +1,5 @@
 import { decodeHtmlEntities } from "@/lib/pipeline/content-clean";
+import { safeFetchRemote } from "@/lib/safe-remote-fetch";
 
 export function extractOpenGraphImageFromHtml(
   html: string,
@@ -21,7 +22,7 @@ export function extractOpenGraphImageFromHtml(
 
 export async function fetchOpenGraphImage(url: string): Promise<string | null> {
   try {
-    const res = await fetch(url, {
+    const res = await safeFetchRemote(url, {
       signal: AbortSignal.timeout(8000),
       headers: {
         "User-Agent":
@@ -29,10 +30,9 @@ export async function fetchOpenGraphImage(url: string): Promise<string | null> {
         Accept:
           "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
       },
-      redirect: "follow",
       cache: "no-store",
     });
-    if (!res.ok) return null;
+    if (!res?.ok) return null;
 
     const html = await res.text();
     return extractOpenGraphImageFromHtml(html, url);

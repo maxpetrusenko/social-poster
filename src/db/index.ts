@@ -297,6 +297,7 @@ function ensureSchema(sqlite: Database.Database) {
       body TEXT NOT NULL,
       source_url TEXT,
       sent_at INTEGER,
+      read_at INTEGER,
       metadata TEXT,
       created_at INTEGER NOT NULL
     );
@@ -371,6 +372,7 @@ function ensureSchema(sqlite: Database.Database) {
   addColumnIfMissing(sqlite, "pipeline_runs", "workspace_id", "workspace_id TEXT");
   addColumnIfMissing(sqlite, "reply_events", "workspace_id", "workspace_id TEXT");
   addColumnIfMissing(sqlite, "reply_candidates", "workspace_id", "workspace_id TEXT");
+  addColumnIfMissing(sqlite, "inbox_messages", "read_at", "read_at INTEGER");
   addColumnIfMissing(sqlite, "rss_settings", "traction_weight", "traction_weight INTEGER NOT NULL DEFAULT 35");
   addColumnIfMissing(sqlite, "rss_settings", "transformation_prompt", "transformation_prompt TEXT NOT NULL DEFAULT ''");
 
@@ -540,6 +542,21 @@ function ensureSchema(sqlite: Database.Database) {
     );
     CREATE INDEX IF NOT EXISTS lead_magnet_downloads_email_idx
     ON lead_magnet_downloads(email, created_at);
+
+    CREATE TABLE IF NOT EXISTS drip_queue (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      workspace_id TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+      email_key TEXT NOT NULL,
+      scheduled_at INTEGER NOT NULL,
+      sent_at INTEGER,
+      cancelled_at INTEGER,
+      created_at INTEGER NOT NULL
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS drip_queue_user_email_key_idx
+    ON drip_queue(user_id, email_key);
+    CREATE INDEX IF NOT EXISTS drip_queue_due_idx
+    ON drip_queue(scheduled_at, sent_at, cancelled_at);
   `);
 
   collapseDuplicatePlatformConnections(sqlite);

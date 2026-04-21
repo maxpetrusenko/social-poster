@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { PLATFORM_TYPES } from "@/lib/platforms";
 import { getSpecForPlatform, getImageDimensions, PLATFORM_SPECS } from "@/lib/platform-specs";
 
 describe("platform-specs", () => {
@@ -39,5 +40,23 @@ describe("platform-specs", () => {
     expect(getSpecForPlatform("Instagram")).toBeDefined();
     expect(getSpecForPlatform("FACEBOOK")).toBeDefined();
     expect(getSpecForPlatform("instagram")).toBeDefined();
+  });
+
+  it("defines media upload constraints for every configured platform", () => {
+    for (const platformType of PLATFORM_TYPES) {
+      const spec = getSpecForPlatform(platformType);
+      expect(spec, `${platformType} spec`).toBeDefined();
+      expect(spec!.charLimit, `${platformType} char limit`).toBeGreaterThan(0);
+      expect(spec!.maxImages, `${platformType} max images`).toBeGreaterThan(0);
+      expect(getImageDimensions(platformType).length, `${platformType} image dimensions`).toBeGreaterThan(0);
+    }
+  });
+
+  it("keeps platform media limits explicit", () => {
+    expect(PLATFORM_SPECS.linkedin.maxImages).toBe(9);
+    expect(PLATFORM_SPECS.instagram.maxImages).toBe(10);
+    expect(PLATFORM_SPECS.twitter.maxImages).toBe(4);
+    expect(PLATFORM_SPECS.youtube.maxImages).toBe(1);
+    expect(PLATFORM_SPECS.whatsapp.maxImages).toBe(1);
   });
 });

@@ -347,6 +347,7 @@ export const inboxMessages = sqliteTable("inbox_messages", {
   body: text("body").notNull(),
   sourceUrl: text("source_url"),
   sentAt: integer("sent_at", { mode: "timestamp" }),
+  readAt: integer("read_at", { mode: "timestamp" }),
   metadata: text("metadata", { mode: "json" }).$type<Record<string, unknown>>(),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
 }, (table) => [
@@ -544,6 +545,20 @@ export const leadMagnetDownloads = sqliteTable("lead_magnet_downloads", {
   metadata: text("metadata", { mode: "json" }).$type<Record<string, unknown>>(),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
 });
+
+// ── Drip Queue ──────────────────────────────────────────────────────
+export const dripQueue = sqliteTable("drip_queue", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  workspaceId: text("workspace_id").notNull().references(() => workspaces.id, { onDelete: "cascade" }),
+  emailKey: text("email_key").notNull(), // "welcome_1" | "welcome_2_connect" | "welcome_3_first_post"
+  scheduledAt: integer("scheduled_at", { mode: "timestamp" }).notNull(),
+  sentAt: integer("sent_at", { mode: "timestamp" }),
+  cancelledAt: integer("cancelled_at", { mode: "timestamp" }),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+}, (table) => [
+  uniqueIndex("drip_queue_user_email_key_idx").on(table.userId, table.emailKey),
+]);
 
 // ── Usage Events ─────────────────────────────────────────────────────
 export const usageEvents = sqliteTable("usage_events", {

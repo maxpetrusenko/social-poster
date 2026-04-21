@@ -1,8 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { ImagePlus, Link as LinkIcon, Loader2, Upload, X } from "lucide-react";
+import { PlatformBrandBadge } from "@/components/dashboard/platform-brand-icon";
 import { PlatformPostPreview } from "@/components/platform-post-preview";
+import { getPlatformMeta } from "@/lib/dashboard/platforms";
+import { mediaTypeFromUrl } from "@/lib/media-url";
 import { getImageDimensions, getSpecForPlatform } from "@/lib/platform-specs";
 
 type Props = {
@@ -25,13 +29,6 @@ type Props = {
   }[];
 };
 
-const BRAND_COLORS: Record<string, string> = {
-  facebook: "#1877F2", instagram: "#E4405F", pinterest: "#BD081C",
-  reddit: "#FF4500", tiktok: "#000000", x: "#000000", twitter: "#000000",
-  youtube: "#FF0000", linkedin: "#0A66C2", linkedin_personal: "#0A66C2",
-  linkedin_company: "#0A66C2", threads: "#000000", bluesky: "#0085FF",
-};
-
 const FORMAT_OPTIONS: Record<string, string[]> = {
   instagram: ["Feed", "Story", "Reel", "Carousel"],
   facebook: ["Feed", "Story", "Reel"],
@@ -42,11 +39,13 @@ type PublishMode = (typeof PUBLISH_MODES)[number];
 const PUBLISH_LABELS: Record<PublishMode, string> = {
   schedule: "schedule post", now: "publish now", queue: "add to queue", draft: "save draft",
 };
+const MAX_MEDIA_ATTACHMENTS = 1;
 
 type PlatformOverride = { caption?: string; firstComment?: string; format?: string; collaborators?: string[] };
 
 export function CreatePostComposer({ profiles, platforms }: Props) {
   const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [content, setContent] = useState("");
   const [platformIds, setPlatformIds] = useState<string[]>([]);
   const [profileId, setProfileId] = useState(profiles[0]?.id ?? "");
@@ -56,6 +55,10 @@ export function CreatePostComposer({ profiles, platforms }: Props) {
   const [mediaUrls, setMediaUrls] = useState<string[]>([]);
   const [newMediaUrl, setNewMediaUrl] = useState("");
   const [showMediaInput, setShowMediaInput] = useState(false);
+  const [isDraggingMedia, setIsDraggingMedia] = useState(false);
+  const [uploadingMedia, setUploadingMedia] = useState(0);
+  const [resolvingMediaUrl, setResolvingMediaUrl] = useState(false);
+  const [mediaError, setMediaError] = useState("");
   const [platformOverrides, setPlatformOverrides] = useState<Record<string, PlatformOverride>>({});
   const [submitting, setSubmitting] = useState(false);
   const [threadEnabled, setThreadEnabled] = useState(false);
@@ -72,16 +75,102 @@ export function CreatePostComposer({ profiles, platforms }: Props) {
     }));
   }
 
-  function addMediaUrl() {
+  async function addMediaUrl() {
     const url = newMediaUrl.trim();
-    if (url && !mediaUrls.includes(url)) {
-      setMediaUrls((prev) => [...prev, url]);
+    if (!url) return;
+
+    setResolvingMediaUrl(true);
+    setMediaError("");
+
+    try {
+      const response = await fetch("/api/media/resolve", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      });
+      const result = await response.json().catch(() => ({}));
+
+      if (!response.ok || typeof result.url !== "string") {
+        throw new Error(
+          typeof result.error === "string" ? result.error : "Could not resolve media URL."
+        );
+      }
+
+      if (mediaUrls.length >= MAX_MEDIA_ATTACHMENTS) {
+        setMediaError("Remove the current media before adding another.");
+        return;
+      }
+
+      setMediaUrls([result.url]);
       setNewMediaUrl("");
+    } catch (error) {
+      setMediaError(error instanceof Error ? error.message : "Could not resolve media URL.");
+    } finally {
+      setResolvingMediaUrl(false);
     }
   }
 
   function removeMediaUrl(idx: number) {
     setMediaUrls((prev) => prev.filter((_, i) => i !== idx));
+  }
+
+  function isVideoMediaUrl(url: string) {
+    return mediaTypeFromUrl(url) === "video";
+  }
+
+  async function uploadMediaFiles(inputFiles: FileList | File[]) {
+    const acceptedFiles = Array.from(inputFiles).filter((file) =>
+      file.type.startsWith("image/") || file.type.startsWith("video/")
+    );
+
+    if (acceptedFiles.length === 0) {
+      setMediaError("Use an image or video file.");
+      return;
+    }
+
+    if (acceptedFiles.length > MAX_MEDIA_ATTACHMENTS) {
+      setMediaError("Attach one image or video per post right now.");
+      return;
+    }
+
+    const remainingSlots = Math.max(MAX_MEDIA_ATTACHMENTS - mediaUrls.length, 0);
+    if (remainingSlots === 0) {
+      setMediaError("Remove the current media before adding another.");
+      return;
+    }
+
+    const files = acceptedFiles.slice(0, remainingSlots);
+    setMediaError("");
+    setUploadingMedia(files.length);
+
+    try {
+      const uploadedUrls: string[] = [];
+      for (const file of files) {
+        const formData = new FormData();
+        formData.append("file", file);
+
+        const response = await fetch("/api/media/upload", {
+          method: "POST",
+          body: formData,
+        });
+        const result = await response.json().catch(() => ({}));
+
+        if (!response.ok || typeof result.url !== "string") {
+          throw new Error(
+            typeof result.error === "string" ? result.error : "Media upload failed."
+          );
+        }
+
+        uploadedUrls.push(result.url);
+      }
+
+      setMediaUrls(uploadedUrls.slice(0, MAX_MEDIA_ATTACHMENTS));
+    } catch (error) {
+      setMediaError(error instanceof Error ? error.message : "Media upload failed.");
+    } finally {
+      setUploadingMedia(0);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
   }
 
   async function handleSubmit() {
@@ -94,6 +183,7 @@ export function CreatePostComposer({ profiles, platforms }: Props) {
         body: JSON.stringify({
           content, platformIds, profileId, intent,
           scheduledAt: publishMode === "schedule" ? scheduledAt : undefined,
+          contentType: mediaUrls.length > 0 ? (isVideoMediaUrl(mediaUrls[0]) ? "video" : "image") : "text",
           mediaUrl: mediaUrls[0] || undefined,
           platformOverrides,
         }),
@@ -109,12 +199,6 @@ export function CreatePostComposer({ profiles, platforms }: Props) {
       setSubmitting(false);
     }
   }
-
-  // Compute max images allowed across selected platforms
-  const maxImagesAllowed = selectedPlatforms.reduce((min, p) => {
-    const spec = getSpecForPlatform(p.type);
-    return spec ? Math.min(min, spec.maxImages) : min;
-  }, 20);
 
   return (
     <div className="min-h-screen bg-[#f5f0e6] p-6">
@@ -147,29 +231,106 @@ export function CreatePostComposer({ profiles, platforms }: Props) {
                   <div className="mb-3 grid grid-cols-4 gap-2">
                     {mediaUrls.map((url, i) => (
                       <div key={i} className="group relative aspect-square overflow-hidden rounded-lg border border-gray-200 bg-gray-50">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={url} alt="" className="h-full w-full object-cover" />
-                        <button onClick={() => removeMediaUrl(i)}
-                          className="absolute top-1 right-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-[10px] text-white opacity-0 transition group-hover:opacity-100">
-                          x
+                        {isVideoMediaUrl(url) ? (
+                          <video src={url} className="h-full w-full object-cover" muted playsInline />
+                        ) : (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={url} alt="" className="h-full w-full object-cover" />
+                        )}
+                        <button type="button" onClick={() => removeMediaUrl(i)}
+                          className="absolute top-1 right-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/65 text-white opacity-0 transition group-hover:opacity-100"
+                          aria-label="Remove media">
+                          <X className="h-3.5 w-3.5" />
                         </button>
                       </div>
                     ))}
                   </div>
                 )}
 
-                {showMediaInput ? (
-                  <div className="flex items-center gap-2">
-                    <input type="url" value={newMediaUrl} onChange={(e) => setNewMediaUrl(e.target.value)}
-                      placeholder="paste image URL..." onKeyDown={(e) => e.key === "Enter" && addMediaUrl()}
-                      className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm placeholder-gray-400 focus:border-gray-300 focus:ring-0 focus:outline-none" />
-                    <button onClick={addMediaUrl} className="rounded-lg bg-gray-100 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-200">Add</button>
-                    <button onClick={() => { setShowMediaInput(false); setNewMediaUrl(""); }} className="text-xs text-gray-400 hover:text-gray-600">close</button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*,video/*"
+                  className="hidden"
+                  onChange={(event) => {
+                    if (event.currentTarget.files) void uploadMediaFiles(event.currentTarget.files);
+                  }}
+                />
+
+                <div
+                  onDragEnter={(event) => {
+                    event.preventDefault();
+                    setIsDraggingMedia(true);
+                  }}
+                  onDragOver={(event) => {
+                    event.preventDefault();
+                    setIsDraggingMedia(true);
+                  }}
+                  onDragLeave={(event) => {
+                    if (event.currentTarget === event.target) setIsDraggingMedia(false);
+                  }}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    setIsDraggingMedia(false);
+                    void uploadMediaFiles(event.dataTransfer.files);
+                  }}
+                  className={`rounded-lg border border-dashed p-3 transition ${
+                    isDraggingMedia ? "border-[#7a3030] bg-[#7a3030]/5" : "border-gray-200 bg-gray-50"
+                  }`}
+                >
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-[#7a3030]">
+                      {uploadingMedia > 0 ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-gray-700">
+                        {uploadingMedia > 0 ? `Uploading ${uploadingMedia}...` : "Drop media here"}
+                      </p>
+                      <p className="text-xs text-gray-400">
+                        JPG, PNG, WEBP, GIF, MP4, MOV, WEBM up to 25 MB
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-[#7a3030] px-3 py-2 text-xs font-medium text-white hover:bg-[#6a2828]"
+                    >
+                      <ImagePlus className="h-3.5 w-3.5" />
+                      Select
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowMediaInput((value) => !value)}
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-white px-3 py-2 text-xs font-medium text-gray-600 hover:bg-gray-100"
+                    >
+                      <LinkIcon className="h-3.5 w-3.5" />
+                      URL
+                    </button>
                   </div>
-                ) : (
-                  <button onClick={() => setShowMediaInput(true)} className="text-sm text-gray-500 hover:text-gray-700">
-                    + Add media {mediaUrls.length > 0 && `(${mediaUrls.length}${maxImagesAllowed < 20 ? `/${maxImagesAllowed}` : ""})`}
-                  </button>
+                  {mediaError ? <p className="mt-2 text-xs text-red-600">{mediaError}</p> : null}
+                </div>
+
+                {showMediaInput ? (
+                  <div className="mt-2 flex items-center gap-2">
+                    <input type="url" value={newMediaUrl} onChange={(e) => setNewMediaUrl(e.target.value)}
+                      placeholder="paste image, video, or social post URL..." onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          void addMediaUrl();
+                        }
+                      }}
+                      className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm placeholder-gray-400 focus:border-gray-300 focus:ring-0 focus:outline-none" />
+                    <button type="button" onClick={() => void addMediaUrl()} disabled={resolvingMediaUrl} className="rounded-lg bg-gray-100 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-200 disabled:opacity-50">
+                      {resolvingMediaUrl ? "Resolving" : "Add"}
+                    </button>
+                    <button type="button" onClick={() => { setShowMediaInput(false); setNewMediaUrl(""); }} className="text-xs text-gray-400 hover:text-gray-600">close</button>
+                  </div>
+                ) : null}
+
+                {mediaUrls.length > 0 && (
+                  <p className="mt-2 text-xs text-gray-400">
+                    {mediaUrls.length}/{MAX_MEDIA_ATTACHMENTS} media selected
+                  </p>
                 )}
 
                 {/* Image dimension hints */}
@@ -202,17 +363,15 @@ export function CreatePostComposer({ profiles, platforms }: Props) {
               const spec = getSpecForPlatform(pType);
               const formats = FORMAT_OPTIONS[pType];
               const override = platformOverrides[platform.id] || {};
-              const color = BRAND_COLORS[pType] || "#6B7280";
+              const meta = getPlatformMeta(pType);
               const charLimit = spec?.charLimit || 5000;
               const firstCommentLimit = spec?.firstCommentLimit;
 
               return (
                 <div key={platform.id} className="rounded-xl border border-gray-200 bg-white p-5">
                   <div className="mb-3 flex items-center gap-2">
-                    <span className="inline-flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold text-white" style={{ backgroundColor: color }}>
-                      {platform.type[0].toUpperCase()}
-                    </span>
-                    <span className="text-sm font-medium text-gray-700">{platform.type}</span>
+                    <PlatformBrandBadge type={pType} label={meta.label} className="h-6 w-6" iconClassName="h-3.5 w-3.5" />
+                    <span className="text-sm font-medium text-gray-700">{meta.label}</span>
                     {platform.handle && <span className="text-xs text-gray-400">@{platform.handle}</span>}
                   </div>
 
@@ -320,7 +479,7 @@ export function CreatePostComposer({ profiles, platforms }: Props) {
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                 {platforms.map((p) => {
                   const pType = p.type.toLowerCase();
-                  const color = BRAND_COLORS[pType] || "#6B7280";
+                  const meta = getPlatformMeta(pType);
                   const selected = platformIds.includes(p.id);
                   const needsMedia = selected && mediaUrls.length === 0 && (pType === "instagram" || pType === "pinterest" || pType === "tiktok");
                   return (
@@ -328,10 +487,8 @@ export function CreatePostComposer({ profiles, platforms }: Props) {
                       className={`relative rounded-lg border p-3 text-left transition ${selected ? "border-green-400 bg-green-50/50" : "border-gray-200 hover:border-gray-300"}`}>
                       {selected && <span className="absolute top-1.5 right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-green-500 text-[8px] text-white">✓</span>}
                       {needsMedia && <span className="absolute top-1.5 left-1.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-orange-400" title="Missing media content" />}
-                      <span className="mb-1.5 flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold text-white" style={{ backgroundColor: color }}>
-                        {p.type[0].toUpperCase()}
-                      </span>
-                      <div className="text-xs font-medium text-gray-700">{p.type}</div>
+                      <PlatformBrandBadge type={pType} label={meta.label} className="mb-1.5" />
+                      <div className="text-xs font-medium text-gray-700">{meta.label}</div>
                       {p.handle && <div className="truncate text-[10px] text-gray-400">@{p.handle}</div>}
                     </button>
                   );

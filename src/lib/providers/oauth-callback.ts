@@ -113,6 +113,13 @@ export async function handleNativeOAuthCallback(
 
     fallback.searchParams.set("connected", platform);
     console.log(`[oauth-callback] ✅ ${result.created ? "Saved" : "Updated"} ${platform} connection for workspace ${tenant.currentWorkspace.id}`);
+
+    // Cancel "connect account" drip if user just connected their first platform
+    try {
+      const { cancelDripIfDone } = await import("@/lib/marketing/drip");
+      cancelDripIfDone(tenant.user.id, "welcome_2_connect");
+    } catch { /* non-critical */ }
+
     return NextResponse.redirect(fallback);
   } catch (callbackError) {
     console.error(`[oauth-callback] ❌ ${platform} callback failed:`, callbackError);

@@ -1,18 +1,23 @@
 import { redirect } from "next/navigation";
 import { DashboardDrawerShell } from "@/components/dashboard/drawer-shell";
-import { getSession } from "@/lib/auth";
 import { isAdmin } from "@/lib/admin-auth";
+import { getInboxUnreadCounts } from "@/lib/inbox/data";
+import { getTenantContext } from "@/lib/tenancy";
 
 export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const session = await getSession();
-  if (!session) redirect("/login");
+  const tenant = await getTenantContext();
+  if (!tenant) redirect("/login");
+  const inboxUnreadCounts = await getInboxUnreadCounts(tenant.currentWorkspace.id);
 
   return (
-    <DashboardDrawerShell showAdminLink={isAdmin(session.email)}>
+    <DashboardDrawerShell
+      showAdminLink={isAdmin(tenant.session!.email)}
+      inboxUnreadCounts={inboxUnreadCounts}
+    >
       {children}
     </DashboardDrawerShell>
   );

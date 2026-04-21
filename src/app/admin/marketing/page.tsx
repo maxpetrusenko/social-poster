@@ -1,5 +1,6 @@
 import { db } from "@/db";
 import {
+  dripQueue,
   emailEvents,
   emailSuppressions,
   leadMagnetDownloads,
@@ -7,7 +8,8 @@ import {
   notificationPreferences,
   waitlistSignups,
 } from "@/db/schema";
-import { count, desc, eq } from "drizzle-orm";
+import { and, count, desc, eq, isNotNull, isNull } from "drizzle-orm";
+import AnnouncementForm from "./announcement-form";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +31,9 @@ export default async function AdminMarketingPage() {
     [leadMagnets],
     deliveryRows,
     eventRows,
+    [dripPending],
+    [dripSent],
+    [dripCancelled],
   ] = await Promise.all([
     db.select({ count: count() }).from(waitlistSignups),
     db.select({ count: count() }).from(notificationPreferences).where(eq(notificationPreferences.marketingEmails, true)),
@@ -44,6 +49,9 @@ export default async function AdminMarketingPage() {
       .from(emailEvents)
       .groupBy(emailEvents.eventType)
       .orderBy(desc(count())),
+    db.select({ count: count() }).from(dripQueue).where(and(isNull(dripQueue.sentAt), isNull(dripQueue.cancelledAt))),
+    db.select({ count: count() }).from(dripQueue).where(isNotNull(dripQueue.sentAt)),
+    db.select({ count: count() }).from(dripQueue).where(isNotNull(dripQueue.cancelledAt)),
   ]);
 
   return (
@@ -60,6 +68,12 @@ export default async function AdminMarketingPage() {
         <Card label="Marketing Opt-ins" value={marketingPrefs.count} />
         <Card label="Suppressions" value={suppressed.count} />
         <Card label="Lead Magnets" value={leadMagnets.count} />
+      </div>
+
+      <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <Card label="Drip Pending" value={dripPending.count} />
+        <Card label="Drip Sent" value={dripSent.count} />
+        <Card label="Drip Cancelled" value={dripCancelled.count} />
       </div>
 
       <div className="mt-8 grid gap-6 lg:grid-cols-2">
@@ -86,6 +100,10 @@ export default async function AdminMarketingPage() {
             )) : <p className="text-sm text-[#8d7c64]">No provider events yet.</p>}
           </div>
         </section>
+      </div>
+
+      <div className="mt-8">
+        <AnnouncementForm />
       </div>
     </div>
   );

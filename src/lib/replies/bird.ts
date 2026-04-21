@@ -286,8 +286,18 @@ export async function searchTweets(query: string, count = 20): Promise<BirdTweet
   return coerceTweets(await runBirdSearch(query, count));
 }
 
-export async function getMentionsForPlatform(platform: BirdPlatform): Promise<BirdTweet[]> {
-  return coerceTweets(await runBird(["mentions", "--json"], true, platform));
+export async function getMentionsForPlatform(
+  platform: BirdPlatform,
+  count = 10,
+  full = false
+): Promise<BirdTweet[]> {
+  return coerceTweets(
+    await runBird(
+      ["mentions", full ? "--json-full" : "--json", "-n", String(count)],
+      true,
+      platform
+    )
+  );
 }
 
 export async function searchTweetsForPlatform(
@@ -300,9 +310,12 @@ export async function searchTweetsForPlatform(
 
 export async function readTweetForPlatform(
   platform: BirdPlatform,
-  tweetUrl: string
+  tweetUrl: string,
+  full = false
 ): Promise<BirdTweet | null> {
-  const tweets = coerceTweets(await runBird(["read", tweetUrl, "--json"], true, platform));
+  const tweets = coerceTweets(
+    await runBird(["read", tweetUrl, full ? "--json-full" : "--json"], true, platform)
+  );
   return tweets[0] ?? null;
 }
 
