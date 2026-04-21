@@ -1,6 +1,6 @@
 # Social Agent — Tasks & Status
 
-Last updated: 2026-04-19 (OAuth refactor complete)
+Last updated: 2026-04-20 (Notifications, admin, and marketing email foundation)
 
 ## Current State
 
@@ -33,6 +33,7 @@ Deploys to `social.maxpetrusenko.com` on Contabo/Coolify.
 - [x] `pipeline_runs` — execution history with step-level detail
 - [x] `dedup_cache` — content deduplication
 - [x] `candidate_cache` — manual candidate snapshot + OG-image cache
+- [x] `activity_log`, `notifications`, `notification_deliveries`, `email_events`, `email_suppressions`, `lead_magnet_downloads` — email notification and marketing audit foundation
 
 ### Auth
 - [x] Magic link + workspace invite email flow (Resend-first, SMTP fallback, preview URL fallback)
@@ -54,17 +55,20 @@ Deploys to `social.maxpetrusenko.com` on Contabo/Coolify.
 - [x] Connection OAuth info buttons now open in-app setup guides with platform docs, callback URI copy, missing env warnings, and X-specific tutorial/use-case text
 - [x] Invite accept page at `/invite/[token]`
 - [x] Dashboard home — live metrics for posting cadence, consistency, errors, schedules, and platform health
-- [x] Create Idea now routes through a canonical composer with idea/template/feed entry lanes and real draft/schedule/publish-now actions
+- [x] Create Idea replaced by Zernio-style Create Post composer at `/dashboard/posts/create`
 - [x] Schedule category presets via `schedules.config` — take/opinion, product update, source share, hype/future, hiring
 - [x] Platforms — list, create, edit, delete, per-platform skills/config editor
 - [x] Platforms native connection flow starts configured OAuth providers directly and exposes credential setup docs from each method
 - [x] LinkedIn native OAuth now uses app-managed auth connections: users approve LinkedIn access without pasting client IDs or secrets
 - [x] Connections filter groups LinkedIn native profile/page rows under LinkedIn, so saved OAuth profiles remain visible beside X native connections
+- [x] Native/proxy connections now collapse duplicate same-account rows and enforce one row per workspace, provider, platform, and account ID
 - [x] Local OAuth setup guide shows both localhost and 127.0.0.1 redirect URIs for native providers
 - [x] Connection catalog now lives in per-platform configs, with method info tooltips and live/planned capability badges in the connection drawer
 - [x] X proxy/Bird setup now only asks for `X_AUTH_TOKEN` and `X_CT0`, includes cookie-copy guidance, and exposes a read-only connection test
 - [x] Profiles — list, create, edit, delete (voice ID, face ID, tone)
-- [x] Posts — list with status filters, create with platform targeting, detail view
+- [x] Posts — Zernio-style card grid with media thumbnails, status badges, platform dots, status filter tabs
+- [x] Posts nav restructured: Posts parent with collapsible submenu (All Posts, Create Post, Recurrent Posts)
+- [x] Create Post composer: two-column layout, platform-specific options (Instagram Feed/Story/Reel/Carousel + collaborators + first comment, Facebook Feed/Story/Reel, X thread toggle, Reddit subreddit), multi-image URLs, image dimension hints per platform, live platform preview (Instagram/X/Facebook/LinkedIn native-style cards), Schedule/Now/Queue/Draft publishing modes with timezone
 - [x] Calendar — monthly grid view with schedule recurrences + actual pipeline runs
 - [x] Calendar recurring forecast cards now show source-title/image predictions with a debug panel instead of synthetic generated captions
 - [x] Calendar recurring cron slots now resolve in UTC, suppress past forecast shells, and label predictions as candidate-only without implying a draft exists
@@ -75,7 +79,10 @@ Deploys to `social.maxpetrusenko.com` on Contabo/Coolify.
 - [x] Schedule detail preview now shows fixed, Agent Persona, or RSS-candidate mode with source visibility and per-platform generated copy
 - [x] RSS page now uses a tabbed operator UI: compact editable source table with per-source drilldowns, traction-aware candidate scoring, visible selection pipeline, editable transformation prompt/templates/image rules, and regenerateable X/LinkedIn previews for a chosen candidate
 - [x] Social Agent chat widget now answers from sanitized workspace context, including connected platforms, reply review/ready queues, recent reply events, post targets, pipeline runs, RSS setup, and current page hints
-- [x] Top-bar support intake now creates Linear tickets with source, topic, explanation, page context, and optional R2-hosted image attachments
+- [x] Notifications page now reads durable notification rows instead of a placeholder scaffold
+- [x] Admin dashboard exists at `/admin` with email-gated overview, users, waitlist, marketing, usage, and waitlist CSV export
+- [x] Logs page at `/dashboard/logs` shows latest user actions, post/schedule/reply activity, pipeline runs, and LangSmith trace references
+- [x] Top-bar support intake now creates Linear tickets with source, topic, explanation, page context, selected-image preview, and optional Linear-hosted image links attached to Linear
 - [x] Social Agent can create the same Linear tickets through `/support`, with optional repair-agent webhook routing for `from_bot` issues
 - [x] Recurrent Posts exposed in left navigation for recurring content buckets and slot planning
 - [x] Settings — read-only config display
@@ -103,6 +110,7 @@ Deploys to `social.maxpetrusenko.com` on Contabo/Coolify.
 - [x] Middleware to protect /dashboard routes (next middleware.ts)
 - [x] Server-side org/workspace role gates for team settings and high-risk mutating APIs
 - [x] Social Agent can invite current-workspace members inline via an admin-only `/invite` command
+- [x] OpenAI LLM calls are wrapped with LangSmith tracing into the `clawPoster` project when LangSmith env is available
 - [x] Facebook native OAuth connection working (dev:https + per-platform callback rules)
 - [x] LinkedIn native OAuth connection working
 - [x] Refactor OAuth callback to brightbean pattern — request-derived URLs, HMAC-signed state, shared /api/auth/callback route
@@ -173,6 +181,12 @@ Deploys to `social.maxpetrusenko.com` on Contabo/Coolify.
 - [x] Replies board now supports Agent Persona-only reply profiles so discovery and drafts can target product, build, or OSS goals explicitly
 - [x] Ready replies now run through an automatic queue dispatcher with visible queued-for timestamps and a higher-throughput cadence for operator queues
 - [x] Empty review queues now auto-refill slowly with a small 3-post batch, manual refresh expands to 5 posts, and thread-style posts pull same-author thread context before draft generation
+- [x] Social Inbox now has `X Replies`, Comments, and DMs subheader tabs; `/dashboard/replies` redirects into Social Inbox X Replies
+- [x] Comments and DMs have shared platform inbox tables, pull action, and reply action plumbing backed by `inbox_conversations` / `inbox_messages`
+- [x] X Replies remains outbound outreach; X / Twitter inbound mentions now pull into Comments through Bird-backed access or X API mentions/search
+- [x] Comment pull/reply adapters added for X, YouTube, LinkedIn, Instagram, Facebook, Threads, and Mastodon where connected account scopes allow it
+- [x] DM pull/reply adapters added for X, Instagram, Facebook, and Mastodon where platform access is approved
+- [ ] Add live DM adapters for Bluesky, Reddit modmail, Google Business messages, and WhatsApp where platform access is approved
 - [x] Sidebar now shows the current workspace and a switch entry into the workspace control plane
 
 ### Cutover Plan

@@ -2,7 +2,10 @@ import { db } from "@/db";
 import { posts, postTargets, platforms, pipelineRuns } from "@/db/schema";
 import type { PipelineStep } from "@/db/schema";
 import { requireApiWorkspacePublisher } from "@/lib/api-authorization";
+import { recordTenantAuditEvent } from "@/lib/audit";
 import { publishPlatformTargets } from "@/lib/pipeline/publish-service";
+import { trackUsage } from "@/lib/usage";
+import { sendNotificationEmail } from "@/lib/notifications/send";
 import { and, eq } from "drizzle-orm";
 import crypto from "node:crypto";
 import { NextResponse } from "next/server";
@@ -108,6 +111,25 @@ export async function POST(
         result.classification === "disabled" ? null : result.error ?? null,
       publishedAt: result.success ? stepEnd : null,
     }).where(eq(postTargets.id, target.id));
+
+    if (
+      !result.success &&
+      result.classification !== "disabled" &&
+      result.classification !== "duplicate"
+    ) {
+      await sendNotificationEmail({
+        userId: tenant.user.id,
+        workspaceId: tenant.currentWorkspace.id,
+        type: "post_failure",
+        data: {
+          title: post.title ?? post.content.slice(0, 60),
+          platform: platform.name,
+          message: result.error ?? "Unknown publish error",
+          href: `/dashboard/posts/${postId}`,
+        },
+        dedupeKey: `post_target:${target.id}:failed`,
+      });
+    }
   }
 
   const completedAt = new Date();
@@ -138,6 +160,25 @@ export async function POST(
         : null,
     updatedAt: completedAt,
   }).where(eq(posts.id, postId));
+
+  // Track usage for each successful publish
+  for (let i = 0; i < results.length; i++) {
+    if (results[i]?.success) {
+      await trackUsage(tenant.currentWorkspace.id, "post_published", targets[i]?.platform.id, { postId });
+    }
+  }
+
+  await recordTenantAuditEvent(tenant, {
+    action: "post.publish",
+    targetType: "post",
+    targetId: postId,
+    metadata: {
+      status: postStatus,
+      endpoint: `POST /api/posts/${postId}/publish`,
+      runId,
+      platformTargetCount: targets.length,
+    },
+  });
 
   return NextResponse.json({
     runId,

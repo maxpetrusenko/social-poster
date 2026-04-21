@@ -14,14 +14,14 @@ export const config = {
   color: "#000000",
   authType: "oauth2" as AuthType,
   tokenExpiry: true,
-  capabilities: ["posting"] as PlatformCapability[],
-  futureCapabilities: ["analytics", "inbox", "comments", "engagement"] as PlatformCapability[],
+  capabilities: ["posting", "comments", "inbox"] as PlatformCapability[],
+  futureCapabilities: ["analytics", "engagement"] as PlatformCapability[],
   supportedPostTypes: ["text"] as PostType[],
   supportedMediaTypes: [] as MediaType[],
   maxCaptionLength: 280,
   info: {
     description: "Post tweets and threads to Twitter / X.",
-    authTooltip: "OAuth 2.0 with PKCE. Requires tweet.read, tweet.write, users.read, offline.access scopes.",
+    authTooltip: "OAuth 2.0 with PKCE. Requires tweet.read, tweet.write, users.read, dm.read, dm.write, offline.access scopes.",
     limitsTooltip: "300 tweets/day, 2,400 API requests/day. Rate limits reset hourly.",
     mediaTooltip: "Text-only posting via native OAuth. Media uploads require elevated API access.",
     analyticsTooltip: "Post impressions, likes, retweets, replies, and profile visits (coming soon).",
@@ -65,7 +65,7 @@ export const connectionDefinition: ConnectionPlatformDefinition = {
         bullets: [
           "Best long-term path for account-bound posting and future analytics.",
           "Requires callback URL and app credentials from the X developer portal.",
-          "Phase 2 expands this method with DMs, replies, engagement, and metrics scopes.",
+          "Supports inbound mentions, replies, and DMs when the app has the matching X permissions.",
         ],
         learnMoreUrl: "https://docs.x.com/fundamentals/authentication/oauth-2-0/overview",
       },
@@ -134,8 +134,8 @@ export const connectionDefinition: ConnectionPlatformDefinition = {
         title: "Bird-powered X posting",
         bullets: [
           "Uses the local Bird CLI and browser/cookie session instead of official OAuth.",
-          "Good fallback for long posts, manual accounts, and production cookie injection.",
-          "Treat as an operator tool with visible failure logs, not a full API connector.",
+          "Good fallback for posting, outreach replies, inbound mentions, search, and reading threads.",
+          "Bird does not expose DMs in the current CLI, so DM inbox uses direct X OAuth.",
         ],
       },
       fields: [

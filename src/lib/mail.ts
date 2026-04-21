@@ -19,7 +19,11 @@ function hasResendConfig() {
   return Boolean(process.env.RESEND_API_KEY?.trim());
 }
 
-function getMailFromAddress() {
+function getMailFromAddress(stream?: "transactional" | "marketing") {
+  if (stream === "marketing" && process.env.RESEND_MARKETING_FROM_EMAIL?.trim()) {
+    return process.env.RESEND_MARKETING_FROM_EMAIL.trim();
+  }
+
   return (
     process.env.RESEND_FROM_EMAIL?.trim() ||
     process.env.MAIL_FROM?.trim() ||
@@ -43,23 +47,32 @@ async function sendViaResend(input: {
   to: string;
   subject: string;
   html: string;
+  headers?: Record<string, string>;
+  idempotencyKey?: string;
+  stream?: "transactional" | "marketing";
 }) {
   const apiKey = process.env.RESEND_API_KEY?.trim();
   if (!apiKey) {
     throw new Error("Resend is not configured.");
   }
 
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${apiKey}`,
+    "Content-Type": "application/json",
+  };
+  if (input.idempotencyKey) {
+    headers["Idempotency-Key"] = input.idempotencyKey;
+  }
+
   const response = await fetch("https://api.resend.com/emails", {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
+    headers,
     body: JSON.stringify({
-      from: getMailFromAddress(),
+      from: getMailFromAddress(input.stream),
       to: [input.to],
       subject: input.subject,
       html: input.html,
+      headers: input.headers,
     }),
   });
 
@@ -67,6 +80,46 @@ async function sendViaResend(input: {
     const body = await response.text().catch(() => "");
     throw new Error(`Resend error: ${response.status} ${body}`.trim());
   }
+
+  const payload = await response.json().catch(() => null) as { id?: string } | null;
+  return payload?.id ?? null;
+}
+
+export async function sendEmail(input: {
+  to: string;
+  subject: string;
+  html: string;
+  headers?: Record<string, string>;
+  idempotencyKey?: string;
+  stream?: "transactional" | "marketing";
+}) {
+  const mode = process.env.EMAIL_DELIVERY_MODE?.trim() || "resend";
+  const to = process.env.EMAIL_TEST_TO?.trim() || input.to;
+
+  if (mode === "log") {
+    console.info(`[email:log] ${input.subject} -> ${to}`);
+    return { provider: "log", externalMessageId: null };
+  }
+
+  if (hasResendConfig()) {
+    const externalMessageId = await sendViaResend({ ...input, to });
+    return { provider: "resend", externalMessageId };
+  }
+
+  if (!hasSmtpConfig()) {
+    console.info(`[email:preview] ${input.subject} -> ${to}`);
+    return { provider: "preview", externalMessageId: null };
+  }
+
+  const info = await transporter.sendMail({
+    from: process.env.SMTP_FROM?.trim() || process.env.SMTP_USER,
+    to,
+    subject: input.subject,
+    html: input.html,
+    headers: input.headers,
+  });
+
+  return { provider: "smtp", externalMessageId: info.messageId ?? null };
 }
 
 export async function sendMagicLinkEmail(
@@ -89,10 +142,11 @@ export async function sendMagicLinkEmail(
     `;
 
   if (hasResendConfig()) {
-    await sendViaResend({
+    await sendEmail({
       to: email,
       subject: "Sign in to ClawPoster",
       html: magicLinkHtml,
+      stream: "transactional",
     });
     return;
   }
@@ -137,10 +191,11 @@ export async function sendWorkspaceInvitationEmail(input: {
     `;
 
   if (hasResendConfig()) {
-    await sendViaResend({
+    await sendEmail({
       to: input.email,
       subject: `You're invited to ${input.organizationName}`,
       html: inviteHtml,
+      stream: "transactional",
     });
     return;
   }

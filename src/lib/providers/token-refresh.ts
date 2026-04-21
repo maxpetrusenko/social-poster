@@ -7,6 +7,7 @@ import {
   readRefreshToken,
   readTokenExpiresAt,
 } from "./credentials";
+import { sendWorkspaceNotificationEmail } from "@/lib/notifications/send";
 import { APIError, OAuthError } from "./errors";
 import { normalizeNativePlatform } from "./platform-key";
 import { getProvider, hasNativeProvider } from "./registry";
@@ -206,6 +207,19 @@ async function refreshPlatformToken(
       expiresAt,
       error: reason,
     });
+    if (platform.workspaceId) {
+      await sendWorkspaceNotificationEmail({
+        workspaceId: platform.workspaceId,
+        type: "account_disconnect",
+        data: {
+          platform: platform.name,
+          handle: platform.handle,
+          message: reason,
+          href: "/dashboard/workspace-settings/social-accounts",
+        },
+        dedupeKey: `platform:${platform.id}:credential_refresh_failed`,
+      });
+    }
     return result(platform, "failed", reason, expiresAtIso);
   }
 }

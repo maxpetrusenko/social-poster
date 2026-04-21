@@ -7,6 +7,9 @@
     "dev:https": "APP_URL=https://127.0.0.1:3000 NEXT_DIST_DIR=.next-dev next dev --turbopack --experimental-https --experimental-https-key certs/localhost+2-key.pem --experimental-https-cert certs/localhost+2.pem",
     "build": "next build",
     "start": "next start",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:api": "npx tsx scripts/test-api.ts",
     "lint": "eslint . --max-warnings=0",
     "typecheck": "tsc --noEmit --project tsconfig.typecheck.json",
     "legacy:import": "node scripts/import-legacy.mjs",
@@ -26,6 +29,7 @@
     "better-sqlite3": "^11.8.0",
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.44.0",
+    "langsmith": "^0.5.21",
     "lucide-react": "^0.475.0",
     "next": "^15.3.0",
     "node-cron": "^3.0.3",
@@ -41,6 +45,8 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.0",
     "@tailwindcss/postcss": "^4.1.0",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^22.14.0",
     "@types/node-cron": "^3.0.11",
@@ -50,8 +56,10 @@
     "drizzle-kit": "^0.31.0",
     "eslint": "^9.23.0",
     "eslint-config-next": "^15.3.0",
+    "happy-dom": "^20.9.0",
     "postcss": "^8.5.0",
     "tailwindcss": "^4.1.0",
-    "typescript": "^5.8.0"
+    "typescript": "^5.8.0",
+    "vitest": "^4.1.4"
   }
 }

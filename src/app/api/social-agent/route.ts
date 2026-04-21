@@ -19,8 +19,9 @@ import {
   WORKSPACE_ROLE_OPTIONS,
   type WorkspaceRole,
 } from "@/lib/tenancy";
+import { recordTenantAuditEvent } from "@/lib/audit";
+import { callOpenAIResponses } from "@/lib/langsmith";
 
-const OPENAI_URL = "https://api.openai.com/v1/responses";
 const MODEL =
   process.env.OPENAI_SOCIAL_AGENT_MODEL ||
   process.env.OPENAI_REPLY_MODEL ||
@@ -309,21 +310,35 @@ async function answerWithContext(
   if (!apiKey) return fallbackAnswer(context, message);
 
   try {
-    const response = await fetch(OPENAI_URL, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
+    const result = await callOpenAIResponses<Record<string, unknown>>({
+      name: "social-agent-answer",
+      apiKey,
+      body: {
         model: MODEL,
         input: buildPrompt(context, message, messages, pageContext),
-      }),
+      },
+      tags: ["social-agent"],
+      metadata: {
+        endpoint: "POST /api/social-agent",
+        pagePath: pageContext.path ?? null,
+      },
     });
 
-    if (!response.ok) return fallbackAnswer(context, message);
-    const body = (await response.json()) as Record<string, unknown>;
-    return extractResponseText(body) || fallbackAnswer(context, message);
+    const answer = extractResponseText(result.data) || fallbackAnswer(context, message);
+    const tenant = await requireTenantContext().catch(() => null);
+    if (tenant) {
+      await recordTenantAuditEvent(tenant, {
+        action: "llm.social_agent",
+        targetType: "llm",
+        metadata: {
+          status: "success",
+          endpoint: "POST /api/social-agent",
+          model: MODEL,
+          langsmithTrace: result.trace,
+        },
+      });
+    }
+    return answer;
   } catch {
     return fallbackAnswer(context, message);
   }

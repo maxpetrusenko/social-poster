@@ -23,3 +23,5 @@ sqlite:/
 scripts/oauth-portals/profiles/
 scripts/oauth-portals/*.png
 certs/
+.gstack/
+.playwright-mcp/

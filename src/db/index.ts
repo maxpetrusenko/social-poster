@@ -4,6 +4,7 @@ import Database from "better-sqlite3";
 import * as schema from "./schema";
 import path from "node:path";
 import fs from "node:fs";
+import { collapseDuplicatePlatformConnections } from "./platform-dedupe";
 
 function columnExists(sqlite: Database.Database, table: string, column: string) {
   const columns = sqlite
@@ -264,6 +265,42 @@ function ensureSchema(sqlite: Database.Database) {
       updated_at INTEGER NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS inbox_conversations (
+      id TEXT PRIMARY KEY NOT NULL,
+      workspace_id TEXT REFERENCES workspaces(id) ON DELETE SET NULL,
+      platform_id TEXT REFERENCES platforms(id) ON DELETE SET NULL,
+      provider TEXT NOT NULL,
+      surface TEXT NOT NULL,
+      external_thread_id TEXT NOT NULL,
+      external_url TEXT,
+      subject TEXT,
+      status TEXT NOT NULL DEFAULT 'needs_reply',
+      priority TEXT NOT NULL DEFAULT 'normal',
+      assignee_user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+      last_message_at INTEGER,
+      first_message_at INTEGER,
+      metadata TEXT,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS inbox_messages (
+      id TEXT PRIMARY KEY NOT NULL,
+      conversation_id TEXT NOT NULL REFERENCES inbox_conversations(id) ON DELETE CASCADE,
+      workspace_id TEXT REFERENCES workspaces(id) ON DELETE SET NULL,
+      platform_id TEXT REFERENCES platforms(id) ON DELETE SET NULL,
+      surface TEXT NOT NULL,
+      provider_message_id TEXT NOT NULL,
+      direction TEXT NOT NULL DEFAULT 'incoming',
+      author_handle TEXT NOT NULL DEFAULT '',
+      author_name TEXT,
+      body TEXT NOT NULL,
+      source_url TEXT,
+      sent_at INTEGER,
+      metadata TEXT,
+      created_at INTEGER NOT NULL
+    );
+
     CREATE TABLE IF NOT EXISTS dedup_cache (
       id TEXT PRIMARY KEY NOT NULL,
       key TEXT NOT NULL UNIQUE,
@@ -318,6 +355,13 @@ function ensureSchema(sqlite: Database.Database) {
     CREATE UNIQUE INDEX IF NOT EXISTS rss_sources_workspace_url_idx ON rss_sources(workspace_id, url);
     CREATE INDEX IF NOT EXISTS audit_events_org_created_idx ON audit_events(organization_id, created_at);
     CREATE INDEX IF NOT EXISTS audit_events_workspace_created_idx ON audit_events(workspace_id, created_at);
+    CREATE UNIQUE INDEX IF NOT EXISTS inbox_conversations_external_unique
+      ON inbox_conversations(workspace_id, platform_id, surface, external_thread_id)
+      WHERE workspace_id IS NOT NULL AND platform_id IS NOT NULL;
+    CREATE UNIQUE INDEX IF NOT EXISTS inbox_messages_provider_unique
+      ON inbox_messages(conversation_id, provider_message_id);
+    CREATE INDEX IF NOT EXISTS inbox_messages_workspace_surface_idx
+      ON inbox_messages(workspace_id, surface, created_at);
   `);
 
   addColumnIfMissing(sqlite, "platforms", "workspace_id", "workspace_id TEXT");
@@ -329,6 +373,183 @@ function ensureSchema(sqlite: Database.Database) {
   addColumnIfMissing(sqlite, "reply_candidates", "workspace_id", "workspace_id TEXT");
   addColumnIfMissing(sqlite, "rss_settings", "traction_weight", "traction_weight INTEGER NOT NULL DEFAULT 35");
   addColumnIfMissing(sqlite, "rss_settings", "transformation_prompt", "transformation_prompt TEXT NOT NULL DEFAULT ''");
+
+  // ── Plan fields on organizations ──
+  addColumnIfMissing(sqlite, "organizations", "plan", "plan TEXT NOT NULL DEFAULT 'free'");
+  addColumnIfMissing(sqlite, "organizations", "plan_label", "plan_label TEXT NOT NULL DEFAULT 'Free'");
+  addColumnIfMissing(sqlite, "organizations", "max_profiles", "max_profiles INTEGER NOT NULL DEFAULT 5");
+  addColumnIfMissing(sqlite, "organizations", "max_platforms", "max_platforms INTEGER NOT NULL DEFAULT 3");
+  addColumnIfMissing(sqlite, "organizations", "max_posts_per_month", "max_posts_per_month INTEGER NOT NULL DEFAULT 50");
+  addColumnIfMissing(sqlite, "organizations", "billing_email", "billing_email TEXT");
+  addColumnIfMissing(sqlite, "organizations", "billing_cycle_start", "billing_cycle_start INTEGER");
+
+  // ── API Keys ──
+  sqlite.exec(`
+    CREATE TABLE IF NOT EXISTS api_keys (
+      id TEXT PRIMARY KEY,
+      workspace_id TEXT NOT NULL REFERENCES workspaces(id),
+      name TEXT NOT NULL,
+      key_hash TEXT NOT NULL,
+      key_prefix TEXT NOT NULL,
+      key_suffix TEXT NOT NULL,
+      scope TEXT NOT NULL DEFAULT 'all',
+      permission TEXT NOT NULL DEFAULT 'read',
+      status TEXT NOT NULL DEFAULT 'active',
+      last_used_at INTEGER,
+      revoked_at INTEGER,
+      created_by TEXT NOT NULL REFERENCES users(id),
+      created_at INTEGER NOT NULL
+    );
+  `);
+
+  // ── Notification Preferences ──
+  sqlite.exec(`
+    CREATE TABLE IF NOT EXISTS notification_preferences (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id),
+      workspace_id TEXT NOT NULL REFERENCES workspaces(id),
+      post_failures INTEGER NOT NULL DEFAULT 1,
+      account_disconnects INTEGER NOT NULL DEFAULT 1,
+      payment_alerts INTEGER NOT NULL DEFAULT 1,
+      usage_alerts INTEGER NOT NULL DEFAULT 1,
+      marketing_emails INTEGER NOT NULL DEFAULT 1,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS notification_prefs_user_workspace_idx
+    ON notification_preferences(user_id, workspace_id);
+  `);
+
+  // ── Usage Events ──
+  sqlite.exec(`
+    CREATE TABLE IF NOT EXISTS usage_events (
+      id TEXT PRIMARY KEY,
+      workspace_id TEXT NOT NULL REFERENCES workspaces(id),
+      platform_id TEXT REFERENCES platforms(id),
+      event_type TEXT NOT NULL,
+      metadata TEXT,
+      created_at INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS usage_events_workspace_type_idx
+    ON usage_events(workspace_id, event_type);
+    CREATE INDEX IF NOT EXISTS usage_events_created_idx
+    ON usage_events(workspace_id, created_at);
+  `);
+
+  // ── Activity + Email Delivery ──
+  sqlite.exec(`
+    CREATE TABLE IF NOT EXISTS activity_log (
+      id TEXT PRIMARY KEY,
+      workspace_id TEXT REFERENCES workspaces(id) ON DELETE SET NULL,
+      actor_user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+      event_type TEXT NOT NULL,
+      severity TEXT NOT NULL DEFAULT 'info',
+      entity_type TEXT,
+      entity_id TEXT,
+      subject TEXT NOT NULL,
+      body TEXT NOT NULL DEFAULT '',
+      metadata TEXT,
+      correlation_id TEXT,
+      dedupe_key TEXT,
+      source TEXT NOT NULL DEFAULT 'app',
+      created_at INTEGER NOT NULL
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS activity_log_workspace_dedupe_idx
+    ON activity_log(workspace_id, dedupe_key)
+    WHERE dedupe_key IS NOT NULL AND dedupe_key != '';
+
+    CREATE TABLE IF NOT EXISTS notifications (
+      id TEXT PRIMARY KEY,
+      workspace_id TEXT REFERENCES workspaces(id) ON DELETE CASCADE,
+      activity_log_id TEXT REFERENCES activity_log(id) ON DELETE CASCADE,
+      recipient_user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      channel TEXT NOT NULL DEFAULT 'in_app',
+      title TEXT NOT NULL,
+      body TEXT NOT NULL DEFAULT '',
+      severity TEXT NOT NULL DEFAULT 'info',
+      status TEXT NOT NULL DEFAULT 'unread',
+      read_at INTEGER,
+      dismissed_at INTEGER,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS notifications_recipient_status_idx
+    ON notifications(recipient_user_id, status, created_at);
+
+    CREATE TABLE IF NOT EXISTS notification_deliveries (
+      id TEXT PRIMARY KEY,
+      notification_id TEXT REFERENCES notifications(id) ON DELETE CASCADE,
+      channel TEXT NOT NULL DEFAULT 'email',
+      provider TEXT NOT NULL DEFAULT 'resend',
+      status TEXT NOT NULL DEFAULT 'pending',
+      attempt_count INTEGER NOT NULL DEFAULT 0,
+      external_message_id TEXT,
+      idempotency_key TEXT,
+      error_classification TEXT,
+      error_message TEXT,
+      sent_at INTEGER,
+      delivered_at INTEGER,
+      failed_at INTEGER,
+      next_retry_at INTEGER,
+      metadata TEXT,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS notification_deliveries_idempotency_idx
+    ON notification_deliveries(idempotency_key)
+    WHERE idempotency_key IS NOT NULL AND idempotency_key != '';
+    CREATE INDEX IF NOT EXISTS notification_deliveries_status_idx
+    ON notification_deliveries(status, next_retry_at);
+
+    CREATE TABLE IF NOT EXISTS email_events (
+      id TEXT PRIMARY KEY,
+      delivery_id TEXT REFERENCES notification_deliveries(id) ON DELETE SET NULL,
+      provider TEXT NOT NULL,
+      provider_event_id TEXT NOT NULL,
+      event_type TEXT NOT NULL,
+      recipient_email TEXT,
+      external_message_id TEXT,
+      payload TEXT,
+      created_at INTEGER NOT NULL
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS email_events_provider_event_idx
+    ON email_events(provider, provider_event_id);
+    CREATE INDEX IF NOT EXISTS email_events_message_idx
+    ON email_events(external_message_id, event_type);
+
+    CREATE TABLE IF NOT EXISTS email_suppressions (
+      id TEXT PRIMARY KEY,
+      email TEXT NOT NULL,
+      scope TEXT NOT NULL DEFAULT 'marketing',
+      reason TEXT NOT NULL,
+      provider TEXT,
+      event_id TEXT,
+      created_at INTEGER NOT NULL
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS email_suppressions_email_scope_idx
+    ON email_suppressions(email, scope);
+
+    CREATE TABLE IF NOT EXISTS lead_magnet_downloads (
+      id TEXT PRIMARY KEY,
+      email TEXT NOT NULL,
+      lead_magnet_key TEXT NOT NULL,
+      source TEXT NOT NULL DEFAULT 'landing',
+      marketing_consent INTEGER NOT NULL DEFAULT 0,
+      metadata TEXT,
+      created_at INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS lead_magnet_downloads_email_idx
+    ON lead_magnet_downloads(email, created_at);
+  `);
+
+  collapseDuplicatePlatformConnections(sqlite);
+  sqlite.exec(`
+    CREATE UNIQUE INDEX IF NOT EXISTS platforms_account_identity_unique
+    ON platforms(workspace_id, provider, type, account_id)
+    WHERE workspace_id IS NOT NULL
+      AND account_id IS NOT NULL
+      AND account_id != '';
+  `);
 }
 
 function checkIntegrity(sqlite: Database.Database): {

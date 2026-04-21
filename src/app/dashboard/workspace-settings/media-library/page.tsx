@@ -6,11 +6,11 @@ export default function WorkspaceSettingsMediaLibraryPage() {
       eyebrow="Workspace Settings / Media Library"
       title="Workspace asset library"
       description="Client or brand scoped assets, folders, and composer reuse."
-      primaryAction={{ href: "/dashboard/create-idea", label: "Create Idea" }}
+      primaryAction={{ href: "/dashboard/posts/create", label: "Create Post" }}
       flow="Workspace Settings -> Media Library -> workspace assets / search / reuse."
       sections={[
         { title: "Workspace assets", description: "Brand-specific images, video, and reusable media live here.", badge: "library" },
-        { title: "Composer integration", description: "Library picker should plug directly into the Create Idea composer.", badge: "composer" },
+        { title: "Composer integration", description: "Library picker should plug directly into the Create Post composer.", badge: "composer" },
       ]}
     />
   );

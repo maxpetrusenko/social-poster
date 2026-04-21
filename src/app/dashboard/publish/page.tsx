@@ -157,10 +157,8 @@ export default async function PublishPage({
         description="Primary operations shell. Existing calendar, posts, and pipeline truth now meet in one route."
         actions={
           <>
-            <HeroButton href="/dashboard/create-idea" tone="ghost">
-              Create Idea
-            </HeroButton>
-            <HeroButton href="/dashboard/posts/new">New Post</HeroButton>
+            <HeroButton href="/dashboard/posts">All Posts</HeroButton>
+            <HeroButton href="/dashboard/posts/create">Create Post</HeroButton>
           </>
         }
       />

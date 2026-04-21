@@ -2,6 +2,7 @@ import { db } from "@/db";
 import { platforms, posts, postTargets, profiles } from "@/db/schema";
 import { NextRequest, NextResponse } from "next/server";
 import { requireApiWorkspaceEditor } from "@/lib/api-authorization";
+import { recordTenantAuditEvent } from "@/lib/audit";
 import crypto from "node:crypto";
 import { and, eq, inArray } from "drizzle-orm";
 
@@ -134,6 +135,18 @@ export async function POST(request: NextRequest) {
 
       await db.insert(postTargets).values(targetEntries);
     }
+
+    await recordTenantAuditEvent(tenant, {
+      action: normalizedIntent === "schedule" ? "post.schedule" : "post.create",
+      targetType: "post",
+      targetId: postId,
+      metadata: {
+        status,
+        endpoint: "POST /api/posts",
+        platformTargetCount: normalizedPlatformIds.length,
+        scheduledAt: nextScheduledAt?.toISOString() ?? null,
+      },
+    });
 
     return NextResponse.json(
       {

@@ -1,0 +1,94 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="38%" r="72%">
+      <stop offset="0%" stop-color="#182331"/>
+      <stop offset="66%" stop-color="#0e1520"/>
+      <stop offset="100%" stop-color="#080c12"/>
+    </radialGradient>
+    <linearGradient id="gold" x1="80" y1="80" x2="432" y2="432" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#fff1a6"/>
+      <stop offset="30%" stop-color="#f0d078"/>
+      <stop offset="65%" stop-color="#d2a35d"/>
+      <stop offset="100%" stop-color="#9d6b22"/>
+    </linearGradient>
+    <linearGradient id="hi" x1="120" y1="80" x2="360" y2="380" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#fff8ce" stop-opacity=".65"/>
+      <stop offset="100%" stop-color="#fff8ce" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="card-g" x1="100" y1="140" x2="412" y2="420" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#1e2d3f"/>
+      <stop offset="100%" stop-color="#162030"/>
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feColorMatrix in="blur" type="matrix"
+        values="1 0 0 0 0.92  0 1 0 0 0.56  0 0 1 0 0.12  0 0 0 .4 0" result="warm"/>
+      <feMerge><feMergeNode in="warm"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="card-shadow" x="-10%" y="-5%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="16" flood-color="#000" flood-opacity=".4"/>
+    </filter>
+    <clipPath id="card-clip">
+      <rect x="80" y="120" width="352" height="312" rx="32"/>
+    </clipPath>
+  </defs>
+
+  <!-- Background -->
+  <rect width="512" height="512" rx="104" fill="url(#bg)"/>
+
+  <!-- Social post card -->
+  <g filter="url(#card-shadow)">
+    <rect x="80" y="120" width="352" height="312" rx="32"
+          fill="url(#card-g)" stroke="#2a3a4f" stroke-width="1.5"/>
+
+    <!-- Card content lines (text placeholder) -->
+    <rect x="130" y="172" width="180" height="12" rx="6" fill="#2a3f55" opacity=".7"/>
+    <rect x="130" y="196" width="252" height="10" rx="5" fill="#243448" opacity=".5"/>
+    <rect x="130" y="218" width="220" height="10" rx="5" fill="#243448" opacity=".5"/>
+    <rect x="130" y="240" width="160" height="10" rx="5" fill="#243448" opacity=".4"/>
+
+    <!-- Avatar circle -->
+    <circle cx="120" cy="168" r="0" fill="none"/>
+
+    <!-- Card action bar -->
+    <rect x="80" y="380" width="352" height="52" rx="0" fill="#121c28" opacity=".5"/>
+    <rect x="130" y="396" width="60" height="20" rx="10" fill="#1e3048" opacity=".6"/>
+    <rect x="210" y="396" width="60" height="20" rx="10" fill="#1e3048" opacity=".6"/>
+    <rect x="320" y="396" width="60" height="20" rx="10" fill="#1e3048" opacity=".6"/>
+  </g>
+
+  <!-- Claw marks slashing diagonally across the card -->
+  <g filter="url(#glow)" clip-path="url(#card-clip)">
+    <!-- Scratch 1 -->
+    <path d="M60 130c24 48 72 130 140 230 18 26 34 44 46 54 6 5 16-80 8-92
+             C216 260 162 178 118 118c-12-16-64 0-58 12Z"
+          fill="url(#gold)"/>
+    <path d="M60 130c14 30 40 74 76 126 4-36 4-70 1-98-28-20-58-34-77-28Z"
+          fill="url(#hi)"/>
+
+    <!-- Scratch 2 -->
+    <path d="M124 110c32 52 88 140 158 240 16 22 32 38 44 48 5 5 20-76 12-88
+             C298 240 234 152 178 86c-14-17-60 10-54 24Z"
+          fill="url(#gold)"/>
+    <path d="M124 110c18 30 48 78 86 134 2-34 0-66-6-92-30-20-60-48-80-42Z"
+          fill="url(#hi)" opacity=".8"/>
+
+    <!-- Scratch 3 -->
+    <path d="M192 100c38 50 98 138 166 238 14 20 28 36 40 44 5 4 22-72 14-84
+             C366 230 296 138 236 72c-14-16-50 14-44 28Z"
+          fill="url(#gold)"/>
+    <path d="M192 100c22 30 56 80 96 140 0-32-4-62-12-86-30-22-62-58-84-54Z"
+          fill="url(#hi)" opacity=".7"/>
+  </g>
+
+  <!-- Claw marks extending beyond the card (top-left entry, bottom-right exit) -->
+  <g filter="url(#glow)">
+    <!-- Entry scratch tips above card -->
+    <path d="M54 100 Q62 118 70 134" stroke="url(#gold)" stroke-width="14"
+          stroke-linecap="round" opacity=".6"/>
+    <path d="M118 82 Q126 98 132 114" stroke="url(#gold)" stroke-width="13"
+          stroke-linecap="round" opacity=".5"/>
+    <path d="M184 72 Q192 88 198 104" stroke="url(#gold)" stroke-width="12"
+          stroke-linecap="round" opacity=".45"/>
+  </g>
+</svg>

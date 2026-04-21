@@ -24,7 +24,14 @@ export class TwitterProvider extends OAuthProvider {
   maxCaptionLength = 280;
   supportedPostTypes: PostType[] = ["text"];
   supportedMediaTypes: MediaType[] = [];
-  requiredScopes = ["tweet.read", "tweet.write", "users.read", "offline.access"];
+  requiredScopes = [
+    "tweet.read",
+    "tweet.write",
+    "users.read",
+    "dm.read",
+    "dm.write",
+    "offline.access",
+  ];
 
   get rateLimits(): RateLimitConfig {
     return {

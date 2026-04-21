@@ -1,6 +1,6 @@
 # Inbox And Replies Parity
 
-Last updated: 2026-04-13
+Last updated: 2026-04-20
 
 ## Purpose
 
@@ -10,7 +10,11 @@ Current state:
 - reply engine is a worker sidecar
 - X replies are discovered, drafted, and sent from `src/lib/pipeline/runners/reply-engine.ts`
 - reply history is logged in `replyEvents`
-- dashboard reply UI is event log first, not conversation first
+- dashboard Social Inbox has `X Replies`, `Comments`, and `DMs` subheader tabs
+- X Replies keeps the existing live reply board under `/dashboard/inbox/replies`
+- Comments and DMs use `inbox_conversations` and `inbox_messages` for pulled items and outgoing replies
+- comment pull/reply adapters currently exist for X, YouTube, LinkedIn, Instagram, Facebook, Threads, and Mastodon
+- DM pull/reply adapters currently exist for X, Instagram, Facebook, and Mastodon
 
 Target state:
 - operator inbox
@@ -18,6 +22,51 @@ Target state:
 - assignments and SLAs
 - saved replies and reply drafts
 - Bird as one transport path, not the whole product
+
+## Navigation Shape
+
+`Social Inbox` remains the top-level workspace entry.
+
+Subroutes:
+- `/dashboard/inbox/replies` — X reply engine first, then platform reply surfaces as they graduate from comments modules
+- `/dashboard/inbox/comments` — platform comment and review tables
+- `/dashboard/inbox/dms` — direct-message tables where official APIs allow it
+
+Legacy route:
+- `/dashboard/replies` redirects to `/dashboard/inbox/replies`
+
+Platform tabs:
+- X / Twitter
+- LinkedIn
+- Instagram
+- Threads
+- YouTube
+- Facebook
+- TikTok
+- Bluesky
+- Mastodon
+- Reddit
+- Pinterest
+- Google Business
+- WhatsApp
+
+Initial live support:
+- X / Twitter replies through the existing reply board
+- X Replies is outbound outreach; X / Twitter inbound mentions and replies pull into Comments through Bird-backed access or X API mentions/search, and DMs through the X DM API
+- YouTube comments through YouTube Data API comment threads/comments
+- LinkedIn comments through `socialActions/comments` when account scopes and API tier allow it
+- Instagram comments through Instagram comment APIs when Meta review and account type allow it
+- Instagram DMs through Meta conversations when Instagram Messaging permissions allow it
+- Facebook Page comments through Graph comment edges when page tokens allow it
+- Facebook DMs through Messenger conversations when Page messaging permissions allow it
+- Threads replies through the Threads replies API
+- Mastodon replies through status context and DMs through conversations/direct statuses
+
+Blocked or planned support:
+- Bluesky replies/chat, Reddit comments/modmail, Google Business reviews, and WhatsApp messages have official API paths but still need provider modules.
+- Pinterest comments/DMs and YouTube DMs have no useful public API path for this inbox.
+- LinkedIn DMs require restricted partner messaging access.
+- TikTok comments and messaging remain gated behind platform approval paths.
 
 Depends on:
 - `/Users/maxpetrusenko/Desktop/Projects/social-poster/docs/plans/phase-0-stabilization-checklist.md`

@@ -1,8 +1,8 @@
 import { z } from "zod";
 import { uniqueReplyDrafts } from "@/lib/replies/duplicate-guard";
 import type { ReplyDirection } from "@/lib/replies/strategy";
+import { callOpenAIResponses } from "@/lib/langsmith";
 
-const OPENAI_API_URL = "https://api.openai.com/v1/responses";
 const DEFAULT_REPLY_MODEL = process.env.OPENAI_REPLY_MODEL || "gpt-5-mini";
 const DEFAULT_PRODUCT_NAME = process.env.REPLY_PRODUCT_NAME || "Agent Persona";
 const DEFAULT_PRODUCT_DESCRIPTOR =
@@ -49,27 +49,23 @@ export async function generateAiReplyDraftsBatch(
     throw new Error("OPENAI_API_KEY not set");
   }
 
-  const response = await fetch(OPENAI_API_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
+  const result = await callOpenAIResponses<Record<string, unknown>>({
+    name: "reply-draft-generation",
+    apiKey,
+    body: {
       model: DEFAULT_REPLY_MODEL,
       reasoning: { effort: "low" },
       input: buildPrompt(candidates, mode),
-    }),
+    },
     signal: AbortSignal.timeout(45_000),
+    tags: ["replies", mode],
+    metadata: {
+      candidateCount: candidates.length,
+      mode,
+    },
   });
 
-  const payload = (await response.json()) as Record<string, unknown>;
-  if (!response.ok) {
-    const message = extractErrorMessage(payload);
-    throw new Error(`OpenAI reply draft generation failed: ${message}`);
-  }
-
-  const outputText = extractOutputText(payload);
+  const outputText = extractOutputText(result.data);
   const parsed = responseSchema.parse(extractJsonObject(outputText));
 
   const byTweetId = new Map<string, string[]>();
@@ -147,16 +143,6 @@ function normalizeDrafts(drafts: string[]) {
       .map((draft) => draft.replace(/\s+/g, " ").trim().replace(/^["'`]+|["'`]+$/g, ""))
       .filter((draft) => draft.length >= 24 && draft.length <= 220)
   ).slice(0, 3);
-}
-
-function extractErrorMessage(payload: Record<string, unknown>) {
-  const error = payload.error;
-  if (error && typeof error === "object") {
-    const message = (error as { message?: unknown }).message;
-    if (typeof message === "string" && message.trim()) return message.trim();
-  }
-
-  return "unknown error";
 }
 
 function extractOutputText(payload: Record<string, unknown>) {

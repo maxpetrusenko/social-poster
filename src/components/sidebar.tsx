@@ -8,6 +8,7 @@ import {
   Bell,
   CalendarDays,
   Compass,
+  FileText,
   MonitorPlay,
   MessageSquare,
   UserCircle,
@@ -33,6 +34,7 @@ import { LogoutButton } from "@/components/logout-button";
 const iconMap = {
   publish: CalendarDays,
   create: PenSquare,
+  posts: FileText,
   inbox: MessageSquare,
   replies: MessageSquareReply,
   notifications: Bell,
@@ -60,49 +62,79 @@ function NavList({
     <div className={compact ? "space-y-2" : "space-y-1.5"}>
       {items.map((item) => {
         const Icon = iconMap[item.icon];
+        const childActive = item.children?.some(
+          (child) =>
+            pathname === child.href ||
+            (child.href !== "/dashboard" && pathname.startsWith(child.href))
+        );
         const active =
           pathname === item.href ||
-          (item.href !== "/dashboard" && pathname.startsWith(item.href));
+          (item.href !== "/dashboard" && pathname.startsWith(item.href)) ||
+          childActive;
 
         return (
-          <Link
-            key={item.href}
-            href={item.href}
-            className={cn(
-              "group flex items-start justify-between gap-3 rounded-[18px] transition",
-              compact
-                ? "border border-[rgba(12,17,21,0.08)] bg-[rgba(255,255,255,0.46)] px-3 py-3"
-                : "px-3 py-3",
-              active
-                ? "bg-[rgba(15,126,169,0.10)] text-[var(--accent-tech)]"
-                : "text-[var(--muted)] hover:bg-[rgba(12,17,21,0.05)] hover:text-[var(--ink)]"
-            )}
-          >
-            <span className="flex min-w-0 items-start gap-3">
-              <span
-                className={cn(
-                  "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] border",
-                  active
-                    ? "border-[rgba(15,126,169,0.2)] bg-[rgba(15,126,169,0.12)]"
-                    : "border-[rgba(12,17,21,0.08)] bg-white/60"
-                )}
-              >
-                <Icon className="h-4 w-4" />
-              </span>
-              <span className="min-w-0">
-                <span className="block text-[13px] font-semibold">{item.label}</span>
-                <span className="mt-1 block text-xs leading-5 text-[var(--muted)]">
-                  {item.blurb}
+          <div key={item.href}>
+            <Link
+              href={item.href}
+              className={cn(
+                "group flex items-start justify-between gap-3 rounded-[18px] transition",
+                compact
+                  ? "border border-[rgba(12,17,21,0.08)] bg-[rgba(255,255,255,0.46)] px-3 py-3"
+                  : "px-3 py-3",
+                active
+                  ? "bg-[rgba(15,126,169,0.10)] text-[var(--accent-tech)]"
+                  : "text-[var(--muted)] hover:bg-[rgba(12,17,21,0.05)] hover:text-[var(--ink)]"
+              )}
+            >
+              <span className="flex min-w-0 items-start gap-3">
+                <span
+                  className={cn(
+                    "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] border",
+                    active
+                      ? "border-[rgba(15,126,169,0.2)] bg-[rgba(15,126,169,0.12)]"
+                      : "border-[rgba(12,17,21,0.08)] bg-white/60"
+                  )}
+                >
+                  <Icon className="h-4 w-4" />
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-[13px] font-semibold">{item.label}</span>
+                  <span className="mt-1 block text-xs leading-5 text-[var(--muted)]">
+                    {item.blurb}
+                  </span>
                 </span>
               </span>
-            </span>
-            <ArrowUpRight
-              className={cn(
-                "mt-1 h-3.5 w-3.5 shrink-0 transition",
-                active ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-              )}
-            />
-          </Link>
+              <ArrowUpRight
+                className={cn(
+                  "mt-1 h-3.5 w-3.5 shrink-0 transition",
+                  active ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                )}
+              />
+            </Link>
+            {item.children?.length ? (
+              <div className="ml-8 mt-1 space-y-1 border-l border-[rgba(12,17,21,0.08)] pl-3">
+                {item.children.map((child) => {
+                  const childActive =
+                    pathname === child.href ||
+                    (child.href !== "/dashboard" && pathname.startsWith(child.href));
+                  return (
+                    <Link
+                      key={child.href}
+                      href={child.href}
+                      className={cn(
+                        "block rounded-[12px] px-3 py-2 text-xs font-semibold transition",
+                        childActive
+                          ? "bg-[rgba(15,126,169,0.10)] text-[var(--accent-tech)]"
+                          : "text-[var(--muted)] hover:bg-[rgba(12,17,21,0.05)] hover:text-[var(--ink)]"
+                      )}
+                    >
+                      {child.label}
+                    </Link>
+                  );
+                })}
+              </div>
+            ) : null}
+          </div>
         );
       })}
     </div>

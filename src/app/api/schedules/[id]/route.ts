@@ -1,6 +1,7 @@
 import { db } from "@/db";
 import { platforms, profiles, schedules } from "@/db/schema";
 import { requireApiWorkspaceEditor } from "@/lib/api-authorization";
+import { recordTenantAuditEvent } from "@/lib/audit";
 import { reconcileSchedules } from "@/lib/scheduler";
 import { and, eq, inArray } from "drizzle-orm";
 
@@ -100,6 +101,18 @@ export async function POST(
       .returning();
 
     await reconcileSchedules("schedule:update");
+
+    await recordTenantAuditEvent(tenant, {
+      action: "schedule.update",
+      targetType: "schedule",
+      targetId: scheduleId,
+      metadata: {
+        status: updates.enabled ? "scheduled" : "paused",
+        endpoint: `POST /api/schedules/${scheduleId}`,
+        jobType: updates.jobType,
+        platformTargetCount: normalizedPlatformIds?.length ?? 0,
+      },
+    });
 
     return Response.json(result[0]);
   } catch (error) {

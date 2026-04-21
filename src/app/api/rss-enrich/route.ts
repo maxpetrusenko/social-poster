@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireApiWorkspaceEditor } from "@/lib/api-authorization";
+import { recordTenantAuditEvent } from "@/lib/audit";
+import { callOpenAIResponses, type LangSmithTrace } from "@/lib/langsmith";
 
-const OPENAI_URL = "https://api.openai.com/v1/responses";
 const MODEL = process.env.OPENAI_ENRICH_MODEL || "gpt-4.1-mini";
 
 function getApiKey(): string {
@@ -45,7 +46,7 @@ async function generateSummary(
   title: string,
   articleText: string,
   existingSummary: string
-): Promise<{ summary: string; keyPoints: string[] }> {
+): Promise<{ summary: string; keyPoints: string[]; trace: LangSmithTrace | null }> {
   const apiKey = getApiKey();
 
   const prompt = `You are summarizing an article for social media posts. Extract the most interesting, specific, and substantive points.
@@ -62,25 +63,22 @@ Respond with JSON only:
   "keyPoints": ["point 1 - most surprising/specific detail", "point 2 - concrete implication or number", "point 3 - what actually changed"]
 }`;
 
-  const res = await fetch(OPENAI_URL, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
+  const result = await callOpenAIResponses<Record<string, unknown>>({
+    name: "rss-enrich-summary",
+    apiKey,
+    body: {
       model: MODEL,
       input: prompt,
       text: { format: { type: "json_object" } },
-    }),
+    },
+    tags: ["rss", "enrichment"],
+    metadata: {
+      endpoint: "POST /api/rss-enrich",
+      title,
+    },
   });
 
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`OpenAI API error: ${res.status} ${err.slice(0, 200)}`);
-  }
-
-  const data = (await res.json()) as Record<string, unknown>;
+  const data = result.data;
 
   // Extract text from the response
   const output = Array.isArray(data.output)
@@ -96,10 +94,11 @@ Respond with JSON only:
     return {
       summary: parsed.summary || "",
       keyPoints: Array.isArray(parsed.keyPoints) ? parsed.keyPoints : [],
+      trace: result.trace,
     };
   } catch {
     // If JSON parse fails, use the raw text as summary
-    return { summary: content.slice(0, 500), keyPoints: [] };
+    return { summary: content.slice(0, 500), keyPoints: [], trace: result.trace };
   }
 }
 
@@ -133,7 +132,22 @@ export async function POST(request: NextRequest) {
       body.summary || ""
     );
 
-    return NextResponse.json(result);
+    await recordTenantAuditEvent(authorized, {
+      action: "llm.rss_enrich",
+      targetType: "llm",
+      metadata: {
+        status: "success",
+        endpoint: "POST /api/rss-enrich",
+        sourceUrl: body.url,
+        model: MODEL,
+        langsmithTrace: result.trace,
+      },
+    });
+
+    return NextResponse.json({
+      summary: result.summary,
+      keyPoints: result.keyPoints,
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error("[rss-enrich] error:", message);

@@ -2,7 +2,8 @@ export type ShellNavItem = {
   label: string;
   href: string;
   blurb: string;
-  icon: "publish" | "create" | "inbox" | "replies" | "notifications" | "schedules" | "categories" | "rss" | "accounts" | "profiles" | "overview" | "pipeline" | "team" | "settings";
+  icon: "publish" | "create" | "inbox" | "replies" | "notifications" | "schedules" | "categories" | "rss" | "accounts" | "profiles" | "overview" | "pipeline" | "team" | "settings" | "posts";
+  children?: ShellNavItem[];
 };
 
 export const workspaceShellNav: ShellNavItem[] = [
@@ -13,22 +14,56 @@ export const workspaceShellNav: ShellNavItem[] = [
     icon: "publish",
   },
   {
-    label: "Create Idea",
-    href: "/dashboard/create-idea",
-    blurb: "Composer, templates, feeds.",
+    label: "Posts",
+    href: "/dashboard/posts",
+    blurb: "Create, manage, and schedule posts.",
     icon: "create",
+    children: [
+      {
+        label: "All Posts",
+        href: "/dashboard/posts",
+        blurb: "View all posts.",
+        icon: "create",
+      },
+      {
+        label: "Create Post",
+        href: "/dashboard/posts/create",
+        blurb: "New post composer.",
+        icon: "create",
+      },
+      {
+        label: "Recurrent Posts",
+        href: "/dashboard/categories",
+        blurb: "Recurring slots and buckets.",
+        icon: "categories",
+      },
+    ],
   },
   {
     label: "Social Inbox",
     href: "/dashboard/inbox",
-    blurb: "Threads, assignment, replies.",
+    blurb: "Replies, comments, DMs.",
     icon: "inbox",
-  },
-  {
-    label: "Replies",
-    href: "/dashboard/replies",
-    blurb: "X reply engine log.",
-    icon: "replies",
+    children: [
+      {
+        label: "X Replies",
+        href: "/dashboard/inbox/replies",
+        blurb: "X reply engine and platform replies.",
+        icon: "replies",
+      },
+      {
+        label: "Comments",
+        href: "/dashboard/inbox/comments",
+        blurb: "Post comments and review replies.",
+        icon: "inbox",
+      },
+      {
+        label: "DMs",
+        href: "/dashboard/inbox/dms",
+        blurb: "Direct message queues.",
+        icon: "inbox",
+      },
+    ],
   },
   {
     label: "Notifications",
@@ -41,12 +76,6 @@ export const workspaceShellNav: ShellNavItem[] = [
     href: "/dashboard/schedules",
     blurb: "Cadence, drift, run control.",
     icon: "schedules",
-  },
-  {
-    label: "Recurrent Posts",
-    href: "/dashboard/categories",
-    blurb: "Recurring slots and content buckets.",
-    icon: "categories",
   },
   {
     label: "RSS",
@@ -95,8 +124,8 @@ export const footerShellNav: ShellNavItem[] = [
   },
   {
     label: "Settings",
-    href: "/dashboard/settings/general",
-    blurb: "Org and workspace control.",
+    href: "/dashboard/settings",
+    blurb: "Usage, billing, API keys, notifications.",
     icon: "settings",
   },
 ];

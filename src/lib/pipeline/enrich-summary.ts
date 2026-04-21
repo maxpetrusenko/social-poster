@@ -6,6 +6,8 @@
  * Falls back gracefully — never throws.
  */
 
+import { callOpenAIResponses } from "@/lib/langsmith";
+
 const GARBAGE_SUMMARIES = new Set([
   "comments",
   "comments.",
@@ -65,21 +67,21 @@ ${articleText}
 
 Return ONLY the summary text, no JSON, no formatting.`;
 
-  const res = await fetch("https://api.openai.com/v1/responses", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
+  const result = await callOpenAIResponses<Record<string, unknown>>({
+    name: "pipeline-enrich-summary",
+    apiKey,
+    body: {
       model,
       input: prompt,
-    }),
+    },
+    tags: ["pipeline", "enrichment"],
+    metadata: {
+      source: "pipeline",
+      title,
+    },
   });
 
-  if (!res.ok) throw new Error(`OpenAI ${res.status}`);
-
-  const data = (await res.json()) as Record<string, unknown>;
+  const data = result.data;
   const output = Array.isArray(data.output)
     ? (data.output as Array<Record<string, unknown>>)
     : [];

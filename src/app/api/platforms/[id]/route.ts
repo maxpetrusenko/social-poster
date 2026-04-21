@@ -1,7 +1,11 @@
 import { db } from "@/db";
 import { platforms } from "@/db/schema";
 import { requireApiWorkspaceManager } from "@/lib/api-authorization";
-import { PLATFORM_TYPES } from "@/lib/platforms";
+import {
+  findPlatformByExternalAccount,
+  type PlatformProvider,
+} from "@/lib/platform-connections";
+import { PLATFORM_TYPES, type PlatformType } from "@/lib/platforms";
 import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
@@ -37,6 +41,26 @@ export async function POST(
       return NextResponse.json(
         { error: "Platform not found" },
         { status: 404 }
+      );
+    }
+
+    const nextType = (validated.type ?? platform.type) as PlatformType;
+    const nextProvider = (validated.provider ??
+      platform.provider) as PlatformProvider;
+    const nextAccountId =
+      validated.accountId !== undefined ? validated.accountId : platform.accountId;
+    const duplicate = await findPlatformByExternalAccount({
+      workspaceId: tenant.currentWorkspace.id,
+      provider: nextProvider,
+      type: nextType,
+      accountId: nextAccountId,
+      excludeId: id,
+    });
+
+    if (duplicate) {
+      return NextResponse.json(
+        { error: "This account is already connected." },
+        { status: 409 }
       );
     }
 

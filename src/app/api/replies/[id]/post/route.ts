@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireApiWorkspacePublisher } from "@/lib/api-authorization";
+import { recordTenantAuditEvent } from "@/lib/audit";
 import { postReplyCandidate } from "@/lib/replies/live";
 
 export async function POST(
@@ -12,6 +13,20 @@ export async function POST(
   try {
     const { id } = await params;
     const row = await postReplyCandidate(id, tenant.currentWorkspace.id);
+    if (!row) {
+      return NextResponse.json({ error: "Reply candidate not found" }, { status: 404 });
+    }
+    await recordTenantAuditEvent(tenant, {
+      action: "reply.post",
+      targetType: "reply",
+      targetId: id,
+      metadata: {
+        status: row.status,
+        endpoint: `POST /api/replies/${id}/post`,
+        platform: "X",
+        replyUrl: row.replyUrl ?? null,
+      },
+    });
     return NextResponse.json({ row });
   } catch (error) {
     return NextResponse.json(

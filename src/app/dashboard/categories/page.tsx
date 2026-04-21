@@ -85,7 +85,7 @@ function buildGridEvents(scheduleInsights: ScheduleInsight[]) {
   const cronTimeZone = getScheduleCronTimeZone();
 
   return scheduleInsights
-    .filter((schedule) => schedule.enabled)
+    .filter((schedule) => schedule.enabled && schedule.jobType !== "reply_engine")
     .flatMap((schedule) => {
       const occurrences = getCronOccurrences(
         schedule.cron,
@@ -141,8 +141,9 @@ export default async function CategoriesPage() {
   const allHours = Array.from({ length: maxHour - minHour + 1 }, (_, index) => minHour + index);
   const visibleHours = allHours;
 
+  const nonReplySchedules = scheduleInsights.filter((s) => s.jobType !== "reply_engine");
   const categoryStats = POST_CATEGORIES.map((category) => {
-    const schedules = scheduleInsights.filter(
+    const schedules = nonReplySchedules.filter(
       (schedule) => schedule.contentCategory === category.value
     );
 

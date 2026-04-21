@@ -1,10 +1,8 @@
-import { db } from "@/db";
-import { platforms } from "@/db/schema";
 import { requireApiWorkspaceManager } from "@/lib/api-authorization";
+import { upsertPlatformConnection } from "@/lib/platform-connections";
 import { PLATFORM_TYPES } from "@/lib/platforms";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import crypto from "node:crypto";
 
 const createPlatformSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -25,10 +23,7 @@ export async function POST(request: NextRequest) {
     const validated = createPlatformSchema.parse(body);
 
     const now = new Date();
-    const id = crypto.randomUUID();
-
-    await db.insert(platforms).values({
-      id,
+    const result = await upsertPlatformConnection({
       workspaceId: tenant.currentWorkspace.id,
       name: validated.name,
       type: validated.type,
@@ -37,11 +32,13 @@ export async function POST(request: NextRequest) {
       provider: validated.provider,
       config: validated.config ?? null,
       enabled: validated.enabled,
-      createdAt: now,
-      updatedAt: now,
+      now,
     });
 
-    return NextResponse.json({ success: true, id }, { status: 201 });
+    return NextResponse.json(
+      { success: true, id: result.id, created: result.created },
+      { status: result.created ? 201 : 200 }
+    );
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(

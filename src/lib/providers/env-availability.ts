@@ -91,11 +91,21 @@ const OAUTH_ENV_GROUPS: Partial<Record<PlatformType, ProviderEnvGroup[]>> = {
   tiktok: [
     {
       label: "TikTok client key",
-      keys: ["TIKTOK_CLIENT_KEY", "PLATFORM_TIKTOK_CLIENT_KEY"],
+      keys: [
+        "TIKTOK_CLIENT_KEY_DEV",
+        "PLATFORM_TIKTOK_CLIENT_KEY_DEV",
+        "TIKTOK_CLIENT_KEY",
+        "PLATFORM_TIKTOK_CLIENT_KEY",
+      ],
     },
     {
       label: "TikTok client secret",
-      keys: ["TIKTOK_CLIENT_SECRET", "PLATFORM_TIKTOK_CLIENT_SECRET"],
+      keys: [
+        "TIKTOK_CLIENT_SECRET_DEV",
+        "PLATFORM_TIKTOK_CLIENT_SECRET_DEV",
+        "TIKTOK_CLIENT_SECRET",
+        "PLATFORM_TIKTOK_CLIENT_SECRET",
+      ],
     },
   ],
   youtube: [

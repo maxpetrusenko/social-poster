@@ -36,10 +36,30 @@ type LinearIssue = {
   url: string;
 };
 
+type LinearAttachment = {
+  id: string;
+  title: string;
+  url: string;
+};
+
+type LinearUploadFile = {
+  filename: string;
+  contentType: string;
+  size: number;
+  uploadUrl: string;
+  assetUrl: string;
+  headers: Array<{ key: string; value: string }>;
+};
+
 type RepairAgentStatus =
   | { status: "skipped"; reason: string }
   | { status: "not_configured"; reason: string }
   | { status: "sent"; host: string }
+  | { status: "failed"; reason: string };
+
+type SupportTicketAttachmentStatus =
+  | { status: "skipped"; reason: string }
+  | { status: "linked"; attachment: LinearAttachment }
   | { status: "failed"; reason: string };
 
 export type CreateSupportTicketInput = {
@@ -47,6 +67,7 @@ export type CreateSupportTicketInput = {
   topic: string;
   explanation: string;
   imageUrl?: string | null;
+  imageName?: string | null;
   sourceUrl?: string | null;
   pageTitle?: string | null;
   autoRepair?: boolean;
@@ -64,7 +85,14 @@ export type CreateSupportTicketInput = {
 
 export type CreateSupportTicketResult = {
   issue: LinearIssue;
+  attachment: SupportTicketAttachmentStatus;
   repairAgent: RepairAgentStatus;
+};
+
+export type UploadLinearFileAssetInput = {
+  bytes: Buffer | Uint8Array;
+  contentType: string;
+  filename: string;
 };
 
 type LinearTarget = {
@@ -74,7 +102,7 @@ type LinearTarget = {
   projectName?: string | null;
 };
 
-const DEFAULT_PROJECT_NAME = "clawPoster";
+const DEFAULT_PROJECT_NAME = "SocialClaw";
 
 export function normalizeSupportTicketSource(
   value: unknown,
@@ -135,8 +163,72 @@ export async function createSupportTicket(
     throw new Error("Linear issue creation failed.");
   }
 
+  const attachment = await linkSupportImageAttachment(target, input, issue);
   const repairAgent = await notifyRepairAgent(input, issue);
-  return { issue, repairAgent };
+  return { issue, attachment, repairAgent };
+}
+
+export async function uploadLinearFileAsset(
+  input: UploadLinearFileAssetInput
+): Promise<{ url: string } | null> {
+  const apiKey = pickEnv(["LINEAR_API_KEY", "LINEAR_PERSONAL_API_KEY"]);
+  if (!apiKey) return null;
+
+  const bytes = Buffer.isBuffer(input.bytes) ? input.bytes : Buffer.from(input.bytes);
+  const body = await linearGraphQl<{
+    fileUpload?: {
+      success?: boolean;
+      uploadFile?: LinearUploadFile | null;
+    } | null;
+  }>(apiKey, {
+    query: `mutation SupportFileUpload($filename: String!, $contentType: String!, $size: Int!) {
+      fileUpload(filename: $filename, contentType: $contentType, size: $size, makePublic: false) {
+        success
+        uploadFile {
+          filename
+          contentType
+          size
+          uploadUrl
+          assetUrl
+          headers {
+            key
+            value
+          }
+        }
+      }
+    }`,
+    variables: {
+      filename: sanitizeSingleLine(input.filename, 180) || "support-image",
+      contentType: input.contentType,
+      size: bytes.byteLength,
+    },
+  });
+
+  const uploadFile = body.fileUpload?.uploadFile;
+  if (!body.fileUpload?.success || !uploadFile) {
+    throw new Error("Linear file upload could not be initialized.");
+  }
+
+  const headers = new Headers({ "Content-Type": input.contentType });
+  for (const header of uploadFile.headers) {
+    headers.set(header.key, header.value);
+  }
+  const uploadBody = bytes.buffer.slice(
+    bytes.byteOffset,
+    bytes.byteOffset + bytes.byteLength
+  ) as ArrayBuffer;
+
+  const uploadResponse = await fetch(uploadFile.uploadUrl, {
+    method: "PUT",
+    headers,
+    body: uploadBody,
+  });
+  if (!uploadResponse.ok) {
+    const message = await uploadResponse.text().catch(() => uploadResponse.statusText);
+    throw new Error(`Linear file upload failed: ${uploadResponse.status} ${message.slice(0, 160)}`);
+  }
+
+  return { url: uploadFile.assetUrl };
 }
 
 async function resolveLinearTarget(): Promise<LinearTarget> {
@@ -164,6 +256,12 @@ async function resolveLinearTarget(): Promise<LinearTarget> {
   }
 
   const project = await findLinearProjectByName(apiKey, projectName);
+  if (!configuredProjectId && !project) {
+    throw new Error(
+      `Linear support project ${projectName} was not found. Set LINEAR_SUPPORT_PROJECT_ID or create the project.`
+    );
+  }
+
   const teamId = configuredTeamId ?? project?.teams?.nodes?.[0]?.id ?? null;
   if (!teamId) {
     throw new Error(
@@ -300,9 +398,63 @@ async function notifyRepairAgent(
   }
 }
 
+async function linkSupportImageAttachment(
+  target: LinearTarget,
+  input: CreateSupportTicketInput,
+  issue: LinearIssue
+): Promise<SupportTicketAttachmentStatus> {
+  const imageUrl = input.imageUrl?.trim();
+  if (!imageUrl) {
+    return { status: "skipped", reason: "No image was attached." };
+  }
+
+  try {
+    const body = await linearGraphQl<{
+      attachmentLinkURL?: {
+        success?: boolean;
+        attachment?: LinearAttachment | null;
+      } | null;
+    }>(target.apiKey, {
+      query: `mutation SupportAttachmentLink($issueId: String!, $url: String!, $title: String!) {
+        attachmentLinkURL(issueId: $issueId, url: $url, title: $title) {
+          success
+          attachment {
+            id
+            title
+            url
+          }
+        }
+      }`,
+      variables: {
+        issueId: issue.id,
+        url: imageUrl,
+        title: buildAttachmentTitle(input),
+      },
+    });
+
+    const attachment = body.attachmentLinkURL?.attachment;
+    if (!body.attachmentLinkURL?.success || !attachment) {
+      return { status: "failed", reason: "Linear image attachment link failed." };
+    }
+
+    return { status: "linked", attachment };
+  } catch (error) {
+    return {
+      status: "failed",
+      reason:
+        error instanceof Error ? error.message : "Linear image attachment link failed.",
+    };
+  }
+}
+
 function buildIssueTitle(input: CreateSupportTicketInput) {
   const topic = sanitizeSingleLine(input.topic, 120);
   return `[${SUPPORT_TICKET_SOURCE_LABELS[input.source]}] ${topic}`;
+}
+
+function buildAttachmentTitle(input: CreateSupportTicketInput) {
+  const imageName = sanitizeSingleLine(input.imageName ?? "", 80);
+  return imageName ? `Support image: ${imageName}` : "Support image";
 }
 
 function buildIssueDescription(input: CreateSupportTicketInput, target: LinearTarget) {
