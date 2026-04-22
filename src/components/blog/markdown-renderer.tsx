@@ -86,6 +86,20 @@ function renderBlock(block: string, index: number) {
     );
   }
 
+  if (/^\d+\.\s/.test(block) || /\n\d+\.\s/.test(block)) {
+    const items = block
+      .split("\n")
+      .filter((line) => /^\d+\.\s/.test(line.trim()))
+      .map((line) => line.trim().replace(/^\d+\.\s/, ""));
+    return (
+      <ol key={index} className="mb-6 list-decimal space-y-2 pl-6 text-[0.95rem] leading-[1.75]">
+        {items.map((item, itemIndex) => (
+          <li key={itemIndex}>{renderInline(item)}</li>
+        ))}
+      </ol>
+    );
+  }
+
   return (
     <p key={index} className="mb-5 text-[0.95rem] leading-[1.75]">
       {renderInline(block.replace(/\n/g, " "))}

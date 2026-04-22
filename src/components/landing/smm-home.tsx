@@ -78,7 +78,7 @@ export function SmmHome() {
               Less prompt juggling, more client-ready output.
             </h2>
             <p className="mt-4 text-[0.98rem] leading-7 text-[var(--muted)] max-w-2xl">
-              ClawPoster gives you the social layer a small team actually needs: structured brand voice, per-workspace control, and content generation that keeps moving when the team is busy with real client work. It is built to support agencies, consultants, and internal teams that want a dependable system instead of a one-off generator.
+              SMMClaw gives you the social layer a small team actually needs: structured brand voice, per-workspace control, and content generation that keeps moving when the team is busy with real client work. It is built to support agencies, consultants, and internal teams that want a dependable system instead of a one-off generator.
             </p>
           </article>
 
@@ -93,6 +93,46 @@ export function SmmHome() {
               ))}
             </ul>
           </aside>
+        </section>
+      </div>
+    </main>
+  );
+}
+
+export function SmmAgentHome() {
+  return (
+    <main className="pt-28 pb-20 px-6">
+      <div className="container">
+        <section className="max-w-4xl">
+          <p className="section-eyebrow text-[var(--accent-mindfold)] mb-4">AI social media agent</p>
+          <h1 className="text-4xl md:text-6xl font-bold leading-[1.05] max-w-3xl">
+            An operating layer for social posts, replies, approvals, and platform-specific distribution.
+          </h1>
+          <p className="mt-6 text-lg md:text-xl text-[var(--muted)] leading-relaxed max-w-2xl">
+            SMMAgent is the agent-focused surface for model keys, source-backed drafts, reply queues, schedules, and publishing checks designed for teams that want automation with control.
+          </p>
+
+          <div className="mt-10 flex flex-wrap gap-3">
+            <a href="https://smmagent.app/blog" className="h-11 inline-flex items-center rounded-xl bg-[var(--ink)] px-5 text-sm font-semibold text-[var(--sand)] hover:bg-[var(--ink-soft)] transition-colors">
+              Read agent articles
+            </a>
+            <a href="https://clawposter.app" className="h-11 inline-flex items-center rounded-xl border border-[var(--line)] bg-[var(--paper)] px-5 text-sm font-semibold text-[var(--ink)] hover:border-[var(--accent-tech)]/30 transition-colors">
+              Product home
+            </a>
+          </div>
+        </section>
+
+        <section className="mt-16 grid gap-6 md:grid-cols-3">
+          {[
+            ["Source-backed drafts", "RSS, URL, and manual evidence flows keep drafts tied to something real."],
+            ["Reply operations", "Find conversations, draft responses, score risk, and keep the human approval step visible."],
+            ["Bring-your-own models", "Store tested model keys per workspace and select only models unlocked by active keys."],
+          ].map(([title, body]) => (
+            <article key={title} className="rounded-2xl border border-[var(--line)] bg-[var(--paper)] p-6">
+              <h2 className="text-xl font-semibold mb-3 font-[family-name:var(--font-sans)]">{title}</h2>
+              <p className="text-sm leading-relaxed text-[var(--muted)]">{body}</p>
+            </article>
+          ))}
         </section>
       </div>
     </main>

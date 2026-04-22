@@ -2,12 +2,13 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import Image from "next/image";
+import { headers } from "next/headers";
 import { BLOG_POSTS } from "@/lib/blog/posts";
 import { getAllPublicBlogPosts } from "@/lib/blog/dynamic";
 import { LandingNav } from "@/components/landing/nav";
 import { LandingFooter } from "@/components/landing/footer";
 import { getSession } from "@/lib/auth";
-import { getProductCanonicalUrl } from "@/lib/site-domains";
+import { getCanonicalUrl, getPublicSiteBrandName, normalizeHost } from "@/lib/site-domains";
 
 type Props = {
   params: Promise<{ category: string }>;
@@ -24,6 +25,11 @@ function decodeCategory(category: string) {
   return decodeURIComponent(category).trim();
 }
 
+async function getBlogHost() {
+  const h = await headers();
+  return normalizeHost(h.get("x-forwarded-host") ?? h.get("host"));
+}
+
 export function generateStaticParams() {
   return Array.from(new Set(BLOG_POSTS.map((post) => post.category))).map((category) => ({
     category: category.toLowerCase().replace(/\s+/g, "-"),
@@ -31,26 +37,38 @@ export function generateStaticParams() {
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const host = await getBlogHost();
+  const brandName = getPublicSiteBrandName(host);
   const { category } = await params;
   const categoryName = titleCase(decodeCategory(category));
-  const allPosts = await getAllPublicBlogPosts();
+  const allPosts = await getAllPublicBlogPosts(host);
   const posts = allPosts.filter((post) => post.category.toLowerCase() === categoryName.toLowerCase());
 
   if (!posts.length) return {};
+  const canonicalUrl = getCanonicalUrl(`/blog/category/${category}`, host);
+  const description = `Browse ${categoryName.toLowerCase()} posts from the ${brandName} blog.`;
 
   return {
-    title: `${categoryName} Posts — ClawPoster`,
-    description: `Browse ${categoryName.toLowerCase()} posts from the ClawPoster blog.`,
+    title: `${categoryName} Posts — ${brandName}`,
+    description,
     alternates: {
-      canonical: getProductCanonicalUrl(`/blog/category/${category}`),
+      canonical: canonicalUrl,
+    },
+    openGraph: {
+      title: `${categoryName} Posts — ${brandName}`,
+      description,
+      url: canonicalUrl,
+      siteName: brandName,
     },
   };
 }
 
 export default async function BlogCategoryPage({ params }: Props) {
+  const host = await getBlogHost();
+  const brandName = getPublicSiteBrandName(host);
   const { category } = await params;
   const categoryName = titleCase(decodeCategory(category));
-  const allPosts = await getAllPublicBlogPosts();
+  const allPosts = await getAllPublicBlogPosts(host);
   const posts = allPosts.filter((post) => post.category.toLowerCase() === categoryName.toLowerCase()).sort((a, b) =>
     b.publishedAt.localeCompare(a.publishedAt)
   );
@@ -61,7 +79,7 @@ export default async function BlogCategoryPage({ params }: Props) {
 
   return (
     <>
-      <LandingNav isLoggedIn={!!session} />
+      <LandingNav isLoggedIn={!!session} brandName={brandName} />
       <main className="pt-28 pb-20 px-6">
         <div className="container">
           <article className="max-w-4xl">
@@ -71,7 +89,7 @@ export default async function BlogCategoryPage({ params }: Props) {
 
             <p className="section-eyebrow text-[var(--accent-tech)] mb-4">{categoryName}</p>
             <h1 className="text-4xl md:text-6xl font-bold leading-[1.05] max-w-3xl">
-              {categoryName} posts from the ClawPoster blog
+              {categoryName} posts from the {brandName} blog
             </h1>
             <p className="mt-6 text-lg text-[var(--muted)] leading-relaxed max-w-2xl">
               A focused list of posts in this category, arranged for readers looking to compare the same theme across the blog.
@@ -114,7 +132,7 @@ export default async function BlogCategoryPage({ params }: Props) {
           </section>
         </div>
       </main>
-      <LandingFooter />
+      <LandingFooter brandName={brandName} />
     </>
   );
 }

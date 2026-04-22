@@ -5,6 +5,14 @@ type LegalSection = {
   body: string[];
 };
 
+const relatedSites = [
+  { label: "ClawPoster", href: "https://clawposter.app" },
+  { label: "SMMClaw", href: "https://smmclaw.app" },
+  { label: "SMMAgent", href: "https://smmagent.app" },
+  { label: "App", href: "https://social.maxpetrusenko.com" },
+  { label: "Max Tech", href: "https://www.maxpetrusenko.com/tech" },
+];
+
 export function LegalPage({
   title,
   effectiveDate,
@@ -47,6 +55,14 @@ export function LegalPage({
               </section>
             ))}
           </div>
+
+          <nav className="mt-12 flex flex-wrap gap-x-5 gap-y-2 border-t border-[var(--line)] pt-6 text-sm text-[var(--muted)]">
+            {relatedSites.map((site) => (
+              <a key={site.href} href={site.href} className="transition hover:text-[var(--ink)]">
+                {site.label}
+              </a>
+            ))}
+          </nav>
         </article>
       </div>
     </main>

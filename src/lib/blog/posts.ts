@@ -1,3 +1,6 @@
+import type { PublicSiteKey } from "@/lib/site-domains";
+import { SOURCE_OF_TRUTH_POSTS } from "./source-posts";
+
 export type BlogPost = {
   slug: string;
   title: string;
@@ -5,9 +8,14 @@ export type BlogPost = {
   content: string;
   category: string;
   publishedAt: string;
+  imageUrl?: string | null;
+  imageAlt?: string | null;
+  sources?: Array<{ title: string; url: string; publisher?: string }>;
+  isMarkdown?: boolean;
+  audiences?: PublicSiteKey[];
 };
 
-export const BLOG_POSTS: BlogPost[] = [
+const LEGACY_BLOG_POSTS: BlogPost[] = [
   {
     slug: "ai-agent-posts-while-you-sleep",
     title: "Your AI Agent Posts While You Sleep",
@@ -152,4 +160,9 @@ Each workspace is isolated. Client A cannot see Client B's content, accounts, or
 
 This is the same architecture that enterprise social tools charge thousands per month for, built into ClawPoster from day one.`,
   },
+];
+
+export const BLOG_POSTS: BlogPost[] = [
+  ...SOURCE_OF_TRUTH_POSTS,
+  ...LEGACY_BLOG_POSTS,
 ];

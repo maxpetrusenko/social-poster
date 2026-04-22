@@ -6,7 +6,7 @@
 - **SSH**: `ssh -i ~/.ssh/contabo_vmi3203669_ed25519 root@173.249.52.27`
 - **Reverse proxy**: Traefik (managed by Coolify) with Let's Encrypt TLS
 - **Primary domain**: `social.maxpetrusenko.com`
-- **Landing domains**: `clawposter.app`, `www.clawposter.app`, `smmclaw.app`, `www.smmclaw.app`
+- **Landing domains**: `clawposter.app`, `www.clawposter.app`, `smmclaw.app`, `www.smmclaw.app`, `smmagent.app`, `www.smmagent.app`
 - **Coolify path**: `Root Team -> social-poster -> production -> social-poster`
 - **App**: Coolify-managed `social-poster` service
 - **DB**: SQLite (WAL mode) at `/data/social-poster.db`, backed by the Coolify volume mount

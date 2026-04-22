@@ -43,7 +43,7 @@ export async function middleware(request: NextRequest) {
   }
 
   if (
-    (host === SITE_DOMAINS.app || host === SITE_DOMAINS.smm) &&
+    host === SITE_DOMAINS.app &&
     isProductPath(request.nextUrl.pathname)
   ) {
     return permanentHostRedirect(request, SITE_DOMAINS.product);

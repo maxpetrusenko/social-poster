@@ -1,31 +1,52 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import Image from "next/image";
+import { headers } from "next/headers";
 import { getAllPublicBlogPosts } from "@/lib/blog/dynamic";
 import { LandingNav } from "@/components/landing/nav";
 import { LandingFooter } from "@/components/landing/footer";
 import { getSession } from "@/lib/auth";
-import { getProductCanonicalUrl } from "@/lib/site-domains";
+import { getCanonicalUrl, getPublicSiteBrandName, normalizeHost } from "@/lib/site-domains";
 
-export const metadata: Metadata = {
-  title: "Blog — ClawPoster",
-  description: "Learn what ClawPoster can do for your social media presence.",
-  alternates: {
-    canonical: getProductCanonicalUrl("/blog"),
-  },
-};
+async function getBlogHost() {
+  const h = await headers();
+  return normalizeHost(h.get("x-forwarded-host") ?? h.get("host"));
+}
+
+export async function generateMetadata(): Promise<Metadata> {
+  const host = await getBlogHost();
+  const brandName = getPublicSiteBrandName(host);
+  const canonicalUrl = getCanonicalUrl("/blog", host);
+  const description = `Learn what ${brandName} can do for your social media presence.`;
+
+  return {
+    title: `Blog — ${brandName}`,
+    description,
+    alternates: {
+      canonical: canonicalUrl,
+    },
+    openGraph: {
+      title: `Blog — ${brandName}`,
+      description,
+      url: canonicalUrl,
+      siteName: brandName,
+    },
+  };
+}
 
 export default async function BlogPage() {
+  const host = await getBlogHost();
+  const brandName = getPublicSiteBrandName(host);
   const session = await getSession();
-  const posts = await getAllPublicBlogPosts();
+  const posts = await getAllPublicBlogPosts(host);
 
   return (
     <>
-      <LandingNav isLoggedIn={!!session} />
+      <LandingNav isLoggedIn={!!session} brandName={brandName} />
       <main className="pt-28 pb-20 px-6">
         <div className="container">
           <p className="section-eyebrow text-[var(--accent-tech)] mb-3">Blog</p>
-          <h1 className="text-3xl md:text-4xl font-bold mb-12">What ClawPoster Can Do</h1>
+          <h1 className="text-3xl md:text-4xl font-bold mb-12">What {brandName} Can Do</h1>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {posts.map((post) => (
@@ -63,7 +84,7 @@ export default async function BlogPage() {
           </div>
         </div>
       </main>
-      <LandingFooter />
+      <LandingFooter brandName={brandName} />
     </>
   );
 }

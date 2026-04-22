@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import type { Metadata } from "next";
 import { getSession } from "@/lib/auth";
-import { SITE_DOMAINS, getProductCanonicalUrl, getSmmCanonicalUrl, normalizeHost } from "@/lib/site-domains";
+import { SITE_DOMAINS, getProductCanonicalUrl, getSmmAgentCanonicalUrl, getSmmCanonicalUrl, normalizeHost } from "@/lib/site-domains";
 import { LandingNav } from "@/components/landing/nav";
 import { HeroSection } from "@/components/landing/hero";
 import { WhoIsThisFor } from "@/components/landing/who-is-this-for";
@@ -10,7 +10,7 @@ import { HowItWorks } from "@/components/landing/how-it-works";
 import { FeaturesGrid } from "@/components/landing/features";
 import { CtaSection } from "@/components/landing/cta-section";
 import { LandingFooter } from "@/components/landing/footer";
-import { SmmHome } from "@/components/landing/smm-home";
+import { SmmAgentHome, SmmHome } from "@/components/landing/smm-home";
 
 function isLocalHost(host: string | null) {
   return host === "localhost" || host === "127.0.0.1";
@@ -42,10 +42,28 @@ export async function generateMetadata(): Promise<Metadata> {
     };
   }
 
+  if (host === SITE_DOMAINS.smmAgent) {
+    return {
+      title: "AI Social Media Agent for Operators — SMMAgent",
+      description:
+        "SMMAgent is the agent-focused surface for source-backed drafts, reply queues, model keys, schedules, and approval-aware publishing.",
+      alternates: {
+        canonical: getSmmAgentCanonicalUrl("/"),
+      },
+      openGraph: {
+        title: "AI Social Media Agent for Operators — SMMAgent",
+        description:
+          "An agent operating layer for social posts, replies, approvals, and platform-specific distribution.",
+        url: getSmmAgentCanonicalUrl("/"),
+        siteName: "SMMAgent",
+      },
+    };
+  }
+
   return {
     title: "ClawPoster — AI Social Posting Agent",
     description:
-      "Your AI agent for social posting. Writes your posts, adapts per platform, publishes while you sleep. 16 platforms, one claw.",
+      "Your AI agent for social posting. Writes your posts, adapts per platform, and publishes while you build.",
     alternates: {
       canonical: getProductCanonicalUrl("/"),
     },
@@ -63,9 +81,19 @@ export default async function HomePage() {
   if (host === SITE_DOMAINS.smm) {
     return (
       <>
-        <LandingNav isLoggedIn={!!session} />
+        <LandingNav isLoggedIn={!!session} brandName="SMMClaw" />
         <SmmHome />
-        <LandingFooter />
+        <LandingFooter brandName="SMMClaw" />
+      </>
+    );
+  }
+
+  if (host === SITE_DOMAINS.smmAgent) {
+    return (
+      <>
+        <LandingNav isLoggedIn={!!session} brandName="SMMAgent" />
+        <SmmAgentHome />
+        <LandingFooter brandName="SMMAgent" />
       </>
     );
   }

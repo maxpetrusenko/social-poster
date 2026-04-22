@@ -2,13 +2,14 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { BLOG_POSTS } from "@/lib/blog/posts";
 import { findPublicBlogPost } from "@/lib/blog/dynamic";
 import { LandingNav } from "@/components/landing/nav";
 import { LandingFooter } from "@/components/landing/footer";
 import { WaitlistForm } from "@/components/landing/waitlist-form";
 import { getSession } from "@/lib/auth";
-import { getProductCanonicalUrl } from "@/lib/site-domains";
+import { getCanonicalUrl, getPublicSiteBrandName, normalizeHost } from "@/lib/site-domains";
 import { BlogMarkdownRenderer } from "@/components/blog/markdown-renderer";
 
 type Props = { params: Promise<{ slug: string }> };
@@ -17,29 +18,48 @@ export async function generateStaticParams() {
   return BLOG_POSTS.map((p) => ({ slug: p.slug }));
 }
 
+async function getBlogHost() {
+  const h = await headers();
+  return normalizeHost(h.get("x-forwarded-host") ?? h.get("host"));
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const host = await getBlogHost();
+  const brandName = getPublicSiteBrandName(host);
   const { slug } = await params;
-  const post = await findPublicBlogPost(slug);
+  const post = await findPublicBlogPost(slug, host);
   if (!post) return {};
+  const canonicalUrl = getCanonicalUrl(`/blog/${post.slug}`, host);
   return {
-    title: `${post.title} — ClawPoster`,
+    title: `${post.title} — ${brandName}`,
     description: post.excerpt,
     alternates: {
-      canonical: getProductCanonicalUrl(`/blog/${post.slug}`),
+      canonical: canonicalUrl,
+    },
+    openGraph: {
+      title: `${post.title} — ${brandName}`,
+      description: post.excerpt,
+      url: canonicalUrl,
+      siteName: brandName,
+      images: post.imageUrl
+        ? [{ url: getCanonicalUrl(post.imageUrl, host), alt: post.imageAlt ?? post.title }]
+        : undefined,
     },
   };
 }
 
 export default async function BlogPostPage({ params }: Props) {
+  const host = await getBlogHost();
+  const brandName = getPublicSiteBrandName(host);
   const { slug } = await params;
-  const post = await findPublicBlogPost(slug);
+  const post = await findPublicBlogPost(slug, host);
   if (!post) notFound();
 
   const session = await getSession();
 
   return (
     <>
-      <LandingNav isLoggedIn={!!session} />
+      <LandingNav isLoggedIn={!!session} brandName={brandName} />
       <main className="pt-28 pb-20 px-6">
         <article className="container max-w-2xl">
           <Link href="/blog" className="text-sm text-[var(--accent-tech)] hover:underline mb-6 inline-block">
@@ -83,14 +103,14 @@ export default async function BlogPostPage({ params }: Props) {
             <h3 className="text-xl font-semibold mb-2 font-[family-name:var(--font-sans)]">
               Ready to automate your social posting?
             </h3>
-            <p className="text-sm text-[var(--muted)] mb-6">Join the waitlist for early access to ClawPoster.</p>
+            <p className="text-sm text-[var(--muted)] mb-6">Join the waitlist for early access to {brandName}.</p>
             <div className="max-w-sm mx-auto">
               <WaitlistForm source="blog" />
             </div>
           </div>
         </article>
       </main>
-      <LandingFooter />
+      <LandingFooter brandName={brandName} />
     </>
   );
 }

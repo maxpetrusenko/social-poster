@@ -5,15 +5,14 @@ import {
   findPublishedDynamicBlogPost,
   getPublishedDynamicBlogPosts,
 } from "./automation";
+import { getPublicSiteKey } from "@/lib/site-domains";
 
 export type PublicBlogPost = BlogPost & {
   imageUrl?: string | null;
   imageAlt?: string | null;
-  sources?: Array<{ title: string; url: string; publisher?: string }>;
-  isMarkdown?: boolean;
 };
 
-export async function getAllPublicBlogPosts(): Promise<PublicBlogPost[]> {
+export async function getAllPublicBlogPosts(host?: string | null): Promise<PublicBlogPost[]> {
   const dynamicPosts = await getPublishedDynamicBlogPosts();
   const mappedDynamic: PublicBlogPost[] = dynamicPosts.map((post) => ({
     slug: post.slug,
@@ -28,14 +27,16 @@ export async function getAllPublicBlogPosts(): Promise<PublicBlogPost[]> {
     isMarkdown: true,
   }));
 
-  return [...mappedDynamic, ...BLOG_POSTS].sort((a, b) =>
+  return [...mappedDynamic, ...filterStaticPostsForHost(BLOG_POSTS, host)].sort((a, b) =>
     b.publishedAt.localeCompare(a.publishedAt)
   );
 }
 
-export async function findPublicBlogPost(slug: string): Promise<PublicBlogPost | null> {
+export async function findPublicBlogPost(slug: string, host?: string | null): Promise<PublicBlogPost | null> {
   const staticPost = BLOG_POSTS.find((post) => post.slug === slug);
-  if (staticPost) return staticPost;
+  if (staticPost) {
+    return filterStaticPostsForHost([staticPost], host)[0] ?? null;
+  }
 
   const post = await findPublishedDynamicBlogPost(slug);
   if (!post) return null;
@@ -52,6 +53,11 @@ export async function findPublicBlogPost(slug: string): Promise<PublicBlogPost |
     sources: post.sources ?? [],
     isMarkdown: true,
   };
+}
+
+function filterStaticPostsForHost(posts: BlogPost[], host?: string | null) {
+  const siteKey = getPublicSiteKey(host);
+  return posts.filter((post) => !post.audiences?.length || post.audiences.includes(siteKey));
 }
 
 function formatDate(value: Date | null) {

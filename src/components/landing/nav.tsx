@@ -10,14 +10,20 @@ const NAV_LINKS = [
   { label: "Blog", href: "/blog" },
 ];
 
-export function LandingNav({ isLoggedIn }: { isLoggedIn: boolean }) {
+export function LandingNav({
+  isLoggedIn,
+  brandName = "ClawPoster",
+}: {
+  isLoggedIn: boolean;
+  brandName?: string;
+}) {
   const [open, setOpen] = useState(false);
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-[var(--sand)]/80 backdrop-blur-md border-b border-[var(--line)]">
       <div className="container flex items-center justify-between h-16">
         <Link href="/" className="text-xl font-bold font-[family-name:var(--font-serif)] tracking-wide">
-          ClawPoster
+          {brandName}
         </Link>
 
         {/* Desktop */}
