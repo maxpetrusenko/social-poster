@@ -1,5 +1,3 @@
-import { ALLOWED_EMAIL } from "@/lib/auth-config";
-
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() ?? "";
 const SUPABASE_ANON_KEY =
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() ?? "";
@@ -22,58 +20,6 @@ export function getSupabasePublicEnv(): {
     url: SUPABASE_URL,
     anonKey: SUPABASE_ANON_KEY,
   };
-}
-
-export function getWorkspaceAllowedEmails(): string[] {
-  const configured = (process.env.WORKSPACE_ALLOWED_EMAILS ?? "")
-    .split(",")
-    .map((value) => value.trim().toLowerCase())
-    .filter(Boolean);
-
-  if (configured.length > 0) {
-    return configured;
-  }
-
-  return ALLOWED_EMAIL ? [ALLOWED_EMAIL.trim().toLowerCase()] : [];
-}
-
-export function getWorkspaceAllowedDomains(): string[] {
-  return (process.env.WORKSPACE_ALLOWED_DOMAINS ?? "")
-    .split(",")
-    .map((value) => value.trim().toLowerCase().replace(/^@+/, ""))
-    .filter(Boolean);
-}
-
-export function isSupabaseSignInOpenToAll(
-  env: NodeJS.ProcessEnv = process.env
-): boolean {
-  const value = (env.SUPABASE_AUTH_ALLOW_ALL_USERS ?? "true")
-    .trim()
-    .toLowerCase();
-
-  return !["0", "false", "no", "off"].includes(value);
-}
-
-export function isWorkspaceUserAllowed(email?: string | null): boolean {
-  if (!email) return false;
-
-  if (isSupabaseSignInOpenToAll()) {
-    return true;
-  }
-
-  const normalizedEmail = email.trim().toLowerCase();
-  const allowlist = getWorkspaceAllowedEmails();
-  if (allowlist.includes(normalizedEmail)) {
-    return true;
-  }
-
-  const allowedDomains = getWorkspaceAllowedDomains();
-  if (allowedDomains.length === 0) {
-    return false;
-  }
-
-  const emailDomain = normalizedEmail.split("@")[1] ?? "";
-  return allowedDomains.includes(emailDomain);
 }
 
 export function getWorkspaceAuthErrorMessage(

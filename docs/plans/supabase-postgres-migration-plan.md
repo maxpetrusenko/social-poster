@@ -62,7 +62,7 @@ Database:
 Auth:
 
 - Supabase `auth.users` is the identity source.
-- Supabase sign-in is open to all authenticated users unless `SUPABASE_AUTH_ALLOW_ALL_USERS=false`.
+- Supabase sign-in is open to all authenticated users.
 - `social_poster.users` remains the app profile table.
 - Preserve existing app `users.id` values during migration to avoid re-keying all app foreign keys.
 - Add or enforce `users.provider_user_id` as the Supabase Auth user id mapping for new Supabase-authenticated users.
@@ -387,7 +387,6 @@ Needed env:
 - `DISABLE_AUTH=false`
 - `NEXT_PUBLIC_SUPABASE_URL=https://supabase.maxpetrusenko.com`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- `SUPABASE_AUTH_ALLOW_ALL_USERS=true`
 - `DATABASE_URL`
 - optional server-only service role key only if an admin/server API explicitly needs Supabase Auth admin operations
 

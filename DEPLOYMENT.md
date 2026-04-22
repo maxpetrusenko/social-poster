@@ -34,7 +34,6 @@ Container requires these env vars (set via `docker run -e`):
 | `DISABLE_AUTH=false` | Required for production Supabase auth |
 | `NEXT_PUBLIC_SUPABASE_URL` | Self-hosted Supabase public URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Browser anon key for Supabase Auth |
-| `SUPABASE_AUTH_ALLOW_ALL_USERS=true` | Allows any authenticated Supabase user to sign in and create or join workspaces |
 | `HOSTNAME=0.0.0.0` | Listen on all interfaces |
 | `PORT=3000` | Next.js port |
 | `CARTESIA_API_KEY` | Cartesia TTS API key |
