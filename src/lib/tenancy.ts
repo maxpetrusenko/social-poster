@@ -54,6 +54,13 @@ type OrgMembershipRow = typeof orgMemberships.$inferSelect;
 type WorkspaceRow = typeof workspaces.$inferSelect;
 type WorkspaceMembershipRow = typeof workspaceMemberships.$inferSelect;
 type WorkspaceInvitationRow = typeof workspaceInvitations.$inferSelect;
+type JoinedOrganizationMembership = {
+  organization: OrganizationRow;
+  orgMembership: OrgMembershipRow;
+};
+type TenantInitialization = JoinedOrganizationMembership & {
+  user: UserRow;
+};
 
 export type TenantWorkspace = {
   workspace: WorkspaceRow;
@@ -83,6 +90,7 @@ const WORKSPACE_PUBLISHER_ROLES = new Set<WorkspaceRole>([
   "manager",
   "editor",
 ]);
+const tenantCreationLocks = new Map<string, Promise<TenantInitialization>>();
 
 function normalizeEmail(email: string) {
   return email.trim().toLowerCase();
@@ -203,6 +211,37 @@ async function organizationSlugExists(slug: string) {
     .get();
 
   return Boolean(row);
+}
+
+function isSqliteUniqueConstraintError(error: unknown, column: string) {
+  const code =
+    typeof error === "object" && error !== null && "code" in error
+      ? String((error as { code?: unknown }).code)
+      : "";
+  const message = error instanceof Error ? error.message : String(error);
+
+  return code === "SQLITE_CONSTRAINT_UNIQUE" && message.includes(column);
+}
+
+async function joinedOrganizationForUser(
+  userId: string
+): Promise<JoinedOrganizationMembership | undefined> {
+  const row = await db
+    .select({
+      organization: organizations,
+      membership: orgMemberships,
+    })
+    .from(orgMemberships)
+    .innerJoin(
+      organizations,
+      eq(orgMemberships.organizationId, organizations.id)
+    )
+    .where(eq(orgMemberships.userId, userId))
+    .get();
+
+  return row
+    ? { organization: row.organization, orgMembership: row.membership }
+    : undefined;
 }
 
 async function workspaceSlugExists(organizationId: string, slug: string) {
@@ -453,40 +492,84 @@ async function ensureDefaultTenantForEmail(email: string) {
     throw new Error("Failed to initialize user.");
   }
 
-  const joinedOrg = await db
-    .select({
-      organization: organizations,
-      membership: orgMemberships,
-    })
-    .from(orgMemberships)
-    .innerJoin(
-      organizations,
-      eq(orgMemberships.organizationId, organizations.id)
-    )
-    .where(eq(orgMemberships.userId, user.id))
-    .get();
+  const joinedOrg = await joinedOrganizationForUser(user.id);
 
   if (joinedOrg) {
     return {
       user,
       organization: joinedOrg.organization,
-      orgMembership: joinedOrg.membership,
+      orgMembership: joinedOrg.orgMembership,
+    };
+  }
+
+  return initializeDefaultTenantForUser(user, now);
+}
+
+function initializeDefaultTenantForUser(user: UserRow, now: Date) {
+  const existing = tenantCreationLocks.get(user.id);
+  if (existing) {
+    return existing;
+  }
+
+  const pending = createDefaultTenantForUser(user, now).finally(() => {
+    tenantCreationLocks.delete(user.id);
+  });
+  tenantCreationLocks.set(user.id, pending);
+
+  return pending;
+}
+
+async function createDefaultTenantForUser(
+  user: UserRow,
+  now: Date
+): Promise<TenantInitialization> {
+  const joinedOrg = await joinedOrganizationForUser(user.id);
+  if (joinedOrg) {
+    return {
+      user,
+      organization: joinedOrg.organization,
+      orgMembership: joinedOrg.orgMembership,
     };
   }
 
   const orgName = "SMM Agent";
   const organizationId = crypto.randomUUID();
   const workspaceId = crypto.randomUUID();
-  const orgSlug = await nextOrganizationSlug(orgName);
+  let orgSlug: string | null = null;
 
-  await db.insert(organizations).values({
-    id: organizationId,
-    name: orgName,
-    slug: orgSlug,
-    defaultTimezone: "America/New_York",
-    createdAt: now,
-    updatedAt: now,
-  });
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const candidate = await nextOrganizationSlug(orgName);
+
+    try {
+      await db.insert(organizations).values({
+        id: organizationId,
+        name: orgName,
+        slug: candidate,
+        defaultTimezone: "America/New_York",
+        createdAt: now,
+        updatedAt: now,
+      });
+      orgSlug = candidate;
+      break;
+    } catch (error) {
+      if (!isSqliteUniqueConstraintError(error, "organizations.slug")) {
+        throw error;
+      }
+
+      const racedOrg = await joinedOrganizationForUser(user.id);
+      if (racedOrg) {
+        return {
+          user,
+          organization: racedOrg.organization,
+          orgMembership: racedOrg.orgMembership,
+        };
+      }
+    }
+  }
+
+  if (!orgSlug) {
+    throw new Error("Failed to initialize organization.");
+  }
 
   await db.insert(orgMemberships).values({
     id: crypto.randomUUID(),
