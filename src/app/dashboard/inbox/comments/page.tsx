@@ -8,11 +8,11 @@ export const dynamic = "force-dynamic";
 export default async function InboxCommentsPage() {
   const tenant = await getTenantContext();
   if (!tenant) redirect("/login");
+  await markInboxSurfaceSeen(tenant.currentWorkspace.id, "comments");
   const data = await getSocialInboxSurfaceData(
     tenant.currentWorkspace.id,
     "comments"
   );
-  await markInboxSurfaceSeen(tenant.currentWorkspace.id, "comments");
 
   return (
     <SocialInboxSurface

@@ -6,6 +6,8 @@ import { formatDate } from "@/lib/utils";
 import Link from "next/link";
 import { ArrowLeft, ExternalLink } from "lucide-react";
 import { PostDeleteButton } from "@/components/post-delete-button";
+import { PostApprovalRequestCard } from "@/components/post-approval-request-card";
+import { getLatestApprovalRequestForPost } from "@/lib/approval-requests";
 import { getTenantContext } from "@/lib/tenancy";
 
 const STATUS_COLORS: Record<string, string> = {
@@ -70,6 +72,10 @@ export default async function PostDetailPage({
         ),
       })
     : null;
+  const latestApprovalRequest = await getLatestApprovalRequestForPost({
+    workspaceId: tenant.currentWorkspace.id,
+    postId: post.id,
+  });
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -151,6 +157,12 @@ export default async function PostDetailPage({
               </a>
             </div>
           )}
+
+          <PostApprovalRequestCard
+            postId={post.id}
+            approvalWorkflowMode={tenant.currentWorkspace.approvalWorkflowMode}
+            latestApprovalRequest={latestApprovalRequest}
+          />
 
           <div className="bg-white border border-gray-200 rounded-lg p-6">
             <h3 className="text-sm font-semibold text-gray-900 mb-3">

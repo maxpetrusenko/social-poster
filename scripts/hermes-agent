@@ -1,0 +1,209 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+REMOTE_HOST="${HERMES_REMOTE_HOST:-mini}"
+REPO="${HERMES_REPO:-maxpetrusenko/social-poster}"
+REPO_DIR="${HERMES_REPO_DIR:-~/Desktop/Projects/social-poster}"
+AGENT_EMAIL="${MAXICLAW_AGENT_EMAIL:-${HERMES_AGENT_EMAIL:-maxiclaw@maxpetrusenko.com}}"
+AGENT_NAME="${MAXICLAW_AGENT_NAME:-${HERMES_AGENT_NAME:-Maxiclaw Agent}}"
+AGENT_USER="${MAXICLAW_GH_USER:-${HERMES_GH_USER:-}}"
+
+load_env_file() {
+  local env_file="${HERMES_ENV_FILE:-.env}"
+  [ -f "$env_file" ] || return 0
+  env_value() {
+    local key="$1"
+    node - "$env_file" "$key" <<'NODE'
+const fs = require('fs');
+const [file, key] = process.argv.slice(2);
+const text = fs.readFileSync(file, 'utf8');
+const matches = [...text.matchAll(new RegExp(`^\\s*${key}\\s*=\\s*(.*)$`, 'gm'))];
+if (!matches.length) process.exit(0);
+let value = matches.at(-1)[1].trim();
+if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+  value = value.slice(1, -1);
+}
+process.stdout.write(value);
+NODE
+  }
+  MAXICLAW_GH_USER="${MAXICLAW_GH_USER:-$(env_value MAXICLAW_GH_USER)}"
+  MAXICLAW_GH_EMAIL="${MAXICLAW_GH_EMAIL:-$(env_value MAXICLAW_GH_EMAIL)}"
+  MAXICLAW_GH_PASSWORD="${MAXICLAW_GH_PASSWORD:-$(env_value MAXICLAW_GH_PASSWORD)}"
+  MAXICLAW_GH_TOKEN="${MAXICLAW_GH_TOKEN:-$(env_value MAXICLAW_GH_TOKEN)}"
+  HERMES_GH_USER="${HERMES_GH_USER:-$(env_value HERMES_GH_USER)}"
+  HERMES_GH_EMAIL="${HERMES_GH_EMAIL:-$(env_value HERMES_GH_EMAIL)}"
+  HERMES_GH_PASSWORD="${HERMES_GH_PASSWORD:-$(env_value HERMES_GH_PASSWORD)}"
+  HERMES_GH_TOKEN="${HERMES_GH_TOKEN:-$(env_value HERMES_GH_TOKEN)}"
+}
+
+load_env_file
+
+AGENT_EMAIL="${MAXICLAW_AGENT_EMAIL:-${HERMES_AGENT_EMAIL:-${AGENT_EMAIL}}}"
+AGENT_USER="${MAXICLAW_GH_USER:-${HERMES_GH_USER:-${AGENT_USER}}}"
+AGENT_LOGIN_EMAIL="${MAXICLAW_GH_EMAIL:-${HERMES_GH_EMAIL:-${AGENT_EMAIL}}}"
+AGENT_LOGIN_PASSWORD="${MAXICLAW_GH_PASSWORD:-${HERMES_GH_PASSWORD:-}}"
+AGENT_TOKEN="${MAXICLAW_GH_TOKEN:-${HERMES_GH_TOKEN:-}}"
+
+usage() {
+  cat <<'EOF'
+usage: scripts/hermes-agent <command>
+
+commands:
+  open-signup                 Open GitHub signup in a separate browser session
+  invite <github-user>        Invite the Maxiclaw GitHub user to this repo
+  login-gh                    Start gh auth login on the mini
+  login-token                 Install MAXICLAW_GH_TOKEN into gh on the mini
+  bootstrap                   Verify gh auth on mini, clone repo, set git identity
+  verify                      Verify mini auth, repo, and Hermes status
+  ticket-pr [prompt]          Run one ticket-to-draft-PR Hermes task
+
+env:
+  HERMES_REMOTE_HOST          SSH target, default: mini
+  MAXICLAW_GH_USER            Expected GitHub username for Maxiclaw
+  MAXICLAW_AGENT_EMAIL        Commit email, default: maxiclaw@maxpetrusenko.com
+  MAXICLAW_GH_EMAIL           Maxiclaw login email, explicit only
+  MAXICLAW_GH_PASSWORD        Maxiclaw login password, explicit only
+  MAXICLAW_GH_TOKEN           Maxiclaw GitHub token, preferred for mini auth
+  HERMES_*                    Backwards-compatible aliases
+  HERMES_REPO                 Repo, default: maxpetrusenko/social-poster
+  HERMES_REPO_DIR             Remote clone path, default: ~/Desktop/Projects/social-poster
+EOF
+}
+
+remote() {
+  ssh "$REMOTE_HOST" "zsh -lc $(printf '%q' "$1")"
+}
+
+require_agent_user() {
+  if [ -z "$AGENT_USER" ]; then
+    echo "Set MAXICLAW_GH_USER to the Maxiclaw GitHub username." >&2
+    exit 2
+  fi
+}
+
+open_signup() {
+  if command -v browser-use >/dev/null 2>&1; then
+    browser-use --session hermes-github --headed open "https://github.com/signup?user_email=${AGENT_EMAIL}"
+    return
+  fi
+  open "https://github.com/signup?user_email=${AGENT_EMAIL}"
+}
+
+login_token() {
+  if [ -z "$AGENT_TOKEN" ]; then
+    echo "Set MAXICLAW_GH_TOKEN in .env or environment. This must be a token for the Maxiclaw GitHub account." >&2
+    exit 2
+  fi
+  printf '%s' "$AGENT_TOKEN" | ssh "$REMOTE_HOST" 'zsh -lc "gh auth login --hostname github.com --git-protocol https --with-token"'
+  echo "Installed GitHub token into gh on ${REMOTE_HOST}."
+}
+
+invite() {
+  local user="${1:-$AGENT_USER}"
+  if [ -z "$user" ]; then
+    echo "usage: scripts/hermes-agent invite <github-user>" >&2
+    exit 2
+  fi
+  local owner="${REPO%%/*}"
+  local name="${REPO#*/}"
+  gh api "repos/${owner}/${name}/collaborators/${user}" \
+    -X PUT \
+    -f permission=push >/dev/null
+  echo "Invited ${user} to ${REPO} with push access."
+}
+
+login_gh() {
+  cat <<EOF
+This starts GitHub device/browser auth on ${REMOTE_HOST}.
+Use the Maxiclaw GitHub account, not Max's account.
+
+Expected email: ${AGENT_EMAIL}
+EOF
+  ssh -tt "$REMOTE_HOST" 'zsh -lc "gh auth login --hostname github.com --git-protocol https --web"'
+}
+
+bootstrap() {
+  require_agent_user
+  local login
+  login="$(remote 'gh api user --jq .login 2>/dev/null || true')"
+  if [ "$login" != "$AGENT_USER" ]; then
+    echo "Mini gh auth is '$login', expected '$AGENT_USER'. Run: MAXICLAW_GH_USER=$AGENT_USER scripts/hermes-agent login-gh" >&2
+    exit 1
+  fi
+
+  remote "
+    set -euo pipefail
+    mkdir -p ~/Desktop/Projects
+    cd ~/Desktop/Projects
+    if [ ! -d social-poster/.git ]; then
+      gh repo clone ${REPO} social-poster
+    fi
+    cd social-poster
+    git remote set-url origin https://github.com/${REPO}.git
+    git config user.name '${AGENT_NAME}'
+    git config user.email '${AGENT_EMAIL}'
+    git config --global user.name '${AGENT_NAME}'
+    git config --global user.email '${AGENT_EMAIL}'
+    gh repo view ${REPO} --json nameWithOwner,viewerPermission
+    git status --short
+  "
+}
+
+verify() {
+  require_agent_user
+  remote "
+    set -euo pipefail
+    echo gh_user=\$(gh api user --jq .login 2>/dev/null || echo none)
+    test \"\$(gh api user --jq .login 2>/dev/null || echo none)\" = '${AGENT_USER}'
+    echo git_name=\$(git config --global user.name || true)
+    echo git_email=\$(git config --global user.email || true)
+    test -d ${REPO_DIR}/.git
+    cd ${REPO_DIR}
+    git remote -v
+    hermes status | sed -n '1,80p'
+  "
+}
+
+ticket_pr() {
+  require_agent_user
+  local prompt="${*:-Check Linear/GitHub tickets for social-poster. Pick one small unblocked ticket. Create a branch, implement, run lint/typecheck/tests, update docs/tasks.md if behavior changed, commit as ${AGENT_NAME}, push, and open a draft PR. Do not merge. Report PR URL and test output. If GitHub identity is not ${AGENT_USER}, stop.}"
+  remote "
+    set -euo pipefail
+    test \"\$(gh api user --jq .login 2>/dev/null || echo none)\" = '${AGENT_USER}'
+    cd ${REPO_DIR}
+    hermes chat -Q --worktree -s github-issues,subagent-driven-development -q $(printf '%q' "$prompt")
+  "
+}
+
+case "${1:-}" in
+  open-signup)
+    open_signup
+    ;;
+  invite)
+    shift
+    invite "${1:-}"
+    ;;
+  login-gh)
+    login_gh
+    ;;
+  login-token)
+    login_token
+    ;;
+  bootstrap)
+    bootstrap
+    ;;
+  verify)
+    verify
+    ;;
+  ticket-pr)
+    shift
+    ticket_pr "$@"
+    ;;
+  -h|--help|help|"")
+    usage
+    ;;
+  *)
+    usage >&2
+    exit 2
+    ;;
+esac

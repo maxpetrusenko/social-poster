@@ -63,6 +63,7 @@ export async function POST(
       faceId,
       tone,
       isDefault,
+      config,
     } = body;
 
     if (!name) {
@@ -82,18 +83,24 @@ export async function POST(
 
     const now = new Date();
 
+    const updateValues: Partial<typeof profiles.$inferInsert> = {
+      name,
+      bio: bio || null,
+      avatarUrl: avatarUrl || null,
+      voiceId: voiceId || null,
+      faceId: faceId || null,
+      tone: tone || null,
+      isDefault: isDefault || false,
+      updatedAt: now,
+    };
+
+    if (config !== undefined) {
+      updateValues.config = isRecord(config) ? config : null;
+    }
+
     await db
       .update(profiles)
-      .set({
-        name,
-        bio: bio || null,
-        avatarUrl: avatarUrl || null,
-        voiceId: voiceId || null,
-        faceId: faceId || null,
-        tone: tone || null,
-        isDefault: isDefault || false,
-        updatedAt: now,
-      })
+      .set(updateValues)
       .where(and(eq(profiles.id, id), eq(profiles.workspaceId, tenant.currentWorkspace.id)));
 
     const updatedProfile = await db
@@ -117,4 +124,8 @@ export async function POST(
       { status: 500 }
     );
   }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }

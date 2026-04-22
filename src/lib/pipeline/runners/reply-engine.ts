@@ -90,7 +90,7 @@ export async function runReplyEngineJob(
 
     const discoverStep = step("reply:discover");
     steps.push(discoverStep);
-    const candidates = await discoverCandidates(targetPlatform);
+    const candidates = await discoverCandidates(targetPlatform, schedule.workspaceId);
     complete(discoverStep, {
       count: candidates.length,
       authors: candidates.slice(0, 5).map((candidate) => candidate.author),
@@ -315,7 +315,8 @@ async function resolveXPlatform(schedule: ScheduleRow) {
 }
 
 async function discoverCandidates(
-  targetPlatform: Pick<typeof platforms.$inferSelect, "config" | "handle">
+  targetPlatform: Pick<typeof platforms.$inferSelect, "config" | "handle">,
+  workspaceId?: string | null
 ): Promise<ReplyCandidate[]> {
   const dailyCount = await getDailyReplyCount();
   if (dailyCount >= REPLY_TARGETS.dailyLimit) {
@@ -355,7 +356,9 @@ async function discoverCandidates(
       likes: 0,
       views: "0",
       contextLabel: candidate.reason,
-    }))
+    })),
+    "primary",
+    workspaceId
   );
 
   return ranked.flatMap((candidate) => {

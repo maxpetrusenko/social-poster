@@ -3,6 +3,7 @@ import { platforms, posts, postTargets, profiles } from "@/db/schema";
 import { and, eq, inArray } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { requireApiWorkspaceEditor } from "@/lib/api-authorization";
+import { readStringArray } from "@/lib/post-publish-metadata";
 import crypto from "node:crypto";
 
 export async function POST(
@@ -20,16 +21,36 @@ export async function POST(
       content,
       contentType,
       sourceUrl,
+      sourceEvidenceId,
+      sourceEvidenceSnapshot,
       scheduledAt,
       intent,
       profileId,
       platformIds,
       mediaUrl,
+      mediaUrls,
+      platformOverrides,
+      previewSpecs,
+      mediaUrlByPlatformId,
+      mediaUrlByPlatformType,
+      mediaUrlsByPlatformId,
+      mediaUrlsByPlatformType,
     } = body;
 
-    if (!content) {
+    const normalizedContent = typeof content === "string" ? content : "";
+    const normalizedMediaUrl =
+      typeof mediaUrl === "string" && mediaUrl.trim() ? mediaUrl.trim() : null;
+    const normalizedMediaUrls = readStringArray(mediaUrls);
+    const normalizedMediaUrlsValue =
+      normalizedMediaUrls.length > 0
+        ? normalizedMediaUrls
+        : normalizedMediaUrl
+          ? [normalizedMediaUrl]
+          : [];
+
+    if (!normalizedContent && normalizedMediaUrlsValue.length === 0) {
       return NextResponse.json(
-        { error: "Content is required" },
+        { error: "Content or media is required" },
         { status: 400 }
       );
     }
@@ -114,11 +135,20 @@ export async function POST(
       .update(posts)
       .set({
         title: title || null,
-        content,
+        content: normalizedContent,
         contentType: contentType || "text",
-        mediaUrl: mediaUrl || null,
+        mediaUrl: normalizedMediaUrlsValue[0] ?? normalizedMediaUrl ?? null,
         sourceUrl: sourceUrl || null,
         profileId: normalizedProfileId,
+        metadata: buildPostMetadata(post.metadata, {
+          platformOverrides,
+          previewSpecs,
+          mediaUrls: normalizedMediaUrlsValue,
+          mediaUrlsByPlatformId: mediaUrlsByPlatformId ?? mediaUrlByPlatformId,
+          mediaUrlsByPlatformType: mediaUrlsByPlatformType ?? mediaUrlByPlatformType,
+          sourceEvidenceId,
+          sourceEvidenceSnapshot,
+        }),
         status,
         scheduledAt: normalizedIntent === "schedule" ? nextScheduledAt : null,
         updatedAt: now,
@@ -158,4 +188,63 @@ export async function POST(
       { status: 500 }
     );
   }
+}
+
+function sanitizeRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+function buildPostMetadata(
+  existingMetadata: unknown,
+  input: {
+    platformOverrides: unknown;
+    previewSpecs: unknown;
+    mediaUrls: string[];
+    mediaUrlsByPlatformId: unknown;
+    mediaUrlsByPlatformType: unknown;
+    sourceEvidenceId?: unknown;
+    sourceEvidenceSnapshot?: unknown;
+  }
+): Record<string, unknown> {
+  const metadata: Record<string, unknown> = {
+    ...sanitizeRecord(existingMetadata),
+    platformOverrides: sanitizeRecord(input.platformOverrides),
+    previewSpecs: sanitizeRecord(input.previewSpecs),
+    mediaUrls: input.mediaUrls,
+    mediaUrlsByPlatformId: normalizeStringArrayMap(input.mediaUrlsByPlatformId),
+    mediaUrlsByPlatformType: normalizeStringArrayMap(input.mediaUrlsByPlatformType),
+  };
+
+  const normalizedSourceEvidenceId =
+    typeof input.sourceEvidenceId === "string" && input.sourceEvidenceId.trim()
+      ? input.sourceEvidenceId.trim()
+      : "";
+  if (normalizedSourceEvidenceId) {
+    metadata.sourceEvidenceId = normalizedSourceEvidenceId;
+  }
+
+  const normalizedSourceEvidenceSnapshot = sanitizeRecord(input.sourceEvidenceSnapshot);
+  if (Object.keys(normalizedSourceEvidenceSnapshot).length > 0) {
+    metadata.sourceEvidenceSnapshot = normalizedSourceEvidenceSnapshot;
+  }
+
+  return metadata;
+}
+
+function normalizeStringArrayMap(value: unknown): Record<string, string[]> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {};
+  }
+
+  const output: Record<string, string[]> = {};
+  for (const [key, item] of Object.entries(value as Record<string, unknown>)) {
+    const normalized = readStringArray(item);
+    if (normalized.length > 0) {
+      output[key] = normalized;
+    }
+  }
+
+  return output;
 }

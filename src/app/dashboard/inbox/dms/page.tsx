@@ -8,8 +8,8 @@ export const dynamic = "force-dynamic";
 export default async function InboxDmsPage() {
   const tenant = await getTenantContext();
   if (!tenant) redirect("/login");
-  const data = await getSocialInboxSurfaceData(tenant.currentWorkspace.id, "dms");
   await markInboxSurfaceSeen(tenant.currentWorkspace.id, "dms");
+  const data = await getSocialInboxSurfaceData(tenant.currentWorkspace.id, "dms");
 
   return (
     <SocialInboxSurface

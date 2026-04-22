@@ -150,7 +150,7 @@ export async function runImagePostJob(
     // 1b. Enrich summary if RSS gave us garbage
     const enrichedSummary =
       !scheduledContent && story.link
-        ? await enrichSummaryIfNeeded(story)
+        ? await enrichSummaryIfNeeded(story, schedule.workspaceId)
         : story.summary;
     const enrichedStory = { ...story, summary: enrichedSummary };
 

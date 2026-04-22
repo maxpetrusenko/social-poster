@@ -1,6 +1,6 @@
 # Social Agent — Tasks & Status
 
-Last updated: 2026-04-21 (Create Post media upload, platform icons, and Social Inbox)
+Last updated: 2026-04-22 (Campaign creative engine and delivery path)
 
 ## Current State
 
@@ -29,6 +29,7 @@ Deploys to `social.maxpetrusenko.com` on Contabo/Coolify.
 - [x] `profiles` — brand identity / voice / face settings
 - [x] `posts` — content items with status lifecycle
 - [x] `post_targets` — many-to-many post→platform with per-platform status
+- [x] `campaigns`, `campaign_generation_sessions`, `campaign_creatives`, `campaign_layers`, `campaign_renditions`, `campaign_events` — profile-bound campaign planning, creative review, rendition tracking, and publish audit trail
 - [x] `schedules` — cron job definitions (editable from UI)
 - [x] `pipeline_runs` — execution history with step-level detail
 - [x] `dedup_cache` — content deduplication
@@ -55,6 +56,7 @@ Deploys to `social.maxpetrusenko.com` on Contabo/Coolify.
 - [x] Connection OAuth info buttons now open in-app setup guides with platform docs, callback URI copy, missing env warnings, and X-specific tutorial/use-case text
 - [x] Invite accept page at `/invite/[token]`
 - [x] Dashboard home — live metrics for posting cadence, consistency, errors, schedules, and platform health
+- [x] Dashboard platform table now dedupes platforms, groups LinkedIn personal/business under one LinkedIn row, and expands into connected accounts with Posts, Comments, DMs, and Views metric subrows per account
 - [x] Create Idea replaced by Zernio-style Create Post composer at `/dashboard/posts/create`
 - [x] Schedule category presets via `schedules.config` — take/opinion, product update, source share, hype/future, hiring
 - [x] Platforms — list, create, edit, delete, per-platform skills/config editor
@@ -66,9 +68,11 @@ Deploys to `social.maxpetrusenko.com` on Contabo/Coolify.
 - [x] Connection catalog now lives in per-platform configs, with method info tooltips and live/planned capability badges in the connection drawer
 - [x] X proxy/Bird setup now only asks for `X_AUTH_TOKEN` and `X_CT0`, includes cookie-copy guidance, and exposes a read-only connection test
 - [x] Profiles — list, create, edit, delete (voice ID, face ID, tone)
+- [x] Campaigns — profile-scoped campaign board/editor wired to campaign records, Gemini image generation via workspace Image model keys, platform rendition chips, Draft/Calendar/Publish delivery modes, schedule picker, and direct post creation/publish handoff
 - [x] Posts — Zernio-style card grid with media thumbnails, status badges, platform dots, status filter tabs
 - [x] Posts nav restructured: Posts parent with collapsible submenu (All Posts, Create Post, Recurrent Posts)
-- [x] Create Post composer: two-column layout, platform-specific options (Instagram Feed/Story/Reel/Carousel + collaborators + first comment, Facebook Feed/Story/Reel, X thread toggle, Reddit subreddit), URL/file/drag-drop media upload, X/OG page URL image resolution, image dimension hints per platform, shared platform icon badges, shared live platform previews with attached media grids across create/edit/calendar surfaces, Schedule/Now/Queue/Draft publishing modes with timezone
+- [x] Create Post composer: two-column layout, platform-specific options (Instagram Feed/Story/Reel/Carousel + collaborators + first comment, Facebook Feed/Story/Reel, X thread toggle, Reddit subreddit), URL/file/drag-drop media upload, RSS/latest-X/URL draft generation with image loading, URL draft evidence persistence into post metadata, X/OG page URL image resolution, clickable recommended image-size chips that drive per-platform preview aspect, platform-specific resize/crop presets with original-image pass/warn/fail validation, shared platform icon badges, shared live platform previews with attached media grids across create/edit/calendar surfaces, Schedule/Now/Queue/Draft publishing modes with timezone
+- [x] Post approval request flow: post detail/edit surfaces show latest approval status, and `/api/posts/[id]/approval-request` can fetch/request/approve/request-changes/reject the current approval row with audit logging
 - [x] Calendar — monthly grid view with schedule recurrences + actual pipeline runs
 - [x] Calendar recurring forecast cards now show source-title/image predictions with a debug panel instead of synthetic generated captions
 - [x] Calendar recurring cron slots now resolve in UTC, suppress past forecast shells, and label predictions as candidate-only without implying a draft exists
@@ -81,6 +85,7 @@ Deploys to `social.maxpetrusenko.com` on Contabo/Coolify.
 - [x] Social Agent chat widget now answers from sanitized workspace context, including connected platforms, reply review/ready queues, recent reply events, post targets, pipeline runs, RSS setup, and current page hints
 - [x] Notifications page now reads durable notification rows instead of a placeholder scaffold
 - [x] Admin dashboard exists at `/admin` with email-gated overview, users, waitlist, marketing, usage, and waitlist CSV export
+- [x] Admin blog automation exists at `/admin/blog` with daily draft generation plumbing, Medium automation handoff, review-only publish gate, article image/source tracking, framework validation, and public blog publishing after admin approval
 - [x] Logs page at `/dashboard/logs` shows latest user actions, post/schedule/reply activity, pipeline runs, and LangSmith trace references
 - [x] Top-bar support intake now creates Linear tickets with source, topic, explanation, page context, selected-image preview, and optional Linear-hosted image links attached to Linear
 - [x] Social Agent can create the same Linear tickets through `/support`, with optional repair-agent webhook routing for `from_bot` issues
@@ -89,6 +94,7 @@ Deploys to `social.maxpetrusenko.com` on Contabo/Coolify.
 
 ### API Routes
 - [x] CRUD for platforms, profiles, posts, schedules
+- [x] Campaign CRUD, Gemini-backed creative generation with local/R2 media storage fallback, creative selection, and apply-to-calendar routes for turning profile-bound campaign creatives into posts/targets
 - [x] Media upload route for composer file picker/drag-drop using R2/S3 storage when configured
 - [x] Platform/profile create/update/delete now respect active workspace
 - [x] Manual schedule run endpoint
@@ -128,6 +134,7 @@ Deploys to `social.maxpetrusenko.com` on Contabo/Coolify.
 - [x] Late/Zernio publish path ported into `src/lib/pipeline/publisher.ts`
 - [x] Simli avatar video generation adapter
 - [x] Cartesia TTS adapter
+- [x] Source evidence persistence store with workspace-scoped upsert/list/mark and dedupe handling
 - [x] Remotion video rendering pipeline
 - [ ] Image generation pipeline (sharp-based card renderer)
 - [ ] Bird (X CLI) adapter as fallback
@@ -143,6 +150,7 @@ Deploys to `social.maxpetrusenko.com` on Contabo/Coolify.
 - [x] Screenshot fallback images upload to Cloudflare R2 when configured, with local `/api/screenshots` as fallback
 - [x] Mixed manual post delivery can resolve to `partial_failure`
 - [x] Cron schedule execution now uses a SQLite-backed minute lock to suppress duplicate scheduler fires across processes
+- [x] Manual publishes persist per-platform format, caption, preview size, and fit-padded media variants so Instagram Feed does not fall through to Story and preview framing matches the posted asset
 - [x] X publish now routes through Bird when the platform provider is `bird`, with dashboard credentials first and env fallback second
 - [x] Direct OAuth platform tokens now auto-refresh in a background scheduler sweep before expiry, with a manager-only manual refresh endpoint
 - [x] Platform-depth presearch docs added for X, LinkedIn, Instagram, Facebook, Threads, TikTok, YouTube, Pinterest, Bluesky, Mastodon, Google Business, Reddit, Discord, Telegram, and the future agent harness
@@ -185,10 +193,11 @@ Deploys to `social.maxpetrusenko.com` on Contabo/Coolify.
 - [x] Social Inbox now has `X Replies`, Comments, and DMs subheader tabs; `/dashboard/replies` redirects into Social Inbox X Replies
 - [x] Comments and DMs have shared platform inbox tables, pull action, and reply action plumbing backed by `inbox_conversations` / `inbox_messages`
 - [x] X Replies remains outbound outreach; X / Twitter inbound mentions now pull into Comments through Bird-backed access or X API mentions/search
-- [x] Social Inbox Comments/DMs now track unread state, clear notification counts when viewed, and render newest-first vertical cards with sender avatars
+- [x] Social Inbox Comments/DMs now track unread state, clear notification counts before rendering viewed tabs, keep seen watermarks so older pulled X/native items do not re-count as new, and render newest-first vertical cards with sender avatars
 - [x] Comment pull/reply adapters added for X, YouTube, LinkedIn, Instagram, Facebook, Threads, and Mastodon where connected account scopes allow it
 - [x] DM pull/reply adapters added for X, Instagram, Facebook, and Mastodon where platform access is approved
 - [ ] Add live DM adapters for Bluesky, Reddit modmail, Google Business messages, and WhatsApp where platform access is approved
+- [ ] Add left-nav Analytics with cross-platform provider metrics, X/Bird fallback, optional Sweetistics import, and platform drilldowns. Plan: `docs/plans/analytics-dashboard.md`
 - [x] Sidebar now shows the current workspace and a switch entry into the workspace control plane
 
 ### Cutover Plan

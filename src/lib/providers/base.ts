@@ -5,6 +5,7 @@ import type {
   MediaType,
   OAuthTokens,
   PostType,
+  DeleteResult,
   PublishContent,
   PublishResult,
   RateLimitConfig,
@@ -69,6 +70,15 @@ export abstract class SocialProvider {
     accessToken: string,
     content: PublishContent
   ): Promise<PublishResult>;
+
+  async deletePost(
+    _accessToken: string,
+    _platformPostId: string
+  ): Promise<DeleteResult> {
+    void _accessToken;
+    void _platformPostId;
+    throw new Error(`${this.platformName} does not implement deletePost`);
+  }
 
   async validateToken(accessToken: string): Promise<boolean> {
     try {

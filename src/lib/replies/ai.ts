@@ -2,6 +2,7 @@ import { z } from "zod";
 import { uniqueReplyDrafts } from "@/lib/replies/duplicate-guard";
 import type { ReplyDirection } from "@/lib/replies/strategy";
 import { callOpenAIResponses } from "@/lib/langsmith";
+import { resolveOpenAIResponsesRuntime } from "@/lib/model-runtime";
 
 const DEFAULT_REPLY_MODEL = process.env.OPENAI_REPLY_MODEL || "gpt-5-mini";
 const DEFAULT_PRODUCT_NAME = process.env.REPLY_PRODUCT_NAME || "Agent Persona";
@@ -40,20 +41,27 @@ type ReplyDraftMode = "primary" | "fallback";
 
 export async function generateAiReplyDraftsBatch(
   candidates: ReplyDraftCandidate[],
-  mode: ReplyDraftMode = "primary"
+  mode: ReplyDraftMode = "primary",
+  workspaceId?: string | null
 ): Promise<Map<string, string[]>> {
   if (candidates.length === 0) return new Map();
 
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) {
+  const runtime = workspaceId
+    ? await resolveOpenAIResponsesRuntime({
+        workspaceId,
+        slot: "reply",
+        fallbackModel: DEFAULT_REPLY_MODEL,
+      })
+    : { apiKey: process.env.OPENAI_API_KEY || "", model: DEFAULT_REPLY_MODEL, source: "env" as const };
+  if (!runtime.apiKey) {
     throw new Error("OPENAI_API_KEY not set");
   }
 
   const result = await callOpenAIResponses<Record<string, unknown>>({
     name: "reply-draft-generation",
-    apiKey,
+    apiKey: runtime.apiKey,
     body: {
-      model: DEFAULT_REPLY_MODEL,
+      model: runtime.model,
       reasoning: { effort: "low" },
       input: buildPrompt(candidates, mode),
     },
@@ -62,6 +70,7 @@ export async function generateAiReplyDraftsBatch(
     metadata: {
       candidateCount: candidates.length,
       mode,
+      modelSource: runtime.source,
     },
   });
 

@@ -806,7 +806,8 @@ async function discoverAndDraftLiveCandidates(
   }));
   const aiDrafts = await generateAiReplyDraftsBatch(
     candidateInputs,
-    "primary"
+    "primary",
+    platform.workspaceId
   );
 
   const minimumDraftedCount = Math.min(3, plan.targetDraftedCount);
@@ -831,7 +832,8 @@ async function discoverAndDraftLiveCandidates(
           views: item.metadata.engagement.views,
           contextLabel: item.metadata.query,
         })),
-        "fallback"
+        "fallback",
+        platform.workspaceId
       );
 
       for (const item of zeroDraftItems) {

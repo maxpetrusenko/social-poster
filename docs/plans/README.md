@@ -1,6 +1,6 @@
 # Plans Index
 
-Last updated: 2026-04-13
+Last updated: 2026-04-22
 
 ## Purpose
 
@@ -19,11 +19,20 @@ Read these in order before major feature work:
 10. `/Users/maxpetrusenko/Desktop/Projects/social-poster/docs/plans/approvals-and-client-portal.md`
 11. `/Users/maxpetrusenko/Desktop/Projects/social-poster/docs/plans/inbox-and-replies.md`
 12. `/Users/maxpetrusenko/Desktop/Projects/social-poster/docs/plans/notifications-and-activity.md`
-13. `/Users/maxpetrusenko/Desktop/Projects/social-poster/docs/plans/brightbean-menu-port-map.md`
-14. `/Users/maxpetrusenko/Desktop/Projects/social-poster/docs/plans/brightbean-merged-menu-flow.html`
-15. `/Users/maxpetrusenko/Desktop/Projects/social-poster/docs/plans/platform-flow-reference.html`
-16. `/Users/maxpetrusenko/Desktop/Projects/social-poster/docs/plans/page-flow-reference.html`
-17. `/Users/maxpetrusenko/Desktop/Projects/social-poster/docs/plans/flow-handoff-tabs.html`
+13. `/Users/maxpetrusenko/Desktop/Projects/social-poster/docs/plans/analytics-dashboard.md`
+14. `/Users/maxpetrusenko/Desktop/Projects/social-poster/docs/plans/agent-oss-positioning.md`
+15. `/Users/maxpetrusenko/Desktop/Projects/social-poster/docs/plans/product-hardening-before-oss.md`
+16. `/Users/maxpetrusenko/Desktop/Projects/social-poster/docs/plans/half-baked-feature-roadmap.md`
+17. `/Users/maxpetrusenko/Desktop/Projects/social-poster/docs/plans/agent-tool-runtime-mvp.md`
+18. `/Users/maxpetrusenko/Desktop/Projects/social-poster/docs/plans/source-backed-posting-plan.md`
+19. `/Users/maxpetrusenko/Desktop/Projects/social-poster/docs/plans/product-trust-hardening-plan.md`
+20. `/Users/maxpetrusenko/Desktop/Projects/social-poster/docs/plans/content-engine-article-agent.md`
+21. `/Users/maxpetrusenko/Desktop/Projects/social-poster/docs/plans/campaign-creative-engine-plan.md`
+22. `/Users/maxpetrusenko/Desktop/Projects/social-poster/docs/plans/brightbean-menu-port-map.md`
+23. `/Users/maxpetrusenko/Desktop/Projects/social-poster/docs/plans/brightbean-merged-menu-flow.html`
+24. `/Users/maxpetrusenko/Desktop/Projects/social-poster/docs/plans/platform-flow-reference.html`
+25. `/Users/maxpetrusenko/Desktop/Projects/social-poster/docs/plans/page-flow-reference.html`
+26. `/Users/maxpetrusenko/Desktop/Projects/social-poster/docs/plans/flow-handoff-tabs.html`
 
 ## What Each Doc Solves
 
@@ -103,6 +112,54 @@ Read these in order before major feature work:
   - in-app notifications
   - delivery records
   - preferences and quiet hours
+
+- `analytics-dashboard.md`
+  - left-nav Analytics route plan
+  - provider/source strategy by platform
+  - Bird and Sweetistics role for X/Twitter analytics
+  - normalized analytics schema and rollout phases
+
+- `agent-oss-positioning.md`
+  - open-source strategy
+  - source-backed agent wedge
+  - public package boundary
+  - competitor positioning
+
+- `product-hardening-before-oss.md`
+  - half-baked surfaces
+  - fix order before public launch
+  - agent/runtime/product hardening gates
+
+- `half-baked-feature-roadmap.md`
+  - exact finish order for half-baked features
+  - cross-agent ownership boundaries
+  - public launch gate
+
+- `agent-tool-runtime-mvp.md`
+  - typed Social Agent tool runtime
+  - confirmation guardrails
+  - audit and first implementation slices
+
+- `source-backed-posting-plan.md`
+  - GitHub/RSS/URL evidence model
+  - source-backed schedule mode
+  - public demo requirements
+
+- `product-trust-hardening-plan.md`
+  - dead-button and scaffold cleanup
+  - mock/demo production gating
+  - route/nav hardening rules
+
+- `content-engine-article-agent.md`
+  - article and Medium automation product boundary
+  - OpenAI text + Gemini image API strategy
+  - source-of-truth article workflow
+  - review-first rollout and test plan
+
+- `campaign-creative-engine-plan.md`
+  - profile-owned Campaigns architecture
+  - Gemini image generation and crop/export workflow
+  - creative editor, platform renditions, and calendar apply flow
 
 - `brightbean-menu-port-map.md`
   - merged menu map

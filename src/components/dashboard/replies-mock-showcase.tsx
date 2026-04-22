@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { ChevronDown, RefreshCw } from "lucide-react";
 import { RepliesDrawerView, RepliesKanbanView, ReplyReviewModal } from "@/components/dashboard/replies-mock-views";
-import { INITIAL_CARDS, type ReplyCard, type ReplyStatus, type ViewMode } from "@/components/dashboard/replies-mock-data";
+import { type ReplyCard, type ReplyStatus, type ViewMode } from "@/components/dashboard/replies-mock-data";
 import { cn } from "@/lib/utils";
 import type { ReplyConnectionOption, ReplyProfileOption } from "@/lib/dashboard/replies-data";
 import { DEFAULT_REPLY_PROFILE_ID } from "@/lib/replies/profiles";
@@ -56,14 +56,13 @@ export function RepliesMockShowcase({
   initialLanguage: ReplyLanguage;
 }) {
   const hasLiveConnections = connections.length > 0;
-  const fallbackCards = hasLiveConnections ? initialCards : initialCards.length > 0 ? initialCards : INITIAL_CARDS;
   const autoRefillAtByKey = useRef(new Map<string, number>());
   const [view, setView] = useState<ViewMode>("replies1");
-  const [cards, setCards] = useState(fallbackCards);
-  const [selectedId, setSelectedId] = useState(fallbackCards[0]?.id ?? "");
+  const [cards, setCards] = useState(initialCards);
+  const [selectedId, setSelectedId] = useState(initialCards[0]?.id ?? "");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [selectedConnectionId, setSelectedConnectionId] = useState(connections[0]?.id ?? "mock-x-main");
+  const [selectedConnectionId, setSelectedConnectionId] = useState(connections[0]?.id ?? "");
   const [selectedTransport, setSelectedTransport] = useState(
     connections[0]?.transportOptions[0]?.value ?? "bird"
   );
@@ -104,9 +103,9 @@ export function RepliesMockShowcase({
   }, [cards]);
 
   const refreshLiveReplies = useCallback((mode: "auto" | "manual" = "manual") => {
-    if (!selectedConnectionId || selectedConnectionId === "mock-x-main") {
-      setCards(INITIAL_CARDS);
+    if (!selectedConnectionId) {
       setRefreshSummary(null);
+      setError("Add an X connection before refreshing reply candidates.");
       return;
     }
 
@@ -151,7 +150,7 @@ export function RepliesMockShowcase({
   }, [selectedLanguage]);
 
   useEffect(() => {
-    if (!selectedConnectionId || selectedConnectionId === "mock-x-main") return;
+    if (!selectedConnectionId) return;
 
     startTransition(async () => {
       try {
@@ -202,7 +201,7 @@ export function RepliesMockShowcase({
   }, [selectedConnectionId, selectedLanguage, selectedProfile?.label, selectedProfileId]);
 
   useEffect(() => {
-    if (!selectedConnectionId || selectedConnectionId === "mock-x-main") return;
+    if (!selectedConnectionId) return;
     if (!cards.some((card) => card.status === "ready")) return;
 
     const interval = window.setInterval(() => {
@@ -230,7 +229,7 @@ export function RepliesMockShowcase({
   }, [cards, selectedConnectionId, selectedLanguage, selectedProfileId]);
 
   useEffect(() => {
-    if (!selectedConnectionId || selectedConnectionId === "mock-x-main") return;
+    if (!selectedConnectionId) return;
     if (reviewCount > 0 || isPending) return;
 
     const refreshKey = `${selectedConnectionId}:${selectedProfileId}`;
@@ -262,7 +261,7 @@ export function RepliesMockShowcase({
         });
         const body = (await response.json()) as { error?: string };
         if (!response.ok) throw new Error(body.error || "Failed to update reply");
-        if (selectedConnectionId && selectedConnectionId !== "mock-x-main") {
+        if (selectedConnectionId) {
           const next = await fetch(
             buildRepliesUrl(selectedConnectionId, selectedProfileId, selectedLanguage)
           );
@@ -389,14 +388,11 @@ export function RepliesMockShowcase({
             {selectedConnection?.label || "Select X connection"}
           </summary>
           <div className="absolute right-0 z-20 mt-2 w-[280px] rounded-[18px] border border-[rgba(12,17,21,0.08)] bg-white p-2 shadow-[0_18px_45px_rgba(12,17,21,0.12)]">
-            {(connections.length > 0 ? connections : [{
-              id: "mock-x-main",
-              label: "X Main",
-              handle: "@maxpetrusenko",
-              provider: "bird",
-              authMethod: "bird_cli",
-              transportOptions: [{ value: "bird" as const, label: "Bird" }],
-            }]).map((connection) => (
+            {connections.length === 0 ? (
+              <div className="rounded-[14px] px-3 py-3 text-sm text-[var(--muted)]">
+                Add an X connection to load live reply candidates.
+              </div>
+            ) : connections.map((connection) => (
               <button
                 key={connection.id}
                 type="button"
@@ -487,7 +483,7 @@ export function RepliesMockShowcase({
               ? refreshSummary
               : hasLiveConnections
               ? "Open the page to auto-backfill a small review batch, or hit Refresh now for a broader manual pull."
-              : "Add an X connection first. Mock cards stay available only when no live connection exists."}
+              : "Add an X connection first. Reply candidates will appear here after a live refresh."}
           </p>
         </div>
       ) : (

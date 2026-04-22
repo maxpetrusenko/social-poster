@@ -29,6 +29,7 @@ export class InstagramPersonalProvider extends OAuthProvider {
     "instagram_business_content_publish",
     "instagram_business_manage_comments",
     "instagram_business_manage_messages",
+    "instagram_business_manage_insights",
   ];
 
   get rateLimits(): RateLimitConfig {
@@ -94,7 +95,7 @@ export class InstagramPersonalProvider extends OAuthProvider {
         accessToken,
         params: {
           fields:
-            "user_id,username,name,profile_picture_url,followers_count",
+            "id,user_id,username,account_type,name,profile_picture_url",
         },
       }
     );

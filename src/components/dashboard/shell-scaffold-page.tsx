@@ -1,8 +1,5 @@
-import Link from "next/link";
-import { ArrowUpRight } from "lucide-react";
 import {
   DashboardHero,
-  HeroButton,
   SectionCard,
   StatusBadge,
 } from "@/components/dashboard/ui";
@@ -19,8 +16,6 @@ export function ShellScaffoldPage({
   eyebrow,
   title,
   description,
-  primaryAction,
-  secondaryAction,
   flow,
   sections,
 }: {
@@ -38,21 +33,9 @@ export function ShellScaffoldPage({
         eyebrow={eyebrow}
         title={title}
         description={description}
-        actions={
-          <>
-            {secondaryAction ? (
-              <HeroButton href={secondaryAction.href} tone="ghost">
-                {secondaryAction.label}
-              </HeroButton>
-            ) : null}
-            {primaryAction ? (
-              <HeroButton href={primaryAction.href}>{primaryAction.label}</HeroButton>
-            ) : null}
-          </>
-        }
       />
 
-      <SectionCard title="Flow" subtitle={flow}>
+      <SectionCard title="Planned surface" subtitle={flow}>
         <div className="grid gap-4 lg:grid-cols-2">
           {sections.map((section) => (
             <div
@@ -69,15 +52,9 @@ export function ShellScaffoldPage({
                 {section.badge ? <StatusBadge tone="neutral">{section.badge}</StatusBadge> : null}
               </div>
 
-              {section.href && section.hrefLabel ? (
-                <Link
-                  href={section.href}
-                  className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-[var(--accent-tech)]"
-                >
-                  {section.hrefLabel}
-                  <ArrowUpRight className="h-4 w-4" />
-                </Link>
-              ) : null}
+              <p className="mt-4 text-xs font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">
+                Not enabled
+              </p>
             </div>
           ))}
         </div>

@@ -34,12 +34,11 @@ function toneClass(tone: "planned" | "completed" | "failed" | "running") {
 const listTabs = [
   { id: "queue", label: "Queue" },
   { id: "drafts", label: "Drafts" },
-  { id: "approvals", label: "Approvals" },
   { id: "sent", label: "Sent" },
 ] as const;
 
 async function loadTabPosts(tab: (typeof listTabs)[number]["id"], postIds: string[]) {
-  if (postIds.length === 0 || tab === "approvals") {
+  if (postIds.length === 0) {
     return [];
   }
 
@@ -316,7 +315,6 @@ export default async function PublishPage({
                 const counts = {
                   queue: queueCount.length,
                   drafts: draftCount.length,
-                  approvals: 0,
                   sent: sentCount.length,
                 } as const;
 
@@ -336,11 +334,7 @@ export default async function PublishPage({
               })}
             </div>
 
-            {tab === "approvals" ? (
-              <div className="rounded-[20px] border border-[rgba(12,17,21,0.08)] bg-[rgba(12,17,21,0.03)] px-5 py-8 text-sm text-[var(--muted)]">
-                Approval workflow is not in the current schema yet. This tab is reserved for the upcoming internal/client approval queue.
-              </div>
-            ) : tabPosts.length === 0 ? (
+            {tabPosts.length === 0 ? (
               <div className="rounded-[20px] border border-[rgba(12,17,21,0.08)] bg-[rgba(12,17,21,0.03)] px-5 py-8 text-sm text-[var(--muted)]">
                 No posts in this list state yet.
               </div>

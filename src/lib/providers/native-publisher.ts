@@ -10,7 +10,9 @@ import {
 } from "./credentials";
 import { normalizeNativePlatform } from "./platform-key";
 import { readStoredConnectionConfig } from "@/lib/connection-config";
+import { mediaTypeFromUrl } from "@/lib/media-url";
 import type { PublishResult as PipelinePublishResult } from "@/lib/pipeline/publisher";
+import type { InstagramPublishContentType } from "@/lib/post-publish-metadata";
 import type { PublishContent } from "./types";
 
 type PlatformRow = typeof platforms.$inferSelect;
@@ -19,8 +21,17 @@ export type NativePublishInput = {
   platform: PlatformRow;
   content: string;
   mediaUrl?: string;
+  mediaUrls?: string[];
   mediaType?: "image" | "video";
-  instagramContentType?: "reel" | "story";
+  instagramContentType?: InstagramPublishContentType;
+  platformFormat?: string;
+  firstComment?: string;
+  collaborators?: string[];
+};
+
+export type NativeDeleteInput = {
+  platform: PlatformRow;
+  platformPostId: string;
 };
 
 export function shouldPublishViaNativeProvider(
@@ -29,7 +40,7 @@ export function shouldPublishViaNativeProvider(
   const platformType = platform.type.toLowerCase();
   if (platformType === "twitter" || platformType === "x") {
     const stored = readStoredConnectionConfig(platform.config);
-    return platform.provider === "direct" && stored.authMethod === "x_oauth";
+    return platform.provider === "direct" && isNativeXAuthMethod(stored.authMethod);
   }
 
   return platform.provider === "direct" && hasNativeProvider(platform.type);
@@ -82,8 +93,55 @@ export async function publishViaNativeProvider(
   }
 }
 
+export async function deleteViaNativeProvider(
+  target: NativeDeleteInput
+): Promise<PipelinePublishResult> {
+  const platformKey = normalizeNativePlatform(target.platform.type);
+  const credentials = mergeProviderCredentials(platformKey, target.platform.config);
+  const provider = getProvider(platformKey, credentials);
+  const accessToken = await resolveAccessToken({ platform: target.platform }, provider);
+
+  if (!accessToken) {
+    return {
+      platform: target.platform.type,
+      provider: "direct",
+      accountId: target.platform.accountId,
+      success: false,
+      classification: "auth_error",
+      error: "Native provider missing access token.",
+    };
+  }
+
+  try {
+    const result = await provider.deletePost(accessToken, target.platformPostId);
+    return {
+      platform: target.platform.type,
+      provider: "direct",
+      accountId: target.platform.accountId,
+      success: result.deleted,
+      classification: result.deleted ? "success" : "provider_error",
+      postId: target.platformPostId,
+      raw: result.extra,
+      error: result.deleted ? undefined : "Native provider did not confirm deletion.",
+    };
+  } catch (error) {
+    return {
+      platform: target.platform.type,
+      provider: "direct",
+      accountId: target.platform.accountId,
+      success: false,
+      classification: classifyNativeError(error),
+      postId: target.platformPostId,
+      error: error instanceof Error ? error.message : String(error),
+      raw: error instanceof APIError || error instanceof OAuthError
+        ? error.rawResponse
+        : undefined,
+    };
+  }
+}
+
 async function resolveAccessToken(
-  target: NativePublishInput,
+  target: Pick<NativePublishInput, "platform">,
   provider: ReturnType<typeof getProvider>
 ) {
   const config = target.platform.config;
@@ -128,18 +186,32 @@ async function resolveAccessToken(
 }
 
 function buildPublishContent(target: NativePublishInput): PublishContent {
-  const postType = target.instagramContentType
-    ? target.instagramContentType
-    : target.mediaType === "video"
-      ? "video"
-      : target.mediaUrl
-        ? "image"
-        : "text";
+  const normalizedFormat = target.platformFormat?.toLowerCase();
+  const mediaUrls = resolveMediaUrls(target);
+  const inferredMediaType =
+    target.mediaType ?? (mediaUrls[0] ? mediaTypeFromUrl(mediaUrls[0]) ?? undefined : undefined);
+  const postType = target.instagramContentType === "story" || normalizedFormat === "story"
+    ? "story"
+    : target.instagramContentType === "reel" || normalizedFormat === "reel"
+      ? "reel"
+      : target.instagramContentType === "carousel"
+        || normalizedFormat === "carousel"
+        || mediaUrls.length > 1
+        ? "carousel"
+        : inferredMediaType === "video"
+          ? "video"
+          : mediaUrls.length > 0
+            ? "image"
+            : "text";
 
   return {
     text: target.content,
-    mediaUrls: target.mediaUrl ? [target.mediaUrl] : [],
+    mediaUrls,
     postType,
+    firstComment: target.firstComment,
+    extra: target.collaborators?.length
+      ? { collaborators: target.collaborators }
+      : undefined,
   };
 }
 
@@ -155,6 +227,10 @@ function classifyNativeError(error: unknown): PipelinePublishResult["classificat
     return "provider_error";
   }
   return "network_error";
+}
+
+function isNativeXAuthMethod(authMethod: string | null | undefined) {
+  return authMethod === "x_oauth" || authMethod === "twitter_native";
 }
 
 function readCredentialObject(config: Record<string, unknown> | null | undefined) {
@@ -174,4 +250,18 @@ function readTokenExpiry(config: Record<string, unknown> | null | undefined) {
     return Number.isFinite(parsed) ? parsed : null;
   }
   return null;
+}
+
+function resolveMediaUrls(target: NativePublishInput): string[] {
+  const mediaUrls = (target.mediaUrls ?? [])
+    .filter((url): url is string => typeof url === "string")
+    .map((url) => url.trim())
+    .filter((url) => url.length > 0);
+
+  if (mediaUrls.length > 0) {
+    return mediaUrls;
+  }
+
+  const mediaUrl = target.mediaUrl?.trim();
+  return mediaUrl ? [mediaUrl] : [];
 }

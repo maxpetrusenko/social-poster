@@ -1,7 +1,8 @@
 import "server-only";
 import crypto from "node:crypto";
 import { db } from "@/db";
-import { auditEvents } from "@/db/schema";
+import { activityLog, auditEvents } from "@/db/schema";
+import { buildAuditActivityLogValue } from "@/lib/audit-activity";
 import type { TenantContext } from "@/lib/tenancy";
 
 export async function recordTenantAuditEvent(
@@ -14,16 +15,38 @@ export async function recordTenantAuditEvent(
     metadata?: Record<string, unknown>;
   }
 ) {
+  const id = crypto.randomUUID();
+  const createdAt = new Date();
+  const workspaceId = input.workspaceId ?? context.currentWorkspace.id;
+
   await db.insert(auditEvents).values({
-    id: crypto.randomUUID(),
+    id,
     organizationId: context.organization.id,
-    workspaceId: input.workspaceId ?? context.currentWorkspace.id,
+    workspaceId,
     actorUserId: context.user.id,
     actorEmail: context.user.email,
     action: input.action,
     targetType: input.targetType,
     targetId: input.targetId ?? null,
     metadata: input.metadata,
-    createdAt: new Date(),
+    createdAt,
   });
+
+  if (workspaceId) {
+    await db
+      .insert(activityLog)
+      .values(
+        buildAuditActivityLogValue({
+          auditEventId: id,
+          workspaceId,
+          actorUserId: context.user.id,
+          action: input.action,
+          targetType: input.targetType,
+          targetId: input.targetId ?? null,
+          metadata: input.metadata,
+          createdAt,
+        })
+      )
+      .onConflictDoNothing();
+  }
 }

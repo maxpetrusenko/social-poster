@@ -92,8 +92,8 @@ export function ApiKeysManager({ initialKeys }: { initialKeys: ApiKey[] }) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-[#171717]">API Keys</h1>
-          <p className="text-sm text-[#171717]/60 mt-1">Authentication tokens for the programmatic API</p>
+          <h1 className="text-2xl font-semibold text-[#171717]">App Access</h1>
+          <p className="text-sm text-[#171717]/60 mt-1">Keys for external clients that call the ClawPoster API</p>
         </div>
         <button onClick={() => setShowCreate(true)} className="px-4 py-2 bg-[#171717] text-white rounded-lg text-sm font-medium hover:bg-[#171717]/90 transition-colors">
           + Create key
@@ -170,7 +170,7 @@ export function ApiKeysManager({ initialKeys }: { initialKeys: ApiKey[] }) {
           <div className="relative bg-white rounded-xl border border-[#e5d9c8] p-6 w-full max-w-md shadow-xl">
             {!createdKey ? (
               <>
-                <h2 className="text-lg font-semibold text-[#171717] mb-4">Create API Key</h2>
+                <h2 className="text-lg font-semibold text-[#171717] mb-4">Create App Key</h2>
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-[#171717]/70 mb-1">Name</label>

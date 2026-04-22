@@ -12,7 +12,7 @@ export default async function SettingsBillingPage() {
   return (
     <div>
       <h2 className="text-lg font-semibold text-[#171717] mb-1">Billing</h2>
-      <p className="text-sm text-[#8d7c64] mb-6">Manage your subscription and billing details</p>
+      <p className="text-sm text-[#8d7c64] mb-6">Current plan and billing contact details</p>
 
       <div className="max-w-lg space-y-5">
         {/* Current plan */}
@@ -40,13 +40,11 @@ export default async function SettingsBillingPage() {
           </div>
         </div>
 
-        {/* Payment (placeholder) */}
         <div className="rounded-xl border border-[#e5d9c8] bg-white p-6">
           <h3 className="text-sm font-semibold text-[#171717] mb-3">Payment</h3>
-          <p className="text-sm text-[#8d7c64]">No payment method configured yet.</p>
-          <button disabled className="mt-4 rounded-lg border border-[#e5d9c8] px-4 py-2 text-sm font-medium text-[#8d7c64] cursor-not-allowed opacity-60">
-            Add payment method (coming soon)
-          </button>
+          <p className="text-sm leading-6 text-[#8d7c64]">
+            Plan changes and payment collection are not enabled in this deployment.
+          </p>
         </div>
 
         {/* Billing email */}
@@ -55,10 +53,9 @@ export default async function SettingsBillingPage() {
           <p className="text-sm text-[#8d7c64]">{org.billingEmail || "Not set — invoices will go to the org owner."}</p>
         </div>
 
-        {/* Upgrade CTA */}
-        <button disabled className="w-full rounded-xl border border-[#e5d9c8] bg-white py-3 text-sm font-medium text-[#8d7c64] cursor-not-allowed opacity-60">
-          Upgrade plan (coming soon)
-        </button>
+        <div className="rounded-xl border border-[#e5d9c8] bg-[#faf6ee] px-4 py-3 text-sm text-[#8d7c64]">
+          Use support to request plan or billing changes for now.
+        </div>
       </div>
     </div>
   );

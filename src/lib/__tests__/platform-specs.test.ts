@@ -8,6 +8,8 @@ describe("platform-specs", () => {
     expect(getSpecForPlatform("facebook")).toBeDefined();
     expect(getSpecForPlatform("x")).toBeDefined();
     expect(getSpecForPlatform("twitter")).toBeDefined();
+    expect(getSpecForPlatform("threads")).toBeDefined();
+    expect(getSpecForPlatform("mastodon")).toBeDefined();
   });
 
   it("returns undefined for unknown platform", () => {
@@ -26,6 +28,19 @@ describe("platform-specs", () => {
     expect(dims[0].height).toBe(675);
   });
 
+  it("returns correct Threads and Mastodon dimensions", () => {
+    const threadsDims = getImageDimensions("threads");
+    const mastodonDims = getImageDimensions("mastodon");
+
+    expect(threadsDims).toHaveLength(1);
+    expect(threadsDims[0].width).toBe(1080);
+    expect(threadsDims[0].height).toBe(1350);
+
+    expect(mastodonDims).toHaveLength(1);
+    expect(mastodonDims[0].width).toBe(1200);
+    expect(mastodonDims[0].height).toBe(675);
+  });
+
   it("instagram supports multi-image", () => {
     expect(PLATFORM_SPECS.instagram.supportsMultiImage).toBe(true);
     expect(PLATFORM_SPECS.instagram.maxImages).toBe(10);
@@ -42,6 +57,10 @@ describe("platform-specs", () => {
     expect(getSpecForPlatform("instagram")).toBeDefined();
   });
 
+  it("maps known aliases to canonical platform specs", () => {
+    expect(getSpecForPlatform("mastadon")?.label).toBe("Mastodon");
+  });
+
   it("defines media upload constraints for every configured platform", () => {
     for (const platformType of PLATFORM_TYPES) {
       const spec = getSpecForPlatform(platformType);
@@ -53,7 +72,7 @@ describe("platform-specs", () => {
   });
 
   it("keeps platform media limits explicit", () => {
-    expect(PLATFORM_SPECS.linkedin.maxImages).toBe(9);
+    expect(PLATFORM_SPECS.linkedin.maxImages).toBe(20);
     expect(PLATFORM_SPECS.instagram.maxImages).toBe(10);
     expect(PLATFORM_SPECS.twitter.maxImages).toBe(4);
     expect(PLATFORM_SPECS.youtube.maxImages).toBe(1);

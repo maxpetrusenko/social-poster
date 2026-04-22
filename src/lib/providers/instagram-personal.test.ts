@@ -90,7 +90,10 @@ test("Instagram personal Graph requests send the access token as a query paramet
     assert.equal(profile.handle, "max");
     assert.equal(calls[0].url.pathname, "/v25.0/me");
     assert.equal(calls[0].url.searchParams.get("access_token"), "profile-token");
-    assert.equal(calls[0].url.searchParams.get("fields"), "user_id,username,name,profile_picture_url,followers_count");
+    assert.equal(
+      calls[0].url.searchParams.get("fields"),
+      "id,user_id,username,account_type,name,profile_picture_url"
+    );
     assert.equal(
       new Headers(calls[0].init?.headers).get("authorization"),
       null

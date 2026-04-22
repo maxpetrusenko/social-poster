@@ -7,6 +7,7 @@
  */
 
 import { callOpenAIResponses } from "@/lib/langsmith";
+import { resolveOpenAIResponsesRuntime } from "@/lib/model-runtime";
 
 const GARBAGE_SUMMARIES = new Set([
   "comments",
@@ -50,12 +51,14 @@ async function fetchArticleText(url: string): Promise<string> {
 async function callOpenAI(
   title: string,
   articleText: string,
-  existingSummary: string
+  existingSummary: string,
+  workspaceId?: string | null
 ): Promise<string> {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) throw new Error("No OPENAI_API_KEY");
-
   const model = process.env.OPENAI_ENRICH_MODEL || "gpt-4.1-mini";
+  const runtime = workspaceId
+    ? await resolveOpenAIResponsesRuntime({ workspaceId, slot: "fast", fallbackModel: model })
+    : { apiKey: process.env.OPENAI_API_KEY || "", model, source: "env" as const };
+  if (!runtime.apiKey) throw new Error("No OPENAI_API_KEY");
 
   const prompt = `Summarize this article in 2-3 sentences. Focus on the most specific and surprising details — numbers, names, concrete claims. No filler phrases like "worth watching" or "interesting development".
 
@@ -69,15 +72,16 @@ Return ONLY the summary text, no JSON, no formatting.`;
 
   const result = await callOpenAIResponses<Record<string, unknown>>({
     name: "pipeline-enrich-summary",
-    apiKey,
+    apiKey: runtime.apiKey,
     body: {
-      model,
+      model: runtime.model,
       input: prompt,
     },
     tags: ["pipeline", "enrichment"],
     metadata: {
       source: "pipeline",
       title,
+      modelSource: runtime.source,
     },
   });
 
@@ -99,7 +103,7 @@ export async function enrichSummaryIfNeeded(story: {
   title: string;
   summary: string;
   link: string;
-}): Promise<string> {
+}, workspaceId?: string | null): Promise<string> {
   if (!needsEnrichment(story.summary)) return story.summary;
   if (!story.link) return story.summary;
 
@@ -107,7 +111,7 @@ export async function enrichSummaryIfNeeded(story: {
     const articleText = await fetchArticleText(story.link);
     if (articleText.length < 50) return story.summary;
 
-    const enriched = await callOpenAI(story.title, articleText, story.summary);
+    const enriched = await callOpenAI(story.title, articleText, story.summary, workspaceId);
     if (enriched && enriched.length > 20) {
       console.log(
         `[enrich] ${story.title.slice(0, 50)}… → ${enriched.length} chars`

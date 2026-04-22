@@ -1,5 +1,12 @@
 import { db } from "@/db";
-import { pipelineRuns, platforms, posts, replyEvents, schedules } from "@/db/schema";
+import {
+  inboxMessages,
+  pipelineRuns,
+  platforms,
+  posts,
+  replyEvents,
+  schedules,
+} from "@/db/schema";
 import { and, desc, eq, gte, inArray, lt, or } from "drizzle-orm";
 import { getCronOccurrences, getNextCronOccurrence } from "./cron";
 import { getPlatformLabel, getPlatformMeta, normalizePlatformType } from "./platforms";
@@ -20,6 +27,7 @@ type ScheduleRow = typeof schedules.$inferSelect;
 type PlatformRow = typeof platforms.$inferSelect;
 type PostRow = typeof posts.$inferSelect;
 type ReplyEventRow = typeof replyEvents.$inferSelect;
+type InboxMessageRow = typeof inboxMessages.$inferSelect;
 
 type RunPublishDetails = {
   publishedPlatforms: string[];
@@ -63,12 +71,44 @@ export type PlatformInsight = {
   provider: string;
   enabled: boolean;
   scheduleCount: number;
+  postCount30d: number;
+  commentCount30d: number;
+  dmCount30d: number;
+  impressionCount30d: number | null;
   deliveryCount30d: number;
   failureCount30d: number;
   successRate30d: number;
   lastDeliveredAt: Date | null;
   accent: string;
   shortLabel: string;
+};
+
+export type PlatformOverviewInsight = {
+  id: string;
+  type: string;
+  name: string;
+  accountCount: number;
+  enabledCount: number;
+  disabledCount: number;
+  providers: string[];
+  enabled: boolean;
+  scheduleCount: number;
+  postCount30d: number;
+  commentCount30d: number;
+  dmCount30d: number;
+  impressionCount30d: number | null;
+  deliveryCount30d: number;
+  failureCount30d: number;
+  successRate30d: number;
+  lastDeliveredAt: Date | null;
+  accent: string;
+  shortLabel: string;
+  accounts: PlatformOverviewAccountInsight[];
+};
+
+export type PlatformOverviewAccountInsight = PlatformInsight & {
+  accountIds: string[];
+  accountCount: number;
 };
 
 export type DashboardInsights = {
@@ -87,6 +127,7 @@ export type DashboardInsights = {
   timeseries: DashboardTimeseriesPoint[];
   scheduleInsights: ScheduleInsight[];
   platformInsights: PlatformInsight[];
+  platformOverviewInsights: PlatformOverviewInsight[];
   recentRuns: Array<RunRow & { scheduleName: string | null; publish: RunPublishDetails }>;
   recentPosts: PostRow[];
   recentReplies: ReplyEventRow[];
@@ -331,7 +372,8 @@ function buildScheduleInsights(
 function buildPlatformInsights(
   platformRows: PlatformRow[],
   scheduleRows: ScheduleRow[],
-  runRows: Array<RunRow & { publish: RunPublishDetails }>
+  runRows: Array<RunRow & { publish: RunPublishDetails }>,
+  inboxRows: InboxMessageRow[]
 ): PlatformInsight[] {
   const start30d = startOfDay(new Date());
   start30d.setDate(start30d.getDate() - 29);
@@ -353,6 +395,11 @@ function buildPlatformInsights(
     const scheduleCount = scheduleRows.filter((schedule) =>
       (schedule.targetPlatformIds || []).includes(platform.id)
     ).length;
+    const inboxRowsForPlatform30d = inboxRows.filter(
+      (message) =>
+        message.platformId === platform.id &&
+        new Date(message.createdAt) >= start30d
+    );
     const totalAttempts = deliveryCount30d + failureCount30d;
     const meta = getPlatformMeta(normalized);
 
@@ -364,6 +411,14 @@ function buildPlatformInsights(
       provider: platform.provider,
       enabled: platform.enabled,
       scheduleCount,
+      postCount30d: deliveryCount30d,
+      commentCount30d: inboxRowsForPlatform30d.filter(
+        (message) => message.surface === "comments"
+      ).length,
+      dmCount30d: inboxRowsForPlatform30d.filter(
+        (message) => message.surface === "dms"
+      ).length,
+      impressionCount30d: null,
       deliveryCount30d,
       failureCount30d,
       successRate30d: percent(deliveryCount30d, totalAttempts),
@@ -372,6 +427,187 @@ function buildPlatformInsights(
       shortLabel: meta.shortLabel,
     };
   });
+}
+
+function buildPlatformOverviewInsights(accountInsights: PlatformInsight[]): PlatformOverviewInsight[] {
+  type PlatformOverviewDraft = Omit<PlatformOverviewInsight, "accounts"> & {
+    accounts: PlatformInsight[];
+  };
+  const groups = new Map<string, PlatformOverviewDraft>();
+
+  for (const account of accountInsights) {
+    const groupType = getPlatformOverviewGroupType(account.type);
+    const groupMeta = getPlatformMeta(groupType);
+    const current = groups.get(groupType);
+
+    if (!current) {
+      groups.set(groupType, {
+        id: groupType,
+        type: groupType,
+        name: getPlatformLabel(groupType),
+        accountCount: 1,
+        enabledCount: account.enabled ? 1 : 0,
+        disabledCount: account.enabled ? 0 : 1,
+        providers: [account.provider],
+        enabled: account.enabled,
+        scheduleCount: account.scheduleCount,
+        postCount30d: account.postCount30d,
+        commentCount30d: account.commentCount30d,
+        dmCount30d: account.dmCount30d,
+        impressionCount30d: account.impressionCount30d,
+        deliveryCount30d: account.deliveryCount30d,
+        failureCount30d: account.failureCount30d,
+        successRate30d: account.successRate30d,
+        lastDeliveredAt: account.lastDeliveredAt,
+        accent: groupMeta.accent,
+        shortLabel: groupMeta.shortLabel,
+        accounts: [account],
+      });
+      continue;
+    }
+
+    current.accountCount += 1;
+    current.enabledCount += account.enabled ? 1 : 0;
+    current.disabledCount += account.enabled ? 0 : 1;
+    current.enabled = current.enabled || account.enabled;
+    current.scheduleCount += account.scheduleCount;
+    current.postCount30d += account.postCount30d;
+    current.commentCount30d += account.commentCount30d;
+    current.dmCount30d += account.dmCount30d;
+    current.deliveryCount30d += account.deliveryCount30d;
+    current.failureCount30d += account.failureCount30d;
+    current.providers = Array.from(new Set([...current.providers, account.provider]));
+    current.accounts.push(account);
+
+    if (
+      account.impressionCount30d !== null &&
+      current.impressionCount30d !== null
+    ) {
+      current.impressionCount30d += account.impressionCount30d;
+    } else {
+      current.impressionCount30d = null;
+    }
+
+    if (
+      account.lastDeliveredAt &&
+      (!current.lastDeliveredAt || account.lastDeliveredAt > current.lastDeliveredAt)
+    ) {
+      current.lastDeliveredAt = account.lastDeliveredAt;
+    }
+  }
+
+  return Array.from(groups.values()).map((group) => {
+    const accounts = mergePlatformOverviewAccounts(group.accounts);
+    const deliveryCount30d = accounts.reduce((sum, account) => sum + account.deliveryCount30d, 0);
+    const failureCount30d = accounts.reduce((sum, account) => sum + account.failureCount30d, 0);
+    const totalAttempts = deliveryCount30d + failureCount30d;
+    const lastDeliveredAt = accounts.reduce<Date | null>((latest, account) => {
+      if (!account.lastDeliveredAt) return latest;
+      if (!latest || account.lastDeliveredAt > latest) return account.lastDeliveredAt;
+      return latest;
+    }, null);
+    const enabledCount = accounts.filter((account) => account.enabled).length;
+
+    return {
+      ...group,
+      accountCount: accounts.length,
+      enabledCount,
+      disabledCount: accounts.length - enabledCount,
+      providers: Array.from(new Set(accounts.map((account) => account.provider))),
+      enabled: enabledCount > 0,
+      scheduleCount: accounts.reduce((sum, account) => sum + account.scheduleCount, 0),
+      postCount30d: accounts.reduce((sum, account) => sum + account.postCount30d, 0),
+      commentCount30d: accounts.reduce((sum, account) => sum + account.commentCount30d, 0),
+      dmCount30d: accounts.reduce((sum, account) => sum + account.dmCount30d, 0),
+      impressionCount30d: accounts.every((account) => account.impressionCount30d !== null)
+        ? accounts.reduce((sum, account) => sum + (account.impressionCount30d ?? 0), 0)
+        : null,
+      deliveryCount30d,
+      failureCount30d,
+      successRate30d: percent(deliveryCount30d, totalAttempts),
+      lastDeliveredAt,
+      accounts,
+    };
+  });
+}
+
+function mergePlatformOverviewAccounts(accounts: PlatformInsight[]): PlatformOverviewAccountInsight[] {
+  const merged = new Map<string, PlatformOverviewAccountInsight>();
+
+  for (const account of accounts) {
+    const key = [
+      getPlatformOverviewAccountType(account.type),
+      account.provider,
+      normalizeAccountIdentity(account.handle || account.name),
+    ].join("\u001f");
+    const current = merged.get(key);
+
+    if (!current) {
+      merged.set(key, {
+        ...account,
+        accountIds: [account.id],
+        accountCount: 1,
+      });
+      continue;
+    }
+
+    current.accountIds.push(account.id);
+    current.accountCount += 1;
+    current.enabled = current.enabled || account.enabled;
+    current.scheduleCount += account.scheduleCount;
+    current.postCount30d += account.postCount30d;
+    current.commentCount30d += account.commentCount30d;
+    current.dmCount30d += account.dmCount30d;
+    current.deliveryCount30d += account.deliveryCount30d;
+    current.failureCount30d += account.failureCount30d;
+
+    if (
+      account.impressionCount30d !== null &&
+      current.impressionCount30d !== null
+    ) {
+      current.impressionCount30d += account.impressionCount30d;
+    } else {
+      current.impressionCount30d = null;
+    }
+
+    if (
+      account.lastDeliveredAt &&
+      (!current.lastDeliveredAt || account.lastDeliveredAt > current.lastDeliveredAt)
+    ) {
+      current.lastDeliveredAt = account.lastDeliveredAt;
+    }
+
+    const totalAttempts = current.deliveryCount30d + current.failureCount30d;
+    current.successRate30d = percent(current.deliveryCount30d, totalAttempts);
+  }
+
+  return Array.from(merged.values()).sort((left, right) => {
+    if (left.enabled !== right.enabled) {
+      return left.enabled ? -1 : 1;
+    }
+
+    return left.name.localeCompare(right.name);
+  });
+}
+
+function getPlatformOverviewGroupType(type: string) {
+  if (type === "linkedin_personal" || type === "linkedin_company") {
+    return "linkedin";
+  }
+
+  return type;
+}
+
+function getPlatformOverviewAccountType(type: string) {
+  if (type === "linkedin") {
+    return "linkedin_personal";
+  }
+
+  return type;
+}
+
+function normalizeAccountIdentity(value: string) {
+  return value.trim().toLowerCase().replace(/^@/, "");
 }
 
 async function getScopedRunRows({
@@ -435,7 +671,7 @@ export async function getDashboardInsights(
   } = await getDashboardWorkspaceScope(workspaceId);
   const scheduleIds = scheduleRows.map((schedule) => schedule.id);
 
-  const [allRunRows, postRows, replyRows] = await Promise.all([
+  const [allRunRows, postRows, replyRows, inboxRows] = await Promise.all([
     getScopedRunRows({ workspaceId, scheduleIds, postIds }),
     postIds.length > 0
       ? db.select().from(posts).where(inArray(posts.id, postIds)).orderBy(desc(posts.createdAt))
@@ -447,6 +683,13 @@ export async function getDashboardInsights(
           .where(inArray(replyEvents.platformId, platformIds))
           .orderBy(desc(replyEvents.createdAt))
       : Promise.resolve([] as ReplyEventRow[]),
+    platformIds.length > 0
+      ? db
+          .select()
+          .from(inboxMessages)
+          .where(inArray(inboxMessages.platformId, platformIds))
+          .orderBy(desc(inboxMessages.createdAt))
+      : Promise.resolve([] as InboxMessageRow[]),
   ]);
 
   const runRowsRaw = allRunRows.filter((run) =>
@@ -490,6 +733,8 @@ export async function getDashboardInsights(
   );
   const successfulSlots30d = recent30dRuns.filter((run) => run.status === "completed").length;
 
+  const platformInsights = buildPlatformInsights(platformRows, scheduleRows, runRows, inboxRows);
+
   return {
     publishedPieces30d,
     deliveryCount30d,
@@ -510,7 +755,8 @@ export async function getDashboardInsights(
       null,
     timeseries: buildTimeseries(runRows),
     scheduleInsights: buildScheduleInsights(scheduleRows, runRows, platformRows),
-    platformInsights: buildPlatformInsights(platformRows, scheduleRows, runRows),
+    platformInsights,
+    platformOverviewInsights: buildPlatformOverviewInsights(platformInsights),
     recentRuns: runRows.slice(0, 10).map((run) => ({
       ...run,
       scheduleName: scheduleRows.find((schedule) => schedule.id === run.scheduleId)?.name ?? null,

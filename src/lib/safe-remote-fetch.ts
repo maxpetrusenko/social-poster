@@ -96,7 +96,12 @@ function requestPinnedRemote(
         path: `${url.pathname}${url.search}`,
         method: init.method || "GET",
         headers,
-        lookup: (_hostname, _options, callback) => {
+        lookup: (_hostname, options, callback) => {
+          if (typeof options === "object" && options?.all) {
+            callback(null, [{ address: address.address, family: address.family }]);
+            return;
+          }
+
           callback(null, address.address, address.family);
         },
       },

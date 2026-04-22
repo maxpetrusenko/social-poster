@@ -9,6 +9,7 @@ import {
   ClipboardList,
   LayoutDashboard,
   Mail,
+  PenLine,
   Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -18,6 +19,7 @@ const navItems = [
   { href: "/admin/users", label: "Users", icon: Users },
   { href: "/admin/waitlist", label: "Waitlist", icon: ClipboardList },
   { href: "/admin/marketing", label: "Marketing", icon: Mail },
+  { href: "/admin/blog", label: "Blog", icon: PenLine },
   { href: "/admin/usage", label: "Usage", icon: BarChart3 },
 ] as const;
 

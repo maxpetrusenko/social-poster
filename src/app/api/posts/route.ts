@@ -3,6 +3,7 @@ import { platforms, posts, postTargets, profiles } from "@/db/schema";
 import { NextRequest, NextResponse } from "next/server";
 import { requireApiWorkspaceEditor } from "@/lib/api-authorization";
 import { recordTenantAuditEvent } from "@/lib/audit";
+import { readStringArray } from "@/lib/post-publish-metadata";
 import crypto from "node:crypto";
 import { and, eq, inArray } from "drizzle-orm";
 
@@ -17,19 +18,35 @@ export async function POST(request: NextRequest) {
       content,
       contentType,
       sourceUrl,
+      sourceEvidenceId,
+      sourceEvidenceSnapshot,
       scheduledAt,
       intent,
       profileId,
       platformIds,
       mediaUrl,
+      mediaUrls,
+      platformOverrides,
+      previewSpecs,
+      mediaUrlByPlatformId,
+      mediaUrlByPlatformType,
+      mediaUrlsByPlatformId,
+      mediaUrlsByPlatformType,
     } = body;
 
     const normalizedMediaUrl =
       typeof mediaUrl === "string" && mediaUrl.trim() ? mediaUrl.trim() : null;
+    const normalizedMediaUrls = readStringArray(mediaUrls);
+    const normalizedMediaUrlsValue =
+      normalizedMediaUrls.length > 0
+        ? normalizedMediaUrls
+        : normalizedMediaUrl
+          ? [normalizedMediaUrl]
+          : [];
     const normalizedContent =
       typeof content === "string" && content.trim() ? content : "";
 
-    if (!normalizedContent && !normalizedMediaUrl) {
+    if (!normalizedContent && normalizedMediaUrlsValue.length === 0) {
       return NextResponse.json(
         { error: "Content or media is required" },
         { status: 400 }
@@ -112,7 +129,7 @@ export async function POST(request: NextRequest) {
       title: title || null,
       content: normalizedContent,
       contentType: contentType || "text",
-      mediaUrl: normalizedMediaUrl,
+      mediaUrl: normalizedMediaUrlsValue[0] ?? normalizedMediaUrl ?? null,
       sourceUrl: sourceUrl || null,
       sourceTitle: null,
       profileId: normalizedProfileId,
@@ -120,7 +137,15 @@ export async function POST(request: NextRequest) {
       scheduledAt: normalizedIntent === "schedule" ? nextScheduledAt : null,
       publishedAt: null,
       dedupKey: null,
-      metadata: null,
+      metadata: buildPostMetadata({
+        platformOverrides,
+        previewSpecs,
+        mediaUrls: normalizedMediaUrlsValue,
+        mediaUrlsByPlatformId: mediaUrlsByPlatformId ?? mediaUrlByPlatformId,
+        mediaUrlsByPlatformType: mediaUrlsByPlatformType ?? mediaUrlByPlatformType,
+        sourceEvidenceId,
+        sourceEvidenceSnapshot,
+      }),
       createdAt: now,
       updatedAt: now,
     });
@@ -167,4 +192,59 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+function sanitizeRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+function buildPostMetadata(input: {
+  platformOverrides: unknown;
+  previewSpecs: unknown;
+  mediaUrls: string[];
+  mediaUrlsByPlatformId: unknown;
+  mediaUrlsByPlatformType: unknown;
+  sourceEvidenceId?: unknown;
+  sourceEvidenceSnapshot?: unknown;
+}): Record<string, unknown> {
+  const metadata: Record<string, unknown> = {
+    platformOverrides: sanitizeRecord(input.platformOverrides),
+    previewSpecs: sanitizeRecord(input.previewSpecs),
+    mediaUrls: input.mediaUrls,
+    mediaUrlsByPlatformId: normalizeStringArrayMap(input.mediaUrlsByPlatformId),
+    mediaUrlsByPlatformType: normalizeStringArrayMap(input.mediaUrlsByPlatformType),
+  };
+
+  const normalizedSourceEvidenceId =
+    typeof input.sourceEvidenceId === "string" && input.sourceEvidenceId.trim()
+      ? input.sourceEvidenceId.trim()
+      : "";
+  if (normalizedSourceEvidenceId) {
+    metadata.sourceEvidenceId = normalizedSourceEvidenceId;
+  }
+
+  const normalizedSourceEvidenceSnapshot = sanitizeRecord(input.sourceEvidenceSnapshot);
+  if (Object.keys(normalizedSourceEvidenceSnapshot).length > 0) {
+    metadata.sourceEvidenceSnapshot = normalizedSourceEvidenceSnapshot;
+  }
+
+  return metadata;
+}
+
+function normalizeStringArrayMap(value: unknown): Record<string, string[]> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {};
+  }
+
+  const output: Record<string, string[]> = {};
+  for (const [key, item] of Object.entries(value as Record<string, unknown>)) {
+    const normalized = readStringArray(item);
+    if (normalized.length > 0) {
+      output[key] = normalized;
+    }
+  }
+
+  return output;
 }

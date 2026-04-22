@@ -26,6 +26,7 @@ type BirdPublishTarget = {
   platform: PlatformRow;
   content: string;
   mediaUrl?: string;
+  mediaUrls?: string[];
 };
 
 export function resolveBirdCredentials(
@@ -53,6 +54,10 @@ function buildBirdBaseArgs(credentials: BirdCredentials) {
     throw new Error(
       "Missing Bird auth credentials. Add authToken and ct0 or enable installed Bird session."
     );
+  }
+
+  if (credentials.authToken && credentials.ct0) {
+    args.push("--auth-token", credentials.authToken, "--ct0", credentials.ct0);
   }
 
   if (credentials.chromeProfile) {
@@ -101,8 +106,17 @@ async function runBird(args: string[], credentials: BirdCredentials) {
       .filter(Boolean)
       .join("\n")
       .trim();
-    throw new Error(message || "Bird command failed");
+    throw new Error(redactBirdSecrets(message, credentials) || "Bird command failed");
   }
+}
+
+function redactBirdSecrets(message: string, credentials: BirdCredentials) {
+  let redacted = message;
+  for (const secret of [credentials.authToken, credentials.ct0]) {
+    if (!secret) continue;
+    redacted = redacted.split(secret).join("[redacted]");
+  }
+  return redacted;
 }
 
 async function downloadBirdMedia(url: string) {
@@ -162,16 +176,17 @@ export async function publishToBird(
       ? splitBirdThreadContent(target.content, credentials.threadChunkLimit)
       : [target.content.trim()];
 
-  let media: Awaited<ReturnType<typeof downloadBirdMedia>> | null = null;
+  let media: Array<Awaited<ReturnType<typeof downloadBirdMedia>>> = [];
 
   try {
-    if (target.mediaUrl) {
-      media = await downloadBirdMedia(target.mediaUrl);
+    const mediaUrls = resolveBirdMediaUrls(target).slice(0, 4);
+    if (mediaUrls.length > 0) {
+      media = await Promise.all(mediaUrls.map((url) => downloadBirdMedia(url)));
     }
 
     const firstArgs = ["tweet", "--plain"];
-    if (media) {
-      firstArgs.push("--media", media.filePath);
+    for (const item of media) {
+      firstArgs.push("--media", item.filePath);
     }
     firstArgs.push(threadParts[0]);
 
@@ -219,6 +234,15 @@ export async function publishToBird(
       error: message,
     };
   } finally {
-    await media?.cleanup();
+    await Promise.all(media.map((item) => item.cleanup()));
   }
+}
+
+function resolveBirdMediaUrls(target: BirdPublishTarget) {
+  const urls = (target.mediaUrls ?? [])
+    .filter((url): url is string => typeof url === "string")
+    .map((url) => url.trim())
+    .filter((url) => url.length > 0);
+  if (urls.length > 0) return urls;
+  return target.mediaUrl ? [target.mediaUrl] : [];
 }

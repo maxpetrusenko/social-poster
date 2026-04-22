@@ -36,6 +36,7 @@ let profileRefreshBootTimer: NodeJS.Timeout | null = null;
 let birdSessionCheckInterval: NodeJS.Timeout | null = null;
 let birdSessionCheckBootTimer: NodeJS.Timeout | null = null;
 let dripQueueInterval: NodeJS.Timeout | null = null;
+let blogAutomationInterval: NodeJS.Timeout | null = null;
 
 export async function initScheduler(): Promise<void> {
   console.log("[scheduler] init");
@@ -45,6 +46,7 @@ export async function initScheduler(): Promise<void> {
   ensureProfileRefreshWorker();
   ensureBirdSessionCheckWorker();
   ensureDripQueueWorker();
+  ensureBlogAutomationWorker();
   await reconcileSchedules("init");
 
   console.log("[scheduler] ready");
@@ -113,6 +115,7 @@ export async function ensureSchedulerReady(): Promise<void> {
   ensureTokenRefreshWorker();
   ensureProfileRefreshWorker();
   ensureBirdSessionCheckWorker();
+  ensureBlogAutomationWorker();
 
   if (tasks.size === 0) {
     await reconcileSchedules("ensure-ready");
@@ -338,4 +341,30 @@ function ensureDripQueueWorker() {
     void runSweep();
   }, 10 * 60 * 1000);
   dripQueueInterval.unref?.();
+}
+
+function ensureBlogAutomationWorker() {
+  if (blogAutomationInterval) return;
+
+  const runSweep = async () => {
+    try {
+      const { runDailyBlogAutomation } = await import("@/lib/blog/daily");
+      const result = await runDailyBlogAutomation();
+      if (result.skipped === false) {
+        console.log("[scheduler] daily blog draft generated");
+      }
+    } catch (error) {
+      console.error("[scheduler] daily blog automation failed:", error);
+    }
+  };
+
+  const bootTimer = setTimeout(() => {
+    void runSweep();
+  }, 45_000);
+  bootTimer.unref?.();
+
+  blogAutomationInterval = setInterval(() => {
+    void runSweep();
+  }, 60 * 60 * 1000);
+  blogAutomationInterval.unref?.();
 }

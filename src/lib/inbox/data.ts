@@ -6,6 +6,7 @@ import { db } from "@/db";
 import {
   inboxConversations,
   inboxMessages,
+  inboxSeenWatermarks,
   platforms,
   postTargets,
 } from "@/db/schema";
@@ -32,6 +33,7 @@ import {
   INBOX_PLATFORM_GROUPS,
   type InboxSurface,
 } from "./platforms";
+import { shouldMarkIncomingSeen } from "./read-state";
 import type { PlatformComment, DirectMessage } from "@/platforms/_shared/types";
 
 type PlatformRow = typeof platforms.$inferSelect;
@@ -132,9 +134,10 @@ export async function markInboxSurfaceSeen(
   workspaceId: string,
   surface: InboxSurface
 ) {
+  const now = new Date();
   await db
     .update(inboxMessages)
-    .set({ readAt: new Date() })
+    .set({ readAt: now })
     .where(
       and(
         eq(inboxMessages.workspaceId, workspaceId),
@@ -143,6 +146,54 @@ export async function markInboxSurfaceSeen(
         isNull(inboxMessages.readAt)
       )
     );
+
+  await upsertInboxSeenWatermark(workspaceId, surface, now);
+}
+
+async function getInboxSurfaceSeenAt(
+  workspaceId: string,
+  surface: InboxSurface
+) {
+  const row = await db.query.inboxSeenWatermarks.findFirst({
+    where: and(
+      eq(inboxSeenWatermarks.workspaceId, workspaceId),
+      eq(inboxSeenWatermarks.surface, surface),
+      eq(inboxSeenWatermarks.platformKey, "all")
+    ),
+  });
+  return row?.seenAt ?? null;
+}
+
+async function upsertInboxSeenWatermark(
+  workspaceId: string,
+  surface: InboxSurface,
+  seenAt: Date
+) {
+  const existing = await db.query.inboxSeenWatermarks.findFirst({
+    where: and(
+      eq(inboxSeenWatermarks.workspaceId, workspaceId),
+      eq(inboxSeenWatermarks.surface, surface),
+      eq(inboxSeenWatermarks.platformKey, "all")
+    ),
+  });
+
+  if (existing) {
+    await db
+      .update(inboxSeenWatermarks)
+      .set({ seenAt, updatedAt: seenAt })
+      .where(eq(inboxSeenWatermarks.id, existing.id));
+    return;
+  }
+
+  await db.insert(inboxSeenWatermarks).values({
+    id: randomUUID(),
+    workspaceId,
+    surface,
+    platformKey: "all",
+    seenAt,
+    createdAt: seenAt,
+    updatedAt: seenAt,
+  });
 }
 
 export async function pullInboxSurface(
@@ -320,8 +371,9 @@ async function listInboxRows(
 
 async function pullCommentsForPlatform(workspaceId: string, platform: PlatformRow) {
   const accessToken = readStoredAccessToken(platform);
+  const surfaceSeenAt = await getInboxSurfaceSeenAt(workspaceId, "comments");
   if (isXPlatform(platform) && usesBirdTransport(platform)) {
-    return pullXBirdMentionsForPlatform(workspaceId, platform);
+    return pullXBirdMentionsForPlatform(workspaceId, platform, surfaceSeenAt);
   }
 
   if (!accessToken) {
@@ -329,21 +381,22 @@ async function pullCommentsForPlatform(workspaceId: string, platform: PlatformRo
   }
 
   if (isXPlatform(platform)) {
-    const mentions = await pullXApiMentionsForPlatform(workspaceId, platform, accessToken);
-    const postReplies = await pullPostCommentsForPlatform(workspaceId, platform, accessToken);
+    const mentions = await pullXApiMentionsForPlatform(workspaceId, platform, accessToken, surfaceSeenAt);
+    const postReplies = await pullPostCommentsForPlatform(workspaceId, platform, accessToken, surfaceSeenAt);
     return {
       pulled: mentions.pulled + postReplies.pulled,
       message: `${mentions.message} ${postReplies.message}`,
     };
   }
 
-  return pullPostCommentsForPlatform(workspaceId, platform, accessToken);
+  return pullPostCommentsForPlatform(workspaceId, platform, accessToken, surfaceSeenAt);
 }
 
 async function pullPostCommentsForPlatform(
   workspaceId: string,
   platform: PlatformRow,
-  accessToken: string
+  accessToken: string,
+  surfaceSeenAt: Date | null
 ) {
   const platformModule = getInboxPlatformModule(platform);
   if (!platformModule.comments) {
@@ -370,7 +423,7 @@ async function pullPostCommentsForPlatform(
       50
     );
     for (const comment of result.data) {
-      await upsertComment(workspaceId, platform, postId, comment);
+      await upsertComment(workspaceId, platform, postId, comment, surfaceSeenAt);
       pulled += 1;
     }
   }
@@ -385,14 +438,15 @@ async function pullPostCommentsForPlatform(
 
 async function pullXBirdMentionsForPlatform(
   workspaceId: string,
-  platform: PlatformRow
+  platform: PlatformRow,
+  surfaceSeenAt: Date | null
 ) {
   const tweets = await getMentionsForPlatform(platform, 50, true);
   let pulled = 0;
   for (const tweet of tweets.slice(0, 50)) {
     const comment = mapBirdMentionToComment(tweet);
     if (!comment) continue;
-    await upsertComment(workspaceId, platform, comment.postId, comment);
+    await upsertComment(workspaceId, platform, comment.postId, comment, surfaceSeenAt);
     pulled += 1;
   }
 
@@ -405,7 +459,8 @@ async function pullXBirdMentionsForPlatform(
 async function pullXApiMentionsForPlatform(
   workspaceId: string,
   platform: PlatformRow,
-  accessToken: string
+  accessToken: string,
+  surfaceSeenAt: Date | null
 ) {
   const accountId = readXAccountId(platform);
   const handle = platform.handle?.replace(/^@/, "");
@@ -445,7 +500,7 @@ async function pullXApiMentionsForPlatform(
   for (const tweet of readArray(body, "data")) {
     const comment = mapXApiMentionToComment(tweet, usersById);
     if (!comment) continue;
-    await upsertComment(workspaceId, platform, comment.postId, comment);
+    await upsertComment(workspaceId, platform, comment.postId, comment, surfaceSeenAt);
     pulled += 1;
   }
 
@@ -457,6 +512,7 @@ async function pullXApiMentionsForPlatform(
 
 async function pullDmsForPlatform(workspaceId: string, platform: PlatformRow) {
   const accessToken = readStoredAccessToken(platform);
+  const surfaceSeenAt = await getInboxSurfaceSeenAt(workspaceId, "dms");
   if (!accessToken) {
     return { pulled: 0, message: "No OAuth access token stored for DM pull." };
   }
@@ -470,7 +526,7 @@ async function pullDmsForPlatform(workspaceId: string, platform: PlatformRow) {
   for (const conversation of conversations.data) {
     const messages = await platformModule.inbox.getMessages(accessToken, conversation.id, undefined, 25);
     for (const message of messages.data) {
-      await upsertDm(workspaceId, platform, conversation.id, message);
+      await upsertDm(workspaceId, platform, conversation.id, message, surfaceSeenAt);
       pulled += 1;
     }
   }
@@ -482,9 +538,11 @@ async function upsertComment(
   workspaceId: string,
   platform: PlatformRow,
   postId: string,
-  comment: PlatformComment
+  comment: PlatformComment,
+  surfaceSeenAt: Date | null
 ) {
   const now = new Date();
+  const sentAt = parseDate(comment.createdAt);
   const group = getInboxPlatformGroupByType(platform.type);
   const threadId = comment.parentId || comment.id;
   const conversation = await upsertConversation({
@@ -494,7 +552,7 @@ async function upsertComment(
     externalThreadId: threadId,
     externalUrl: comment.extra?.url as string | undefined,
     subject: `${group?.label || platform.name} comment`,
-    lastMessageAt: parseDate(comment.createdAt) ?? now,
+    lastMessageAt: sentAt ?? now,
     metadata: { postId, parentId: comment.parentId ?? null },
   });
 
@@ -510,7 +568,10 @@ async function upsertComment(
     authorName: comment.authorName,
     body: comment.text,
     sourceUrl: (comment.extra?.url as string | undefined) ?? null,
-    sentAt: parseDate(comment.createdAt),
+    sentAt,
+    readAt: shouldMarkIncomingSeen({ sentAt, createdAt: now, seenAt: surfaceSeenAt })
+      ? surfaceSeenAt
+      : null,
     metadata: {
       postId,
       likeCount: comment.likeCount ?? null,
@@ -526,9 +587,11 @@ async function upsertDm(
   workspaceId: string,
   platform: PlatformRow,
   conversationId: string,
-  message: DirectMessage
+  message: DirectMessage,
+  surfaceSeenAt: Date | null
 ) {
   const now = new Date();
+  const sentAt = parseDate(message.createdAt);
   const conversation = await upsertConversation({
     workspaceId,
     platform,
@@ -536,7 +599,7 @@ async function upsertDm(
     externalThreadId: conversationId,
     externalUrl: null,
     subject: "Direct message",
-    lastMessageAt: parseDate(message.createdAt) ?? now,
+    lastMessageAt: sentAt ?? now,
     metadata: { participantIds: [message.senderId] },
   });
 
@@ -552,7 +615,10 @@ async function upsertDm(
     authorName: message.senderId,
     body: message.text,
     sourceUrl: null,
-    sentAt: parseDate(message.createdAt),
+    sentAt,
+    readAt: shouldMarkIncomingSeen({ sentAt, createdAt: now, seenAt: surfaceSeenAt })
+      ? surfaceSeenAt
+      : null,
     metadata: {
       ...(message.extra ?? {}),
       authorAvatarUrl: stringOrNull(message.extra?.authorAvatarUrl),

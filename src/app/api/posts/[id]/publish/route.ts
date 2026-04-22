@@ -2,8 +2,16 @@ import { db } from "@/db";
 import { posts, postTargets, platforms, pipelineRuns } from "@/db/schema";
 import type { PipelineStep } from "@/db/schema";
 import { requireApiWorkspacePublisher } from "@/lib/api-authorization";
+import { getLatestApprovalRequestForPost } from "@/lib/approval-requests";
+import { normalizeApprovalWorkflowMode, shouldBlockPublishForApproval } from "@/lib/approvals";
 import { recordTenantAuditEvent } from "@/lib/audit";
 import { publishPlatformTargets } from "@/lib/pipeline/publish-service";
+import {
+  normalizePostPublishMetadata,
+  resolveInstagramContentType,
+  resolvePlatformMediaUrls,
+  resolvePlatformOverride,
+} from "@/lib/post-publish-metadata";
 import { trackUsage } from "@/lib/usage";
 import { sendNotificationEmail } from "@/lib/notifications/send";
 import { and, eq } from "drizzle-orm";
@@ -27,6 +35,40 @@ export async function POST(
   });
   if (!post) {
     return NextResponse.json({ error: "Post not found" }, { status: 404 });
+  }
+
+  const latestApprovalRequest = await getLatestApprovalRequestForPost({
+    workspaceId: tenant.currentWorkspace.id,
+    postId,
+  });
+  const approvalGuard = shouldBlockPublishForApproval({
+    approvalWorkflowMode: normalizeApprovalWorkflowMode(
+      tenant.currentWorkspace.approvalWorkflowMode
+    ),
+    approvalRequestStatus: latestApprovalRequest?.status,
+  });
+
+  if (approvalGuard.blocked) {
+    await recordTenantAuditEvent(tenant, {
+      action: "post.publish.blocked",
+      targetType: "post",
+      targetId: postId,
+      metadata: {
+        status: "blocked",
+        endpoint: `POST /api/posts/${postId}/publish`,
+        href: `/dashboard/posts/${postId}`,
+        approvalState: approvalGuard.approvalState,
+        reason: approvalGuard.reason,
+      },
+    });
+
+    return NextResponse.json(
+      {
+        error: approvalGuard.reason ?? "Approval required before publish.",
+        approvalState: approvalGuard.approvalState,
+      },
+      { status: 409 }
+    );
   }
 
   const targets = db
@@ -60,21 +102,36 @@ export async function POST(
   await db.update(posts).set({ status: "publishing", updatedAt: now }).where(eq(posts.id, postId));
 
   const results = [];
+  const publishMetadata = normalizePostPublishMetadata(post.metadata);
 
   for (const { target, platform } of targets) {
     const stepName = `publish:${platform.type}`;
     const stepStart = new Date();
+    const override = resolvePlatformOverride(publishMetadata, platform);
+    const platformMediaUrls = resolvePlatformMediaUrls(
+      publishMetadata,
+      platform,
+      post.mediaUrl
+    );
+    const platformMediaUrl = platformMediaUrls[0] ?? undefined;
+    const instagramContentType = resolveInstagramContentType({
+      platformType: platform.type,
+      format: override.format,
+      contentType: post.contentType,
+      mediaUrlCount: platformMediaUrls.length,
+    });
 
     const execution = await publishPlatformTargets([
       {
         platform,
-        content: post.content,
-        mediaUrl: post.mediaUrl ?? undefined,
-        mediaType: getMediaType(post.contentType, post.mediaUrl),
-        instagramContentType:
-          platform.type === "instagram" && isVideoContent(post.contentType)
-            ? "reel"
-            : undefined,
+        content: override.caption || post.content,
+        mediaUrl: platformMediaUrl,
+        mediaUrls: platformMediaUrls,
+        mediaType: getMediaType(post.contentType, platformMediaUrl ?? null),
+        instagramContentType,
+        platformFormat: override.format,
+        firstComment: override.firstComment,
+        collaborators: override.collaborators,
       },
     ]);
     const result = execution.outcomes[0];

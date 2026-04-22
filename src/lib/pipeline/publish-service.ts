@@ -1,4 +1,5 @@
 import { platforms } from "@/db/schema";
+import type { InstagramPublishContentType } from "@/lib/post-publish-metadata";
 import {
   getCapabilityFailureReason,
   getPlatformCapabilities,
@@ -10,6 +11,7 @@ import {
   publishViaNativeProvider,
   shouldPublishViaNativeProvider,
 } from "@/lib/providers/native-publisher";
+import { mediaTypeFromUrl } from "@/lib/media-url";
 
 type PlatformRow = typeof platforms.$inferSelect;
 
@@ -17,8 +19,12 @@ export type PublishPlatformInput = {
   platform: PlatformRow;
   content: string;
   mediaUrl?: string;
+  mediaUrls?: string[];
   mediaType?: "image" | "video";
-  instagramContentType?: "reel" | "story";
+  instagramContentType?: InstagramPublishContentType;
+  platformFormat?: string;
+  firstComment?: string;
+  collaborators?: string[];
 };
 
 export type PublishExecutionSummary = {
@@ -39,13 +45,18 @@ function shouldPublishViaBird(platform: Pick<PlatformRow, "provider" | "type">) 
 }
 
 function resolveRequestedMediaKind(
-  target: Pick<PublishPlatformInput, "mediaUrl" | "mediaType">
+  target: Pick<PublishPlatformInput, "mediaUrl" | "mediaUrls" | "mediaType">
 ): PublishMediaKind {
   if (target.mediaType === "video") {
     return "video";
   }
 
-  if (target.mediaUrl) {
+  const primaryMediaUrl = resolvePrimaryMediaUrl(target);
+  if (primaryMediaUrl) {
+    return mediaTypeFromUrl(primaryMediaUrl) === "video" ? "video" : "image";
+  }
+
+  if (target.mediaUrl || target.mediaUrls?.length) {
     return "image";
   }
 
@@ -107,6 +118,7 @@ export async function publishPlatformTargets(
           platform: target.platform,
           content: target.content,
           mediaUrl: target.mediaUrl,
+          mediaUrls: target.mediaUrls,
         })
       : (
           await publishToLate([
@@ -115,8 +127,12 @@ export async function publishPlatformTargets(
               accountId: target.platform.accountId,
               content: target.content,
               mediaUrl: target.mediaUrl,
+              mediaUrls: target.mediaUrls,
               mediaType: target.mediaType,
               instagramContentType: target.instagramContentType,
+              platformFormat: target.platformFormat,
+              firstComment: target.firstComment,
+              collaborators: target.collaborators,
             },
           ])
         )[0];
@@ -146,4 +162,18 @@ function getPublishProviderLabel(
 ) {
   if (shouldPublishViaNativeProvider(platform)) return "direct";
   return shouldPublishViaBird(platform) ? "bird" : "late";
+}
+
+function resolvePrimaryMediaUrl(
+  target: Pick<PublishPlatformInput, "mediaUrl" | "mediaUrls">
+): string | undefined {
+  const arrayMediaUrl = target.mediaUrls?.find((url): url is string => {
+    return typeof url === "string" && url.trim().length > 0;
+  });
+  if (arrayMediaUrl) {
+    return arrayMediaUrl.trim();
+  }
+
+  const mediaUrl = target.mediaUrl?.trim();
+  return mediaUrl || undefined;
 }

@@ -2,6 +2,7 @@ import "server-only";
 import { and, desc, eq, inArray, or } from "drizzle-orm";
 import { db } from "@/db";
 import {
+  activityLog,
   auditEvents,
   pipelineRuns,
   platforms,
@@ -10,13 +11,19 @@ import {
   replyEvents,
   schedules,
 } from "@/db/schema";
+import {
+  humanizeAction,
+  statusTone,
+  traceFromMetadata,
+  type ActionLogStatusTone,
+} from "@/lib/dashboard/action-log-format";
 import { relativeTime } from "@/lib/utils";
 
 export type ActionLogRow = {
   id: string;
   action: string;
   status: string;
-  statusTone: "success" | "warning" | "danger" | "neutral";
+  statusTone: ActionLogStatusTone;
   endpoint: string;
   platform: string;
   account: string;
@@ -25,35 +32,6 @@ export type ActionLogRow = {
   traceId: string | null;
   traceUrl: string | null;
 };
-
-function statusTone(status: string): ActionLogRow["statusTone"] {
-  const normalized = status.toLowerCase();
-  if (["200", "success", "completed", "published", "sent", "created", "scheduled"].includes(normalized)) return "success";
-  if (["running", "pending", "publishing", "draft"].includes(normalized)) return "warning";
-  if (["failed", "error", "partial_failure"].includes(normalized)) return "danger";
-  return "neutral";
-}
-
-function humanizeAction(action: string) {
-  const label = action
-    .replace(/\./g, " ")
-    .replace(/_/g, " ")
-    .trim();
-  return label.charAt(0).toUpperCase() + label.slice(1);
-}
-
-function traceFromMetadata(metadata: Record<string, unknown> | null | undefined) {
-  const candidate = metadata?.langsmithTrace ?? metadata?.trace;
-  if (!candidate || typeof candidate !== "object") {
-    return { traceId: null, traceUrl: null };
-  }
-
-  const trace = candidate as { runId?: unknown; id?: unknown; url?: unknown };
-  return {
-    traceId: typeof trace.runId === "string" ? trace.runId : typeof trace.id === "string" ? trace.id : null,
-    traceUrl: typeof trace.url === "string" ? trace.url : null,
-  };
-}
 
 function row(input: Omit<ActionLogRow, "createdLabel" | "statusTone">): ActionLogRow {
   return {
@@ -69,6 +47,13 @@ export async function getLatestActionLogRows(input: {
   limit?: number;
 }): Promise<ActionLogRow[]> {
   const limit = input.limit ?? 80;
+
+  const activityRows = await db
+    .select()
+    .from(activityLog)
+    .where(eq(activityLog.workspaceId, input.workspaceId))
+    .orderBy(desc(activityLog.createdAt))
+    .limit(limit);
 
   const auditRows = await db
     .select()
@@ -127,8 +112,37 @@ export async function getLatestActionLogRows(input: {
   }
 
   const rows: ActionLogRow[] = [];
+  const mirroredAuditEventIds = new Set<string>();
+
+  for (const activity of activityRows) {
+    const metadata = activity.metadata ?? {};
+    if (typeof metadata.auditEventId === "string") {
+      mirroredAuditEventIds.add(metadata.auditEventId);
+    }
+    const trace = traceFromMetadata(metadata);
+    rows.push(
+      row({
+        id: `activity:${activity.id}`,
+        action: activity.subject || humanizeAction(activity.eventType),
+        status: typeof metadata.status === "string" ? metadata.status : activity.severity,
+        endpoint:
+          typeof metadata.href === "string"
+            ? metadata.href
+            : typeof metadata.endpoint === "string"
+              ? metadata.endpoint
+              : activity.entityType ?? activity.source,
+        platform: typeof metadata.platform === "string" ? metadata.platform : activity.source,
+        account: typeof metadata.account === "string" ? metadata.account : "Workspace",
+        createdAt: activity.createdAt,
+        traceId: trace.traceId,
+        traceUrl: trace.traceUrl,
+      })
+    );
+  }
 
   for (const audit of auditRows) {
+    if (mirroredAuditEventIds.has(audit.id)) continue;
+
     const metadata = audit.metadata ?? {};
     const trace = traceFromMetadata(metadata);
     rows.push(
@@ -136,7 +150,12 @@ export async function getLatestActionLogRows(input: {
         id: `audit:${audit.id}`,
         action: humanizeAction(audit.action),
         status: typeof metadata.status === "string" ? metadata.status : "created",
-        endpoint: typeof metadata.endpoint === "string" ? metadata.endpoint : audit.targetType,
+        endpoint:
+          typeof metadata.href === "string"
+            ? metadata.href
+            : typeof metadata.endpoint === "string"
+              ? metadata.endpoint
+              : audit.targetType,
         platform: typeof metadata.platform === "string" ? metadata.platform : "ClawPoster",
         account: audit.actorEmail ?? "System",
         createdAt: audit.createdAt,

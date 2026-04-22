@@ -13,7 +13,7 @@ const execFileAsync = promisify(execFile);
 const BIRD_PACKAGE = "@steipete/bird";
 const BIRD_RUNNER = process.env.BIRD_RUNNER || "npx";
 
-type BirdTweet = {
+export type BirdTweet = {
   id?: string;
   url?: string;
   text?: string;
@@ -66,9 +66,9 @@ function buildBirdAuthFromEnv() {
   };
 }
 
-function buildBirdArgsFromPlatform(platform?: BirdPlatform) {
+function buildBirdArgsFromPlatform(platform?: BirdPlatform, allowEnvAuth = true) {
   if (!platform) {
-    const envAuth = buildBirdAuthFromEnv();
+    const envAuth = allowEnvAuth ? buildBirdAuthFromEnv() : null;
     if (envAuth) return envAuth;
 
     return {
@@ -106,7 +106,7 @@ function buildBirdArgsFromPlatform(platform?: BirdPlatform) {
     };
   }
 
-  const envAuth = buildBirdAuthFromEnv();
+  const envAuth = allowEnvAuth ? buildBirdAuthFromEnv() : null;
   if (envAuth) return envAuth;
 
   return {
@@ -115,8 +115,13 @@ function buildBirdArgsFromPlatform(platform?: BirdPlatform) {
   };
 }
 
-async function runBird(args: string[], expectJson = true, platform?: BirdPlatform): Promise<unknown> {
-  const auth = buildBirdArgsFromPlatform(platform);
+async function runBird(
+  args: string[],
+  expectJson = true,
+  platform?: BirdPlatform,
+  allowEnvAuth = true
+): Promise<unknown> {
+  const auth = buildBirdArgsFromPlatform(platform, allowEnvAuth);
   const commandArgs = [...auth.args, ...buildBirdMentionCommandArgs(args, platform?.handle)];
   const runnerArgs = BIRD_RUNNER === "npx" ? ["-y", BIRD_PACKAGE, ...commandArgs] : commandArgs;
 
@@ -130,7 +135,7 @@ async function runBird(args: string[], expectJson = true, platform?: BirdPlatfor
     });
     stdout = result.stdout;
   } catch (error) {
-    throw normalizeBirdExecError(error);
+    throw normalizeBirdExecError(error, auth.args);
   }
 
   const output = stdout.trim();
@@ -308,6 +313,30 @@ export async function searchTweetsForPlatform(
   return coerceTweets(await runBirdSearch(query, count, platform));
 }
 
+export async function getHomeTimeline(count = 20, full = false): Promise<BirdTweet[]> {
+  return coerceTweets(await runBird(["home", full ? "--json-full" : "--json", "--count", String(count)]));
+}
+
+export async function getHomeTimelineFromInstalledSession(count = 20, full = false): Promise<BirdTweet[]> {
+  return coerceTweets(
+    await runBird(["home", full ? "--json-full" : "--json", "--count", String(count)], true, undefined, false)
+  );
+}
+
+export async function getHomeTimelineForPlatform(
+  platform: BirdPlatform,
+  count = 20,
+  full = false
+): Promise<BirdTweet[]> {
+  return coerceTweets(
+    await runBird(
+      ["home", full ? "--json-full" : "--json", "--count", String(count)],
+      true,
+      platform
+    )
+  );
+}
+
 export async function readTweetForPlatform(
   platform: BirdPlatform,
   tweetUrl: string,
@@ -377,9 +406,9 @@ async function runBirdSearch(
   throw lastError ?? new Error("Bird search failed");
 }
 
-function normalizeBirdExecError(error: unknown) {
+function normalizeBirdExecError(error: unknown, authArgs: string[] = []) {
   if (!error || typeof error !== "object") {
-    return new Error(String(error));
+    return new Error(redactBirdAuth(String(error), authArgs));
   }
 
   const maybeError = error as {
@@ -394,7 +423,18 @@ function normalizeBirdExecError(error: unknown) {
     typeof maybeError.stdout === "string" ? maybeError.stdout.trim() : "",
   ].filter(Boolean);
 
-  return new Error(parts.join("\n"));
+  return new Error(redactBirdAuth(parts.join("\n"), authArgs));
+}
+
+function redactBirdAuth(value: string, authArgs: string[]) {
+  let redacted = value;
+  for (const flag of ["--auth-token", "--ct0"]) {
+    const index = authArgs.indexOf(flag);
+    const secret = index >= 0 ? authArgs[index + 1] : null;
+    if (!secret) continue;
+    redacted = redacted.split(secret).join("[redacted]");
+  }
+  return redacted;
 }
 
 function isBirdOverCapacityError(error: Error) {

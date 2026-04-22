@@ -35,6 +35,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ url: sourceUrl, mediaType: directType, sourceUrl });
     }
 
+    const directRemoteImage = await resolveRemoteImageAsset({
+      sourceUrl,
+      workspaceId: tenant.currentWorkspace.id,
+    });
+    if (directRemoteImage) {
+      return NextResponse.json({
+        url: directRemoteImage.url,
+        sourceUrl,
+        originalUrl: sourceUrl,
+        mediaType: "image",
+      });
+    }
+
     const xImageUrl = await resolveXImageUrl(sourceUrl, tenant.currentWorkspace.id);
     const ogImageUrl = xImageUrl ?? await fetchOpenGraphImage(sourceUrl);
     if (!ogImageUrl) {
@@ -59,14 +72,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const hosted = await mirrorRemoteImage({
+    const remoteImage = await resolveRemoteImageAsset({
       sourceUrl: resolvedUrl,
       workspaceId: tenant.currentWorkspace.id,
     });
 
-    if (hosted) {
+    if (remoteImage) {
       return NextResponse.json({
-        url: hosted.url,
+        url: remoteImage.url,
         sourceUrl,
         originalUrl: resolvedUrl,
         mediaType: "image",
@@ -204,7 +217,7 @@ function parseHttpUrl(value: string) {
   }
 }
 
-async function mirrorRemoteImage({
+async function resolveRemoteImageAsset({
   sourceUrl,
   workspaceId,
 }: {
@@ -230,10 +243,14 @@ async function mirrorRemoteImage({
   const arrayBuffer = await response.arrayBuffer();
   if (arrayBuffer.byteLength > MAX_REMOTE_MEDIA_BYTES) return null;
 
-  return uploadMediaAsset({
+  const hosted = await uploadMediaAsset({
     bytes: Buffer.from(arrayBuffer),
     contentType: contentType || "image/jpeg",
     keyPrefix: `workspaces/${workspaceId}/posts/media`,
     sourceName: new URL(sourceUrl).pathname.split("/").pop() || "remote-image",
   });
+
+  return {
+    url: hosted?.url ?? `/api/og-image?${new URLSearchParams({ url: sourceUrl }).toString()}`,
+  };
 }

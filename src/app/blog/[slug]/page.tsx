@@ -1,12 +1,15 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import type { Metadata } from "next";
 import { BLOG_POSTS } from "@/lib/blog/posts";
+import { findPublicBlogPost } from "@/lib/blog/dynamic";
 import { LandingNav } from "@/components/landing/nav";
 import { LandingFooter } from "@/components/landing/footer";
 import { WaitlistForm } from "@/components/landing/waitlist-form";
 import { getSession } from "@/lib/auth";
 import { getProductCanonicalUrl } from "@/lib/site-domains";
+import { BlogMarkdownRenderer } from "@/components/blog/markdown-renderer";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -16,7 +19,7 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const post = BLOG_POSTS.find((p) => p.slug === slug);
+  const post = await findPublicBlogPost(slug);
   if (!post) return {};
   return {
     title: `${post.title} — ClawPoster`,
@@ -29,7 +32,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function BlogPostPage({ params }: Props) {
   const { slug } = await params;
-  const post = BLOG_POSTS.find((p) => p.slug === slug);
+  const post = await findPublicBlogPost(slug);
   if (!post) notFound();
 
   const session = await getSession();
@@ -52,11 +55,28 @@ export default async function BlogPostPage({ params }: Props) {
 
           <h1 className="text-3xl md:text-4xl font-bold leading-tight mb-8">{post.title}</h1>
 
-          <div className="prose prose-lg max-w-none text-[var(--ink-soft)] leading-relaxed">
-            {post.content.split("\n\n").map((paragraph, i) => (
-              <p key={i} className="mb-5 text-[0.95rem] leading-[1.75]">{paragraph}</p>
-            ))}
-          </div>
+          {post.imageUrl ? (
+            <figure className="mb-8 overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--paper)]">
+              <Image
+                src={post.imageUrl}
+                alt={post.imageAlt || ""}
+                width={1200}
+                height={675}
+                className="h-auto w-full object-cover"
+                unoptimized
+              />
+            </figure>
+          ) : null}
+
+          {post.isMarkdown ? (
+            <BlogMarkdownRenderer markdown={post.content} />
+          ) : (
+            <div className="prose prose-lg max-w-none text-[var(--ink-soft)] leading-relaxed">
+              {post.content.split("\n\n").map((paragraph, i) => (
+                <p key={i} className="mb-5 text-[0.95rem] leading-[1.75]">{paragraph}</p>
+              ))}
+            </div>
+          )}
 
           {/* Inline waitlist CTA */}
           <div className="mt-16 rounded-2xl border border-[var(--line)] bg-[var(--paper)] p-8 text-center">

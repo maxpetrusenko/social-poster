@@ -6,6 +6,7 @@ import type {
   MediaType,
   OAuthTokens,
   PostType,
+  DeleteResult,
   PublishContent,
   PublishResult,
   RateLimitConfig,
@@ -139,6 +140,23 @@ export class TwitterProvider extends OAuthProvider {
       extra: body,
     };
   }
+
+  async deletePost(
+    accessToken: string,
+    platformPostId: string
+  ): Promise<DeleteResult> {
+    const body = await this.requestJson<JsonRecord>(
+      "DELETE",
+      `${TWEETS_URL}/${encodeURIComponent(platformPostId)}`,
+      { accessToken }
+    );
+    const data = readRecord(body, "data");
+
+    return {
+      deleted: readBoolean(data, "deleted"),
+      extra: body,
+    };
+  }
 }
 
 function pkceChallenge(verifier: string) {
@@ -168,4 +186,9 @@ function readInteger(source: JsonRecord, key: string) {
     return Number.isFinite(parsed) ? parsed : undefined;
   }
   return undefined;
+}
+
+function readBoolean(source: JsonRecord, key: string) {
+  const value = source[key];
+  return value === true;
 }

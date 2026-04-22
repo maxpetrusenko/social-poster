@@ -17,7 +17,6 @@ import {
   PenSquare,
   Plus,
   Rss,
-  Search,
   Settings,
   Share2,
   Shield,
@@ -93,11 +92,13 @@ const headerCopy: HeaderConfig[] = [
     createHref: "/dashboard/workspace-settings/social-accounts?connect=1",
     createLabel: "New connection",
   },
-  { match: "/dashboard/settings/api-keys", title: "API Keys", description: "Authentication tokens for the programmatic API." },
+  { match: "/dashboard/settings/model-providers", title: "Model API Keys", description: "Bring your own model keys, test them, and choose generation defaults." },
+  { match: "/dashboard/settings/api-keys", title: "App API Keys", description: "Authentication tokens for the programmatic API." },
   { match: "/dashboard/logs", title: "Logs", description: "Latest user actions, publish results, schedules, replies, and LangSmith traces." },
   { match: "/dashboard/settings/team-members", title: "Team Members", description: "Manage seats, roles, and workspace access." },
   { match: "/dashboard/settings", title: "Settings", description: "Usage, profile, notifications, and account preferences." },
   { match: "/dashboard/platforms", title: "Platforms", description: "Review channel setup, delivery state, and configuration." },
+  { match: "/dashboard/campaigns", title: "Campaigns", description: "Generate, edit, and approve profile-based creative." },
   { match: "/dashboard/profiles", title: "Profiles", description: "Manage voice, persona, and publishing identity presets." },
   { match: "/dashboard/publish", title: "Publish", description: "Review queue state, approvals, and publish actions." },
   { match: "/dashboard/posts/create", title: "Create Post", description: "Compose and schedule a new post across platforms." },
@@ -374,14 +375,15 @@ export function DashboardDrawerShell({
 
           <div className="flex-1 space-y-6 overflow-y-auto px-4 py-5">
             {dashboardItem ? (
-              <NavSection
-                title="Dashboard"
-                items={[dashboardItem]}
-                pathname={pathname}
-                onNavigate={() => setOpen(false)}
-                compact={compact}
-                badges={badges}
-              />
+              <div>
+                <NavItem
+                  item={dashboardItem}
+                  pathname={pathname}
+                  onNavigate={() => setOpen(false)}
+                  compact={compact}
+                  badges={badges}
+                />
+              </div>
             ) : null}
             <NavSection
               title="Workspace"
@@ -434,22 +436,6 @@ export function DashboardDrawerShell({
                 );
               })}
 
-              {showAdminLink && (
-                <Link
-                  href="/admin"
-                  onClick={() => setOpen(false)}
-                  className={cn(
-                    "flex rounded-[1rem] px-3 py-3 text-sm font-semibold text-[#5f523f] transition hover:bg-[#faf4ea]",
-                    compact ? "items-center justify-center" : "items-center gap-3"
-                  )}
-                  aria-label="Admin Panel"
-                  title={compact ? "Admin" : undefined}
-                >
-                  <Shield className="h-4 w-4 shrink-0" />
-                  <span className={cn(compact && "lg:hidden")}>Admin</span>
-                </Link>
-              )}
-
               <LogoutButton
                 className={cn(
                   "flex w-full rounded-[1rem] px-3 py-3 text-left text-sm font-semibold text-[#5f523f] transition hover:bg-[#faf4ea]",
@@ -485,15 +471,6 @@ export function DashboardDrawerShell({
             </div>
 
             <div className="flex items-center gap-2 md:gap-3">
-              <label className="hidden min-w-[16rem] items-center gap-3 rounded-full border border-[#ded2c0] bg-[#fbf7f0] px-4 py-3 text-[#8a7861] shadow-[0_8px_20px_rgba(23,23,23,0.04)] xl:flex">
-                <Search className="h-4 w-4 shrink-0" />
-                <input
-                  aria-label="Search dashboard"
-                  placeholder="Search…"
-                  className="w-full bg-transparent text-sm text-[#171717] outline-none placeholder:text-[#9b8c78]"
-                  type="search"
-                />
-              </label>
               <SupportTicketButton />
               {currentHeader.createHref ? (
                 <Link
@@ -503,15 +480,7 @@ export function DashboardDrawerShell({
                 >
                   <Plus className="h-5 w-5" />
                 </Link>
-              ) : (
-                <button
-                  type="button"
-                  aria-label="Create new item"
-                  className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-[#d3c4ae] bg-[#fbf7f0] text-[#171717] transition hover:border-[#af987b]"
-                >
-                  <Plus className="h-5 w-5" />
-                </button>
-              )}
+              ) : null}
               <Link
                 href="/dashboard/logs"
                 aria-label="Open activity history"
@@ -529,13 +498,13 @@ export function DashboardDrawerShell({
                   <span className="hidden text-sm font-semibold md:inline">Admin</span>
                 </Link>
               )}
-              <button
-                type="button"
+              <Link
+                href="/dashboard/notifications"
                 aria-label="Open notifications"
                 className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-[#d3c4ae] bg-[#fbf7f0] text-[#171717] transition hover:border-[#af987b]"
               >
                 <Bell className="h-5 w-5" />
-              </button>
+              </Link>
             </div>
           </div>
         </header>

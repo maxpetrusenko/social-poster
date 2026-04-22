@@ -15,6 +15,26 @@ function formatProviderLabel(value: string) {
   return providerLabels[value as keyof typeof providerLabels] ?? value;
 }
 
+function formatOverviewAccountName(platformType: string, accountType: string, name: string) {
+  if (platformType !== "linkedin") {
+    return name;
+  }
+
+  if (accountType === "linkedin_company") {
+    return "LinkedIn Business";
+  }
+
+  return "LinkedIn Personal";
+}
+
+function formatOverviewAccountDetail(platformType: string, handle: string | null, name: string) {
+  if (platformType !== "linkedin") {
+    return handle;
+  }
+
+  return handle || name;
+}
+
 function formatCompactNumber(value: number) {
   return new Intl.NumberFormat("en-US", {
     notation: "compact",
@@ -49,7 +69,10 @@ function SectionPill({ label }: { label: string }) {
 
 function Donut({ background }: { background: string }) {
   return (
-    <div className="relative mx-auto aspect-square w-[10rem] rounded-full md:w-[11.5rem]" style={{ background }}>
+    <div
+      className="relative mx-auto aspect-square w-full max-w-[8.5rem] rounded-full sm:max-w-[9.5rem] xl:max-w-[10rem] 2xl:max-w-[11rem]"
+      style={{ background }}
+    >
       <div className="absolute inset-[25%] rounded-full bg-[#fbf7f0]" />
     </div>
   );
@@ -67,10 +90,10 @@ function MetricCard({
   donut: string;
 }) {
   return (
-    <article className="grid gap-6 rounded-[2rem] border border-[#d4c6b1] bg-[#fbf7f0] p-6 shadow-[0_18px_40px_rgba(23,23,23,0.05)] md:grid-cols-[1fr_12rem] md:items-center">
-      <div>
+    <article className="grid min-w-0 gap-5 rounded-[2rem] border border-[#d4c6b1] bg-[#fbf7f0] p-5 shadow-[0_18px_40px_rgba(23,23,23,0.05)] sm:p-6 md:grid-cols-[minmax(0,1fr)_minmax(6.5rem,9.5rem)] md:items-center xl:grid-cols-1 2xl:grid-cols-[minmax(0,1fr)_minmax(6.5rem,10rem)]">
+      <div className="min-w-0">
         <p className="text-[1.15rem] font-medium tracking-[-0.03em] text-[#75634d]">{title}</p>
-        <p className="mt-3 text-[3.05rem] leading-none tracking-[-0.07em] text-[#171717]">{value}</p>
+        <p className="mt-3 text-[clamp(2.2rem,5vw,3.05rem)] leading-none tracking-[-0.07em] text-[#171717]">{value}</p>
         <p className="mt-4 text-sm leading-6 text-[#7b6b56]">{sub}</p>
       </div>
       <Donut background={donut} />
@@ -85,14 +108,15 @@ export default async function DashboardPage() {
   }
 
   const dashboard = await getDashboardInsights(tenant.currentWorkspace.id);
-  const platformRows = [...dashboard.platformInsights];
-  const enabledCount = platformRows.filter((platform) => platform.enabled).length;
-  const disabledCount = platformRows.length - enabledCount;
+  const platformRows = [...dashboard.platformOverviewInsights];
+  const accountCount = platformRows.reduce((sum, platform) => sum + platform.accountCount, 0);
+  const enabledCount = platformRows.reduce((sum, platform) => sum + platform.enabledCount, 0);
+  const disabledCount = accountCount - enabledCount;
 
   const cards = [
     {
       title: "Connected accounts",
-      value: String(platformRows.length),
+      value: String(accountCount),
       sub: `${enabledCount} enabled · ${disabledCount} disabled`,
       donut: buildDonut([
         { value: enabledCount, color: "#171717" },
@@ -124,14 +148,36 @@ export default async function DashboardPage() {
         id: platform.id,
         type: platform.type,
         name: platform.name,
-        handle: platform.handle,
-        provider: formatProviderLabel(platform.provider),
+        accountCount: platform.accountCount,
+        enabledCount: platform.enabledCount,
+        disabledCount: platform.disabledCount,
+        providers: platform.providers.map(formatProviderLabel).join(", "),
         enabled: platform.enabled,
         scheduleCount: platform.scheduleCount,
+        postCount30d: platform.postCount30d,
+        commentCount30d: platform.commentCount30d,
+        dmCount30d: platform.dmCount30d,
+        impressionCount30d: platform.impressionCount30d,
         deliveryCount30d: platform.deliveryCount30d,
         failureCount30d: platform.failureCount30d,
         lastDeliveredAtLabel: platform.lastDeliveredAt ? relativeTime(platform.lastDeliveredAt) : "No deliveries yet",
         accent: platform.accent,
+        accounts: platform.accounts.map((account) => ({
+          id: account.id,
+          accountIds: account.accountIds,
+          name: formatOverviewAccountName(platform.type, account.type, account.name),
+          handle: formatOverviewAccountDetail(platform.type, account.handle, account.name),
+          provider: formatProviderLabel(account.provider),
+          enabled: account.enabled,
+          scheduleCount: account.scheduleCount,
+          postCount30d: account.postCount30d,
+          commentCount30d: account.commentCount30d,
+          dmCount30d: account.dmCount30d,
+          impressionCount30d: account.impressionCount30d,
+          deliveryCount30d: account.deliveryCount30d,
+          failureCount30d: account.failureCount30d,
+          lastDeliveredAtLabel: account.lastDeliveredAt ? relativeTime(account.lastDeliveredAt) : "No deliveries yet",
+        })),
       };
     })
     .sort((left, right) => {
@@ -215,7 +261,7 @@ export default async function DashboardPage() {
               rows={rows}
               totals={{
                 enabledCount,
-                accountCount: rows.length,
+                accountCount,
                 scheduleCount,
                 deliveryCount30d,
                 failureCount30d,

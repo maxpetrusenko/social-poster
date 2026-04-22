@@ -93,6 +93,12 @@ export const channelShellNav: ShellNavItem[] = [
     icon: "accounts",
   },
   {
+    label: "Campaigns",
+    href: "/dashboard/campaigns",
+    blurb: "Profile-based creative runs.",
+    icon: "categories",
+  },
+  {
     label: "Profiles",
     href: "/dashboard/profiles",
     blurb: "Voice, face, tone presets.",
@@ -116,12 +122,6 @@ export const utilityShellNav: ShellNavItem[] = [
 ];
 
 export const footerShellNav: ShellNavItem[] = [
-  {
-    label: "Manage Team",
-    href: "/dashboard/settings/team-members",
-    blurb: "Members, roles, access.",
-    icon: "team",
-  },
   {
     label: "Settings",
     href: "/dashboard/settings",

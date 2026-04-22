@@ -601,7 +601,7 @@ export function NewPostForm({
               <p className="text-sm font-semibold text-[var(--ink)]">Action Rail</p>
             </div>
             <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-              Draft and schedule are fully wired. Approval stays placeholder until the approval model lands.
+              Draft, schedule, and immediate publish are wired for this workspace.
             </p>
 
             <div className="mt-4 grid gap-3">
@@ -633,14 +633,6 @@ export function NewPostForm({
               >
                 <Send className="h-4 w-4" />
                 {isLoading && pendingIntent === "publish" ? "Publishing..." : "Publish Now"}
-              </button>
-
-              <button
-                type="button"
-                disabled
-                className="inline-flex items-center justify-center gap-2 rounded-[16px] border border-dashed border-[rgba(12,17,21,0.16)] px-4 py-3 text-sm font-semibold text-[var(--muted)]"
-              >
-                Submit for Approval
               </button>
             </div>
 

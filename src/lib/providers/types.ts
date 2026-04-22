@@ -58,6 +58,11 @@ export interface PublishResult {
   extra?: Record<string, unknown>;
 }
 
+export interface DeleteResult {
+  deleted: boolean;
+  extra?: Record<string, unknown>;
+}
+
 export interface RateLimitConfig {
   requestsPerHour: number;
   requestsPerDay: number;

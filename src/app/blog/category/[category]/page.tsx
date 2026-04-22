@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import Image from "next/image";
 import { BLOG_POSTS } from "@/lib/blog/posts";
+import { getAllPublicBlogPosts } from "@/lib/blog/dynamic";
 import { LandingNav } from "@/components/landing/nav";
 import { LandingFooter } from "@/components/landing/footer";
 import { getSession } from "@/lib/auth";
@@ -31,7 +33,8 @@ export function generateStaticParams() {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { category } = await params;
   const categoryName = titleCase(decodeCategory(category));
-  const posts = BLOG_POSTS.filter((post) => post.category.toLowerCase() === categoryName.toLowerCase());
+  const allPosts = await getAllPublicBlogPosts();
+  const posts = allPosts.filter((post) => post.category.toLowerCase() === categoryName.toLowerCase());
 
   if (!posts.length) return {};
 
@@ -47,7 +50,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function BlogCategoryPage({ params }: Props) {
   const { category } = await params;
   const categoryName = titleCase(decodeCategory(category));
-  const posts = BLOG_POSTS.filter((post) => post.category.toLowerCase() === categoryName.toLowerCase()).sort((a, b) =>
+  const allPosts = await getAllPublicBlogPosts();
+  const posts = allPosts.filter((post) => post.category.toLowerCase() === categoryName.toLowerCase()).sort((a, b) =>
     b.publishedAt.localeCompare(a.publishedAt)
   );
 
@@ -79,18 +83,32 @@ export default async function BlogCategoryPage({ params }: Props) {
               <Link
                 key={post.slug}
                 href={`/blog/${post.slug}`}
-                className="group rounded-2xl border border-[var(--line)] bg-[var(--paper)] p-6 hover:border-[var(--accent-tech)]/30 transition-colors"
+                className="group overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--paper)] hover:border-[var(--accent-tech)]/30 transition-colors"
               >
-                <div className="flex items-center gap-3 mb-3">
-                  <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-[var(--accent-tech)]/10 text-[var(--accent-tech)]">
-                    {post.category}
-                  </span>
-                  <span className="text-xs text-[var(--muted)]">{post.publishedAt}</span>
+                {post.imageUrl ? (
+                  <div className="relative aspect-[16/9] bg-[#f4ebdd]">
+                    <Image
+                      src={post.imageUrl}
+                      alt={post.imageAlt || ""}
+                      fill
+                      className="object-cover"
+                      sizes="(min-width: 768px) 50vw, 100vw"
+                      unoptimized
+                    />
+                  </div>
+                ) : null}
+                <div className="p-6">
+                  <div className="flex items-center gap-3 mb-3">
+                    <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-[var(--accent-tech)]/10 text-[var(--accent-tech)]">
+                      {post.category}
+                    </span>
+                    <span className="text-xs text-[var(--muted)]">{post.publishedAt}</span>
+                  </div>
+                  <h2 className="text-lg font-semibold mb-2 group-hover:text-[var(--accent-tech)] transition-colors font-[family-name:var(--font-sans)]">
+                    {post.title}
+                  </h2>
+                  <p className="text-sm text-[var(--muted)] leading-relaxed">{post.excerpt}</p>
                 </div>
-                <h2 className="text-lg font-semibold mb-2 group-hover:text-[var(--accent-tech)] transition-colors font-[family-name:var(--font-sans)]">
-                  {post.title}
-                </h2>
-                <p className="text-sm text-[var(--muted)] leading-relaxed">{post.excerpt}</p>
               </Link>
             ))}
           </section>

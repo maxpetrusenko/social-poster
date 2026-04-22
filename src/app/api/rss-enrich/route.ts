@@ -2,14 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireApiWorkspaceEditor } from "@/lib/api-authorization";
 import { recordTenantAuditEvent } from "@/lib/audit";
 import { callOpenAIResponses, type LangSmithTrace } from "@/lib/langsmith";
+import { resolveOpenAIResponsesRuntime } from "@/lib/model-runtime";
 
 const MODEL = process.env.OPENAI_ENRICH_MODEL || "gpt-4.1-mini";
-
-function getApiKey(): string {
-  const key = process.env.OPENAI_API_KEY;
-  if (!key) throw new Error("OPENAI_API_KEY not set");
-  return key;
-}
 
 /**
  * Fetch readable text from a URL.
@@ -45,9 +40,10 @@ async function fetchArticleText(url: string): Promise<string> {
 async function generateSummary(
   title: string,
   articleText: string,
-  existingSummary: string
+  existingSummary: string,
+  runtime: { apiKey: string; model: string }
 ): Promise<{ summary: string; keyPoints: string[]; trace: LangSmithTrace | null }> {
-  const apiKey = getApiKey();
+  if (!runtime.apiKey) throw new Error("OPENAI_API_KEY not set");
 
   const prompt = `You are summarizing an article for social media posts. Extract the most interesting, specific, and substantive points.
 
@@ -65,9 +61,9 @@ Respond with JSON only:
 
   const result = await callOpenAIResponses<Record<string, unknown>>({
     name: "rss-enrich-summary",
-    apiKey,
+    apiKey: runtime.apiKey,
     body: {
-      model: MODEL,
+      model: runtime.model,
       input: prompt,
       text: { format: { type: "json_object" } },
     },
@@ -126,10 +122,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const runtime = await resolveOpenAIResponsesRuntime({
+      workspaceId: authorized.currentWorkspace.id,
+      slot: "fast",
+      fallbackModel: MODEL,
+    });
     const result = await generateSummary(
       body.title || "",
       articleText,
-      body.summary || ""
+      body.summary || "",
+      runtime
     );
 
     await recordTenantAuditEvent(authorized, {
@@ -139,7 +141,8 @@ export async function POST(request: NextRequest) {
         status: "success",
         endpoint: "POST /api/rss-enrich",
         sourceUrl: body.url,
-        model: MODEL,
+        model: runtime.model,
+        modelSource: runtime.source,
         langsmithTrace: result.trace,
       },
     });

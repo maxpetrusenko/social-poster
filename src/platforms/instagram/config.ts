@@ -91,8 +91,8 @@ export const connectionDefinitionPersonal: ConnectionPlatformDefinition = {
         title: "Instagram personal OAuth",
         bullets: [
           "Keeps the personal account path separate from Business Graph setup.",
-          "Useful for account discovery and limited direct workflows.",
-          "Publishing depth depends on the current Instagram API permission set.",
+          "Uses Instagram Business Login for Professional accounts without the Facebook Page picker.",
+          "Publishing depends on Meta access level for the connected Instagram account.",
         ],
         learnMoreUrl: "https://developers.facebook.com/docs/instagram-platform",
       },

@@ -8,6 +8,8 @@ import { NewPostForm } from "@/components/new-post-form";
 import { DashboardHero, HeroButton } from "@/components/dashboard/ui";
 import { mapComposerPlatforms } from "@/lib/dashboard/composer";
 import { getTenantContext } from "@/lib/tenancy";
+import { getLatestApprovalRequestForPost } from "@/lib/approval-requests";
+import { PostApprovalRequestCard } from "@/components/post-approval-request-card";
 
 function toDateTimeLocalValue(value: Date | null) {
   if (!value) return "";
@@ -39,6 +41,10 @@ export default async function EditPostPage({
   if (!post) {
     notFound();
   }
+  const latestApprovalRequest = await getLatestApprovalRequestForPost({
+    workspaceId: tenant.currentWorkspace.id,
+    postId: post.id,
+  });
 
   return (
     <div className="space-y-6">
@@ -63,6 +69,12 @@ export default async function EditPostPage({
         <ArrowLeft className="h-4 w-4" />
         Back to post detail
       </Link>
+
+      <PostApprovalRequestCard
+        postId={post.id}
+        approvalWorkflowMode={tenant.currentWorkspace.approvalWorkflowMode}
+        latestApprovalRequest={latestApprovalRequest}
+      />
 
       <div className="rounded-[24px] border border-[rgba(12,17,21,0.08)] bg-white p-8 shadow-[0_18px_45px_rgba(12,17,21,0.08)]">
         <NewPostForm

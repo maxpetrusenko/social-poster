@@ -1,9 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowUpRight, CalendarClock } from "lucide-react";
 import { getDashboardInsights, type ScheduleInsight } from "@/lib/dashboard/insights";
 import { getCronOccurrences } from "@/lib/dashboard/cron";
-import { POST_CATEGORIES } from "@/lib/post-categories";
 import {
   formatTimeInZone,
   getAppTimeZone,
@@ -141,25 +139,16 @@ export default async function CategoriesPage() {
   const allHours = Array.from({ length: maxHour - minHour + 1 }, (_, index) => minHour + index);
   const visibleHours = allHours;
 
-  const nonReplySchedules = scheduleInsights.filter((s) => s.jobType !== "reply_engine");
-  const categoryStats = POST_CATEGORIES.map((category) => {
-    const schedules = nonReplySchedules.filter(
-      (schedule) => schedule.contentCategory === category.value
-    );
-
-    return {
-      ...category,
-      count: schedules.length,
-      live: schedules.filter((schedule) => schedule.enabled).length,
-      accent: CATEGORY_ACCENTS[category.value] || "#7d8aa0",
-      surface: CATEGORY_SURFACES[category.value] || "#e7edf5",
-    };
-  });
-
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,#fffdf7_0%,transparent_28%),linear-gradient(180deg,#f6efe4_0%,#efe5d7_100%)]">
       <div className="mx-auto w-full max-w-[1500px] px-5 py-6 md:px-8 xl:px-10">
-        <div className="mb-4 flex justify-end">
+        <div className="mb-4 flex flex-wrap justify-end gap-3">
+          <Link
+            href="/dashboard/schedules/new"
+            className="inline-flex items-center gap-2 rounded-full bg-[#171717] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(23,23,23,0.16)] transition hover:bg-[#2b2b2b]"
+          >
+            New Schedule
+          </Link>
           <Link
             href="/dashboard/categories/manage"
             className="inline-flex items-center gap-2 rounded-full bg-[#1777ff] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(23,119,255,0.24)] transition hover:bg-[#0f64dd]"
@@ -237,64 +226,6 @@ export default async function CategoriesPage() {
                 </div>
               )}
             </div>
-          </div>
-        </section>
-
-        <section className="mt-6 rounded-[30px] border border-[#d8cab5] bg-[rgba(255,250,242,0.92)] p-6 shadow-[0_22px_55px_rgba(23,23,23,0.05)]">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#8d7c64]">
-                Category Lanes
-              </p>
-              <p className="mt-2 text-sm text-[#6f614d]">
-                Each lane maps to schedule presets. Add a slot directly into the category you want.
-              </p>
-            </div>
-            <Link
-              href="/dashboard/schedules/new"
-              className="inline-flex items-center gap-2 rounded-[14px] border border-[#d8cab5] bg-white px-4 py-2.5 text-sm font-semibold text-[#171717] transition hover:bg-[#faf4ea]"
-            >
-              New Schedule
-            </Link>
-          </div>
-
-          <div className="mt-5 grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
-            {categoryStats.map((category) => (
-              <Link
-                key={category.value}
-                href={`/dashboard/schedules/new?category=${encodeURIComponent(category.value)}`}
-                className="rounded-[20px] border p-4 transition hover:-translate-y-0.5 hover:shadow-[0_16px_36px_rgba(23,23,23,0.08)]"
-                style={{
-                  background: category.surface,
-                  borderColor: `${category.accent}44`,
-                }}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-semibold text-[#171717]">{category.label}</p>
-                    <p className="mt-1 text-sm leading-6 text-[#5e5242]">{category.description}</p>
-                  </div>
-                  <span
-                    className="inline-flex h-3.5 w-3.5 rounded-full"
-                    style={{ background: category.accent }}
-                  />
-                </div>
-
-                <div className="mt-4 flex flex-wrap items-center gap-3 text-xs font-semibold uppercase tracking-[0.12em] text-[#6f614d]">
-                  <span className="inline-flex items-center gap-1">
-                    <CalendarClock className="h-3.5 w-3.5" />
-                    {category.live} live
-                  </span>
-                  <span>{category.count} total</span>
-                  <span>{category.cadenceHint}</span>
-                </div>
-
-                <div className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-[#171717]">
-                  Add slot
-                  <ArrowUpRight className="h-4 w-4" />
-                </div>
-              </Link>
-            ))}
           </div>
         </section>
       </div>

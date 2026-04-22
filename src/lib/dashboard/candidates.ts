@@ -40,6 +40,10 @@ export async function getDashboardCandidates(
   return cached.slice(0, count);
 }
 
+export async function getCachedDashboardCandidates(count = 6): Promise<DashboardCandidate[]> {
+  return (await loadCachedCandidates()).slice(0, count);
+}
+
 export async function primeDashboardCandidates(): Promise<void> {
   const cached = await loadCachedCandidates();
   if (cached.length === 0 || shouldRefreshCandidateCache(cached[0]?.fetchedAt ? new Date(cached[0].fetchedAt) : null)) {

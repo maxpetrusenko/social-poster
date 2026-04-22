@@ -714,12 +714,7 @@ export function ApprovalSettingsPanel({
         title="Approval rules and reminders"
         description="This port keeps the BrightBean approval mode model, stored on the workspace and shared with the client-portal flow."
         actions={
-          <>
-            <HeroButton href="/dashboard/workspace-settings/client-portal" tone="ghost">
-              Client Portal
-            </HeroButton>
-            <HeroButton href="/dashboard/publish">Publish Shell</HeroButton>
-          </>
+          <HeroButton href="/dashboard/publish">Publish Shell</HeroButton>
         }
       />
 

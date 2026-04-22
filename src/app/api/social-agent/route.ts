@@ -7,6 +7,10 @@ import {
   type SocialAgentContext,
 } from "@/lib/social-agent/context";
 import {
+  extractExplicitToolCall,
+  type SocialAgentToolCommandEnvelope,
+} from "@/app/api/social-agent/tool-command";
+import {
   createSupportTicket,
   isSupportTicketSource,
   normalizeSupportTicketSource,
@@ -21,6 +25,8 @@ import {
 } from "@/lib/tenancy";
 import { recordTenantAuditEvent } from "@/lib/audit";
 import { callOpenAIResponses } from "@/lib/langsmith";
+import { resolveOpenAIResponsesRuntime } from "@/lib/model-runtime";
+import { executeSafeInternalAgentToolCall } from "@/agent/server-adapter";
 
 const MODEL =
   process.env.OPENAI_SOCIAL_AGENT_MODEL ||
@@ -75,11 +81,8 @@ export async function POST(request: NextRequest) {
     message?: string;
     messages?: ChatMessage[];
     pageContext?: ClientPageContext;
-  };
+  } & SocialAgentToolCommandEnvelope;
   const message = String(body.message || "").trim();
-  if (!message) {
-    return NextResponse.json({ error: "Message is required" }, { status: 400 });
-  }
 
   const pageContext = sanitizePageContext(body.pageContext);
   const context = await loadSocialAgentContext({
@@ -87,6 +90,33 @@ export async function POST(request: NextRequest) {
   });
   if (!context) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const explicitToolCall = extractExplicitToolCall({
+    message: body.message ?? null,
+    toolCall: body.toolCall,
+    command: body.command,
+  });
+  if (explicitToolCall) {
+    const tenant = await requireTenantContext();
+    const execution = await executeSafeInternalAgentToolCall({
+      tenant,
+      dashboardContext: context,
+      toolCall: explicitToolCall,
+    });
+
+    if (execution.tenantAuditEvent) {
+      await recordTenantAuditEvent(tenant, execution.tenantAuditEvent);
+    }
+
+    return NextResponse.json({
+      context,
+      reply: formatInternalToolCallReply(execution),
+    });
+  }
+
+  if (!message) {
+    return NextResponse.json({ error: "Message is required" }, { status: 400 });
   }
 
   const inlineAction = await handleInlineAction(message, request, pageContext);
@@ -103,6 +133,86 @@ export async function POST(request: NextRequest) {
   const messages = Array.isArray(body.messages) ? body.messages : [];
   const reply = await answerWithContext(context, message, messages, pageContext);
   return NextResponse.json({ context, reply });
+}
+
+function formatInternalToolCallReply(
+  execution: Awaited<ReturnType<typeof executeSafeInternalAgentToolCall>>
+) {
+  if (execution.plan.state === "ready") {
+    const result = execution.result;
+    if (!result) {
+      return "Tool call failed: internal tool returned no result.";
+    }
+
+    if (result.ok) {
+      if (typeof result.message === "string" && result.message.trim()) {
+        return result.message;
+      }
+
+      return formatInternalToolSuccess(execution.plan.tool.name, result.data);
+    }
+
+    return `Tool call failed: ${result.error}`;
+  }
+
+  if (execution.plan.state === "confirmation_required") {
+    return `Tool call blocked: ${execution.plan.reason}`;
+  }
+
+  if (execution.plan.state === "invalid_input") {
+    return `Tool call rejected: ${execution.plan.issues.join("; ")}`;
+  }
+
+  return `Tool call rejected: ${execution.plan.toolName} is not available.`;
+}
+
+function formatInternalToolSuccess(toolName: string, data: unknown) {
+  const record = isRecord(data) ? data : null;
+
+  if (toolName === "internal_context_summary" && record) {
+    const counts = isRecord(record.counts) ? record.counts : {};
+    return [
+      "Workspace summary:",
+      `Platforms: ${numberLabel(counts.platforms)}`,
+      `Posts: ${numberLabel(counts.posts)}`,
+      `Drafts: ${numberLabel(counts.drafts)}`,
+      `Recent activity: ${numberLabel(counts.activities)}`,
+    ].join("\n");
+  }
+
+  if (toolName === "internal_activity_list" && record) {
+    const items = Array.isArray(record.items) ? record.items : [];
+    if (items.length === 0) return "No recent activity returned.";
+
+    return [
+      `Recent activity (${items.length}):`,
+      ...items.slice(0, 10).map((item) => {
+        const entry = isRecord(item) ? item : {};
+        return `- ${stringLabel(entry.action, "Activity")} (${stringLabel(entry.status, "unknown")})`;
+      }),
+    ].join("\n");
+  }
+
+  if (toolName === "internal_post_create_draft" && record) {
+    const title = stringLabel(record.title, "Untitled draft");
+    const content = stringLabel(record.content, "").slice(0, 180);
+    return `Draft prepared, not published.\nTitle: ${title}\n${content}`;
+  }
+
+  if (typeof data === "string") return data;
+  return `Executed ${toolName}.`;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function numberLabel(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value) ? String(value) : "0";
+}
+
+function stringLabel(value: unknown, fallback: string) {
+  return typeof value === "string" && value.trim() ? value.trim() : fallback;
 }
 
 async function handleInlineAction(
@@ -306,15 +416,22 @@ async function answerWithContext(
   const directReply = answerDirectlyFromContext(context, message);
   if (directReply) return directReply;
 
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) return fallbackAnswer(context, message);
+  const tenant = await requireTenantContext().catch(() => null);
+  const runtime = tenant
+    ? await resolveOpenAIResponsesRuntime({
+        workspaceId: tenant.currentWorkspace.id,
+        slot: "agent",
+        fallbackModel: MODEL,
+      })
+    : { apiKey: process.env.OPENAI_API_KEY || "", model: MODEL, source: "env" as const };
+  if (!runtime.apiKey) return fallbackAnswer(context, message);
 
   try {
     const result = await callOpenAIResponses<Record<string, unknown>>({
       name: "social-agent-answer",
-      apiKey,
+      apiKey: runtime.apiKey,
       body: {
-        model: MODEL,
+        model: runtime.model,
         input: buildPrompt(context, message, messages, pageContext),
       },
       tags: ["social-agent"],
@@ -325,7 +442,6 @@ async function answerWithContext(
     });
 
     const answer = extractResponseText(result.data) || fallbackAnswer(context, message);
-    const tenant = await requireTenantContext().catch(() => null);
     if (tenant) {
       await recordTenantAuditEvent(tenant, {
         action: "llm.social_agent",
@@ -333,7 +449,8 @@ async function answerWithContext(
         metadata: {
           status: "success",
           endpoint: "POST /api/social-agent",
-          model: MODEL,
+          model: runtime.model,
+          modelSource: runtime.source,
           langsmithTrace: result.trace,
         },
       });

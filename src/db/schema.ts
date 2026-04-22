@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, uniqueIndex, index } from "drizzle-orm/sqlite-core";
 import { sql } from "drizzle-orm";
 
 export const users = sqliteTable("users", {
@@ -176,6 +176,139 @@ export const profiles = sqliteTable("profiles", {
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
 });
 
+// ── Campaigns ────────────────────────────────────────────────────────
+export const campaigns = sqliteTable("campaigns", {
+  id: text("id").primaryKey(),
+  workspaceId: text("workspace_id")
+    .notNull()
+    .references(() => workspaces.id, { onDelete: "cascade" }),
+  profileId: text("profile_id")
+    .notNull()
+    .references(() => profiles.id, { onDelete: "cascade" }),
+  ownerUserId: text("owner_user_id").references(() => users.id, {
+    onDelete: "set null",
+  }),
+  name: text("name").notNull(),
+  brief: text("brief").notNull().default(""),
+  objective: text("objective").notNull().default(""),
+  status: text("status").notNull().default("draft"), // "draft" | "generating" | "review" | "approved" | "scheduled" | "archived"
+  selectedPlatforms: text("selected_platforms", { mode: "json" }).$type<string[]>(),
+  selectedCreativeId: text("selected_creative_id"),
+  metadata: text("metadata", { mode: "json" }).$type<Record<string, unknown>>(),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+}, (table) => [
+  index("campaigns_workspace_profile_idx").on(table.workspaceId, table.profileId),
+]);
+
+export const campaignGenerationSessions = sqliteTable("campaign_generation_sessions", {
+  id: text("id").primaryKey(),
+  campaignId: text("campaign_id")
+    .notNull()
+    .references(() => campaigns.id, { onDelete: "cascade" }),
+  status: text("status").notNull().default("pending"), // "pending" | "running" | "completed" | "failed" | "canceled"
+  inputSnapshot: text("input_snapshot", { mode: "json" }).$type<Record<string, unknown>>(),
+  modelConfig: text("model_config", { mode: "json" }).$type<Record<string, unknown>>(),
+  resultSummary: text("result_summary", { mode: "json" }).$type<Record<string, unknown>>(),
+  error: text("error"),
+  ledgerPath: text("ledger_path"),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  completedAt: integer("completed_at", { mode: "timestamp" }),
+}, (table) => [
+  index("campaign_generation_sessions_campaign_idx").on(table.campaignId),
+]);
+
+export const campaignCreatives = sqliteTable("campaign_creatives", {
+  id: text("id").primaryKey(),
+  campaignId: text("campaign_id")
+    .notNull()
+    .references(() => campaigns.id, { onDelete: "cascade" }),
+  generationSessionId: text("generation_session_id").references(() => campaignGenerationSessions.id, {
+    onDelete: "set null",
+  }),
+  title: text("title").notNull(),
+  sourcePrompt: text("source_prompt").notNull().default(""),
+  visualSpec: text("visual_spec", { mode: "json" }).$type<Record<string, unknown>>(),
+  imageModel: text("image_model").notNull().default("mock"),
+  sourceImageUrl: text("source_image_url"),
+  sourceImageWidth: integer("source_image_width").notNull().default(2048),
+  sourceImageHeight: integer("source_image_height").notNull().default(2048),
+  sourceFocalPoint: text("source_focal_point", { mode: "json" }).$type<Record<string, unknown>>(),
+  sourceSafeZone: text("source_safe_zone", { mode: "json" }).$type<Record<string, unknown>>(),
+  score: text("score", { mode: "json" }).$type<Record<string, unknown>>(),
+  status: text("status").notNull().default("draft"), // "draft" | "review" | "approved" | "denied" | "archived"
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+}, (table) => [
+  index("campaign_creatives_campaign_idx").on(table.campaignId),
+]);
+
+export const campaignLayers = sqliteTable("campaign_layers", {
+  id: text("id").primaryKey(),
+  creativeId: text("creative_id")
+    .notNull()
+    .references(() => campaignCreatives.id, { onDelete: "cascade" }),
+  kind: text("kind").notNull(), // "image" | "header" | "description" | "cta" | "logo" | "shape"
+  text: text("text").notNull().default(""),
+  mediaUrl: text("media_url"),
+  x: integer("x").notNull().default(0),
+  y: integer("y").notNull().default(0),
+  width: integer("width").notNull().default(0),
+  height: integer("height").notNull().default(0),
+  rotation: integer("rotation").notNull().default(0),
+  fontFamily: text("font_family").notNull().default(""),
+  fontSize: integer("font_size").notNull().default(0),
+  lineHeight: integer("line_height").notNull().default(0),
+  color: text("color").notNull().default(""),
+  backgroundColor: text("background_color"),
+  visible: integer("visible", { mode: "boolean" }).notNull().default(true),
+  locked: integer("locked", { mode: "boolean" }).notNull().default(false),
+  zIndex: integer("z_index").notNull().default(0),
+}, (table) => [
+  index("campaign_layers_creative_idx").on(table.creativeId),
+]);
+
+export const campaignRenditions = sqliteTable("campaign_renditions", {
+  id: text("id").primaryKey(),
+  creativeId: text("creative_id")
+    .notNull()
+    .references(() => campaignCreatives.id, { onDelete: "cascade" }),
+  platformType: text("platform_type").notNull(),
+  format: text("format").notNull().default("default"),
+  width: integer("width").notNull(),
+  height: integer("height").notNull(),
+  aspectRatio: text("aspect_ratio").notNull(),
+  crop: text("crop", { mode: "json" }).$type<Record<string, unknown>>(),
+  layerOverrides: text("layer_overrides", { mode: "json" }).$type<Record<string, unknown>>(),
+  exportedMediaUrl: text("exported_media_url"),
+  validation: text("validation", { mode: "json" }).$type<Record<string, unknown>>(),
+  status: text("status").notNull().default("draft"), // "draft" | "ready" | "applied" | "failed"
+  postId: text("post_id"),
+  postTargetId: text("post_target_id"),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+}, (table) => [
+  index("campaign_renditions_creative_idx").on(table.creativeId),
+]);
+
+export const campaignEvents = sqliteTable("campaign_events", {
+  id: text("id").primaryKey(),
+  campaignId: text("campaign_id")
+    .notNull()
+    .references(() => campaigns.id, { onDelete: "cascade" }),
+  creativeId: text("creative_id").references(() => campaignCreatives.id, {
+    onDelete: "set null",
+  }),
+  eventType: text("event_type").notNull(),
+  payload: text("payload", { mode: "json" }).$type<Record<string, unknown>>(),
+  actorUserId: text("actor_user_id").references(() => users.id, {
+    onDelete: "set null",
+  }),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+}, (table) => [
+  index("campaign_events_campaign_idx").on(table.campaignId, table.createdAt),
+]);
+
 // ── Posts ──────────────────────────────────────────────────────────────
 export const posts = sqliteTable("posts", {
   id: text("id").primaryKey(),
@@ -196,6 +329,34 @@ export const posts = sqliteTable("posts", {
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
 });
+
+// ── Approval Requests ────────────────────────────────────────────────
+export const approvalRequests = sqliteTable("approval_requests", {
+  id: text("id").primaryKey(),
+  workspaceId: text("workspace_id")
+    .notNull()
+    .references(() => workspaces.id, { onDelete: "cascade" }),
+  postId: text("post_id")
+    .notNull()
+    .references(() => posts.id, { onDelete: "cascade" }),
+  postVariantId: text("post_variant_id"),
+  status: text("status").notNull().default("requested"), // "requested" | "in_review" | "changes_requested" | "approved" | "rejected" | "withdrawn" | "expired"
+  requestedByUserId: text("requested_by_user_id").references(() => users.id, {
+    onDelete: "set null",
+  }),
+  requestedForRole: text("requested_for_role"),
+  requestedForEmail: text("requested_for_email"),
+  dueAt: integer("due_at", { mode: "timestamp" }),
+  openedAt: integer("opened_at", { mode: "timestamp" }),
+  resolvedAt: integer("resolved_at", { mode: "timestamp" }),
+  currentRevisionId: text("current_revision_id"),
+  policySnapshot: text("policy_snapshot", { mode: "json" }).$type<Record<string, unknown>>(),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+}, (table) => [
+  index("approval_requests_workspace_post_idx").on(table.workspaceId, table.postId),
+  index("approval_requests_workspace_status_idx").on(table.workspaceId, table.status),
+]);
 
 // ── Post Targets ──────────────────────────────────────────────────────
 // Many-to-many: which platforms a post goes to + per-platform status
@@ -228,6 +389,52 @@ export const schedules = sqliteTable("schedules", {
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
 });
+
+// ── Source-backed posting ────────────────────────────────────────────
+export const sourceFeeds = sqliteTable("source_feeds", {
+  id: text("id").primaryKey(),
+  workspaceId: text("workspace_id")
+    .notNull()
+    .references(() => workspaces.id, { onDelete: "cascade" }),
+  type: text("type").notNull(), // "github_repo" | "github_org" | "rss" | "url" | "manual_note" | "local_repo"
+  name: text("name").notNull(),
+  config: text("config", { mode: "json" }).$type<Record<string, unknown>>(),
+  enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+  lastCheckedAt: integer("last_checked_at", { mode: "timestamp" }),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+}, (table) => [
+  uniqueIndex("source_feeds_workspace_name_unique")
+    .on(table.workspaceId, table.type, table.name),
+]);
+
+export const sourceEvidence = sqliteTable("source_evidence", {
+  id: text("id").primaryKey(),
+  workspaceId: text("workspace_id")
+    .notNull()
+    .references(() => workspaces.id, { onDelete: "cascade" }),
+  sourceFeedId: text("source_feed_id").references(() => sourceFeeds.id, {
+    onDelete: "set null",
+  }),
+  type: text("type").notNull(), // "commit" | "pr" | "release" | "issue" | "docs_change" | "rss_item" | "url" | "note"
+  title: text("title").notNull(),
+  summary: text("summary").notNull(),
+  url: text("url"),
+  externalId: text("external_id"),
+  eventAt: integer("event_at", { mode: "timestamp" }),
+  dedupeKey: text("dedupe_key").notNull(),
+  status: text("status").notNull().default("new"), // "new" | "drafted" | "rejected" | "used" | "stale"
+  metadata: text("metadata", { mode: "json" }).$type<Record<string, unknown>>(),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+}, (table) => [
+  uniqueIndex("source_evidence_workspace_dedupe_idx")
+    .on(table.workspaceId, table.dedupeKey)
+    .where(sql`dedupe_key IS NOT NULL AND dedupe_key != ''`),
+  uniqueIndex("source_evidence_external_idx")
+    .on(table.workspaceId, table.sourceFeedId, table.externalId)
+    .where(sql`external_id IS NOT NULL AND external_id != ''`),
+]);
 
 // ── Pipeline Runs ─────────────────────────────────────────────────────
 export const pipelineRuns = sqliteTable("pipeline_runs", {
@@ -355,6 +562,22 @@ export const inboxMessages = sqliteTable("inbox_messages", {
     .on(table.conversationId, table.providerMessageId),
 ]);
 
+export const inboxSeenWatermarks = sqliteTable("inbox_seen_watermarks", {
+  id: text("id").primaryKey(),
+  workspaceId: text("workspace_id").references(() => workspaces.id, {
+    onDelete: "cascade",
+  }),
+  surface: text("surface").notNull(),
+  platformKey: text("platform_key").notNull().default("all"),
+  seenAt: integer("seen_at", { mode: "timestamp" }).notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+}, (table) => [
+  uniqueIndex("inbox_seen_watermarks_workspace_surface_platform_idx")
+    .on(table.workspaceId, table.surface, table.platformKey)
+    .where(sql`workspace_id IS NOT NULL`),
+]);
+
 // ── Dedup Cache ───────────────────────────────────────────────────────
 export const dedupCache = sqliteTable("dedup_cache", {
   id: text("id").primaryKey(),
@@ -430,6 +653,90 @@ export const apiKeys = sqliteTable("api_keys", {
   revokedAt: integer("revoked_at", { mode: "timestamp" }),
   createdBy: text("created_by").notNull().references(() => users.id),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+});
+
+// ── AI Model Providers ───────────────────────────────────────────────
+export const modelProviderCredentials = sqliteTable("model_provider_credentials", {
+  id: text("id").primaryKey(),
+  workspaceId: text("workspace_id").notNull().references(() => workspaces.id, {
+    onDelete: "cascade",
+  }),
+  provider: text("provider").notNull(), // "openai" | "anthropic" | "gemini" | "xai" | "openrouter" | "custom"
+  label: text("label").notNull(),
+  baseUrl: text("base_url"),
+  protocol: text("protocol").notNull().default("openai_responses"),
+  encryptedApiKey: text("encrypted_api_key").notNull(),
+  encryptedManagementKey: text("encrypted_management_key"),
+  keyPrefix: text("key_prefix").notNull().default(""),
+  keySuffix: text("key_suffix").notNull().default(""),
+  status: text("status").notNull().default("untested"), // "active" | "untested" | "error" | "revoked"
+  statusMessage: text("status_message").notNull().default(""),
+  lastTestedAt: integer("last_tested_at", { mode: "timestamp" }),
+  lastSyncedAt: integer("last_synced_at", { mode: "timestamp" }),
+  metadata: text("metadata", { mode: "json" }).$type<Record<string, unknown>>(),
+  createdBy: text("created_by").notNull().references(() => users.id),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+}, (table) => [
+  index("model_provider_workspace_idx").on(table.workspaceId),
+]);
+
+export const modelCatalog = sqliteTable("model_catalog", {
+  id: text("id").primaryKey(),
+  workspaceId: text("workspace_id").notNull().references(() => workspaces.id, {
+    onDelete: "cascade",
+  }),
+  credentialId: text("credential_id").references(() => modelProviderCredentials.id, {
+    onDelete: "cascade",
+  }),
+  provider: text("provider").notNull(),
+  modelId: text("model_id").notNull(),
+  displayName: text("display_name").notNull(),
+  capabilities: text("capabilities", { mode: "json" }).$type<string[]>(),
+  contextWindow: integer("context_window"),
+  inputPrice: text("input_price"),
+  outputPrice: text("output_price"),
+  status: text("status").notNull().default("available"), // "available" | "stale" | "manual" | "deprecated"
+  source: text("source").notNull().default("discovered"), // "discovered" | "curated" | "manual"
+  deprecatedAt: integer("deprecated_at", { mode: "timestamp" }),
+  lastSeenAt: integer("last_seen_at", { mode: "timestamp" }),
+  metadata: text("metadata", { mode: "json" }).$type<Record<string, unknown>>(),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+}, (table) => [
+  uniqueIndex("model_catalog_workspace_model_unique").on(
+    table.workspaceId,
+    table.provider,
+    table.modelId
+  ),
+  index("model_catalog_workspace_idx").on(table.workspaceId),
+]);
+
+export const workspaceModelDefaults = sqliteTable("workspace_model_defaults", {
+  workspaceId: text("workspace_id")
+    .primaryKey()
+    .notNull()
+    .references(() => workspaces.id, { onDelete: "cascade" }),
+  writingModelCatalogId: text("writing_model_catalog_id").references(() => modelCatalog.id, {
+    onDelete: "set null",
+  }),
+  replyModelCatalogId: text("reply_model_catalog_id").references(() => modelCatalog.id, {
+    onDelete: "set null",
+  }),
+  agentModelCatalogId: text("agent_model_catalog_id").references(() => modelCatalog.id, {
+    onDelete: "set null",
+  }),
+  fastModelCatalogId: text("fast_model_catalog_id").references(() => modelCatalog.id, {
+    onDelete: "set null",
+  }),
+  imageModelCatalogId: text("image_model_catalog_id").references(() => modelCatalog.id, {
+    onDelete: "set null",
+  }),
+  embeddingModelCatalogId: text("embedding_model_catalog_id").references(() => modelCatalog.id, {
+    onDelete: "set null",
+  }),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
 });
 
 // ── Notification Preferences ─────────────────────────────────────────
@@ -544,6 +851,55 @@ export const leadMagnetDownloads = sqliteTable("lead_magnet_downloads", {
   marketingConsent: integer("marketing_consent", { mode: "boolean" }).notNull().default(false),
   metadata: text("metadata", { mode: "json" }).$type<Record<string, unknown>>(),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+});
+
+// ── Blog Automation ─────────────────────────────────────────────────
+export const blogAutomationPosts = sqliteTable("blog_automation_posts", {
+  id: text("id").primaryKey(),
+  topic: text("topic").notNull(),
+  slug: text("slug").notNull().unique(),
+  title: text("title").notNull(),
+  excerpt: text("excerpt").notNull().default(""),
+  category: text("category").notNull().default("Automation"),
+  status: text("status").notNull().default("draft"), // "generating" | "draft" | "needs_review" | "approved" | "published" | "failed" | "archived"
+  reviewStatus: text("review_status").notNull().default("needs_review"),
+  publishStatus: text("publish_status").notNull().default("idle"),
+  directAnswer: text("direct_answer").notNull().default(""),
+  thesis: text("thesis").notNull().default(""),
+  contentMarkdown: text("content_markdown").notNull().default(""),
+  heroImageUrl: text("hero_image_url"),
+  heroImageAlt: text("hero_image_alt"),
+  sources: text("sources", { mode: "json" }).$type<Array<{ title: string; url: string; publisher?: string }>>(),
+  frameworkChecks: text("framework_checks", { mode: "json" }).$type<Record<string, unknown>>(),
+  validationStatus: text("validation_status").notNull().default("warn"),
+  validationScore: integer("validation_score").notNull().default(0),
+  targetWords: integer("target_words").notNull().default(2000),
+  scheduledFor: integer("scheduled_for", { mode: "timestamp" }),
+  generatedAt: integer("generated_at", { mode: "timestamp" }),
+  reviewedAt: integer("reviewed_at", { mode: "timestamp" }),
+  publishedAt: integer("published_at", { mode: "timestamp" }),
+  mediumArticleId: text("medium_article_id"),
+  mediumUrl: text("medium_url"),
+  externalDraftPath: text("external_draft_path"),
+  lastError: text("last_error"),
+  createdByEmail: text("created_by_email"),
+  metadata: text("metadata", { mode: "json" }).$type<Record<string, unknown>>(),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+});
+
+export const blogAutomationRuns = sqliteTable("blog_automation_runs", {
+  id: text("id").primaryKey(),
+  postId: text("post_id").references(() => blogAutomationPosts.id, { onDelete: "set null" }),
+  trigger: text("trigger").notNull(), // "manual" | "daily" | "publish"
+  phase: text("phase").notNull(), // "generate" | "validate" | "publish"
+  status: text("status").notNull().default("running"),
+  input: text("input", { mode: "json" }).$type<Record<string, unknown>>(),
+  output: text("output", { mode: "json" }).$type<Record<string, unknown>>(),
+  error: text("error"),
+  startedAt: integer("started_at", { mode: "timestamp" }).notNull(),
+  completedAt: integer("completed_at", { mode: "timestamp" }),
+  durationMs: integer("duration_ms"),
 });
 
 // ── Drip Queue ──────────────────────────────────────────────────────

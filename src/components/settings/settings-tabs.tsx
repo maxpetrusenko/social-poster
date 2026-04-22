@@ -207,12 +207,9 @@ function ProfileTab({ user }: { user: Props["user"] }) {
           </div>
         </div>
 
-        <button
-          disabled
-          className="mt-6 w-full rounded-lg border border-[#e5d9c8] py-2 text-sm font-medium text-[#8d7c64] cursor-not-allowed opacity-60"
-        >
-          Edit profile (coming soon)
-        </button>
+        <div className="mt-6 rounded-lg border border-[#e5d9c8] bg-[#faf6ee] px-4 py-3 text-sm text-[#8d7c64]">
+          Account profile details come from the active auth provider.
+        </div>
       </div>
     </div>
   );
@@ -304,9 +301,9 @@ function BillingTab({ billing }: { billing: Props["billing"] }) {
           </div>
         </div>
 
-        <button disabled className="w-full rounded-xl border border-[#e5d9c8] bg-white py-3 text-sm font-medium text-[#8d7c64] cursor-not-allowed opacity-60">
-          Upgrade plan (coming soon)
-        </button>
+        <div className="rounded-xl border border-[#e5d9c8] bg-[#faf6ee] px-4 py-3 text-sm text-[#8d7c64]">
+          Use support to request plan or billing changes for now.
+        </div>
       </div>
     </div>
   );

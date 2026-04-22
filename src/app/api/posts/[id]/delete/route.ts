@@ -1,11 +1,12 @@
 import { db } from "@/db";
-import { posts, postTargets } from "@/db/schema";
+import { platforms, posts, postTargets } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { requireApiWorkspaceEditor } from "@/lib/api-authorization";
+import { recordTenantAuditEvent } from "@/lib/audit";
 
 export async function POST(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const tenant = await requireApiWorkspaceEditor();
@@ -21,6 +22,27 @@ export async function POST(
     if (!post) {
       return NextResponse.json({ error: "Post not found" }, { status: 404 });
     }
+
+    const targets = await db
+      .select({ target: postTargets, platform: platforms })
+      .from(postTargets)
+      .innerJoin(platforms, eq(postTargets.platformId, platforms.id))
+      .where(eq(postTargets.postId, id));
+
+    await recordTenantAuditEvent(tenant, {
+      action: "post.delete",
+      targetType: "post",
+      targetId: id,
+      metadata: {
+        status: "deleted",
+        endpoint: `POST /api/posts/${id}/delete`,
+        href: "/dashboard/posts",
+        title: post.title,
+        contentPreview: post.content.slice(0, 120),
+        platformTargetCount: targets.length,
+        platforms: targets.map((entry) => entry.platform.name || entry.platform.type),
+      },
+    });
 
     await db.delete(postTargets).where(eq(postTargets.postId, id));
 

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { BLOG_POSTS } from "@/lib/blog/posts";
+import Image from "next/image";
+import { getAllPublicBlogPosts } from "@/lib/blog/dynamic";
 import { LandingNav } from "@/components/landing/nav";
 import { LandingFooter } from "@/components/landing/footer";
 import { getSession } from "@/lib/auth";
@@ -16,6 +17,7 @@ export const metadata: Metadata = {
 
 export default async function BlogPage() {
   const session = await getSession();
+  const posts = await getAllPublicBlogPosts();
 
   return (
     <>
@@ -26,22 +28,36 @@ export default async function BlogPage() {
           <h1 className="text-3xl md:text-4xl font-bold mb-12">What ClawPoster Can Do</h1>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {BLOG_POSTS.map((post) => (
+            {posts.map((post) => (
               <Link
                 key={post.slug}
                 href={`/blog/${post.slug}`}
-                className="group rounded-2xl border border-[var(--line)] bg-[var(--paper)] p-6 hover:border-[var(--accent-tech)]/30 transition-colors"
+                className="group overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--paper)] hover:border-[var(--accent-tech)]/30 transition-colors"
               >
-                <div className="flex items-center gap-3 mb-3">
-                  <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-[var(--accent-tech)]/10 text-[var(--accent-tech)]">
-                    {post.category}
-                  </span>
-                  <span className="text-xs text-[var(--muted)]">{post.publishedAt}</span>
+                {post.imageUrl ? (
+                  <div className="relative aspect-[16/9] bg-[#f4ebdd]">
+                    <Image
+                      src={post.imageUrl}
+                      alt={post.imageAlt || ""}
+                      fill
+                      className="object-cover"
+                      sizes="(min-width: 768px) 50vw, 100vw"
+                      unoptimized
+                    />
+                  </div>
+                ) : null}
+                <div className="p-6">
+                  <div className="flex items-center gap-3 mb-3">
+                    <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-[var(--accent-tech)]/10 text-[var(--accent-tech)]">
+                      {post.category}
+                    </span>
+                    <span className="text-xs text-[var(--muted)]">{post.publishedAt}</span>
+                  </div>
+                  <h2 className="text-lg font-semibold mb-2 group-hover:text-[var(--accent-tech)] transition-colors font-[family-name:var(--font-sans)]">
+                    {post.title}
+                  </h2>
+                  <p className="text-sm text-[var(--muted)] leading-relaxed">{post.excerpt}</p>
                 </div>
-                <h2 className="text-lg font-semibold mb-2 group-hover:text-[var(--accent-tech)] transition-colors font-[family-name:var(--font-sans)]">
-                  {post.title}
-                </h2>
-                <p className="text-sm text-[var(--muted)] leading-relaxed">{post.excerpt}</p>
               </Link>
             ))}
           </div>

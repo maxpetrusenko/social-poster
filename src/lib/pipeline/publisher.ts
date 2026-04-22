@@ -1,3 +1,6 @@
+import type { InstagramPublishContentType } from "@/lib/post-publish-metadata";
+import { mediaTypeFromUrl } from "@/lib/media-url";
+
 const LATE_URL = "https://getlate.dev/api/v1/posts";
 
 const ACCOUNT_IDS: Record<string, string> = {
@@ -35,8 +38,12 @@ export interface PublishTarget {
   accountId?: string | null;
   content: string;
   mediaUrl?: string;
+  mediaUrls?: string[];
   mediaType?: "video" | "image";
-  instagramContentType?: "reel" | "story";
+  instagramContentType?: InstagramPublishContentType;
+  platformFormat?: string;
+  firstComment?: string;
+  collaborators?: string[];
 }
 
 function getToken(): string {
@@ -123,6 +130,37 @@ export function getLatePlatformFailure(
   };
 }
 
+export function buildLatePostBody(target: PublishTarget): Record<string, unknown> {
+  const platform = normalizePlatform(target.platform);
+  const accountId = resolvePublishAccountId(platform, target.accountId);
+  if (!accountId) {
+    throw new Error(`Unknown account ID for platform: ${platform}`);
+  }
+
+  const platformEntry: Record<string, unknown> = { platform, accountId };
+  const mediaUrls = resolvePublishMediaUrls(target);
+  const platformSpecificData = buildLatePlatformSpecificData(platform, target, mediaUrls);
+
+  if (Object.keys(platformSpecificData).length > 0) {
+    platformEntry.platformSpecificData = platformSpecificData;
+  }
+
+  const body: Record<string, unknown> = {
+    content: target.content,
+    platforms: [platformEntry],
+    publishNow: true,
+  };
+
+  if (mediaUrls.length > 0) {
+    body.mediaItems = mediaUrls.map((url) => ({
+      type: resolveMediaItemType(url, target.mediaType),
+      url,
+    }));
+  }
+
+  return body;
+}
+
 export async function publishToLate(targets: PublishTarget[]): Promise<PublishResult[]> {
   const token = getToken();
   const results: PublishResult[] = [];
@@ -143,23 +181,7 @@ export async function publishToLate(targets: PublishTarget[]): Promise<PublishRe
     }
 
     try {
-      const platformEntry: Record<string, unknown> = { platform, accountId };
-
-      if (platform === "instagram" && target.mediaUrl) {
-        platformEntry.platformSpecificData = {
-          contentType: target.instagramContentType || (target.mediaType === "video" ? "reel" : "story"),
-        };
-      }
-
-      const body: Record<string, unknown> = {
-        content: target.content,
-        platforms: [platformEntry],
-        publishNow: true,
-      };
-
-      if (target.mediaUrl) {
-        body.mediaItems = [{ type: target.mediaType || "image", url: target.mediaUrl }];
-      }
+      const body = buildLatePostBody({ ...target, platform, accountId });
 
       const res = await fetch(LATE_URL, {
         method: "POST",
@@ -228,4 +250,78 @@ export async function publishToLate(targets: PublishTarget[]): Promise<PublishRe
   }
 
   return results;
+}
+
+function buildLatePlatformSpecificData(
+  platform: string,
+  target: PublishTarget,
+  mediaUrls: string[]
+): Record<string, unknown> {
+  const data: Record<string, unknown> = {};
+
+  if (platform === "instagram") {
+    if (target.instagramContentType === "story") {
+      data.contentType = "story";
+    } else if (target.instagramContentType === "reel") {
+      data.contentType = "reels";
+      data.shareToFeed = true;
+    } else if (
+      target.instagramContentType === "carousel" ||
+      target.platformFormat?.toLowerCase() === "carousel" ||
+      mediaUrls.length > 1
+    ) {
+      data.contentType = "carousel";
+    }
+
+    if (target.firstComment && target.instagramContentType !== "story") {
+      data.firstComment = target.firstComment;
+    }
+
+    if (
+      target.collaborators?.length &&
+      target.instagramContentType !== "story"
+    ) {
+      data.collaborators = target.collaborators;
+    }
+  }
+
+  if (platform === "facebook") {
+    const format = target.platformFormat?.toLowerCase();
+    if (format === "story") {
+      data.contentType = "story";
+    } else if (format === "reel") {
+      data.contentType = "reel";
+    }
+
+    if (target.firstComment && format !== "story") {
+      data.firstComment = target.firstComment;
+    }
+  }
+
+  if (platform === "linkedin" && target.firstComment) {
+    data.firstComment = target.firstComment;
+  }
+
+  return data;
+}
+
+function resolvePublishMediaUrls(target: PublishTarget): string[] {
+  const mediaUrls = (target.mediaUrls ?? [])
+    .filter((url): url is string => typeof url === "string")
+    .map((url) => url.trim())
+    .filter((url) => url.length > 0);
+
+  if (mediaUrls.length > 0) {
+    return mediaUrls;
+  }
+
+  const mediaUrl = target.mediaUrl?.trim();
+  return mediaUrl ? [mediaUrl] : [];
+}
+
+function resolveMediaItemType(
+  url: string,
+  fallbackType?: "image" | "video"
+): "image" | "video" {
+  return fallbackType ?? mediaTypeFromUrl(url) ?? "image";
 }
