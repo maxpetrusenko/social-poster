@@ -34,6 +34,7 @@ Container requires these env vars (set via `docker run -e`):
 | `DISABLE_AUTH=false` | Required for production Supabase auth |
 | `NEXT_PUBLIC_SUPABASE_URL` | Self-hosted Supabase public URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Browser anon key for Supabase Auth |
+| `SUPABASE_INTERNAL_URL` | Optional server-only Supabase URL; use `http://supabase-kong:8000` on Contabo so server session checks bypass Cloudflare/Traefik |
 | `HOSTNAME=0.0.0.0` | Listen on all interfaces |
 | `PORT=3000` | Next.js port |
 | `CARTESIA_API_KEY` | Cartesia TTS API key |
@@ -63,6 +64,7 @@ Target state:
 - app always serves Next.js on `3000`; entrypoint bridges any Coolify rollout port to `3000`
 - GitHub source uses an SSH deploy key; no public-repo toggle
 - production auth uses self-hosted Supabase at `https://supabase.maxpetrusenko.com`
+- server-side Supabase calls should use `SUPABASE_INTERNAL_URL=http://supabase-kong:8000` in Coolify to avoid routing dashboard session checks through Cloudflare/Traefik
 - required reply env vars in Coolify: `X_AUTH_TOKEN`, `X_CT0`, `BIRD_RUNNER=bird`
 - optional Bird health interval: `BIRD_SESSION_CHECK_HOURS=24`
 - `APP_URL` is optional in Coolify; when set, use the single dashboard origin `https://social.maxpetrusenko.com`. Do not paste the comma-separated Coolify domain list into `APP_URL`.

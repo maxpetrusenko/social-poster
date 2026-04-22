@@ -7,7 +7,7 @@ import {
   SESSION_COOKIE,
 } from "@/lib/auth-config";
 import {
-  getSupabasePublicEnv,
+  getSupabaseServerEnv,
   isSupabaseConfigured,
 } from "@/lib/supabase/config";
 import {
@@ -76,7 +76,7 @@ export async function middleware(request: NextRequest) {
   }
 
   if (AUTH_MODE === "supabase" && isSupabaseConfigured()) {
-    const { url, anonKey } = getSupabasePublicEnv();
+    const { url, anonKey, storageKey } = getSupabaseServerEnv();
     const response = NextResponse.next({
       request: {
         headers: request.headers,
@@ -84,6 +84,9 @@ export async function middleware(request: NextRequest) {
     });
 
     const supabase = createServerClient(url, anonKey, {
+      auth: {
+        storageKey,
+      },
       cookies: {
         getAll() {
           return request.cookies.getAll();

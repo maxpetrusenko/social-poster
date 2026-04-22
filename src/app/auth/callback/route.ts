@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import {
-  getSupabasePublicEnv,
+  getSupabaseServerEnv,
   isSupabaseConfigured,
 } from "@/lib/supabase/config";
 import { getRequestAppUrl } from "@/lib/app-url";
@@ -30,10 +30,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(fallbackUrl);
   }
 
-  const { url, anonKey } = getSupabasePublicEnv();
+  const { url, anonKey, storageKey } = getSupabaseServerEnv();
   let response = NextResponse.redirect(new URL(nextPath, appUrl));
 
   const supabase = createServerClient(url, anonKey, {
+    auth: {
+      storageKey,
+    },
     cookies: {
       getAll() {
         return request.cookies.getAll();

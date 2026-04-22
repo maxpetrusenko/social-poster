@@ -1,3 +1,4 @@
+import { createServerClient } from "@supabase/ssr";
 import { NextRequest } from "next/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -18,9 +19,10 @@ vi.mock("@supabase/ssr", () => ({
 }));
 
 vi.mock("@/lib/supabase/config", () => ({
-  getSupabasePublicEnv: vi.fn(() => ({
-    url: "https://supabase.example.com",
+  getSupabaseServerEnv: vi.fn(() => ({
+    url: "http://supabase-kong:8000",
     anonKey: "anon-key",
+    storageKey: "sb-supabase-auth-token",
   })),
   isSupabaseConfigured: vi.fn(() => true),
 }));
@@ -50,6 +52,13 @@ describe("Supabase auth callback", () => {
 
     expect(response.headers.get("location")).toBe(
       "https://social.maxpetrusenko.com/dashboard/settings"
+    );
+    expect(createServerClient).toHaveBeenCalledWith(
+      "http://supabase-kong:8000",
+      "anon-key",
+      expect.objectContaining({
+        auth: { storageKey: "sb-supabase-auth-token" },
+      })
     );
     expect(signOut).not.toHaveBeenCalled();
   });

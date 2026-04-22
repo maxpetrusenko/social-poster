@@ -1,5 +1,7 @@
 import { spawn } from "node:child_process";
+import assert from "node:assert/strict";
 import fs from "node:fs";
+import http from "node:http";
 import net from "node:net";
 import os from "node:os";
 import path from "node:path";
@@ -11,6 +13,7 @@ const chromeCandidates = [
   process.env.PUPPETEER_EXECUTABLE_PATH,
   "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
   "/Applications/Chromium.app/Contents/MacOS/Chromium",
+  "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser",
   "/usr/bin/chromium",
   "/usr/bin/chromium-browser",
   "/usr/bin/google-chrome",
@@ -60,6 +63,189 @@ async function waitForServer(baseUrl, timeoutMs = 180_000) {
   );
 }
 
+async function assertAsset(page, pathname, expectedType, expectedBytes) {
+  const result = await page.evaluate(
+    async ({ assetPathname }) => {
+      const response = await fetch(assetPathname);
+      const bytes = [...new Uint8Array(await response.arrayBuffer()).slice(0, 4)];
+      return {
+        ok: response.ok,
+        contentType: response.headers.get("content-type") ?? "",
+        bytes,
+      };
+    },
+    { assetPathname: pathname }
+  );
+
+  assert.equal(result.ok, true);
+  assert.match(result.contentType, expectedType);
+  assert.deepEqual(result.bytes, expectedBytes);
+}
+
+function encodeSupabaseSessionCookie(session) {
+  return `base64-${Buffer.from(JSON.stringify(session), "utf8").toString("base64url")}`;
+}
+
+function createSupabaseUser(email) {
+  const now = new Date().toISOString();
+  return {
+    id: "11111111-1111-4111-8111-111111111111",
+    aud: "authenticated",
+    role: "authenticated",
+    email,
+    email_confirmed_at: now,
+    phone: "",
+    app_metadata: { provider: "google", providers: ["google"] },
+    user_metadata: { email, email_verified: true, name: "Browser Internal" },
+    created_at: now,
+    updated_at: now,
+  };
+}
+
+function startFakeSupabaseAuth(email) {
+  const requests = [];
+
+  return new Promise((resolve, reject) => {
+    const server = http.createServer((request, response) => {
+      requests.push({
+        method: request.method,
+        url: request.url,
+        authorization: request.headers.authorization ?? "",
+      });
+
+      if (request.method === "GET" && request.url === "/auth/v1/user") {
+        response.writeHead(200, { "content-type": "application/json" });
+        response.end(JSON.stringify({ user: createSupabaseUser(email) }));
+        return;
+      }
+
+      response.writeHead(404, { "content-type": "application/json" });
+      response.end(JSON.stringify({ error: "not found" }));
+    });
+
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", () => {
+      const address = server.address();
+      if (!address || typeof address === "string") {
+        reject(new Error("Fake Supabase auth server did not bind to a TCP port."));
+        return;
+      }
+
+      resolve({
+        requests,
+        url: `http://127.0.0.1:${address.port}`,
+        async close() {
+          await new Promise((closeResolve) => server.close(closeResolve));
+        },
+      });
+    });
+  });
+}
+
+async function stopProcess(child) {
+  try {
+    process.kill(-child.pid, "SIGTERM");
+  } catch {
+    child.kill("SIGTERM");
+  }
+
+  await Promise.race([
+    new Promise((resolve) => child.once("exit", resolve)),
+    new Promise((resolve) => setTimeout(resolve, 5000)),
+  ]);
+
+  if (child.exitCode === null) {
+    try {
+      process.kill(-child.pid, "SIGKILL");
+    } catch {
+      child.kill("SIGKILL");
+    }
+  }
+}
+
+async function assertSupabaseInternalUrlBrowserFlow(browser) {
+  const email = "browser-internal@example.com";
+  const fakeSupabase = await startFakeSupabaseAuth(email);
+  const port = await getFreePort();
+  const baseUrl = `http://127.0.0.1:${port}`;
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "social-poster-internal-"));
+  const dbPath = path.join(tempDir, "internal.db");
+  const logs = [];
+  const server = spawn(
+    "npm",
+    ["run", "dev", "--", "--hostname", "127.0.0.1", "--port", String(port)],
+    {
+      cwd: process.cwd(),
+      env: {
+        ...process.env,
+        AUTH_EMAIL: email,
+        DATABASE_URL: dbPath,
+        DISABLE_AUTH: "false",
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: "anon-key",
+        NEXT_PUBLIC_SUPABASE_URL: "https://supabase.maxpetrusenko.com",
+        SUPABASE_INTERNAL_URL: fakeSupabase.url,
+      },
+      detached: true,
+      stdio: ["ignore", "pipe", "pipe"],
+    }
+  );
+
+  const capture = (chunk) => {
+    logs.push(chunk.toString());
+    if (logs.join("").length > 20_000) {
+      logs.splice(0, logs.length - 20);
+    }
+  };
+  server.stdout.on("data", capture);
+  server.stderr.on("data", capture);
+
+  let page;
+  try {
+    await waitForServer(baseUrl);
+    page = await browser.newPage();
+    const user = createSupabaseUser(email);
+    await page.setCookie({
+      name: "sb-supabase-auth-token",
+      value: encodeSupabaseSessionCookie({
+        access_token: "browser-access-token",
+        refresh_token: "browser-refresh-token",
+        expires_at: Math.floor(Date.now() / 1000) + 3600,
+        expires_in: 3600,
+        token_type: "bearer",
+        user,
+      }),
+      url: baseUrl,
+      path: "/",
+    });
+
+    const response = await page.goto(`${baseUrl}/dashboard`, {
+      waitUntil: "networkidle0",
+      timeout: 120_000,
+    });
+    const body = await page.evaluate(() => document.body.innerText);
+
+    assert.ok(response);
+    assert.equal(response.status(), 200);
+    assert.match(body, /Connected accounts/);
+    assert.ok(
+      fakeSupabase.requests.some(
+        (request) =>
+          request.url === "/auth/v1/user" &&
+          request.authorization === "Bearer browser-access-token"
+      ),
+      "Dashboard auth did not call the internal Supabase URL."
+    );
+  } catch (error) {
+    console.error(logs.join(""));
+    throw error;
+  } finally {
+    if (page) await page.close();
+    await stopProcess(server);
+    await fakeSupabase.close();
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  }
+}
+
 async function main() {
   const chrome = findChrome();
   if (!chrome) {
@@ -87,6 +273,7 @@ async function main() {
         NEXT_PUBLIC_SUPABASE_ANON_KEY: "",
         NEXT_PUBLIC_SUPABASE_URL: "",
       },
+      detached: true,
       stdio: ["ignore", "pipe", "pipe"],
     }
   );
@@ -109,13 +296,78 @@ async function main() {
       args: ["--no-sandbox", "--disable-setuid-sandbox"],
     });
 
+    const marketingPage = await browser.newPage();
+    await marketingPage.setExtraHTTPHeaders({ "x-forwarded-host": "smmagent.app" });
+
+    for (const viewport of [
+      { width: 1440, height: 900 },
+      { width: 390, height: 844 },
+    ]) {
+      await marketingPage.setViewport(viewport);
+      await marketingPage.goto(`${baseUrl}/`, {
+        waitUntil: "networkidle0",
+        timeout: 120_000,
+      });
+
+      const metadata = await marketingPage.evaluate(() => ({
+        title: document.title,
+        body: document.body.innerText,
+        manifest: document.querySelector('link[rel="manifest"]')?.getAttribute("href"),
+        shortcutIcon: document.querySelector('link[rel="shortcut icon"]')?.getAttribute("href"),
+        ogImage: document.querySelector('meta[property="og:image"]')?.getAttribute("content"),
+        twitterImage: document.querySelector('meta[name="twitter:image"]')?.getAttribute("content"),
+      }));
+
+      assert.equal(metadata.title, "AI Social Media Agent for Operators — SMM Agent");
+      assert.match(metadata.body, /SMM Agent/);
+      assert.equal(metadata.manifest, "/site.webmanifest");
+      assert.equal(metadata.shortcutIcon, "/favicon.ico");
+      assert.equal(metadata.ogImage, "https://smmagent.app/opengraph-image");
+      assert.equal(metadata.twitterImage, "https://smmagent.app/opengraph-image");
+      assert.doesNotMatch(metadata.body, /Max Petrusenko Studio|SMMAgent/);
+    }
+
+    await assertAsset(marketingPage, "/favicon.ico", /image\/x-icon/, [0, 0, 1, 0]);
+    await assertAsset(marketingPage, "/opengraph-image", /image\/png/, [
+      0x89,
+      0x50,
+      0x4e,
+      0x47,
+    ]);
+    await assertAsset(marketingPage, "/twitter-image", /image\/png/, [
+      0x89,
+      0x50,
+      0x4e,
+      0x47,
+    ]);
+    await marketingPage.close();
+
     const pages = await Promise.all([browser.newPage(), browser.newPage()]);
+    await Promise.all(
+      pages.map((page) =>
+        page.evaluateOnNewDocument(() => {
+          window.localStorage.setItem(
+            "smmagent.uiPreferences",
+            JSON.stringify({ productMode: "agentic" })
+          );
+        })
+      )
+    );
     const responses = await Promise.all(
       pages.map((page) =>
         page.goto(`${baseUrl}/dashboard`, {
           waitUntil: "networkidle0",
           timeout: 120_000,
         })
+      )
+    );
+
+    await Promise.all(
+      pages.map((page) =>
+        page.waitForFunction(
+          () => window.localStorage.getItem("smmagent.uiPreferences") === null,
+          { timeout: 30_000 }
+        )
       )
     );
 
@@ -140,6 +392,29 @@ async function main() {
       if (!body.includes("Connected accounts")) {
         throw new Error(
           `Dashboard page ${index + 1} did not render dashboard content.`
+        );
+      }
+      if (!body.includes("Home") || !body.includes("Social Accounts")) {
+        throw new Error(
+          `Dashboard page ${index + 1} did not render the default SaaS navigation.\n${body.slice(0, 1000)}`
+        );
+      }
+      if (body.includes("Review")) {
+        throw new Error(
+          `Dashboard page ${index + 1} rendered agentic navigation by default.`
+        );
+      }
+    });
+
+    const stalePreferenceStates = await Promise.all(
+      pages.map((page) =>
+        page.evaluate(() => window.localStorage.getItem("smmagent.uiPreferences"))
+      )
+    );
+    stalePreferenceStates.forEach((value, index) => {
+      if (value !== null) {
+        throw new Error(
+          `Dashboard page ${index + 1} did not clear stale agentic preferences.`
         );
       }
     });
@@ -178,14 +453,15 @@ async function main() {
       db.close();
     }
 
+    await assertSupabaseInternalUrlBrowserFlow(browser);
+
     console.log("browser auth smoke passed");
   } catch (error) {
     console.error(logs.join(""));
     throw error;
   } finally {
     if (browser) await browser.close();
-    server.kill("SIGTERM");
-    await new Promise((resolve) => server.once("exit", resolve));
+    await stopProcess(server);
     fs.rmSync(tempDir, { recursive: true, force: true });
   }
 }
