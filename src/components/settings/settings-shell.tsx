@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 
 const SETTINGS_NAV = [
   { href: "/dashboard/settings", label: "General", exact: true },
+  { href: "/dashboard/settings/preferences", label: "Preferences" },
   { href: "/dashboard/settings/profile", label: "Account" },
   { href: "/dashboard/settings/billing", label: "Billing" },
   { href: "/dashboard/settings/usage", label: "Usage" },
@@ -12,7 +13,7 @@ const SETTINGS_NAV = [
   { href: "/dashboard/settings/model-providers", label: "Model API Keys" },
   { href: "/dashboard/settings/notifications", label: "Notifications" },
   { href: "/dashboard/settings/general", label: "Organization" },
-  { href: "/dashboard/settings/team-members", label: "Team Members" },
+  { href: "/dashboard/settings/team-members", label: "Users" },
   { href: "/dashboard/settings/danger", label: "Danger Zone", danger: true },
 ];
 

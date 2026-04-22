@@ -29,7 +29,7 @@ export function HeroSection() {
           transitionDelay: "150ms",
         }}
       >
-        Your Claw Posts<br className="hidden sm:block" /> While You Build
+        Your AI Social Manager<br className="hidden sm:block" /> While You Build
       </h1>
 
       <p
@@ -40,7 +40,7 @@ export function HeroSection() {
           transitionDelay: "300ms",
         }}
       >
-        ClawPoster is an AI social media management tool that generates branded posts, adapts them for each platform, and publishes on your schedule — across X, LinkedIn, Instagram, and more.
+        SMM Agent generates branded posts, adapts them for each platform, and publishes on your schedule across X, LinkedIn, Instagram, and more.
       </p>
 
       <div

@@ -27,6 +27,7 @@ import { recordTenantAuditEvent } from "@/lib/audit";
 import { callOpenAIResponses } from "@/lib/langsmith";
 import { resolveOpenAIResponsesRuntime } from "@/lib/model-runtime";
 import { executeSafeInternalAgentToolCall } from "@/agent/server-adapter";
+import { parseProductMode, type ProductMode } from "@/lib/user-preferences";
 
 const MODEL =
   process.env.OPENAI_SOCIAL_AGENT_MODEL ||
@@ -50,6 +51,7 @@ type ClientPageContext = {
   title?: string;
   heading?: string;
   replyLanguage?: string | null;
+  productMode?: ProductMode;
 };
 
 type SupportTicketCommand = Pick<
@@ -277,18 +279,21 @@ async function handleInlineAction(
 
     let delivery = "Invite email sent.";
     try {
-      await sendWorkspaceInvitationEmail({
+      const result = await sendWorkspaceInvitationEmail({
         email: invitation.email,
         token: invitation.token,
         organizationName: tenant.organization.name,
         inviterName: tenant.user.fullName ?? tenant.user.email,
         baseUrl: getRequestAppUrl({ headers: request.headers, url: request.url }),
       });
+      if (result.provider === "preview" || result.provider === "log") {
+        delivery = "Invite created, but email delivery is not configured. Copy the access link from Users.";
+      }
     } catch {
       delivery = "Invite created, but email delivery failed.";
     }
 
-    return `${delivery}\n${invitation.email} now has a pending ${invite.role} invite for ${tenant.currentWorkspace.name}. Manage or copy the invite from Team Members.`;
+    return `${delivery}\n${invitation.email} now has pending ${invite.role} access for ${tenant.currentWorkspace.name}. Manage or copy the access link from Users.`;
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Invite could not be created.";
@@ -467,7 +472,12 @@ function buildPrompt(
   messages: ChatMessage[],
   pageContext: ClientPageContext
 ) {
-  return `You are Social Agent inside the social-poster dashboard.
+  const modeInstruction = pageContext.productMode === "saas"
+    ? "Mode: SaaS. Behave like a dashboard copilot: explain where to click, summarize state, and avoid suggesting autonomous multi-step execution."
+    : "Mode: Agentic. Behave like an AI social media manager: propose plans, draft next actions, and ask for approval before side effects.";
+
+  return `You are SMM Agent inside the SMM Agent dashboard.
+${modeInstruction}
 Answer based on sanitized workspace DB and code context below.
 Do not reveal secrets, env values, access tokens, raw credential values, cookies, or API keys.
 Do not mention internal ids, credential keys, credential counts, account id presence, auth method internals, or raw database field names.
@@ -506,7 +516,7 @@ function fallbackAnswer(context: SocialAgentContext, message: string) {
   if (lowered.includes("invite") || lowered.includes("team member")) {
     return context.access.canInviteMembers
       ? "Use `/invite email@example.com as viewer|client|contributor|editor|manager` to invite someone to the current workspace."
-      : "You can view this workspace, but inviting team members requires org admin access.";
+      : "You can view this workspace, but inviting users requires org admin access.";
   }
 
   if (
@@ -592,6 +602,7 @@ function sanitizePageContext(value: ClientPageContext | undefined): ClientPageCo
     path: sanitizeShortText(value?.path, 120),
     title: sanitizeShortText(value?.title, 160),
     heading: sanitizeShortText(value?.heading, 120),
+    productMode: parseProductMode(value?.productMode),
     replyLanguage:
       value?.replyLanguage === "any" || value?.replyLanguage === "en"
         ? value.replyLanguage

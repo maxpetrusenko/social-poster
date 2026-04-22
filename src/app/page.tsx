@@ -21,51 +21,100 @@ async function getRequestHost() {
   return normalizeHost(h.get("x-forwarded-host") ?? h.get("host"));
 }
 
+function previewImage(url: string) {
+  return {
+    url,
+    width: 1200,
+    height: 630,
+    alt: "SMM Agent dashboard preview",
+  };
+}
+
 export async function generateMetadata(): Promise<Metadata> {
   const host = await getRequestHost();
 
   if (host === SITE_DOMAINS.smm) {
+    const canonicalUrl = getSmmCanonicalUrl("/");
+    const previewUrl = getSmmCanonicalUrl("/opengraph-image");
+
     return {
       title: "Social Media Automation for Agencies — SMMClaw",
       description:
         "SMMClaw is a ClawPoster-powered social media automation surface for agencies, lean teams, and operators managing multiple brands.",
       alternates: {
-        canonical: getSmmCanonicalUrl("/"),
+        canonical: canonicalUrl,
       },
       openGraph: {
         title: "Social Media Automation for Agencies — SMMClaw",
         description:
           "A ClawPoster-powered workflow for agencies and lean teams that need more client-ready social output without more headcount.",
-        url: getSmmCanonicalUrl("/"),
+        url: canonicalUrl,
         siteName: "SMMClaw",
+        images: [previewImage(previewUrl)],
+      },
+      twitter: {
+        card: "summary_large_image",
+        title: "Social Media Automation for Agencies — SMMClaw",
+        description:
+          "A ClawPoster-powered workflow for agencies and lean teams that need more client-ready social output without more headcount.",
+        images: [previewUrl],
       },
     };
   }
 
   if (host === SITE_DOMAINS.smmAgent) {
+    const canonicalUrl = getSmmAgentCanonicalUrl("/");
+    const previewUrl = getSmmAgentCanonicalUrl("/opengraph-image");
+
     return {
-      title: "AI Social Media Agent for Operators — SMMAgent",
+      title: "AI Social Media Agent for Operators — SMM Agent",
       description:
-        "SMMAgent is the agent-focused surface for source-backed drafts, reply queues, model keys, schedules, and approval-aware publishing.",
+        "SMM Agent is the agent-focused surface for source-backed drafts, reply queues, model keys, schedules, and approval-aware publishing.",
       alternates: {
-        canonical: getSmmAgentCanonicalUrl("/"),
+        canonical: canonicalUrl,
       },
       openGraph: {
-        title: "AI Social Media Agent for Operators — SMMAgent",
+        title: "AI Social Media Agent for Operators — SMM Agent",
         description:
           "An agent operating layer for social posts, replies, approvals, and platform-specific distribution.",
-        url: getSmmAgentCanonicalUrl("/"),
-        siteName: "SMMAgent",
+        url: canonicalUrl,
+        siteName: "SMM Agent",
+        images: [previewImage(previewUrl)],
+      },
+      twitter: {
+        card: "summary_large_image",
+        title: "AI Social Media Agent for Operators — SMM Agent",
+        description:
+          "An agent operating layer for social posts, replies, approvals, and platform-specific distribution.",
+        images: [previewUrl],
       },
     };
   }
 
+  const canonicalUrl = getProductCanonicalUrl("/");
+  const previewUrl = getProductCanonicalUrl("/opengraph-image");
+
   return {
-    title: "ClawPoster — AI Social Posting Agent",
+    title: "SMM Agent — Social Media Management",
     description:
-      "Your AI agent for social posting. Writes your posts, adapts per platform, and publishes while you build.",
+      "SMM Agent helps teams create, schedule, publish, and monitor social content from one dashboard.",
     alternates: {
-      canonical: getProductCanonicalUrl("/"),
+      canonical: canonicalUrl,
+    },
+    openGraph: {
+      title: "SMM Agent — Social Media Management",
+      description:
+        "Create, schedule, publish, and monitor social content from one workspace.",
+      url: canonicalUrl,
+      siteName: "SMM Agent",
+      images: [previewImage(previewUrl)],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: "SMM Agent — Social Media Management",
+      description:
+        "Create, schedule, publish, and monitor social content from one workspace.",
+      images: [previewUrl],
     },
   };
 }
@@ -91,9 +140,9 @@ export default async function HomePage() {
   if (host === SITE_DOMAINS.smmAgent) {
     return (
       <>
-        <LandingNav isLoggedIn={!!session} brandName="SMMAgent" />
+        <LandingNav isLoggedIn={!!session} brandName="SMM Agent" />
         <SmmAgentHome />
-        <LandingFooter brandName="SMMAgent" />
+        <LandingFooter brandName="SMM Agent" />
       </>
     );
   }

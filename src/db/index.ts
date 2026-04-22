@@ -663,6 +663,21 @@ function ensureSchema(sqlite: Database.Database) {
     ON notification_preferences(user_id, workspace_id);
   `);
 
+  // ── User UI Preferences ──
+  sqlite.exec(`
+    CREATE TABLE IF NOT EXISTS user_ui_preferences (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id),
+      workspace_id TEXT NOT NULL REFERENCES workspaces(id),
+      product_mode TEXT NOT NULL DEFAULT 'saas',
+      agent_dock_mode TEXT NOT NULL DEFAULT 'right-widget',
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS user_ui_prefs_user_workspace_idx
+    ON user_ui_preferences(user_id, workspace_id);
+  `);
+
   // ── Usage Events ──
   sqlite.exec(`
     CREATE TABLE IF NOT EXISTS usage_events (

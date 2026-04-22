@@ -108,7 +108,7 @@ export const channelShellNav: ShellNavItem[] = [
 
 export const utilityShellNav: ShellNavItem[] = [
   {
-    label: "Dashboard",
+    label: "Home",
     href: "/dashboard",
     blurb: "Main board and KPIs.",
     icon: "overview",
@@ -118,6 +118,74 @@ export const utilityShellNav: ShellNavItem[] = [
     href: "/dashboard/pipeline",
     blurb: "Run history and step truth.",
     icon: "pipeline",
+  },
+];
+
+export const agenticShellNav: ShellNavItem[] = [
+  {
+    label: "Agent",
+    href: "/dashboard",
+    blurb: "Tell SMM Agent what to do next.",
+    icon: "overview",
+  },
+  {
+    label: "Review",
+    href: "/dashboard/posts",
+    blurb: "Approve drafts, replies, and blocked actions.",
+    icon: "posts",
+  },
+  {
+    label: "Calendar",
+    href: "/dashboard/calendar",
+    blurb: "Planned posts, recurring runs, and history.",
+    icon: "publish",
+  },
+  {
+    label: "Sources",
+    href: "/dashboard/rss",
+    blurb: "Feeds, profiles, campaigns, and source evidence.",
+    icon: "rss",
+    children: [
+      {
+        label: "RSS",
+        href: "/dashboard/rss",
+        blurb: "Feed scoring and rewrite rules.",
+        icon: "rss",
+      },
+      {
+        label: "Campaigns",
+        href: "/dashboard/campaigns",
+        blurb: "Profile-based creative runs.",
+        icon: "categories",
+      },
+      {
+        label: "Profiles",
+        href: "/dashboard/profiles",
+        blurb: "Voice, face, tone presets.",
+        icon: "profiles",
+      },
+    ],
+  },
+  {
+    label: "Results",
+    href: "/dashboard/pipeline",
+    blurb: "Runs, logs, and performance truth.",
+    icon: "pipeline",
+  },
+];
+
+export const agenticFooterShellNav: ShellNavItem[] = [
+  {
+    label: "Accounts",
+    href: "/dashboard/workspace-settings/social-accounts",
+    blurb: "Connect, verify, reconnect.",
+    icon: "accounts",
+  },
+  {
+    label: "Settings",
+    href: "/dashboard/settings",
+    blurb: "Mode, placement, billing, API keys.",
+    icon: "settings",
   },
 ];
 

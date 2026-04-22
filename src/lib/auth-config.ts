@@ -14,24 +14,25 @@ function isSupabaseEnvConfigured(env: NodeJS.ProcessEnv) {
 export function resolveAuthMode(
   env: NodeJS.ProcessEnv = process.env
 ): AuthMode {
-  const bypassRequested = env.DISABLE_AUTH !== "false";
+  const bypassRequested = env.DISABLE_AUTH === "true";
+  const bypassExplicitlyDisabled = env.DISABLE_AUTH === "false";
   const supabaseConfigured = isSupabaseEnvConfigured(env);
   const isProduction = env.NODE_ENV === "production";
 
   if (isProduction) {
-    if (bypassRequested || !supabaseConfigured) {
+    if (bypassRequested || !bypassExplicitlyDisabled || !supabaseConfigured) {
       return "misconfigured";
     }
 
     return "supabase";
   }
 
-  if (supabaseConfigured) {
-    return "supabase";
-  }
-
   if (bypassRequested) {
     return "bypass";
+  }
+
+  if (supabaseConfigured) {
+    return "supabase";
   }
 
   return "magic_link";
@@ -44,8 +45,12 @@ export function getAuthConfigError(
     return null;
   }
 
-  if (env.NODE_ENV === "production" && env.DISABLE_AUTH !== "false") {
+  if (env.NODE_ENV === "production" && env.DISABLE_AUTH === "true") {
     return "Production auth bypass is forbidden. Set DISABLE_AUTH=false.";
+  }
+
+  if (env.NODE_ENV === "production" && env.DISABLE_AUTH !== "false") {
+    return "Production auth must explicitly set DISABLE_AUTH=false.";
   }
 
   if (!isSupabaseEnvConfigured(env)) {
@@ -60,5 +65,10 @@ export const AUTH_DISABLED = AUTH_MODE === "bypass";
 export const ALLOWED_EMAIL =
   process.env.AUTH_EMAIL ?? "max.petrusenko@gmail.com";
 export const SESSION_COOKIE = "sp_session";
+export const BYPASS_SIGNED_OUT_COOKIE = "sp_bypass_signed_out";
 export const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 export const MAGIC_LINK_TTL_MS = 15 * 60 * 1000;
+
+export function isBypassSignedOutCookieValue(value?: string | null) {
+  return value === "1";
+}

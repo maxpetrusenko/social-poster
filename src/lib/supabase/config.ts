@@ -44,8 +44,22 @@ export function getWorkspaceAllowedDomains(): string[] {
     .filter(Boolean);
 }
 
+export function isSupabaseSignInOpenToAll(
+  env: NodeJS.ProcessEnv = process.env
+): boolean {
+  const value = (env.SUPABASE_AUTH_ALLOW_ALL_USERS ?? "true")
+    .trim()
+    .toLowerCase();
+
+  return !["0", "false", "no", "off"].includes(value);
+}
+
 export function isWorkspaceUserAllowed(email?: string | null): boolean {
   if (!email) return false;
+
+  if (isSupabaseSignInOpenToAll()) {
+    return true;
+  }
 
   const normalizedEmail = email.trim().toLowerCase();
   const allowlist = getWorkspaceAllowedEmails();
@@ -69,7 +83,7 @@ export function getWorkspaceAuthErrorMessage(
     case "missing-config":
       return "Google auth is not configured yet.";
     case "unauthorized":
-      return "That Google account is not approved for this dashboard.";
+      return "That sign-in session is not authorized.";
     case "oauth":
       return "Google sign-in did not complete. Try again.";
     default:

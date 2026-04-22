@@ -1,7 +1,7 @@
 import { createMagicLink } from "@/lib/auth";
 import {
   getMagicLinkUrl,
-  hasSmtpConfig,
+  hasEmailDeliveryConfig,
   sendMagicLinkEmail,
 } from "@/lib/mail";
 import { AUTH_MODE, getAuthConfigError } from "@/lib/auth-config";
@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      previewUrl: hasSmtpConfig() ? null : getMagicLinkUrl(token, baseUrl),
+      previewUrl: hasEmailDeliveryConfig() ? null : getMagicLinkUrl(token, baseUrl),
     });
   } catch (error) {
     if (error instanceof z.ZodError) {

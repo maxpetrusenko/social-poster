@@ -8,7 +8,7 @@ type LegalSection = {
 const relatedSites = [
   { label: "ClawPoster", href: "https://clawposter.app" },
   { label: "SMMClaw", href: "https://smmclaw.app" },
-  { label: "SMMAgent", href: "https://smmagent.app" },
+  { label: "SMM Agent", href: "https://smmagent.app" },
   { label: "App", href: "https://social.maxpetrusenko.com" },
   { label: "Max Tech", href: "https://www.maxpetrusenko.com/tech" },
 ];

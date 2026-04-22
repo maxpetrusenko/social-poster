@@ -49,7 +49,7 @@ const subjectByType = {
   account_disconnect: "Social account disconnected",
   payment_alert: "Billing alert",
   usage_alert: "Usage limit alert",
-  marketing: "ClawPoster update",
+  marketing: "SMM Agent update",
 } as const;
 
 function subjectFor(type: NotificationEmailType, data: NotificationData) {
@@ -83,7 +83,7 @@ function renderBody(type: NotificationEmailType, data: NotificationData) {
   if (type === "payment_alert") {
     return data.message ?? "There is a billing issue that needs attention.";
   }
-  return data.message ?? "A new ClawPoster update is ready.";
+  return data.message ?? "A new SMM Agent update is ready.";
 }
 
 function renderEmailHtml(type: NotificationEmailType, data: NotificationData) {
@@ -94,14 +94,14 @@ function renderEmailHtml(type: NotificationEmailType, data: NotificationData) {
   const title = escapeHtml(subjectFor(type, data));
   const body = escapeHtml(renderBody(type, data));
   const href = data.href ?? "/dashboard";
-  const cta = type === "account_disconnect" ? "Reconnect" : type === "usage_alert" ? "View usage" : "Open ClawPoster";
+  const cta = type === "account_disconnect" ? "Reconnect" : type === "usage_alert" ? "View usage" : "Open SMM Agent";
 
   return `
     <div style="font-family: system-ui, sans-serif; max-width: 520px; margin: 0 auto; padding: 40px 20px;">
       <h2 style="margin: 0 0 16px; color: #171717;">${title}</h2>
       <p style="color: #5f523f; line-height: 1.6; margin: 0 0 24px;">${body}</p>
       <a href="${escapeHtml(appHref(href))}" style="display: inline-block; background: #171717; color: #fffaf2; padding: 12px 18px; border-radius: 8px; text-decoration: none; font-weight: 700;">${cta}</a>
-      <p style="color: #9b8c78; font-size: 12px; line-height: 1.5; margin: 28px 0 0;">Manage notification preferences in ClawPoster settings.</p>
+      <p style="color: #9b8c78; font-size: 12px; line-height: 1.5; margin: 28px 0 0;">Manage notification preferences in SMM Agent settings.</p>
     </div>
   `;
 }

@@ -36,7 +36,7 @@ const context = {
       action: "Post created",
       status: "success",
       endpoint: "/dashboard/posts/post_1",
-      platform: "ClawPoster",
+      platform: "SMM Agent",
       account: "Workspace",
       createdAt: "2026-04-21T11:30:00.000Z",
     },

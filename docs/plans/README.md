@@ -15,24 +15,25 @@ Read these in order before major feature work:
 6. `/Users/maxpetrusenko/Desktop/Projects/social-poster/docs/plans/composer-calendar-schema-v2.md`
 7. `/Users/maxpetrusenko/Desktop/Projects/social-poster/docs/plans/parity-implementation-backlog.md`
 8. `/Users/maxpetrusenko/Desktop/Projects/social-poster/docs/plans/migration-and-rollout-runbook.md`
-9. `/Users/maxpetrusenko/Desktop/Projects/social-poster/docs/plans/open-decisions.md`
-10. `/Users/maxpetrusenko/Desktop/Projects/social-poster/docs/plans/approvals-and-client-portal.md`
-11. `/Users/maxpetrusenko/Desktop/Projects/social-poster/docs/plans/inbox-and-replies.md`
-12. `/Users/maxpetrusenko/Desktop/Projects/social-poster/docs/plans/notifications-and-activity.md`
-13. `/Users/maxpetrusenko/Desktop/Projects/social-poster/docs/plans/analytics-dashboard.md`
-14. `/Users/maxpetrusenko/Desktop/Projects/social-poster/docs/plans/agent-oss-positioning.md`
-15. `/Users/maxpetrusenko/Desktop/Projects/social-poster/docs/plans/product-hardening-before-oss.md`
-16. `/Users/maxpetrusenko/Desktop/Projects/social-poster/docs/plans/half-baked-feature-roadmap.md`
-17. `/Users/maxpetrusenko/Desktop/Projects/social-poster/docs/plans/agent-tool-runtime-mvp.md`
-18. `/Users/maxpetrusenko/Desktop/Projects/social-poster/docs/plans/source-backed-posting-plan.md`
-19. `/Users/maxpetrusenko/Desktop/Projects/social-poster/docs/plans/product-trust-hardening-plan.md`
-20. `/Users/maxpetrusenko/Desktop/Projects/social-poster/docs/plans/content-engine-article-agent.md`
-21. `/Users/maxpetrusenko/Desktop/Projects/social-poster/docs/plans/campaign-creative-engine-plan.md`
-22. `/Users/maxpetrusenko/Desktop/Projects/social-poster/docs/plans/brightbean-menu-port-map.md`
-23. `/Users/maxpetrusenko/Desktop/Projects/social-poster/docs/plans/brightbean-merged-menu-flow.html`
-24. `/Users/maxpetrusenko/Desktop/Projects/social-poster/docs/plans/platform-flow-reference.html`
-25. `/Users/maxpetrusenko/Desktop/Projects/social-poster/docs/plans/page-flow-reference.html`
-26. `/Users/maxpetrusenko/Desktop/Projects/social-poster/docs/plans/flow-handoff-tabs.html`
+9. `/Users/maxpetrusenko/Desktop/Projects/social-poster/docs/plans/supabase-postgres-migration-plan.md`
+10. `/Users/maxpetrusenko/Desktop/Projects/social-poster/docs/plans/open-decisions.md`
+11. `/Users/maxpetrusenko/Desktop/Projects/social-poster/docs/plans/approvals-and-client-portal.md`
+12. `/Users/maxpetrusenko/Desktop/Projects/social-poster/docs/plans/inbox-and-replies.md`
+13. `/Users/maxpetrusenko/Desktop/Projects/social-poster/docs/plans/notifications-and-activity.md`
+14. `/Users/maxpetrusenko/Desktop/Projects/social-poster/docs/plans/analytics-dashboard.md`
+15. `/Users/maxpetrusenko/Desktop/Projects/social-poster/docs/plans/agent-oss-positioning.md`
+16. `/Users/maxpetrusenko/Desktop/Projects/social-poster/docs/plans/product-hardening-before-oss.md`
+17. `/Users/maxpetrusenko/Desktop/Projects/social-poster/docs/plans/half-baked-feature-roadmap.md`
+18. `/Users/maxpetrusenko/Desktop/Projects/social-poster/docs/plans/agent-tool-runtime-mvp.md`
+19. `/Users/maxpetrusenko/Desktop/Projects/social-poster/docs/plans/source-backed-posting-plan.md`
+20. `/Users/maxpetrusenko/Desktop/Projects/social-poster/docs/plans/product-trust-hardening-plan.md`
+21. `/Users/maxpetrusenko/Desktop/Projects/social-poster/docs/plans/content-engine-article-agent.md`
+22. `/Users/maxpetrusenko/Desktop/Projects/social-poster/docs/plans/campaign-creative-engine-plan.md`
+23. `/Users/maxpetrusenko/Desktop/Projects/social-poster/docs/plans/brightbean-menu-port-map.md`
+24. `/Users/maxpetrusenko/Desktop/Projects/social-poster/docs/plans/brightbean-merged-menu-flow.html`
+25. `/Users/maxpetrusenko/Desktop/Projects/social-poster/docs/plans/platform-flow-reference.html`
+26. `/Users/maxpetrusenko/Desktop/Projects/social-poster/docs/plans/page-flow-reference.html`
+27. `/Users/maxpetrusenko/Desktop/Projects/social-poster/docs/plans/flow-handoff-tabs.html`
 
 ## What Each Doc Solves
 
@@ -75,6 +76,12 @@ Read these in order before major feature work:
   - scheduling
   - publish attempts
   - activity log
+
+- `supabase-postgres-migration-plan.md`
+  - Supabase Auth and Postgres target architecture
+  - SQLite to Drizzle Postgres migration workstreams
+  - app invite behavior during Auth cutover
+  - cutover, rollback, and verification checklists
 
 ### Execution
 

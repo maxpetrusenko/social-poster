@@ -101,7 +101,7 @@ export function getPublicSiteKey(host?: string | null): PublicSiteKey {
 export function getPublicSiteBrandName(host?: string | null) {
   const siteKey = getPublicSiteKey(host);
   if (siteKey === "smmclaw") return "SMMClaw";
-  if (siteKey === "smmagent") return "SMMAgent";
+  if (siteKey === "smmagent") return "SMM Agent";
   return "ClawPoster";
 }
 

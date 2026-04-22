@@ -3,12 +3,12 @@ import Link from "next/link";
 const networkLinks = [
   { label: "ClawPoster", href: "https://clawposter.app" },
   { label: "SMMClaw", href: "https://smmclaw.app" },
-  { label: "SMMAgent", href: "https://smmagent.app" },
+  { label: "SMM Agent", href: "https://smmagent.app" },
   { label: "App", href: "https://social.maxpetrusenko.com" },
   { label: "Max Tech", href: "https://www.maxpetrusenko.com/tech" },
 ];
 
-export function LandingFooter({ brandName = "ClawPoster" }: { brandName?: string }) {
+export function LandingFooter({ brandName = "SMM Agent" }: { brandName?: string }) {
   return (
     <footer className="border-t border-[var(--line)] py-12 px-6">
       <div className="container flex flex-col items-center justify-between gap-6 text-sm text-[var(--muted)] md:flex-row">

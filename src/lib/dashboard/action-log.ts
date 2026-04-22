@@ -156,7 +156,7 @@ export async function getLatestActionLogRows(input: {
             : typeof metadata.endpoint === "string"
               ? metadata.endpoint
               : audit.targetType,
-        platform: typeof metadata.platform === "string" ? metadata.platform : "ClawPoster",
+        platform: typeof metadata.platform === "string" ? metadata.platform : "SMM Agent",
         account: audit.actorEmail ?? "System",
         createdAt: audit.createdAt,
         traceId: trace.traceId,

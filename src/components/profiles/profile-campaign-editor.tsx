@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, type CSSProperties } from "react";
-import { CopyCheck, ImageIcon, Scissors } from "lucide-react";
+import { ChevronLeft, CopyCheck, Download, History, Scissors } from "lucide-react";
 import type { Profile } from "./profile-workspace-config";
 import {
   CampaignDeliveryPanel,
@@ -248,70 +248,95 @@ export function CampaignEditor({
   }
 
   return (
-    <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
-      <section className="space-y-5">
-        <div className="rounded-[8px] border border-[#d6d6d6] bg-white p-5">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#666]">Campaign</p>
-              <h2 className="mt-1 text-2xl font-semibold text-[#171717]">{campaign.title}</h2>
-              <p className="mt-1 text-xs text-[#666]">
-                {linkedCampaignId ? `DB campaign ${linkedCampaignId}` : "Not linked to a DB campaign yet"}
-              </p>
-            </div>
-            <span className="rounded-full border border-[#d7d7d7] bg-[#f7f7f7] px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-[#444]">
-              {campaign.status}
-            </span>
+    <div className="grid min-h-[660px] gap-0 bg-[#17191a] text-[#e7ead7] xl:grid-cols-[minmax(0,1fr)_420px]">
+      <section className="space-y-7 px-5 py-6 lg:px-8">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <button
+            type="button"
+            className="inline-flex items-center gap-2 rounded-full border border-[#3c4035] bg-[#141617] px-4 py-2 text-sm font-semibold text-[#c5d887]"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            Back to campaigns
+          </button>
+          <div className="inline-flex items-center gap-3 rounded-full border border-[#3c4035] bg-[#141617] px-4 py-2 text-sm font-semibold text-[#d8dacd]">
+            <History className="h-4 w-4 text-[#a8b97b]" />
+            <span>Version history</span>
+            <span className="text-[#c5d887]">2 / 2</span>
           </div>
-          <div className="mt-5 grid gap-4 md:grid-cols-2">
-            <LabeledField label="Header" value={campaign.header} onChange={(value) => updateField("header", value)} />
-            <LabeledField label="Description" value={campaign.description} onChange={(value) => updateField("description", value)} textarea />
-          </div>
-          <label className="mt-4 block">
-            <span className="text-xs font-semibold text-[#555]">Visual prompt</span>
-            <textarea
-              value={campaign.visualPrompt}
-              onChange={(event) => updateField("visualPrompt", event.target.value)}
-              rows={3}
-              className="mt-1 w-full resize-none rounded-[8px] border border-[#d6d6d6] bg-white px-3 py-2 text-sm text-[#171717] outline-none focus:border-[#171717]"
-            />
-          </label>
         </div>
 
-        <div className="grid gap-5 xl:grid-cols-[360px_minmax(0,1fr)]">
-          <div className="rounded-[8px] border border-[#d6d6d6] bg-white p-4">
-            <div className="mb-3 flex items-center justify-between">
-              <div className="flex items-center gap-2 text-sm font-semibold text-[#171717]">
-                <ImageIcon className="h-4 w-4" />
-                Source image
-              </div>
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-[#f0f0f0] px-2 py-1 text-[11px] font-semibold text-[#555]">
-                <Scissors className="h-3 w-3" />
-                overscan
-              </span>
+        <div className="mx-auto max-w-[980px] text-center">
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#a8b97b]">{profile.name}</p>
+          <h2 className="mt-2 font-serif text-4xl font-semibold italic text-[#f2f4eb]">{campaign.title}</h2>
+          <p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-[#b7baae]">{campaign.description}</p>
+        </div>
+
+        <div className="mx-auto max-w-[820px] space-y-6">
+          <div className="mx-auto w-full max-w-[430px]">
+            <div className="rounded-[16px] border border-[#3c4035] bg-[#222620] p-2 shadow-[0_22px_70px_rgba(0,0,0,0.28)]">
+              <PosterCanvas campaign={campaign} artStyle={artStyle} ratio="1 / 1" safeZone />
             </div>
-            <PosterCanvas campaign={campaign} artStyle={artStyle} ratio="1 / 1" safeZone />
-            {campaign.imageUrl ? <p className="mt-3 break-all text-xs leading-5 text-[#666]">Image URL: {campaign.imageUrl}</p> : null}
-            <p className="mt-3 text-xs leading-5 text-[#666]">
-              Source stays square, but the generated scene is framed wider inside it so platform crops can reuse the same art.
-            </p>
+            <div className="mt-4 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => void regenerate()}
+                className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-full bg-[#c5d887] px-4 text-sm font-semibold text-[#17191a]"
+              >
+                <Scissors className="h-4 w-4" />
+                Fix layout
+              </button>
+              <button
+                type="button"
+                className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-[#4a5039] text-[#c5d887]"
+                aria-label="Download source image"
+              >
+                <Download className="h-4 w-4" />
+              </button>
+            </div>
           </div>
 
-          <div className="rounded-[8px] border border-[#d6d6d6] bg-white p-4">
-            <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-[#171717]">
-              <CopyCheck className="h-4 w-4" />
-              Platform crops
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              {CROP_PRESETS.map((preset) => (
-                <div key={preset.label} className="rounded-[8px] border border-[#e2e2e2] bg-[#fafafa] p-2">
-                  <PosterCanvas campaign={campaign} artStyle={artStyle} ratio={preset.ratio} cropX={preset.x} cropY={preset.y} small />
-                  <div className="mt-2 flex items-center justify-between gap-2 text-xs">
-                    <span className="font-semibold text-[#222]">{preset.label}</span>
-                    <span className="text-[#666]">{preset.size}</span>
-                  </div>
+          <div className="space-y-5">
+            <div className="rounded-[18px] border border-[#3c4035] bg-[#202324] p-4">
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#a8b97b]">Copy</p>
+                  <p className="text-sm text-[#a8aa9e]">{linkedCampaignId ? `DB campaign ${linkedCampaignId.slice(0, 8)}` : "Local campaign"}</p>
                 </div>
-              ))}
+                <span className="rounded-full border border-[#4b503f] bg-[#17191a] px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-[#c5d887]">
+                  {campaign.status}
+                </span>
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <LabeledField label="Header" value={campaign.header} onChange={(value) => updateField("header", value)} />
+                <LabeledField label="Description" value={campaign.description} onChange={(value) => updateField("description", value)} textarea />
+              </div>
+              <label className="mt-4 block">
+                <span className="text-xs font-semibold text-[#b7baae]">Visual prompt</span>
+                <textarea
+                  value={campaign.visualPrompt}
+                  onChange={(event) => updateField("visualPrompt", event.target.value)}
+                  rows={3}
+                  className="mt-1 w-full resize-none rounded-[10px] border border-[#363a32] bg-[#17191a] px-3 py-2 text-sm text-[#f1f3e8] outline-none focus:border-[#c5d887]"
+                />
+              </label>
+            </div>
+
+            <div className="rounded-[18px] border border-[#3c4035] bg-[#202324] p-4">
+              <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-[#f1f3e8]">
+                <CopyCheck className="h-4 w-4 text-[#a8b97b]" />
+                Platform crops
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                {CROP_PRESETS.map((preset) => (
+                  <div key={preset.label} className="overflow-hidden rounded-[12px] border border-[#34382f] bg-[#17191a] p-2">
+                    <PosterCanvas campaign={campaign} artStyle={artStyle} ratio={preset.ratio} cropX={preset.x} cropY={preset.y} small />
+                    <div className="mt-2 flex items-center justify-between gap-2 text-xs">
+                      <span className="font-semibold text-[#e7ead7]">{preset.label}</span>
+                      <span className="text-[#a8aa9e]">{preset.size}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
@@ -368,10 +393,10 @@ function PosterCanvas({
       }
     : artStyle;
   return (
-    <div className="relative overflow-hidden rounded-[8px] border border-[#d6d6d6] bg-[#111]" style={{ aspectRatio: ratio }}>
+    <div className="relative overflow-hidden rounded-[12px] border border-[#4b503f] bg-[#101112]" style={{ aspectRatio: ratio }}>
       <div className="absolute inset-[-14%]" style={{ ...sourceStyle, backgroundPosition: `${cropX} ${cropY}` }} />
-      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.12),rgba(0,0,0,0.18)_45%,rgba(0,0,0,0.72))]" />
-      {safeZone ? <div className="absolute inset-[12%] rounded-[6px] border border-dashed border-white/45" /> : null}
+      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.10),rgba(0,0,0,0.20)_45%,rgba(0,0,0,0.76))]" />
+      {safeZone ? <div className="absolute inset-[12%] rounded-[8px] border border-dashed border-[#c5d887]/50" /> : null}
       <div className="absolute inset-x-4 bottom-4 text-center text-white">
         <p className={`${small ? "text-[11px]" : "text-xl"} font-bold leading-tight drop-shadow`}>{campaign.header}</p>
         {!small ? <p className="mt-2 text-sm font-medium leading-snug text-white/88">{campaign.description}</p> : null}
@@ -393,19 +418,19 @@ function LabeledField({
 }) {
   return (
     <label className="block">
-      <span className="text-xs font-semibold text-[#555]">{label}</span>
+      <span className="text-xs font-semibold text-[#b7baae]">{label}</span>
       {textarea ? (
         <textarea
           value={value}
           onChange={(event) => onChange(event.target.value)}
           rows={3}
-          className="mt-1 w-full resize-none rounded-[8px] border border-[#d6d6d6] bg-white px-3 py-2 text-sm text-[#171717] outline-none focus:border-[#171717]"
+          className="mt-1 w-full resize-none rounded-[10px] border border-[#363a32] bg-[#17191a] px-3 py-2 text-sm text-[#f1f3e8] outline-none focus:border-[#c5d887]"
         />
       ) : (
         <input
           value={value}
           onChange={(event) => onChange(event.target.value)}
-          className="mt-1 w-full rounded-[8px] border border-[#d6d6d6] bg-white px-3 py-2 text-sm text-[#171717] outline-none focus:border-[#171717]"
+          className="mt-1 w-full rounded-[10px] border border-[#363a32] bg-[#17191a] px-3 py-2 text-sm text-[#f1f3e8] outline-none focus:border-[#c5d887]"
         />
       )}
     </label>

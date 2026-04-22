@@ -38,6 +38,18 @@ test("resolveAuthMode keeps local magic-link path when bypass is disabled", () =
   );
 });
 
+test("resolveAuthMode keeps local magic-link path when bypass is unset", () => {
+  assert.equal(
+    resolveAuthMode({
+      NODE_ENV: "development",
+      DISABLE_AUTH: undefined,
+      NEXT_PUBLIC_SUPABASE_URL: "",
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: "",
+    }),
+    "magic_link"
+  );
+});
+
 test("getAuthConfigError explains production bypass failures", () => {
   assert.match(
     getAuthConfigError({

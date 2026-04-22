@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Activity,
   Bell,
@@ -25,17 +25,25 @@ import {
   Workflow,
   X,
 } from "lucide-react";
-import { LogoutButton } from "@/components/logout-button";
 import { SocialAgentWidget } from "@/components/dashboard/social-agent-widget";
 import { SupportTicketButton } from "@/components/dashboard/support-ticket-button";
 import { cn } from "@/lib/utils";
 import {
+  agenticFooterShellNav,
+  agenticShellNav,
   channelShellNav,
   footerShellNav,
   utilityShellNav,
   workspaceShellNav,
   type ShellNavItem,
 } from "@/lib/dashboard-shell";
+import {
+  parseAgentDockMode,
+  parseProductMode,
+  UI_PREFERENCES_STORAGE_KEY,
+  type AgentDockMode,
+  type ProductMode,
+} from "@/lib/user-preferences";
 
 type InboxUnreadCounts = {
   replies: number;
@@ -95,7 +103,7 @@ const headerCopy: HeaderConfig[] = [
   { match: "/dashboard/settings/model-providers", title: "Model API Keys", description: "Bring your own model keys, test them, and choose generation defaults." },
   { match: "/dashboard/settings/api-keys", title: "App API Keys", description: "Authentication tokens for the programmatic API." },
   { match: "/dashboard/logs", title: "Logs", description: "Latest user actions, publish results, schedules, replies, and LangSmith traces." },
-  { match: "/dashboard/settings/team-members", title: "Team Members", description: "Manage seats, roles, and workspace access." },
+  { match: "/dashboard/settings/team-members", title: "Users", description: "Manage user seats and account roles." },
   { match: "/dashboard/settings", title: "Settings", description: "Usage, profile, notifications, and account preferences." },
   { match: "/dashboard/platforms", title: "Platforms", description: "Review channel setup, delivery state, and configuration." },
   { match: "/dashboard/campaigns", title: "Campaigns", description: "Generate, edit, and approve profile-based creative." },
@@ -112,7 +120,7 @@ const headerCopy: HeaderConfig[] = [
   { match: "/dashboard/categories", title: "Recurrent Posts", description: "Review recurring slots, themes, and content buckets." },
   { match: "/dashboard/rss", title: "RSS", description: "Manage feed sources, candidate scoring, rewrite templates, and image selection." },
   { match: "/dashboard/pipeline", title: "Pipeline", description: "Inspect run history, logs, and execution status." },
-  { match: "/dashboard", title: "Dashboard", description: "See the main board, current metrics, and workspace status." },
+  { match: "/dashboard", title: "SMM Agent", description: "See the main board, current metrics, and workspace status." },
 ];
 
 function UnreadBadge({ count }: { count: number }) {
@@ -309,20 +317,68 @@ export function DashboardDrawerShell({
   children,
   showAdminLink,
   inboxUnreadCounts,
+  productMode,
+  agentDockMode,
 }: {
   children: React.ReactNode;
   showAdminLink?: boolean;
   inboxUnreadCounts?: InboxUnreadCounts;
+  productMode: ProductMode;
+  agentDockMode: AgentDockMode;
 }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [compact, setCompact] = useState(false);
+  const [preferences, setPreferences] = useState({ productMode, agentDockMode });
   const dashboardItem = utilityShellNav.find((item) => item.href === "/dashboard");
   const secondaryUtilityItems = utilityShellNav.filter((item) => item.href !== "/dashboard");
-  const currentHeader =
+  const matchedHeader =
     headerCopy.find((item) => pathname === item.match || (item.match !== "/dashboard" && pathname.startsWith(item.match))) ??
     headerCopy[headerCopy.length - 1];
   const badges = buildBadges(inboxUnreadCounts, pathname);
+  const isAgenticMode = preferences.productMode === "agentic";
+  const currentHeader =
+    isAgenticMode && pathname === "/dashboard"
+      ? {
+          ...matchedHeader,
+          title: "Agent",
+          description: "Tell SMM Agent what to plan, draft, review, or fix.",
+        }
+      : matchedHeader;
+  const bottomNav = isAgenticMode ? agenticFooterShellNav : footerShellNav;
+
+  useEffect(() => {
+    window.localStorage.removeItem("smmagent.uiPreferences");
+    const raw = window.localStorage.getItem(UI_PREFERENCES_STORAGE_KEY);
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw) as Partial<{
+          productMode: ProductMode;
+          agentDockMode: AgentDockMode;
+        }>;
+        setPreferences({
+          productMode: parseProductMode(parsed.productMode),
+          agentDockMode: parseAgentDockMode(parsed.agentDockMode),
+        });
+      } catch {
+        window.localStorage.removeItem("smmagent.uiPreferences");
+      }
+    }
+
+    function handlePreferenceChange(event: Event) {
+      const detail = (event as CustomEvent<Partial<{
+        productMode: ProductMode;
+        agentDockMode: AgentDockMode;
+      }>>).detail;
+      setPreferences((current) => ({
+        productMode: parseProductMode(detail?.productMode ?? current.productMode),
+        agentDockMode: parseAgentDockMode(detail?.agentDockMode ?? current.agentDockMode),
+      }));
+    }
+
+    window.addEventListener("smmagent:ui-preferences", handlePreferenceChange);
+    return () => window.removeEventListener("smmagent:ui-preferences", handlePreferenceChange);
+  }, []);
 
   return (
     <div className="min-h-screen bg-[#f5f0e6] text-[#171717] lg:flex">
@@ -349,7 +405,7 @@ export function DashboardDrawerShell({
                 className="h-11 w-11 shrink-0 rounded-[0.85rem]"
               />
               <p className="font-serif text-[2rem] leading-none tracking-[-0.05em] text-[#171717]">
-                ClawPoster
+                SMM Agent
               </p>
             </div>
             <button
@@ -374,48 +430,65 @@ export function DashboardDrawerShell({
           </div>
 
           <div className="flex-1 space-y-6 overflow-y-auto px-4 py-5">
-            {dashboardItem ? (
-              <div>
-                <NavItem
-                  item={dashboardItem}
+            {isAgenticMode ? (
+              <div className="space-y-1.5">
+                {agenticShellNav.map((item) => (
+                  <NavItem
+                    key={item.href}
+                    item={item}
+                    pathname={pathname}
+                    onNavigate={() => setOpen(false)}
+                    compact={compact}
+                    badges={badges}
+                  />
+                ))}
+              </div>
+            ) : (
+              <>
+                {dashboardItem ? (
+                  <div>
+                    <NavItem
+                      item={dashboardItem}
+                      pathname={pathname}
+                      onNavigate={() => setOpen(false)}
+                      compact={compact}
+                      badges={badges}
+                    />
+                  </div>
+                ) : null}
+                <NavSection
+                  title="Workspace"
+                  items={workspaceShellNav}
                   pathname={pathname}
                   onNavigate={() => setOpen(false)}
                   compact={compact}
                   badges={badges}
                 />
-              </div>
-            ) : null}
-            <NavSection
-              title="Workspace"
-              items={workspaceShellNav}
-              pathname={pathname}
-              onNavigate={() => setOpen(false)}
-              compact={compact}
-              badges={badges}
-            />
-            <NavSection
-              title="Channels"
-              items={channelShellNav}
-              pathname={pathname}
-              onNavigate={() => setOpen(false)}
-              compact={compact}
-              badges={badges}
-            />
-            {secondaryUtilityItems.length > 0 ? (
-              <NavSection
-                title="Operator"
-                items={secondaryUtilityItems}
-                pathname={pathname}
-                onNavigate={() => setOpen(false)}
-                compact={compact}
-                badges={badges}
-              />
-            ) : null}
+                <NavSection
+                  title="Channels"
+                  items={channelShellNav}
+                  pathname={pathname}
+                  onNavigate={() => setOpen(false)}
+                  compact={compact}
+                  badges={badges}
+                />
+                {secondaryUtilityItems.length > 0 ? (
+                  <NavSection
+                    title="Operator"
+                    items={secondaryUtilityItems}
+                    pathname={pathname}
+                    onNavigate={() => setOpen(false)}
+                    compact={compact}
+                    badges={badges}
+                  />
+                ) : null}
+              </>
+            )}
           </div>
 
           <div className="border-t border-[rgba(23,23,23,0.06)] px-4 py-4">
             <div className="space-y-1.5">
-              {footerShellNav.map((item) => {
+              {bottomNav.map((item) => {
                 const Icon = iconMap[item.icon];
 
                 return (
@@ -435,14 +508,6 @@ export function DashboardDrawerShell({
                   </Link>
                 );
               })}
-
-              <LogoutButton
-                className={cn(
-                  "flex w-full rounded-[1rem] px-3 py-3 text-left text-sm font-semibold text-[#5f523f] transition hover:bg-[#faf4ea]",
-                  compact ? "items-center justify-center" : "items-center gap-3"
-                )}
-                hideLabel={compact}
-              />
             </div>
           </div>
         </div>
@@ -517,8 +582,18 @@ export function DashboardDrawerShell({
           onClick={() => setOpen(false)}
         />
 
-        <main>{children}</main>
-        <SocialAgentWidget />
+        <div className={cn(
+          preferences.agentDockMode === "left-side" && "lg:flex lg:flex-row",
+          preferences.agentDockMode === "right-side" && "lg:flex lg:flex-row"
+        )}>
+          {preferences.agentDockMode === "left-side" ? (
+            <SocialAgentWidget placement={preferences.agentDockMode} productMode={preferences.productMode} />
+          ) : null}
+          <main className="min-w-0 flex-1">{children}</main>
+          {preferences.agentDockMode !== "left-side" ? (
+            <SocialAgentWidget placement={preferences.agentDockMode} productMode={preferences.productMode} />
+          ) : null}
+        </div>
       </div>
     </div>
   );

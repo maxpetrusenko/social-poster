@@ -15,9 +15,9 @@ type DripKey = (typeof DRIP_EMAILS)[number]["key"];
 
 const dripContent: Record<DripKey, { subject: string; body: string; cta: string; href: string }> = {
   welcome_1: {
-    subject: "Welcome to ClawPoster",
-    body: "You're in! ClawPoster helps you schedule and publish across every social platform from one dashboard. Here's a quick path to your first post:",
-    cta: "Open Dashboard",
+    subject: "Welcome to SMM Agent",
+    body: "You're in! SMM Agent helps you plan, draft, schedule, and publish across every social platform from one agent-first workspace.",
+    cta: "Open SMM Agent",
     href: "/dashboard",
   },
   welcome_2_connect: {
@@ -43,7 +43,7 @@ function renderDripHtml(key: DripKey) {
       <h2 style="margin: 0 0 16px; color: #171717;">${subject}</h2>
       <p style="color: #5f523f; line-height: 1.6; margin: 0 0 24px;">${body}</p>
       <a href="${url}" style="display: inline-block; background: #171717; color: #fffaf2; padding: 12px 18px; border-radius: 8px; text-decoration: none; font-weight: 700;">${cta}</a>
-      <p style="color: #9b8c78; font-size: 12px; line-height: 1.5; margin: 28px 0 0;">You're getting this because you signed up for ClawPoster.</p>
+      <p style="color: #9b8c78; font-size: 12px; line-height: 1.5; margin: 28px 0 0;">You're getting this because you signed up for SMM Agent.</p>
     </div>
   `;
 }

@@ -1,18 +1,37 @@
-import { ShellScaffoldPage } from "@/components/dashboard/shell-scaffold-page";
+import { redirect } from "next/navigation";
+import { and, eq } from "drizzle-orm";
+import { db } from "@/db";
+import { userUiPreferences } from "@/db/schema";
+import { UiPreferencesPanel } from "@/components/settings/ui-preferences-panel";
+import { getTenantContext } from "@/lib/tenancy";
+import {
+  parseAgentDockMode,
+  parseProductMode,
+} from "@/lib/user-preferences";
 
-export default function SettingsPreferencesPage() {
+export const dynamic = "force-dynamic";
+
+export default async function SettingsPreferencesPage() {
+  const tenant = await getTenantContext();
+  if (!tenant) redirect("/login");
+
+  const prefs = await db
+    .select()
+    .from(userUiPreferences)
+    .where(
+      and(
+        eq(userUiPreferences.userId, tenant.user.id),
+        eq(userUiPreferences.workspaceId, tenant.currentWorkspace.id)
+      )
+    )
+    .then((rows) => rows[0] ?? null);
+
   return (
-    <ShellScaffoldPage
-      eyebrow="Settings / Preferences"
-      title="Personal defaults and delivery rules"
-      description="Timezone, density, and notification preferences belong here."
-      primaryAction={{ href: "/dashboard/notifications", label: "Notifications" }}
-      flow="Settings -> Preferences -> user timezone / notification delivery / UX defaults."
-      sections={[
-        { title: "Timezone", description: "User-level timezone override for relative timestamps and planning defaults.", badge: "timezone" },
-        { title: "Notification delivery", description: "Choose channels, batching, and quiet-hour posture.", badge: "delivery" },
-        { title: "UX defaults", description: "Density, landing page, and personal workspace defaults later.", badge: "ux" },
-      ]}
+    <UiPreferencesPanel
+      defaults={{
+        productMode: parseProductMode(prefs?.productMode),
+        agentDockMode: parseAgentDockMode(prefs?.agentDockMode),
+      }}
     />
   );
 }

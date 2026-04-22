@@ -9,7 +9,7 @@ export function isDailyBlogAutomationEnabled() {
 export function getDailyBlogTopic() {
   return (
     process.env.BLOG_AUTOMATION_TOPIC_PROMPT ||
-    "the highest-value source-of-truth article ClawPoster should publish today for founders automating social media"
+    "the highest-value source-of-truth article SMM Agent should publish today for founders automating social media"
   );
 }
 

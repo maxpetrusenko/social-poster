@@ -1,5 +1,11 @@
 import { redirect } from "next/navigation";
-import { AUTH_MODE, getAuthConfigError } from "@/lib/auth-config";
+import { cookies } from "next/headers";
+import {
+  AUTH_MODE,
+  BYPASS_SIGNED_OUT_COOKIE,
+  getAuthConfigError,
+  isBypassSignedOutCookieValue,
+} from "@/lib/auth-config";
 import { GoogleSignInButton } from "@/components/auth/google-sign-in-button";
 import { UnauthorizedSessionReset } from "@/components/auth/unauthorized-session-reset";
 import { LoginForm } from "@/components/login-form";
@@ -11,7 +17,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { isEmailAllowedForAuth } from "@/lib/auth-allowlist";
 
 export const metadata = {
-  title: "ClawPoster — Sign In",
+  title: "SMM Agent — Sign In",
   robots: {
     index: false,
     follow: false,
@@ -37,6 +43,15 @@ function sanitizeNextPath(candidate?: string | null) {
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
   if (AUTH_MODE === "bypass") {
+    const cookieStore = await cookies();
+    if (
+      isBypassSignedOutCookieValue(
+        cookieStore.get(BYPASS_SIGNED_OUT_COOKIE)?.value
+      )
+    ) {
+      return <BypassLoginPage />;
+    }
+
     redirect("/dashboard");
   }
 
@@ -70,13 +85,13 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
       <div className="relative mx-auto flex min-h-screen w-full max-w-6xl flex-col items-center justify-center px-4 py-8 md:px-6 md:py-12">
         <section className="w-full max-w-md rounded-[32px] bg-[#221a16] p-6 text-[#f6ecdc] shadow-[0_16px_40px_rgba(34,26,22,0.18)] md:p-7">
           {shouldResetSession ? <UnauthorizedSessionReset /> : null}
-          <p className="section-eyebrow text-[#d2a35d]">Private Dashboard</p>
+          <p className="section-eyebrow text-[#d2a35d]">Private App</p>
           <h1 className="mt-3 font-serif text-[2rem] leading-none text-[#f6ecdc]">
-            ClawPoster
+            SMM Agent
           </h1>
           <p className="mt-3 text-sm leading-7 text-[#cbbba7]">
             AI-powered social media management tool. Create, schedule,
-            and publish posts across multiple platforms from one dashboard.
+            and publish posts across multiple platforms from one app.
           </p>
 
           <div className="mt-6">
@@ -125,6 +140,36 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
             Privacy Policy
           </a>
         </p>
+      </div>
+    </div>
+  );
+}
+
+function BypassLoginPage() {
+  return (
+    <div className="relative isolate min-h-screen overflow-hidden bg-[#f2ecdf]">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(232,126,67,0.2),transparent_28%),radial-gradient(circle_at_80%_20%,rgba(14,96,108,0.18),transparent_24%),linear-gradient(180deg,#f2ecdf_0%,#e8dcc6_100%)]" />
+
+      <div className="relative mx-auto flex min-h-screen w-full max-w-6xl flex-col items-center justify-center px-4 py-8 md:px-6 md:py-12">
+        <section className="w-full max-w-md rounded-[32px] bg-[#221a16] p-6 text-[#f6ecdc] shadow-[0_16px_40px_rgba(34,26,22,0.18)] md:p-7">
+          <p className="section-eyebrow text-[#d2a35d]">Local Dev</p>
+          <h1 className="mt-3 font-serif text-[2rem] leading-none text-[#f6ecdc]">
+            Signed out
+          </h1>
+          <p className="mt-3 text-sm leading-7 text-[#cbbba7]">
+            Auth bypass is enabled for this local workspace. Continue when you
+            want the SMM Agent session restored.
+          </p>
+
+          <form action="/api/auth/bypass-login" method="post" className="mt-6">
+            <button
+              type="submit"
+              className="h-12 w-full rounded-[18px] bg-[#d2d88f] px-5 text-sm font-semibold text-[#1f2417] transition-colors hover:bg-[#c6cf73]"
+            >
+              Continue to SMM Agent
+            </button>
+          </form>
+        </section>
       </div>
     </div>
   );

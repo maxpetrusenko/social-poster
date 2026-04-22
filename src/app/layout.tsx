@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Cormorant_Garamond, DM_Sans } from "next/font/google";
-import { PRODUCT_ORIGIN } from "@/lib/site-domains";
+import { SMM_AGENT_ORIGIN } from "@/lib/site-domains";
 import "./globals.css";
 
 const sans = DM_Sans({
@@ -15,18 +15,47 @@ const serif = Cormorant_Garamond({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(PRODUCT_ORIGIN),
-  title: "ClawPoster — AI Social Posting Agent",
-  description: "Your AI agent for social posting. Writes your posts, adapts per platform, and publishes while you build.",
+  metadataBase: new URL(SMM_AGENT_ORIGIN),
+  applicationName: "SMM Agent",
+  title: {
+    default: "SMM Agent",
+    template: "%s | SMM Agent",
+  },
+  description:
+    "SMM Agent helps teams create, schedule, publish, and monitor social content from one dashboard.",
+  manifest: "/site.webmanifest",
+  icons: {
+    icon: [
+      { url: "/logo.svg", type: "image/svg+xml" },
+      { url: "/logo-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/logo-64.png", sizes: "64x64", type: "image/png" },
+      { url: "/logo-256.png", sizes: "256x256", type: "image/png" },
+    ],
+    shortcut: [{ url: "/favicon.ico" }],
+    apple: [{ url: "/logo-256.png", sizes: "256x256", type: "image/png" }],
+  },
   openGraph: {
-    title: "ClawPoster — AI Social Posting Agent",
-    description: "Your AI agent for social posting. Writes, adapts, and publishes while you build.",
-    siteName: "ClawPoster",
+    type: "website",
+    url: SMM_AGENT_ORIGIN,
+    title: "SMM Agent",
+    description:
+      "Create, schedule, publish, and monitor social content from one workspace.",
+    siteName: "SMM Agent",
+    images: [
+      {
+        url: "/opengraph-image",
+        width: 1200,
+        height: 630,
+        alt: "SMM Agent dashboard preview",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "ClawPoster — AI Social Posting Agent",
-    description: "Your AI agent for social posting. Writes, adapts, and publishes while you build.",
+    title: "SMM Agent",
+    description:
+      "Create, schedule, publish, and monitor social content from one workspace.",
+    images: ["/opengraph-image"],
   },
 };
 

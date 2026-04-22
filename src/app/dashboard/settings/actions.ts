@@ -18,41 +18,35 @@ import {
   switchCurrentWorkspace,
   updateCurrentWorkspaceGeneral,
   updateMemberOrgRole,
-  updateMemberWorkspaceAssignments,
   updateOrganizationGeneral,
-  WORKSPACE_ROLE_OPTIONS,
   type OrgRole,
   type ApprovalWorkflowMode,
-  type WorkspaceRole,
   archiveWorkspace,
   deleteWorkspace,
   scheduleOrganizationDeletion,
   requireTenantContext,
 } from "@/lib/tenancy";
 
-function parseAssignments(
-  formData: FormData,
-  workspaceIds: string[]
-): Array<{ workspaceId: string; role: WorkspaceRole }> {
-  return workspaceIds.flatMap((workspaceId) => {
-    if (!formData.get(`ws_${workspaceId}`)) {
-      return [];
-    }
-
-    const roleValue = String(formData.get(`ws_role_${workspaceId}`) ?? "viewer");
-    const role = WORKSPACE_ROLE_OPTIONS.includes(roleValue as WorkspaceRole)
-      ? (roleValue as WorkspaceRole)
-      : "viewer";
-
-    return [{ workspaceId, role }];
-  });
-}
-
 function parseHashtagList(value: string) {
   return value
     .split(/[\n,]+/)
     .map((item) => item.trim())
     .filter(Boolean);
+}
+
+function parseInviteEmails(formData: FormData) {
+  const raw =
+    String(formData.get("emails") ?? "") ||
+    String(formData.get("email") ?? "");
+
+  return Array.from(
+    new Set(
+      raw
+        .split(/[\s,;]+/)
+        .map((email) => email.trim().toLowerCase())
+        .filter(Boolean)
+    )
+  );
 }
 
 function revalidateSettingsSurfaces() {
@@ -145,30 +139,50 @@ export async function updateCurrentWorkspaceGeneralAction(formData: FormData) {
 export async function inviteMemberAction(formData: FormData) {
   const context = await requireTenantContext();
   const baseUrl = await getActionAppUrl();
-  const workspaceIds = context.accessibleWorkspaces.map((entry) => entry.workspace.id);
   const orgRoleValue = String(formData.get("orgRole") ?? "member");
-  const orgRole = ORG_ROLE_OPTIONS.includes(orgRoleValue as OrgRole)
+  const orgRole =
+    (orgRoleValue === "admin" || orgRoleValue === "member") &&
+    ORG_ROLE_OPTIONS.includes(orgRoleValue as OrgRole)
     ? (orgRoleValue as OrgRole)
     : "member";
+  const emails = parseInviteEmails(formData);
+  const workspaceAssignments = context.accessibleWorkspaces
+    .filter((entry) => !entry.workspace.isArchived)
+    .map((entry) => ({
+      workspaceId: entry.workspace.id,
+      role: "editor" as const,
+    }));
 
-  const invite = await createInvitation({
-    email: String(formData.get("email") ?? ""),
-    orgRole,
-    workspaceAssignments: parseAssignments(formData, workspaceIds),
-  });
+  if (emails.length === 0) {
+    throw new Error("At least one email is required.");
+  }
+  if (workspaceAssignments.length === 0) {
+    throw new Error("At least one active workspace is required.");
+  }
 
   let status = "invite-sent";
-  try {
-    await sendWorkspaceInvitationEmail({
-      email: invite.email,
-      token: invite.token,
-      organizationName: context.organization.name,
-      inviterName: context.user.fullName ?? context.user.email,
-      baseUrl,
+  for (const email of emails) {
+    const invite = await createInvitation({
+      email,
+      orgRole,
+      workspaceAssignments,
     });
-  } catch (error) {
-    status = "invite-delivery-failed";
-    console.error("Failed to deliver workspace invitation email", error);
+
+    try {
+      const delivery = await sendWorkspaceInvitationEmail({
+        email: invite.email,
+        token: invite.token,
+        organizationName: context.organization.name,
+        inviterName: context.user.fullName ?? context.user.email,
+        baseUrl,
+      });
+      if (delivery.provider === "preview" || delivery.provider === "log") {
+        status = "invite-preview";
+      }
+    } catch (error) {
+      status = "invite-delivery-failed";
+      console.error("Failed to deliver workspace invitation email", error);
+    }
   }
   revalidateSettingsSurfaces();
   redirectToTeamMembers(status);
@@ -181,13 +195,16 @@ export async function resendInvitationAction(formData: FormData) {
 
   let status = "invite-resent";
   try {
-    await sendWorkspaceInvitationEmail({
+    const delivery = await sendWorkspaceInvitationEmail({
       email: invitation.email,
       token: invitation.token,
       organizationName: context.organization.name,
       inviterName: context.user.fullName ?? context.user.email,
       baseUrl,
     });
+    if (delivery.provider === "preview" || delivery.provider === "log") {
+      status = "invite-preview";
+    }
   } catch (error) {
     status = "invite-resend-delivery-failed";
     console.error("Failed to resend workspace invitation email", error);
@@ -203,23 +220,13 @@ export async function revokeInvitationAction(formData: FormData) {
 
 export async function updateMemberOrgRoleAction(formData: FormData) {
   const orgRoleValue = String(formData.get("orgRole") ?? "member");
-  const orgRole = ORG_ROLE_OPTIONS.includes(orgRoleValue as OrgRole)
+  const orgRole =
+    (orgRoleValue === "admin" || orgRoleValue === "member") &&
+    ORG_ROLE_OPTIONS.includes(orgRoleValue as OrgRole)
     ? (orgRoleValue as OrgRole)
     : "member";
 
   await updateMemberOrgRole(String(formData.get("membershipId") ?? ""), orgRole);
-  revalidateSettingsSurfaces();
-}
-
-export async function updateMemberWorkspaceAssignmentsAction(formData: FormData) {
-  const context = await requireTenantContext();
-  const workspaceIds = context.accessibleWorkspaces.map((entry) => entry.workspace.id);
-
-  await updateMemberWorkspaceAssignments(
-    String(formData.get("userId") ?? ""),
-    parseAssignments(formData, workspaceIds)
-  );
-
   revalidateSettingsSurfaces();
 }
 

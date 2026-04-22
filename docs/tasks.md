@@ -17,7 +17,8 @@ Deploys to `social.maxpetrusenko.com` on Contabo/Coolify.
 
 ### Project Skeleton
 - [x] Next.js 15 + Tailwind 4 + TypeScript
-- [x] Drizzle ORM + SQLite (WAL mode, persistent volume)
+- [x] Drizzle ORM + SQLite runtime (WAL mode, persistent volume)
+- [x] Empty Supabase Postgres schema `social_poster` created for app data isolation from Tantra Studio
 - [x] Package.json with all dependencies
 - [x] tsconfig, postcss, drizzle config, .env.example
 
@@ -41,7 +42,7 @@ Deploys to `social.maxpetrusenko.com` on Contabo/Coolify.
 - [x] Team invite delivery failures now degrade to a visible pending invite + copy link instead of a 500
 - [x] Session cookie management (30-day TTL)
 - [x] Single allowed email (AUTH_EMAIL env var)
-- [x] Google sign-in gate via Supabase (env-gated, allowlist-based)
+- [x] Supabase sign-in is open to authenticated users; team access still comes from app org/workspace memberships and invites
 - [x] Tenant-aware auth allowlist now accepts existing members and pending invite emails
 - [x] Login page (src/app/login/page.tsx)
 - [x] Explicit auth mode resolution: bypass, Supabase, magic-link, or fail-closed misconfigured
@@ -51,7 +52,7 @@ Deploys to `social.maxpetrusenko.com` on Contabo/Coolify.
 - [x] Layout with sidebar navigation
 - [x] Settings → General now manages org name, timezone, and deletion schedule
 - [x] Settings → Workspaces now supports create / open / archive / restore / delete
-- [x] Settings → Team Members now supports invite / resend / revoke / org role / workspace access / remove
+- [x] Settings → Users now supports modal invite, resend, revoke, Admin/User role changes, and remove
 - [x] Workspace Settings → General and Approvals now persist real workspace values
 - [x] Connection OAuth info buttons now open in-app setup guides with platform docs, callback URI copy, missing env warnings, and X-specific tutorial/use-case text
 - [x] Invite accept page at `/invite/[token]`
@@ -123,7 +124,8 @@ Deploys to `social.maxpetrusenko.com` on Contabo/Coolify.
 - [x] Refactor OAuth callback to brightbean pattern — request-derived URLs, HMAC-signed state, shared /api/auth/callback route
 - [x] Local HTTPS dev server (mkcert + `npm run dev:https`)
 - [x] OAuth portal automation script (Brave cookie extraction + rebrowser-playwright stealth)
-- [ ] Set Supabase env in production and verify live Google sign-in against allowlist
+- [x] Set Supabase env in production and open app-side Supabase sign-in to authenticated users
+- [ ] Migrate runtime DB client and production data from SQLite into Supabase `social_poster`
 - [ ] Test Instagram/Threads OAuth connection (same Meta app, should work)
 - [ ] Test Google/YouTube OAuth connection (needs portal URI check)
 - [ ] Test TikTok OAuth connection (needs real domain, no localhost)
@@ -250,6 +252,9 @@ social-poster/
 - `/api/health` returns app + active scheduler state
 - `/api/health.schedules` now includes both `dbEnabledCount` and `runtimeRegisteredCount`
 - fixed schedule asset URLs now fall back to `COOLIFY_URL` when `APP_URL` is unset
+- invite and magic-link URLs normalize comma-separated app origin env values and prefer `social.maxpetrusenko.com`
+- Supabase Auth + Supabase Postgres migration plan lives at `docs/plans/supabase-postgres-migration-plan.md`
+- Social Poster Supabase bootstrap SQL lives at `supabase/social-poster/20260422_social_poster_schema.sql`
 - Bird-backed X image posts should use raster assets (`.png`, `.jpg`, `.webp`) instead of SVG
 - Local restore command:
   `npm run legacy:import -- --legacy-dir ../social-agent --with-remote-runs --ssh-target max@173.249.52.27 --ssh-key ~/.ssh/contabo_vmi3203669_ed25519 --volume <coolify-volume>`

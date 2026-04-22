@@ -1,14 +1,50 @@
+import { SITE_DOMAINS } from "@/lib/site-domains";
+
 const DEFAULT_APP_URL = "http://localhost:3000";
 
-export function getAppUrlFromEnv(env: NodeJS.ProcessEnv = process.env): string {
-  const coolifyUrl = env.COOLIFY_URL?.split(",")
-    .map((value) => value.trim())
-    .find(Boolean);
+type ParsedAppOrigin = {
+  hostname: string;
+  origin: string;
+};
 
+function parseAppOrigins(value?: string | null): ParsedAppOrigin[] {
+  return (value ?? "")
+    .split(",")
+    .map((candidate) => candidate.trim())
+    .filter(Boolean)
+    .flatMap((candidate) => {
+      try {
+        const url = new URL(candidate);
+        if (url.protocol !== "http:" && url.protocol !== "https:") {
+          return [];
+        }
+
+        return [
+          {
+            hostname: url.hostname.toLowerCase(),
+            origin: url.origin,
+          },
+        ];
+      } catch {
+        return [];
+      }
+    });
+}
+
+export function normalizeAppUrl(value?: string | null): string | null {
+  const origins = parseAppOrigins(value);
   return (
-    env.APP_URL?.trim() ||
-    coolifyUrl ||
-    env.NEXT_PUBLIC_APP_URL?.trim() ||
+    origins.find((url) => url.hostname === SITE_DOMAINS.app)?.origin ??
+    origins[0]?.origin ??
+    null
+  );
+}
+
+export function getAppUrlFromEnv(env: NodeJS.ProcessEnv = process.env): string {
+  return (
+    normalizeAppUrl(env.APP_URL) ||
+    normalizeAppUrl(env.COOLIFY_URL) ||
+    normalizeAppUrl(env.NEXT_PUBLIC_APP_URL) ||
     DEFAULT_APP_URL
   );
 }

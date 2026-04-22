@@ -16,7 +16,7 @@ const STEPS = [
   {
     step: 3,
     title: "Your Claw Takes Over",
-    description: "The agent writes, adapts, and publishes content across every platform on schedule. Review in the dashboard, or let it run autonomous.",
+    description: "The agent writes, adapts, and publishes content across every platform on schedule. Review in SMM Agent, or let it run autonomous.",
   },
 ];
 

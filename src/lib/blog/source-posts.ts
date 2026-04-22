@@ -33,7 +33,7 @@ The old way is one draft, one calendar, one publish button. The new way is one i
 - Generates platform-specific drafts instead of one universal caption.
 - Routes drafts through review, edit, approval, scheduling, and publishing states.
 - Logs each run so a failed post is a visible operations event, not a silent gap.
-- Keeps related surfaces connected: [ClawPoster](https://clawposter.app), [SMMClaw](https://smmclaw.app), [SMMAgent](https://smmagent.app), the [app dashboard](https://social.maxpetrusenko.com), and the [Max Petrusenko tech projects page](https://www.maxpetrusenko.com/tech).
+- Keeps related surfaces connected: [ClawPoster](https://clawposter.app), [SMMClaw](https://smmclaw.app), [SMM Agent](https://smmagent.app), the [app dashboard](https://social.maxpetrusenko.com), and the [Max Petrusenko tech projects page](https://www.maxpetrusenko.com/tech).
 
 ## Old way vs new way
 
@@ -180,7 +180,7 @@ Secondary actions:
 
 ## Related pages
 
-Read the product surface at [ClawPoster](https://clawposter.app), the agency surface at [SMMClaw](https://smmclaw.app), the agent surface at [SMMAgent](https://smmagent.app), the app dashboard at [social.maxpetrusenko.com](https://social.maxpetrusenko.com), and the broader tech portfolio at [Max Petrusenko Tech](https://www.maxpetrusenko.com/tech).
+Read the product surface at [ClawPoster](https://clawposter.app), the agency surface at [SMMClaw](https://smmclaw.app), the agent surface at [SMM Agent](https://smmagent.app), the app dashboard at [social.maxpetrusenko.com](https://social.maxpetrusenko.com), and the broader tech portfolio at [Max Petrusenko Tech](https://www.maxpetrusenko.com/tech).
 
 ## Conclusion
 
@@ -219,7 +219,7 @@ The wrong promise is "do more posts with fewer people." That attracts churn. The
 - Review queue: edit, approve, reject, or request revision.
 - Schedule: recurring jobs and campaign drops.
 - Publish log: account, platform, post, status, failure reason.
-- Backlinks and surfaces: [SMMClaw](https://smmclaw.app), [ClawPoster](https://clawposter.app), [SMMAgent](https://smmagent.app), [social.maxpetrusenko.com](https://social.maxpetrusenko.com), and [Max Petrusenko Tech](https://www.maxpetrusenko.com/tech).
+- Backlinks and surfaces: [SMMClaw](https://smmclaw.app), [ClawPoster](https://clawposter.app), [SMM Agent](https://smmagent.app), [social.maxpetrusenko.com](https://social.maxpetrusenko.com), and [Max Petrusenko Tech](https://www.maxpetrusenko.com/tech).
 
 ## Evidence from platform constraints
 
@@ -296,7 +296,7 @@ The uncomfortable part: if nobody owns the approval state, the agency is not aut
 
 The failure mode of AI social content is not bad grammar. It is unsupported confidence. A fluent draft can make a weak claim look finished. That is why source-backed workflows matter.
 
-SMMAgent is the agent surface for that operating model.
+SMM Agent is the agent surface for that operating model.
 
 ## The misconception
 
@@ -363,7 +363,7 @@ Secondary actions:
 
 ## Related pages
 
-Use [SMMAgent](https://smmagent.app) for agent workflows, [ClawPoster](https://clawposter.app) for the product home, [SMMClaw](https://smmclaw.app) for agency use cases, [social.maxpetrusenko.com](https://social.maxpetrusenko.com) for the app, and [Max Petrusenko Tech](https://www.maxpetrusenko.com/tech) for the portfolio context.
+Use [SMM Agent](https://smmagent.app) for agent workflows, [ClawPoster](https://clawposter.app) for the product home, [SMMClaw](https://smmclaw.app) for agency use cases, [social.maxpetrusenko.com](https://social.maxpetrusenko.com) for the app, and [Max Petrusenko Tech](https://www.maxpetrusenko.com/tech) for the portfolio context.
 
 ## Conclusion
 
@@ -388,7 +388,7 @@ The uncomfortable part: if the source is invisible, the draft is just a confiden
 
 Model choice is now part of the workflow. A team may want OpenAI for writing, Anthropic for long-form review, xAI for fast drafts, Google for low-cost variants, or a custom endpoint for an internal model. The hard part is not showing a dropdown. The hard part is making the dropdown honest.
 
-SMMAgent separates app access keys from model provider keys because they solve different problems.
+SMM Agent separates app access keys from model provider keys because they solve different problems.
 
 ## The misconception
 
@@ -464,7 +464,7 @@ Secondary actions:
 
 ## Related pages
 
-Model-key workflows live on [SMMAgent](https://smmagent.app). The product surface is [ClawPoster](https://clawposter.app), agencies can start from [SMMClaw](https://smmclaw.app), the app runs at [social.maxpetrusenko.com](https://social.maxpetrusenko.com), and the project belongs in [Max Petrusenko Tech](https://www.maxpetrusenko.com/tech).
+Model-key workflows live on [SMM Agent](https://smmagent.app). The product surface is [ClawPoster](https://clawposter.app), agencies can start from [SMMClaw](https://smmclaw.app), the app runs at [social.maxpetrusenko.com](https://social.maxpetrusenko.com), and the project belongs in [Max Petrusenko Tech](https://www.maxpetrusenko.com/tech).
 
 ## Conclusion
 

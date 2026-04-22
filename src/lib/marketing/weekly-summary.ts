@@ -64,7 +64,7 @@ export async function generateWeeklySummaries(): Promise<WeeklySummary[]> {
     });
 
     for (const owner of owners) {
-      summaries.push({ userId: owner.userId, workspaceId: wsId, html, subject: `Weekly summary — ${ws?.name ?? "ClawPoster"}` });
+      summaries.push({ userId: owner.userId, workspaceId: wsId, html, subject: `Weekly summary — ${ws?.name ?? "SMM Agent"}` });
     }
   }
 
@@ -81,7 +81,7 @@ function renderEmail(s: { workspaceName: string; published: number; failed: numb
 ${row("Published", s.published)}${row("Failed", s.failed)}${row("Scheduled", s.scheduled)}${row("Replies sent", s.repliesSent)}${row("Upcoming (next 7d)", s.upcoming)}
 </table>
 <div style="text-align:center;margin:28px 0">
-<a href="${base}/dashboard" style="display:inline-block;padding:10px 24px;background:#171717;color:#fff;border-radius:6px;text-decoration:none;font-size:14px">Open Dashboard</a>
+<a href="${base}/dashboard" style="display:inline-block;padding:10px 24px;background:#171717;color:#fff;border-radius:6px;text-decoration:none;font-size:14px">Open SMM Agent</a>
 </div>
 <p style="color:#9b8c78;font-size:12px;text-align:center;margin:0">You're receiving this because you own this workspace.</p>
 </div>`;

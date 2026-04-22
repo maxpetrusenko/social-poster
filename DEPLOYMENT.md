@@ -31,7 +31,10 @@ Container requires these env vars (set via `docker run -e`):
 
 | Var | Purpose |
 |-----|---------|
-| `AUTH_DISABLED=true` | Bypass magic-link auth |
+| `DISABLE_AUTH=false` | Required for production Supabase auth |
+| `NEXT_PUBLIC_SUPABASE_URL` | Self-hosted Supabase public URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Browser anon key for Supabase Auth |
+| `SUPABASE_AUTH_ALLOW_ALL_USERS=true` | Allows any authenticated Supabase user to sign in and create or join workspaces |
 | `HOSTNAME=0.0.0.0` | Listen on all interfaces |
 | `PORT=3000` | Next.js port |
 | `CARTESIA_API_KEY` | Cartesia TTS API key |
@@ -60,9 +63,10 @@ Target state:
 - app expects SQLite at `/data/social-poster.db`
 - app always serves Next.js on `3000`; entrypoint bridges any Coolify rollout port to `3000`
 - GitHub source uses an SSH deploy key; no public-repo toggle
+- production auth uses self-hosted Supabase at `https://supabase.maxpetrusenko.com`
 - required reply env vars in Coolify: `X_AUTH_TOKEN`, `X_CT0`, `BIRD_RUNNER=bird`
 - optional Bird health interval: `BIRD_SESSION_CHECK_HOURS=24`
-- `APP_URL` is optional in Coolify; app-relative asset URLs can fall back to `COOLIFY_URL`
+- `APP_URL` is optional in Coolify; when set, use the single dashboard origin `https://social.maxpetrusenko.com`. Do not paste the comma-separated Coolify domain list into `APP_URL`.
 - X/Bird image posts should use PNG/JPG/WebP assets, not SVG
 
 ```bash

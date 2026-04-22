@@ -6,7 +6,9 @@ import { orgMemberships, users, workspaceInvitations } from "@/db/schema";
 import {
   getWorkspaceAllowedDomains,
   getWorkspaceAllowedEmails,
+  isSupabaseSignInOpenToAll,
 } from "@/lib/supabase/config";
+import { resolveAuthMode } from "@/lib/auth-config";
 
 function normalizeEmail(email: string) {
   return email.trim().toLowerCase();
@@ -18,6 +20,11 @@ export async function isEmailAllowedForAuth(email?: string | null) {
   }
 
   const normalizedEmail = normalizeEmail(email);
+
+  if (resolveAuthMode() === "supabase" && isSupabaseSignInOpenToAll()) {
+    return true;
+  }
+
   const allowlist = getWorkspaceAllowedEmails();
   if (allowlist.includes(normalizedEmail)) {
     return true;

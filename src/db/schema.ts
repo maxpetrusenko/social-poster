@@ -755,6 +755,19 @@ export const notificationPreferences = sqliteTable("notification_preferences", {
   userWorkspaceUnique: uniqueIndex("notification_prefs_user_workspace_idx").on(table.userId, table.workspaceId),
 }));
 
+// ── User UI Preferences ──────────────────────────────────────────────
+export const userUiPreferences = sqliteTable("user_ui_preferences", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull().references(() => users.id),
+  workspaceId: text("workspace_id").notNull().references(() => workspaces.id),
+  productMode: text("product_mode").notNull().default("saas"),
+  agentDockMode: text("agent_dock_mode").notNull().default("right-widget"),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+}, (table) => ({
+  userWorkspaceUnique: uniqueIndex("user_ui_prefs_user_workspace_idx").on(table.userId, table.workspaceId),
+}));
+
 // ── Activity + Email Delivery ────────────────────────────────────────
 export const activityLog = sqliteTable("activity_log", {
   id: text("id").primaryKey(),

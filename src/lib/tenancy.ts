@@ -23,9 +23,9 @@ import {
 } from "@/db/schema";
 import { getSession } from "@/lib/auth";
 import { getAppUrlFromEnv } from "@/lib/app-url";
+import { INVITE_TTL_DAYS } from "@/lib/invite-config";
 
 export const WORKSPACE_COOKIE = "sp_workspace";
-export const INVITE_TTL_DAYS = 7;
 
 export const ORG_ROLE_OPTIONS = ["owner", "admin", "member"] as const;
 export const WORKSPACE_ROLE_OPTIONS = [
@@ -423,28 +423,30 @@ async function ensureDefaultTenantForEmail(email: string) {
   const normalizedEmail = normalizeEmail(email);
   const now = new Date();
 
-  let user = await db
-    .select()
-    .from(users)
-    .where(eq(users.email, normalizedEmail))
-    .get();
-
-  if (!user) {
-    await db.insert(users).values({
-      id: crypto.randomUUID(),
-      email: normalizedEmail,
-      fullName: humanNameFromEmail(normalizedEmail),
-      authProvider: "magic_link",
-      createdAt: now,
-      updatedAt: now,
-      lastSeenAt: now,
-    });
-
-    user = await db
+  const selectUser = () =>
+    db
       .select()
       .from(users)
       .where(eq(users.email, normalizedEmail))
       .get();
+
+  let user = await selectUser();
+
+  if (!user) {
+    await db
+      .insert(users)
+      .values({
+        id: crypto.randomUUID(),
+        email: normalizedEmail,
+        fullName: humanNameFromEmail(normalizedEmail),
+        authProvider: "magic_link",
+        createdAt: now,
+        updatedAt: now,
+        lastSeenAt: now,
+      })
+      .onConflictDoNothing();
+
+    user = await selectUser();
   }
 
   if (!user) {
@@ -465,10 +467,14 @@ async function ensureDefaultTenantForEmail(email: string) {
     .get();
 
   if (joinedOrg) {
-    return { user, organization: joinedOrg.organization, orgMembership: joinedOrg.membership };
+    return {
+      user,
+      organization: joinedOrg.organization,
+      orgMembership: joinedOrg.membership,
+    };
   }
 
-  const orgName = `${humanNameFromEmail(normalizedEmail)} Studio`;
+  const orgName = "SMM Agent";
   const organizationId = crypto.randomUUID();
   const workspaceId = crypto.randomUUID();
   const orgSlug = await nextOrganizationSlug(orgName);
@@ -496,7 +502,7 @@ async function ensureDefaultTenantForEmail(email: string) {
     organizationId,
     name: "Primary Workspace",
     slug: "primary-workspace",
-    description: "Default workspace for legacy Social Agent data.",
+    description: "Default workspace for legacy SMM Agent data.",
     timezone: "America/New_York",
     primaryColor: "#d86d36",
     secondaryColor: "#0c5f6b",
@@ -1011,8 +1017,8 @@ export async function createInvitation(input: {
 }) {
   const context = await requireTenantContext();
   requireOrgAdmin(context);
-  if (context.orgMembership.orgRole !== "owner" && input.orgRole !== "member") {
-    throw new Error("Only an owner can invite organization admins or owners.");
+  if (input.orgRole !== "admin" && input.orgRole !== "member") {
+    throw new Error("Invites can only grant Admin or User access.");
   }
   if (
     context.orgMembership.orgRole !== "owner" &&
@@ -1268,7 +1274,10 @@ export async function acceptInvitationByToken(token: string) {
 
 export async function updateMemberOrgRole(membershipId: string, orgRole: OrgRole) {
   const context = await requireTenantContext();
-  requireOrgOwner(context);
+  requireOrgAdmin(context);
+  if (orgRole !== "admin" && orgRole !== "member") {
+    throw new Error("Members can only be set to Admin or User.");
+  }
   const membership = await db
     .select()
     .from(orgMemberships)
@@ -1284,7 +1293,11 @@ export async function updateMemberOrgRole(membershipId: string, orgRole: OrgRole
     throw new Error("Member not found.");
   }
 
-  if (membership.orgRole === "owner" && orgRole !== "owner") {
+  if (membership.orgRole === "owner" && context.orgMembership.orgRole !== "owner") {
+    throw new Error("Only an owner can change owner access.");
+  }
+
+  if (membership.orgRole === "owner") {
     const owners = await db
       .select()
       .from(orgMemberships)

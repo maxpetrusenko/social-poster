@@ -30,7 +30,7 @@ export async function GET(request: Request) {
       type: "marketing",
       data: {
         subject: summary.subject,
-        message: "Your weekly ClawPoster summary is ready.",
+        message: "Your weekly SMM Agent summary is ready.",
         html: summary.html,
         href: "/dashboard",
       },

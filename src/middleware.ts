@@ -1,6 +1,11 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextRequest, NextResponse } from "next/server";
-import { AUTH_MODE, SESSION_COOKIE } from "@/lib/auth-config";
+import {
+  AUTH_MODE,
+  BYPASS_SIGNED_OUT_COOKIE,
+  isBypassSignedOutCookieValue,
+  SESSION_COOKIE,
+} from "@/lib/auth-config";
 import {
   getSupabasePublicEnv,
   isSupabaseConfigured,
@@ -54,6 +59,19 @@ export async function middleware(request: NextRequest) {
   }
 
   if (AUTH_MODE === "bypass") {
+    if (
+      isBypassSignedOutCookieValue(
+        request.cookies.get(BYPASS_SIGNED_OUT_COOKIE)?.value
+      )
+    ) {
+      const loginUrl = new URL("/login", request.url);
+      loginUrl.searchParams.set(
+        "next",
+        `${request.nextUrl.pathname}${request.nextUrl.search}`
+      );
+      return NextResponse.redirect(loginUrl);
+    }
+
     return NextResponse.next();
   }
 

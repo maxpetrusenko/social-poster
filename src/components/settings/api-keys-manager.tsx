@@ -93,7 +93,7 @@ export function ApiKeysManager({ initialKeys }: { initialKeys: ApiKey[] }) {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-[#171717]">App Access</h1>
-          <p className="text-sm text-[#171717]/60 mt-1">Keys for external clients that call the ClawPoster API</p>
+          <p className="text-sm text-[#171717]/60 mt-1">Keys for external clients that call the SMM Agent API</p>
         </div>
         <button onClick={() => setShowCreate(true)} className="px-4 py-2 bg-[#171717] text-white rounded-lg text-sm font-medium hover:bg-[#171717]/90 transition-colors">
           + Create key

@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { LogoutButton } from "@/components/logout-button";
 import { getTenantContext } from "@/lib/tenancy";
 
 export const dynamic = "force-dynamic";
@@ -51,6 +52,9 @@ export default async function SettingsProfilePage() {
 
         <div className="mt-6 rounded-lg border border-[#e5d9c8] bg-[#faf6ee] px-4 py-3 text-sm text-[#8d7c64]">
           Account profile details come from the active auth provider.
+        </div>
+        <div className="mt-4 flex justify-end">
+          <LogoutButton className="inline-flex items-center gap-2 rounded-[12px] border border-[rgba(216,109,54,0.22)] bg-white px-4 py-2.5 text-sm font-semibold text-[#a84e26] transition hover:bg-[#fff4ef]" />
         </div>
       </div>
     </div>

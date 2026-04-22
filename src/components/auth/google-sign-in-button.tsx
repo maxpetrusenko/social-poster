@@ -14,22 +14,25 @@ export function GoogleSignInButton({
   nextPath = "/dashboard",
 }: GoogleSignInButtonProps) {
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
-  const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [accessDenied, setAccessDenied] = useState(
     initialErrorCode === "unauthorized"
   );
 
+  function callbackUrl() {
+    return `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}`;
+  }
+
   async function handleSignIn() {
-    setLoading(true);
+    setGoogleLoading(true);
     setError(null);
     setAccessDenied(false);
 
-    const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}`;
     const { error: signInError } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo,
+        redirectTo: callbackUrl(),
         queryParams: {
           access_type: "offline",
           prompt: "consent",
@@ -39,16 +42,16 @@ export function GoogleSignInButton({
 
     if (signInError) {
       setError(signInError.message);
-      setLoading(false);
+      setGoogleLoading(false);
     }
   }
 
   return (
-    <div className="grid gap-3">
+    <div className="grid gap-4">
       <button
         type="button"
         onClick={handleSignIn}
-        disabled={loading}
+        disabled={googleLoading}
         className="inline-flex items-center justify-center rounded-2xl border border-white/15 bg-white px-5 py-3 text-sm font-semibold text-[#08111d] shadow-[0_16px_40px_rgba(8,17,29,0.18)] transition hover:-translate-y-0.5 disabled:cursor-wait disabled:opacity-70"
       >
         <span
@@ -74,16 +77,12 @@ export function GoogleSignInButton({
             />
           </svg>
         </span>
-        {loading ? "Redirecting..." : "Sign in with Google"}
+        {googleLoading ? "Redirecting..." : "Continue with Google"}
       </button>
+
       {accessDenied ? (
         <p className="text-sm text-[#ffb4a8]">
           {getWorkspaceAuthErrorMessage("unauthorized")}
-        </p>
-      ) : null}
-      {accessDenied ? (
-        <p className="text-xs leading-6 text-[#9fb0c2]">
-          Approved Google accounts only.
         </p>
       ) : null}
       {error ? <p className="text-sm text-[#ffb4a8]">{error}</p> : null}

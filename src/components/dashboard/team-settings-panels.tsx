@@ -1,4 +1,3 @@
-import Link from "next/link";
 import {
   DashboardHero,
   HeroButton,
@@ -6,6 +5,8 @@ import {
   SectionCard,
   StatusBadge,
 } from "@/components/dashboard/ui";
+import { CopyInviteLinkButton } from "@/components/dashboard/copy-invite-link-button";
+import { UserInviteModal } from "@/components/dashboard/user-invite-modal";
 import type {
   ApprovalWorkflowMode,
   OrgRole,
@@ -17,7 +18,6 @@ import {
   cancelOrganizationDeletionAction,
   createWorkspaceAction,
   deleteWorkspaceAction,
-  inviteMemberAction,
   removeMemberAction,
   resendInvitationAction,
   restoreWorkspaceAction,
@@ -25,7 +25,6 @@ import {
   switchWorkspaceAction,
   updateCurrentWorkspaceGeneralAction,
   updateMemberOrgRoleAction,
-  updateMemberWorkspaceAssignmentsAction,
   updateOrganizationGeneralAction,
   revokeInvitationAction,
 } from "@/app/dashboard/settings/actions";
@@ -42,18 +41,9 @@ const COMMON_TIMEZONES = [
 ] as const;
 
 const ORG_ROLE_LABELS: Record<OrgRole, string> = {
-  owner: "Owner",
+  owner: "Admin",
   admin: "Admin",
-  member: "Member",
-};
-
-const WORKSPACE_ROLE_LABELS: Record<WorkspaceRole, string> = {
-  owner: "Owner",
-  manager: "Manager",
-  editor: "Editor",
-  contributor: "Contributor",
-  client: "Client",
-  viewer: "Viewer",
+  member: "User",
 };
 
 const APPROVAL_LABELS: Record<ApprovalWorkflowMode, string> = {
@@ -87,7 +77,6 @@ type MemberSurface = {
   email: string;
   orgRole: OrgRole;
   isCurrentUser: boolean;
-  workspaceAssignments: Array<{ workspaceId: string; role: WorkspaceRole }>;
 };
 
 type InvitationSurface = {
@@ -97,7 +86,6 @@ type InvitationSurface = {
   createdAtLabel: string;
   expiresAtLabel: string;
   url: string;
-  assignments: Array<{ workspaceId: string; workspaceName: string; role: WorkspaceRole }>;
 };
 
 type TeamMembersNotice = {
@@ -131,7 +119,7 @@ export function OrganizationSettingsPanel({
               Workspaces
             </HeroButton>
             <HeroButton href="/dashboard/settings/team-members">
-              Team Members
+              Users
             </HeroButton>
           </>
         }
@@ -226,7 +214,7 @@ export function WorkspaceControlPlane({
         actions={
           <>
             <HeroButton href="/dashboard/settings/team-members" tone="ghost">
-              Team Members
+              Users
             </HeroButton>
             <HeroButton href="/dashboard/workspace-settings/general">
               Current Workspace
@@ -332,32 +320,14 @@ export function WorkspaceControlPlane({
 export function TeamMembersPanel({
   members,
   invitations,
-  workspaces,
   notice,
 }: {
   members: MemberSurface[];
   invitations: InvitationSurface[];
-  workspaces: Array<{ id: string; name: string }>;
   notice?: TeamMembersNotice | null;
 }) {
   return (
     <div className="space-y-6">
-      <DashboardHero
-        eyebrow="Settings / Team Members"
-        title="Members, roles, and workspace access"
-        description="Invite, resend, revoke, adjust org role, set workspace roles, and remove seats from one place."
-        actions={
-          <>
-            <HeroButton href="/dashboard/settings/workspaces" tone="ghost">
-              Workspaces
-            </HeroButton>
-            <HeroButton href="/dashboard/workspace-settings/general">
-              Workspace Settings
-            </HeroButton>
-          </>
-        }
-      />
-
       {notice ? (
         <section
           className={`rounded-[24px] border px-5 py-4 shadow-[0_18px_45px_rgba(12,17,21,0.08)] ${
@@ -373,65 +343,11 @@ export function TeamMembersPanel({
         </section>
       ) : null}
 
-      <SectionCard title="Invite Member" subtitle="Org role plus per-workspace access in one submission.">
-        <form action={inviteMemberAction} className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_220px]">
-          <label className="space-y-2 text-sm font-medium text-[var(--ink)]">
-            <span>Email</span>
-            <input
-              name="email"
-              type="email"
-              required
-              placeholder="teammate@example.com"
-              className="w-full rounded-[14px] border border-[rgba(12,17,21,0.12)] bg-white px-4 py-3 text-sm outline-none"
-            />
-          </label>
-          <label className="space-y-2 text-sm font-medium text-[var(--ink)]">
-            <span>Org role</span>
-            <select
-              name="orgRole"
-              defaultValue="member"
-              className="w-full rounded-[14px] border border-[rgba(12,17,21,0.12)] bg-white px-4 py-3 text-sm outline-none"
-            >
-              {Object.entries(ORG_ROLE_LABELS).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <div className="lg:col-span-2 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {workspaces.map((workspace) => (
-              <div
-                key={workspace.id}
-                className="rounded-[18px] border border-[rgba(12,17,21,0.08)] bg-[var(--paper)] p-4"
-              >
-                <label className="flex items-center gap-2 text-sm font-semibold text-[var(--ink)]">
-                  <input type="checkbox" name={`ws_${workspace.id}`} />
-                  {workspace.name}
-                </label>
-                <select
-                  name={`ws_role_${workspace.id}`}
-                  defaultValue="viewer"
-                  className="mt-3 w-full rounded-[12px] border border-[rgba(12,17,21,0.12)] bg-white px-3 py-2 text-sm outline-none"
-                >
-                  {Object.entries(WORKSPACE_ROLE_LABELS).map(([value, label]) => (
-                    <option key={value} value={value}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            ))}
-          </div>
-          <div className="lg:col-span-2 flex justify-end">
-            <button className="rounded-[14px] bg-[#171717] px-4 py-3 text-sm font-semibold text-white">
-              Send invite
-            </button>
-          </div>
-        </form>
-      </SectionCard>
-
-      <SectionCard title="Members" subtitle="Each member row owns org role, workspace assignments, and removal.">
+      <SectionCard
+        title="Users"
+        subtitle="Admin can manage users and invites. User can access SMM Agent."
+        action={<UserInviteModal />}
+      >
         <div className="space-y-4">
           {members.map((member) => (
             <article
@@ -454,83 +370,41 @@ export function TeamMembersPanel({
                   <p className="mt-2 text-sm text-[var(--muted)]">{member.email}</p>
                 </div>
 
-                <form action={updateMemberOrgRoleAction} className="flex items-center gap-2">
-                  <input type="hidden" name="membershipId" value={member.membershipId} />
-                  <select
-                    name="orgRole"
-                    defaultValue={member.orgRole}
-                    className="rounded-[12px] border border-[rgba(12,17,21,0.12)] bg-white px-3 py-2 text-sm outline-none"
-                  >
-                    {Object.entries(ORG_ROLE_LABELS).map(([value, label]) => (
-                      <option key={value} value={value}>
-                        {label}
-                      </option>
-                    ))}
-                  </select>
-                  <button className="rounded-[12px] border border-[rgba(12,17,21,0.12)] bg-white px-3 py-2 text-sm font-semibold text-[var(--ink)]">
-                    Save role
-                  </button>
-                </form>
+                {!member.isCurrentUser ? (
+                  <form action={updateMemberOrgRoleAction} className="flex items-center gap-2">
+                    <input type="hidden" name="membershipId" value={member.membershipId} />
+                    <select
+                      name="orgRole"
+                      defaultValue={member.orgRole === "owner" ? "admin" : member.orgRole}
+                      className="rounded-[12px] border border-[rgba(12,17,21,0.12)] bg-white px-3 py-2 text-sm outline-none"
+                    >
+                      <option value="member">User</option>
+                      <option value="admin">Admin</option>
+                    </select>
+                    <button className="rounded-[12px] border border-[rgba(12,17,21,0.12)] bg-white px-3 py-2 text-sm font-semibold text-[var(--ink)]">
+                      Save role
+                    </button>
+                  </form>
+                ) : null}
               </div>
 
-              <form action={updateMemberWorkspaceAssignmentsAction} className="mt-4 space-y-4">
-                <input type="hidden" name="userId" value={member.userId} />
-                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                  {workspaces.map((workspace) => {
-                    const assigned = member.workspaceAssignments.find(
-                      (entry) => entry.workspaceId === workspace.id
-                    );
-
-                    return (
-                      <div
-                        key={workspace.id}
-                        className="rounded-[18px] border border-[rgba(12,17,21,0.08)] bg-white p-4"
-                      >
-                        <label className="flex items-center gap-2 text-sm font-semibold text-[var(--ink)]">
-                          <input
-                            type="checkbox"
-                            name={`ws_${workspace.id}`}
-                            defaultChecked={Boolean(assigned)}
-                          />
-                          {workspace.name}
-                        </label>
-                        <select
-                          name={`ws_role_${workspace.id}`}
-                          defaultValue={assigned?.role ?? "viewer"}
-                          className="mt-3 w-full rounded-[12px] border border-[rgba(12,17,21,0.12)] bg-white px-3 py-2 text-sm outline-none"
-                        >
-                          {Object.entries(WORKSPACE_ROLE_LABELS).map(([value, label]) => (
-                            <option key={value} value={value}>
-                              {label}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    );
-                  })}
-                </div>
-                <div className="flex flex-wrap justify-end gap-2">
-                  <button className="rounded-[12px] border border-[rgba(12,17,21,0.12)] bg-white px-3 py-2 text-sm font-semibold text-[var(--ink)]">
-                    Save access
+              {!member.isCurrentUser ? (
+                <form action={removeMemberAction} className="mt-4 flex justify-end">
+                  <button
+                    name="membershipId"
+                    value={member.membershipId}
+                    className="rounded-[12px] border border-[rgba(216,109,54,0.22)] bg-white px-3 py-2 text-sm font-semibold text-[#a84e26]"
+                  >
+                    Remove user
                   </button>
-                  {!member.isCurrentUser ? (
-                    <button
-                      formAction={removeMemberAction}
-                      name="membershipId"
-                      value={member.membershipId}
-                      className="rounded-[12px] border border-[rgba(216,109,54,0.22)] bg-white px-3 py-2 text-sm font-semibold text-[#a84e26]"
-                    >
-                      Remove member
-                    </button>
-                  ) : null}
-                </div>
-              </form>
+                </form>
+              ) : null}
             </article>
           ))}
         </div>
       </SectionCard>
 
-      <SectionCard title="Pending Invites" subtitle="Resend, revoke, or copy the accept URL when SMTP is off.">
+      <SectionCard title="Pending Access" subtitle="Resend, revoke, or copy the access URL when email delivery is unavailable.">
         {invitations.length === 0 ? (
           <div className="rounded-[18px] border border-dashed border-[rgba(12,17,21,0.12)] px-4 py-10 text-center text-sm text-[var(--muted)]">
             No pending invites.
@@ -553,21 +427,12 @@ export function TeamMembersPanel({
                     <p className="text-sm text-[var(--muted)]">
                       Sent {invite.createdAtLabel}. Expires {invite.expiresAtLabel}.
                     </p>
-                    <div className="flex flex-wrap gap-2">
-                      {invite.assignments.map((assignment) => (
-                        <span
-                          key={`${invite.id}-${assignment.workspaceId}`}
-                          className="rounded-full bg-[#f5f3ef] px-3 py-1 text-xs font-medium text-[#756756]"
-                        >
-                          {assignment.workspaceName}: {WORKSPACE_ROLE_LABELS[assignment.role]}
-                        </span>
-                      ))}
-                    </div>
-                    <Link href={invite.url} className="block break-all text-xs text-[var(--accent-tech)]">
+                    <p className="break-all text-xs text-[var(--accent-tech)]">
                       {invite.url}
-                    </Link>
+                    </p>
                   </div>
                   <div className="flex flex-wrap gap-2">
+                    <CopyInviteLinkButton url={invite.url} />
                     <form action={resendInvitationAction}>
                       <input type="hidden" name="invitationId" value={invite.id} />
                       <button className="rounded-[12px] border border-[rgba(12,17,21,0.12)] bg-white px-3 py-2 text-sm font-semibold text-[var(--ink)]">
@@ -785,24 +650,24 @@ export function InvitationAcceptPanel({
   return (
     <div className="mx-auto max-w-3xl space-y-6 px-4 py-10 md:px-6">
       <DashboardHero
-        eyebrow="Invite"
-        title={`Join ${organizationName}`}
-        description="Review workspace access, then accept the invitation into the dashboard."
+        eyebrow="Access"
+        title="Start using SMM Agent"
+        description={`Review workspace access for ${organizationName}, then open SMM Agent.`}
         actions={
           canAccept ? (
             <form action={acceptInvitationAction}>
               <input type="hidden" name="token" value={token} />
               <button className="rounded-[14px] bg-[var(--paper)] px-5 py-3 text-sm font-semibold text-[var(--ink)] shadow-[0_10px_24px_rgba(12,17,21,0.24)]">
-                Accept invite
+                Open SMM Agent
               </button>
             </form>
           ) : (
-            <HeroButton href={loginHref}>Sign in to accept</HeroButton>
+            <HeroButton href={loginHref}>Sign in to open SMM Agent</HeroButton>
           )
         }
       />
 
-      <SectionCard title="Invite Details" subtitle={`Reserved for ${email}. Your sign-in email must match.`}>
+      <SectionCard title="Access Details" subtitle={`Reserved for ${email}. Use the same Google account to sign in.`}>
         <div className="grid gap-3">
           {assignments.map((assignment) => (
             <div
@@ -812,9 +677,7 @@ export function InvitationAcceptPanel({
               <p className="text-base font-semibold text-[var(--ink)]">
                 {assignment.workspaceName}
               </p>
-              <p className="mt-2 text-sm text-[var(--muted)]">
-                {WORKSPACE_ROLE_LABELS[assignment.role]}
-              </p>
+              <p className="mt-2 text-sm text-[var(--muted)]">Workspace access</p>
             </div>
           ))}
         </div>

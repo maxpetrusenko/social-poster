@@ -39,7 +39,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           />
           <div>
             <p className="font-serif text-xl leading-none tracking-[-0.03em] text-[#171717]">
-              ClawPoster
+              SMM Agent
             </p>
             <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#8d7c64]">
               Admin

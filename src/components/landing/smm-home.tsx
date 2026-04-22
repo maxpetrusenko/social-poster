@@ -109,7 +109,7 @@ export function SmmAgentHome() {
             An operating layer for social posts, replies, approvals, and platform-specific distribution.
           </h1>
           <p className="mt-6 text-lg md:text-xl text-[var(--muted)] leading-relaxed max-w-2xl">
-            SMMAgent is the agent-focused surface for model keys, source-backed drafts, reply queues, schedules, and publishing checks designed for teams that want automation with control.
+            SMM Agent is the agent-focused surface for model keys, source-backed drafts, reply queues, schedules, and publishing checks designed for teams that want automation with control.
           </p>
 
           <div className="mt-10 flex flex-wrap gap-3">

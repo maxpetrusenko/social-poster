@@ -7,7 +7,9 @@ import crypto from "node:crypto";
 import {
   AUTH_MODE,
   ALLOWED_EMAIL,
+  BYPASS_SIGNED_OUT_COOKIE,
   getAuthConfigError,
+  isBypassSignedOutCookieValue,
   MAGIC_LINK_TTL_MS,
   SESSION_COOKIE,
   SESSION_TTL_MS,
@@ -131,6 +133,15 @@ export async function verifyMagicLink(t: string): Promise<string | null> {
 
 export async function getSession() {
   if (AUTH_MODE === "bypass") {
+    const cookieStore = await cookies();
+    if (
+      isBypassSignedOutCookieValue(
+        cookieStore.get(BYPASS_SIGNED_OUT_COOKIE)?.value
+      )
+    ) {
+      return null;
+    }
+
     return getBypassSession();
   }
 
@@ -166,7 +177,19 @@ export async function getSession() {
 }
 
 export async function logout() {
-  if (AUTH_MODE === "bypass" || AUTH_MODE === "misconfigured") return;
+  if (AUTH_MODE === "bypass") {
+    const cookieStore = await cookies();
+    cookieStore.set(BYPASS_SIGNED_OUT_COOKIE, "1", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: SESSION_TTL_MS / 1000,
+      path: "/",
+    });
+    return;
+  }
+
+  if (AUTH_MODE === "misconfigured") return;
 
   if (AUTH_MODE === "supabase" && isSupabaseConfigured()) {
     const supabase = await createSupabaseServerClient();
@@ -192,7 +215,12 @@ export async function requireAuth() {
 
 export async function requireApiSession() {
   if (AUTH_MODE === "bypass") {
-    return getBypassSession();
+    const session = await getSession();
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    return session;
   }
 
   if (AUTH_MODE === "misconfigured") {

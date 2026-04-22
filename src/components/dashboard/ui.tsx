@@ -17,7 +17,6 @@ export function DashboardHero({
 }) {
   return (
     <section className="dark-zone overflow-hidden rounded-[28px] px-5 py-10 md:px-8 md:py-12">
-      <div className="absolute inset-0 z-[1] bg-[radial-gradient(circle_at_20%_30%,rgba(15,126,169,0.14),transparent_35%),radial-gradient(circle_at_80%_70%,rgba(210,163,93,0.10),transparent_30%),linear-gradient(145deg,#0e1520_0%,#121d2e_58%,#152438_100%)]" />
       <div className="dark-zone-inner grid gap-6 lg:grid-cols-[minmax(0,1fr)_280px] lg:items-end">
         <div>
           <p className="section-eyebrow text-[var(--accent-tech)]">{eyebrow}</p>

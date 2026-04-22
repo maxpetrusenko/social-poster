@@ -29,7 +29,6 @@ import {
   workspaceShellNav,
   type ShellNavItem,
 } from "@/lib/dashboard-shell";
-import { LogoutButton } from "@/components/logout-button";
 
 const iconMap = {
   publish: CalendarDays,
@@ -239,8 +238,6 @@ export function Sidebar() {
                   </Link>
                 );
               })}
-
-              <LogoutButton className="flex w-full items-center gap-3 rounded-[14px] px-3 py-2.5 text-left text-sm font-semibold text-[var(--ink)] transition hover:bg-[rgba(12,17,21,0.05)]" />
             </div>
           </div>
         </div>

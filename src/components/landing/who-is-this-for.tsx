@@ -10,7 +10,7 @@ const PERSONAS = [
       </svg>
     ),
     title: "Solo Founders & Indie Hackers",
-    body: "You\u2019re shipping features, closing deals, and talking to customers. Posting to sixteen platforms daily is not in your job description. Let your claw handle it.",
+    body: "You\u2019re shipping features, closing deals, and talking to customers. Posting to sixteen platforms daily is not in your job description. Let SMM Agent handle it.",
     accent: "var(--accent-tech)",
   },
   {
@@ -20,7 +20,7 @@ const PERSONAS = [
       </svg>
     ),
     title: "Agencies & Small Teams",
-    body: "Three-person team, no social hire. ClawPoster manages multiple client brands from one dashboard with separate voices, schedules, and analytics per workspace.",
+    body: "Three-person team, no social hire. SMM Agent manages multiple client brands from one workspace with separate voices, schedules, and analytics.",
     accent: "var(--accent-spirit)",
   },
   {
@@ -30,7 +30,7 @@ const PERSONAS = [
       </svg>
     ),
     title: "Creators Who\u2019d Rather Create",
-    body: "You have the ideas. ClawPoster turns one idea into sixteen platform-ready posts. Spend your time on the craft, not on reformatting content for every social network.",
+    body: "You have the ideas. SMM Agent turns one idea into sixteen platform-ready posts. Spend your time on the craft, not on reformatting content for every social network.",
     accent: "var(--accent-mindfold)",
   },
 ];

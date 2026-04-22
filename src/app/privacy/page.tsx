@@ -5,8 +5,8 @@ import { getProductCanonicalUrl } from "@/lib/site-domains";
 const effectiveDate = "April 21, 2026";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy — ClawPoster",
-  description: "Privacy Policy for ClawPoster at clawposter.app.",
+  title: "Privacy Policy — SMM Agent",
+  description: "Privacy Policy for SMM Agent at clawposter.app.",
   alternates: {
     canonical: getProductCanonicalUrl("/privacy"),
   },
@@ -16,8 +16,8 @@ const sections = [
   {
     title: "Who we are",
     body: [
-      "ClawPoster is a social posting and automation product operated by Max Petrusenko. You can contact us at max.petrusenko@gmail.com.",
-      "This policy applies to clawposter.app, social.maxpetrusenko.com, and related ClawPoster services, dashboards, forms, integrations, and support channels.",
+      "SMM Agent is a social posting and automation product operated by Max Petrusenko. You can contact us at max.petrusenko@gmail.com.",
+      "This policy applies to clawposter.app, social.maxpetrusenko.com, and related SMM Agent services, dashboards, forms, integrations, and support channels.",
     ],
   },
   {
@@ -33,7 +33,7 @@ const sections = [
   {
     title: "How we use information",
     body: [
-      "We use information to provide and secure ClawPoster, create and manage accounts, connect social platforms, generate drafts, publish posts, process replies, schedule runs, troubleshoot errors, prevent abuse, send service messages, respond to support requests, and improve product reliability.",
+      "We use information to provide and secure SMM Agent, create and manage accounts, connect social platforms, generate drafts, publish posts, process replies, schedule runs, troubleshoot errors, prevent abuse, send service messages, respond to support requests, and improve product reliability.",
       "We may use operational logs and traces to debug model calls, publishing failures, platform API errors, and support issues. We limit this use to operating and improving the service.",
       "We may send product, onboarding, or service emails. You can unsubscribe from marketing emails, but we may still send transactional messages about your account, security, billing, or service status.",
     ],
@@ -49,7 +49,7 @@ const sections = [
   {
     title: "AI processing",
     body: [
-      "ClawPoster uses AI providers and observability tools to generate social drafts, summarize source material, draft replies, answer dashboard questions, and debug model behavior.",
+      "SMM Agent uses AI providers and observability tools to generate social drafts, summarize source material, draft replies, answer dashboard questions, and debug model behavior.",
       "Inputs sent to AI systems may include the prompt, selected workspace context, content you provide, post text, reply candidates, article text, and related operational metadata. We design prompts to avoid sending secrets, raw credentials, access tokens, cookies, or unnecessary personal information.",
       "AI output can be wrong, incomplete, delayed, offensive, or unsuitable for a platform. You are responsible for reviewing content before publishing where the product gives you review controls.",
     ],
@@ -57,8 +57,8 @@ const sections = [
   {
     title: "Sharing and disclosure",
     body: [
-      "We share information with service providers that help us host, secure, authenticate, email, observe, analyze, support, and operate ClawPoster.",
-      "We share information with social platforms when you connect accounts or ask ClawPoster to publish, read permitted inbox content, post replies, refresh account data, or perform another platform action.",
+      "We share information with service providers that help us host, secure, authenticate, email, observe, analyze, support, and operate SMM Agent.",
+      "We share information with social platforms when you connect accounts or ask SMM Agent to publish, read permitted inbox content, post replies, refresh account data, or perform another platform action.",
       "We may disclose information if required by law, legal process, security investigation, fraud prevention, protection of rights, business transfer, or enforcement of our terms.",
       "We do not sell personal information. We do not knowingly share personal information for cross-context behavioral advertising. If that changes, we will update this policy and provide required opt-out controls.",
     ],
@@ -95,13 +95,13 @@ const sections = [
   {
     title: "Children",
     body: [
-      "ClawPoster is not directed to children under 13, and we do not knowingly collect personal information from children under 13.",
+      "SMM Agent is not directed to children under 13, and we do not knowingly collect personal information from children under 13.",
     ],
   },
   {
     title: "International use",
     body: [
-      "ClawPoster is operated from the United States. If you use the service from another country, you understand that information may be processed in the United States and other locations where our providers operate.",
+      "SMM Agent is operated from the United States. If you use the service from another country, you understand that information may be processed in the United States and other locations where our providers operate.",
     ],
   },
   {
@@ -117,7 +117,7 @@ export default function PrivacyPage() {
     <LegalPage
       title="Privacy Policy"
       effectiveDate={effectiveDate}
-      intro="This Privacy Policy explains what ClawPoster collects, how we use it, when we share it, and what choices you have. It is written for a small software product that connects to social platforms, generates content, and publishes on your behalf."
+      intro="This Privacy Policy explains what SMM Agent collects, how we use it, when we share it, and what choices you have. It is written for a small software product that connects to social platforms, generates content, and publishes on your behalf."
       sections={sections}
     />
   );

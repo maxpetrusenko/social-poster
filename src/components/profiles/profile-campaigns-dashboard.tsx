@@ -254,11 +254,12 @@ export function ProfileCampaignsDashboard({
   }
 
   return (
-    <div className="mx-auto max-w-[1500px] space-y-5 px-5 py-6 md:px-8 xl:px-10">
-      <div className="flex flex-wrap items-center justify-between gap-4 rounded-[24px] border border-[#d9cab5] bg-white p-4">
+    <div className="mx-auto max-w-[1500px] space-y-5 px-4 py-5 md:px-6 xl:px-8">
+      <div className="overflow-hidden rounded-[28px] border border-[#303328] bg-[#17191a] text-[#e7ead7] shadow-[0_28px_90px_rgba(0,0,0,0.24)]">
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#2a2d25] bg-[#1d1f20] px-5 py-4">
         <div className="min-w-[280px] max-w-[360px] flex-1">
           <label className="block">
-            <span className="text-xs font-semibold uppercase tracking-[0.16em] text-[#7f6c54]">Profile</span>
+            <span className="text-xs font-semibold uppercase tracking-[0.18em] text-[#a8b97b]">Profile</span>
             <select
               value={activeProfile?.id ?? ""}
               onChange={(event) => {
@@ -267,7 +268,7 @@ export function ProfileCampaignsDashboard({
                 setSaved(false);
                 setError(null);
               }}
-              className="mt-1 w-full rounded-[12px] border border-[#d8cab5] bg-[#fbf7f0] px-3 py-2.5 text-sm font-semibold text-[#171717] outline-none focus:border-[#171717]"
+              className="mt-1 w-full rounded-[12px] border border-[#45483c] bg-[#121415] px-3 py-2.5 text-sm font-semibold text-[#f1f3e8] outline-none focus:border-[#bacb84]"
             >
               {profiles.map((profile) => (
                 <option key={profile.id} value={profile.id}>
@@ -279,7 +280,7 @@ export function ProfileCampaignsDashboard({
         </div>
         <div className="flex items-center gap-2">
           {saved ? (
-            <span className="inline-flex items-center gap-1.5 rounded-[10px] border border-[#cfd8cf] bg-[#f0f7f0] px-3 py-2 text-xs font-semibold text-[#286028]">
+            <span className="inline-flex items-center gap-1.5 rounded-[10px] border border-[#4f6044] bg-[#202719] px-3 py-2 text-xs font-semibold text-[#c7dc88]">
               <Check className="h-3.5 w-3.5" />
               Saved
             </span>
@@ -287,7 +288,7 @@ export function ProfileCampaignsDashboard({
           <button
             type="button"
             onClick={() => void createCampaign()}
-            className="inline-flex items-center gap-2 rounded-[12px] border border-[#d8cab5] bg-[#fbf7f0] px-4 py-2.5 text-sm font-semibold text-[#171717] hover:border-[#af987b]"
+            className="inline-flex items-center gap-2 rounded-[12px] border border-[#565a4a] bg-[#242726] px-4 py-2.5 text-sm font-semibold text-[#e7ead7] hover:border-[#bacb84]"
           >
             <Plus className="h-4 w-4" />
             Campaign for profile
@@ -296,29 +297,29 @@ export function ProfileCampaignsDashboard({
             type="button"
             onClick={saveActiveProfile}
             disabled={saving}
-            className="inline-flex items-center gap-2 rounded-[12px] bg-[#171717] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+            className="inline-flex items-center gap-2 rounded-[12px] bg-[#c5d887] px-4 py-2.5 text-sm font-semibold text-[#17191a] disabled:opacity-60"
           >
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             Save
           </button>
         </div>
-      </div>
+        </div>
 
       {error ? (
-        <div className="rounded-[12px] border border-[#efb8a8] bg-[#fff0eb] px-4 py-3 text-sm font-medium text-[#9c321f]">
+        <div className="mx-5 mt-4 rounded-[12px] border border-[#6f392e] bg-[#2a1715] px-4 py-3 text-sm font-medium text-[#ffb19e]">
           {error}
         </div>
       ) : null}
 
-      <div className="grid gap-5 xl:grid-cols-[280px_minmax(0,1fr)]">
-        <aside className="rounded-[24px] border border-[#d9cab5] bg-white p-3">
-          <div className="flex items-center gap-2 px-2 py-2 text-sm font-semibold text-[#171717]">
+      <div className="grid gap-0 xl:grid-cols-[280px_minmax(0,1fr)]">
+        <aside className="border-r border-[#2a2d25] bg-[#1c1f1f] p-4">
+          <div className="flex items-center gap-2 px-2 py-2 text-sm font-semibold text-[#f1f3e8]">
             <FolderKanban className="h-4 w-4" />
             {activeProfile?.name} campaigns
           </div>
           <div className="mt-2 space-y-1">
             {visibleCampaigns.length === 0 ? (
-              <p className="rounded-[12px] bg-[#fbf7f0] px-3 py-3 text-sm leading-6 text-[#6f604b]">
+              <p className="rounded-[12px] bg-[#242726] px-3 py-3 text-sm leading-6 text-[#a8aa9e]">
                 No campaigns yet.
               </p>
             ) : (
@@ -328,7 +329,9 @@ export function ProfileCampaignsDashboard({
                   type="button"
                   onClick={() => setActiveCampaignPath(campaign.path)}
                   className={`w-full rounded-[12px] px-3 py-3 text-left transition ${
-                    campaign.path === activeCampaign?.path ? "bg-[#171717] text-white" : "text-[#4f4030] hover:bg-[#fbf7f0]"
+                    campaign.path === activeCampaign?.path
+                      ? "bg-[#c5d887] text-[#17191a]"
+                      : "text-[#d8dacd] hover:bg-[#242726]"
                   }`}
                 >
                   <span className="block truncate text-sm font-semibold">{campaign.title}</span>
@@ -355,21 +358,24 @@ export function ProfileCampaignsDashboard({
               onCampaignRecordChange={upsertCampaignRecord}
             />
           ) : (
-            <div className="rounded-[24px] border border-[#d9cab5] bg-white p-8 text-center">
-              <FolderKanban className="mx-auto h-10 w-10 text-[#7f6c54]" />
-              <h2 className="mt-4 text-2xl font-semibold text-[#171717]">No campaign selected</h2>
-              <p className="mt-2 text-sm text-[#6f604b]">Create one and it will use the active profile as its source DNA.</p>
+            <div className="flex min-h-[520px] items-center justify-center p-8 text-center">
+              <div>
+              <FolderKanban className="mx-auto h-10 w-10 text-[#a8b97b]" />
+              <h2 className="mt-4 font-serif text-3xl font-semibold text-[#f1f3e8]">No campaign selected</h2>
+              <p className="mt-2 text-sm text-[#a8aa9e]">Create one and it will open in the campaign studio.</p>
               <button
                 type="button"
                 onClick={() => void createCampaign("New campaign")}
-                className="mt-5 inline-flex items-center gap-2 rounded-[12px] bg-[#171717] px-4 py-2.5 text-sm font-semibold text-white"
+                className="mt-5 inline-flex items-center gap-2 rounded-[999px] bg-[#c5d887] px-5 py-3 text-sm font-semibold text-[#17191a]"
               >
                 <Plus className="h-4 w-4" />
                 Create campaign
               </button>
+              </div>
             </div>
           )}
         </section>
+      </div>
       </div>
     </div>
   );
