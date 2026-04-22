@@ -11,7 +11,12 @@ FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-RUN npm run build
+RUN (while true; do sleep 10; echo "next build still running"; done) & \
+  heartbeat_pid="$!"; \
+  npm run build; \
+  build_status="$?"; \
+  kill "$heartbeat_pid"; \
+  exit "$build_status"
 
 FROM node:22-bookworm-slim AS runner
 WORKDIR /app
