@@ -1,13 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Bot, Send, Sparkles, X } from "lucide-react";
+import { useEffect, useRef, useState, type DragEvent } from "react";
+import Image from "next/image";
+import { Bot, CheckCircle2, ImagePlus, Loader2, Send, Sparkles, X } from "lucide-react";
 import type { AgentDockMode, ProductMode } from "@/lib/user-preferences";
 import { cn } from "@/lib/utils";
+import type { SocialAgentAttachment } from "@/lib/social-agent/action-intents";
 
 type ChatMessage = {
   role: "user" | "assistant";
   content: string;
+  attachments?: SocialAgentAttachment[];
 };
 
 type AgentContext = Record<string, unknown>;
@@ -17,6 +20,16 @@ type AgentResponse = {
   context: AgentContext;
 };
 
+const MAX_CHAT_ATTACHMENTS = 4;
+const MAX_CHAT_IMAGE_BYTES = 10 * 1024 * 1024;
+const QUICK_ACTIONS = [
+  {
+    label: "Check post status",
+    prompt: "Did my latest post publish successfully?",
+    icon: CheckCircle2,
+  },
+];
+
 export function SocialAgentWidget({
   placement = "right-widget",
   productMode = "agentic",
@@ -24,11 +37,16 @@ export function SocialAgentWidget({
   placement?: AgentDockMode;
   productMode?: ProductMode;
 }) {
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const docked = placement !== "right-widget";
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [context, setContext] = useState<AgentContext | null>(null);
   const [input, setInput] = useState("");
+  const [pendingAttachments, setPendingAttachments] = useState<SocialAgentAttachment[]>([]);
+  const [uploadingImages, setUploadingImages] = useState(0);
+  const [uploadError, setUploadError] = useState("");
+  const [isDraggingImage, setIsDraggingImage] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       role: "assistant",
@@ -69,16 +87,27 @@ export function SocialAgentWidget({
     setMessages((current) => [...current, { role: "assistant", content }]);
   }
 
-  async function sendMessage() {
-    const message = input.trim();
-    if (!message || loading) return;
+  async function sendMessage(messageOverride?: string) {
+    const quickAction = typeof messageOverride === "string";
+    const attachments = quickAction ? [] : pendingAttachments;
+    const message = (messageOverride ?? input).trim() || (attachments.length > 0 ? "Use the attached image." : "");
+    if ((!message && attachments.length === 0) || loading || uploadingImages > 0) return;
 
+    const userMessage: ChatMessage = {
+      role: "user",
+      content: message,
+      attachments,
+    };
     const nextMessages: ChatMessage[] = [
       ...messages,
-      { role: "user", content: message },
+      userMessage,
     ];
     setMessages(nextMessages);
-    setInput("");
+    if (!quickAction) {
+      setInput("");
+      setPendingAttachments([]);
+    }
+    setUploadError("");
     setLoading(true);
 
     try {
@@ -88,6 +117,7 @@ export function SocialAgentWidget({
         body: JSON.stringify({
           message,
           messages: nextMessages,
+          attachments,
           pageContext: readPageContext(productMode),
         }),
       });
@@ -108,6 +138,77 @@ export function SocialAgentWidget({
     }
   }
 
+  async function uploadImageFiles(files: FileList | File[]) {
+    const imageFiles = Array.from(files).filter((file) => file.type.startsWith("image/"));
+    if (imageFiles.length === 0) {
+      setUploadError("Use an image file.");
+      return;
+    }
+
+    const availableSlots = MAX_CHAT_ATTACHMENTS - pendingAttachments.length;
+    if (availableSlots <= 0) {
+      setUploadError(`Remove an image before adding another.`);
+      return;
+    }
+
+    const acceptedFiles = imageFiles.slice(0, availableSlots);
+    const tooLarge = acceptedFiles.find((file) => file.size > MAX_CHAT_IMAGE_BYTES);
+    if (tooLarge) {
+      setUploadError("Images must be 10 MB or smaller in chat.");
+      return;
+    }
+
+    setUploadError("");
+    setUploadingImages(acceptedFiles.length);
+    try {
+      const uploaded: SocialAgentAttachment[] = [];
+      for (const file of acceptedFiles) {
+        const formData = new FormData();
+        formData.append("file", file);
+        const response = await fetch("/api/media/upload", {
+          method: "POST",
+          body: formData,
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok || typeof result.url !== "string") {
+          throw new Error(
+            typeof result.error === "string" ? result.error : "Image upload failed."
+          );
+        }
+        uploaded.push({
+          url: result.url,
+          name: file.name,
+          contentType: file.type,
+          size: file.size,
+        });
+      }
+      setPendingAttachments((current) => [...current, ...uploaded].slice(0, MAX_CHAT_ATTACHMENTS));
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : "Image upload failed.");
+    } finally {
+      setUploadingImages(0);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
+  function handleImageDrag(event: DragEvent<HTMLElement>) {
+    event.preventDefault();
+    event.stopPropagation();
+    if (event.type === "dragenter" || event.type === "dragover") {
+      setIsDraggingImage(true);
+      return;
+    }
+    setIsDraggingImage(false);
+  }
+
+  function handleImageDrop(event: DragEvent<HTMLElement>) {
+    event.preventDefault();
+    event.stopPropagation();
+    setIsDraggingImage(false);
+    const files = event.dataTransfer.files;
+    if (files?.length) void uploadImageFiles(files);
+  }
+
   return (
     <>
       {!docked ? (
@@ -123,8 +224,13 @@ export function SocialAgentWidget({
 
       {panelOpen ? (
         <section
+          onDragEnter={handleImageDrag}
+          onDragOver={handleImageDrag}
+          onDragLeave={handleImageDrag}
+          onDrop={handleImageDrop}
           className={cn(
             "z-[60] flex flex-col overflow-hidden border border-[#dccdb8] bg-[#fffaf2]",
+            isDraggingImage && "ring-2 ring-[#0f7ea9]",
             docked
               ? "max-h-[calc(100vh-4rem)] w-full rounded-none border-x-0 shadow-none lg:sticky lg:top-[73px] lg:h-[calc(100vh-73px)] lg:max-h-none lg:w-[380px] lg:shrink-0 lg:rounded-none"
               : "fixed bottom-5 right-5 max-h-[calc(100vh-2.5rem)] w-[min(430px,calc(100vw-2rem))] rounded-[1.25rem] shadow-[0_28px_70px_rgba(23,23,23,0.24)]",
@@ -168,6 +274,9 @@ export function SocialAgentWidget({
                 )}
               >
                 {message.content}
+                {message.attachments?.length ? (
+                  <AttachmentStrip attachments={message.attachments} />
+                ) : null}
               </div>
             ))}
             {loading ? (
@@ -178,7 +287,60 @@ export function SocialAgentWidget({
           </div>
 
           <footer className="border-t border-[#eadfce] bg-[#fbf3e7] p-3">
+            {pendingAttachments.length > 0 ? (
+              <AttachmentStrip
+                attachments={pendingAttachments}
+                onRemove={(url) =>
+                  setPendingAttachments((current) =>
+                    current.filter((attachment) => attachment.url !== url)
+                  )
+                }
+              />
+            ) : null}
+            {uploadError ? (
+              <p className="mb-2 text-xs font-medium text-[#9b2f21]">{uploadError}</p>
+            ) : null}
+            <div className="mb-2 flex flex-wrap gap-2">
+              {QUICK_ACTIONS.map((action) => {
+                const Icon = action.icon;
+                return (
+                  <button
+                    key={action.prompt}
+                    type="button"
+                    onClick={() => void sendMessage(action.prompt)}
+                    disabled={loading || uploadingImages > 0}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-[#d8cab5] bg-white px-3 py-1.5 text-xs font-semibold text-[#5f523f] disabled:opacity-50"
+                  >
+                    <Icon className="h-3.5 w-3.5" />
+                    {action.label}
+                  </button>
+                );
+              })}
+            </div>
             <div className="flex gap-2">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={(event) => {
+                  if (event.target.files) void uploadImageFiles(event.target.files);
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={loading || uploadingImages > 0}
+                className="flex w-11 shrink-0 items-center justify-center rounded-[0.9rem] border border-[#d8cab5] bg-white text-[#5f523f] disabled:opacity-50"
+                aria-label="Upload image"
+              >
+                {uploadingImages > 0 ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <ImagePlus className="h-4 w-4" />
+                )}
+              </button>
               <textarea
                 value={input}
                 onChange={(event) => setInput(event.target.value)}
@@ -195,7 +357,11 @@ export function SocialAgentWidget({
               <button
                 type="button"
                 onClick={() => void sendMessage()}
-                disabled={loading || !input.trim()}
+                disabled={
+                  loading ||
+                  uploadingImages > 0 ||
+                  (!input.trim() && pendingAttachments.length === 0)
+                }
                 className="flex w-12 items-center justify-center rounded-[0.9rem] bg-[#171717] text-white disabled:opacity-50"
                 aria-label="Send message"
               >
@@ -207,6 +373,58 @@ export function SocialAgentWidget({
       ) : null}
     </>
   );
+}
+
+function AttachmentStrip({
+  attachments,
+  onRemove,
+}: {
+  attachments: SocialAgentAttachment[];
+  onRemove?: (url: string) => void;
+}) {
+  return (
+    <div className="mt-2 grid grid-cols-2 gap-2">
+      {attachments.map((attachment) => (
+        <div
+          key={attachment.url}
+          className="relative overflow-hidden rounded-[0.75rem] border border-[#eadfce] bg-[#fffaf2]"
+        >
+          <Image
+            src={attachment.url}
+            alt={attachment.name || "Attached image"}
+            width={180}
+            height={80}
+            unoptimized
+            className="h-20 w-full object-cover"
+          />
+          <div className="flex items-center justify-between gap-2 px-2 py-1 text-[11px] text-[#5f523f]">
+            <span className="truncate">{attachment.name || "Image"}</span>
+            {typeof attachment.size === "number" ? (
+              <span className="shrink-0">{formatFileSize(attachment.size)}</span>
+            ) : null}
+          </div>
+          {onRemove ? (
+            <button
+              type="button"
+              onClick={() => onRemove(attachment.url)}
+              className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-[#171717] text-white"
+              aria-label="Remove image"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          ) : null}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function formatFileSize(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`;
+  const kb = bytes / 1024;
+  if (kb < 1024) return `${kb.toFixed(kb >= 100 ? 0 : 1)} KB`;
+  const mb = kb / 1024;
+  return `${mb.toFixed(mb >= 10 ? 0 : 1)} MB`;
 }
 
 function readPageContext(productMode: ProductMode) {

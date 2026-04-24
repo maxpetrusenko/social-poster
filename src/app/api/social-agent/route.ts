@@ -1,4 +1,10 @@
+import crypto from "node:crypto";
+import cron from "node-cron";
 import { NextRequest, NextResponse } from "next/server";
+import { and, eq } from "drizzle-orm";
+import { db } from "@/db";
+import { platforms, profiles, rssSources, schedules } from "@/db/schema";
+import { requireApiWorkspaceEditor } from "@/lib/api-authorization";
 import { requireApiSession } from "@/lib/auth";
 import { getRequestAppUrl } from "@/lib/app-url";
 import { sendWorkspaceInvitationEmail } from "@/lib/mail";
@@ -28,6 +34,17 @@ import { callOpenAIResponses } from "@/lib/langsmith";
 import { resolveOpenAIResponsesRuntime } from "@/lib/model-runtime";
 import { executeSafeInternalAgentToolCall } from "@/agent/server-adapter";
 import { parseProductMode, type ProductMode } from "@/lib/user-preferences";
+import { reconcileSchedules } from "@/lib/scheduler";
+import {
+  parseRecurringPostIntent,
+  parseRssKeepIntent,
+  sanitizeSocialAgentAttachments,
+  type SocialAgentAttachment,
+} from "@/lib/social-agent/action-intents";
+import {
+  formatLatestPostPublishStatus,
+  isPostPublishStatusQuestion,
+} from "@/lib/social-agent/post-status";
 
 const MODEL =
   process.env.OPENAI_SOCIAL_AGENT_MODEL ||
@@ -44,6 +61,7 @@ const INLINE_INVITE_ROLES = new Set<WorkspaceRole>([
 type ChatMessage = {
   role: "user" | "assistant";
   content: string;
+  attachments?: SocialAgentAttachment[];
 };
 
 type ClientPageContext = {
@@ -83,8 +101,12 @@ export async function POST(request: NextRequest) {
     message?: string;
     messages?: ChatMessage[];
     pageContext?: ClientPageContext;
+    attachments?: unknown;
   } & SocialAgentToolCommandEnvelope;
-  const message = String(body.message || "").trim();
+  const attachments = sanitizeSocialAgentAttachments(body.attachments);
+  const message = String(
+    body.message || (attachments.length > 0 ? "Use the attached image." : "")
+  ).trim();
 
   const pageContext = sanitizePageContext(body.pageContext);
   const context = await loadSocialAgentContext({
@@ -121,7 +143,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Message is required" }, { status: 400 });
   }
 
-  const inlineAction = await handleInlineAction(message, request, pageContext);
+  const inlineAction = await handleInlineAction(
+    message,
+    request,
+    pageContext,
+    attachments
+  );
   if (inlineAction) {
     const refreshedContext = await loadSocialAgentContext({
       replyLanguage: pageContext.replyLanguage,
@@ -133,7 +160,13 @@ export async function POST(request: NextRequest) {
   }
 
   const messages = Array.isArray(body.messages) ? body.messages : [];
-  const reply = await answerWithContext(context, message, messages, pageContext);
+  const reply = await answerWithContext(
+    context,
+    message,
+    messages,
+    pageContext,
+    attachments
+  );
   return NextResponse.json({ context, reply });
 }
 
@@ -220,8 +253,15 @@ function stringLabel(value: unknown, fallback: string) {
 async function handleInlineAction(
   message: string,
   request: NextRequest,
-  pageContext: ClientPageContext
+  pageContext: ClientPageContext,
+  attachments: SocialAgentAttachment[]
 ) {
+  const rssKeepAction = await handleRssKeepAction(message);
+  if (rssKeepAction) return rssKeepAction;
+
+  const recurringPostAction = await handleRecurringPostAction(message, attachments);
+  if (recurringPostAction) return recurringPostAction;
+
   const supportTicket = parseSupportCommand(message) ?? parseNaturalSupportRequest(message);
   if (supportTicket === "help") {
     return `Use \`/support type | topic | explanation | image-url\` to create a Linear ticket. Types: ${SUPPORT_TICKET_SOURCES.join(", ")}. The image URL is optional.`;
@@ -298,6 +338,240 @@ async function handleInlineAction(
     const message =
       error instanceof Error ? error.message : "Invite could not be created.";
     return `Invite failed: ${message}`;
+  }
+}
+
+async function handleRssKeepAction(message: string) {
+  const intent = parseRssKeepIntent(message);
+  if (!intent) return null;
+
+  const tenant = await requireApiWorkspaceEditor();
+  if (tenant instanceof Response) {
+    return "RSS source changes require editor access in this workspace.";
+  }
+
+  const sources = await db
+    .select()
+    .from(rssSources)
+    .where(eq(rssSources.workspaceId, tenant.currentWorkspace.id));
+
+  if (sources.length === 0) {
+    return "No RSS sources are configured in this workspace.";
+  }
+
+  if (sources.length === 1) {
+    return `Only one RSS source is configured: ${sources[0]?.name}. Nothing to remove.`;
+  }
+
+  if (!intent.keepQuery) {
+    return [
+      "Which RSS source should stay?",
+      ...sources.map((source, index) => `${index + 1}. ${source.name} (${source.url})`),
+    ].join("\n");
+  }
+
+  const keepQuery = intent.keepQuery ?? "";
+  const matches = sources.filter((source) => rssSourceMatches(source, keepQuery));
+  if (matches.length === 0) {
+    return `I could not find an RSS source matching "${keepQuery}".`;
+  }
+  if (matches.length > 1) {
+    return [
+      `"${keepQuery}" matches multiple RSS sources. Which one should stay?`,
+      ...matches.map((source, index) => `${index + 1}. ${source.name} (${source.url})`),
+    ].join("\n");
+  }
+
+  const keep = matches[0];
+  const toDelete = sources.filter((source) => source.id !== keep.id);
+  for (const source of toDelete) {
+    await db
+      .delete(rssSources)
+      .where(
+        and(
+          eq(rssSources.workspaceId, tenant.currentWorkspace.id),
+          eq(rssSources.id, source.id)
+        )
+      );
+  }
+
+  await recordTenantAuditEvent(tenant, {
+    action: "rss_sources.bulk_delete_except",
+    targetType: "rss_source",
+    targetId: keep.id,
+    metadata: {
+      endpoint: "POST /api/social-agent",
+      keptName: keep.name,
+      deletedCount: toDelete.length,
+    },
+  });
+
+  return `Removed ${toDelete.length} RSS source${toDelete.length === 1 ? "" : "s"}. Kept ${keep.name}.`;
+}
+
+async function handleRecurringPostAction(
+  message: string,
+  attachments: SocialAgentAttachment[]
+) {
+  const intent = parseRecurringPostIntent(message, attachments);
+  if (!intent) return null;
+
+  const missing: string[] = [];
+  if (!intent.cron) missing.push("cadence, for example daily at 9 AM");
+  if (!intent.content && !intent.mediaUrl) missing.push("post copy after a colon");
+  if (missing.length > 0) {
+    return `I can create that recurring post. Add ${missing.join(" and ")}. Example: create recurring post daily at 9 AM on X: Launch note text.`;
+  }
+
+  const scheduleCron = intent.cron ?? "";
+  if (!cron.validate(scheduleCron)) {
+    return `The recurring cadence did not produce a valid cron expression: ${scheduleCron}.`;
+  }
+
+  const tenant = await requireApiWorkspaceEditor();
+  if (tenant instanceof Response) {
+    return "Recurring post creation requires editor access in this workspace.";
+  }
+
+  const workspaceId = tenant.currentWorkspace.id;
+  const [profileRows, platformRows] = await Promise.all([
+    db.select().from(profiles).where(eq(profiles.workspaceId, workspaceId)),
+    db.select().from(platforms).where(eq(platforms.workspaceId, workspaceId)),
+  ]);
+  const profile = profileRows.find((row) => row.isDefault) ?? profileRows[0] ?? null;
+  if (!profile) {
+    return "Create a profile first, then I can attach recurring posts to it.";
+  }
+
+  const enabledPlatforms = platformRows.filter((platform) => platform.enabled);
+  const selectedPlatforms = intent.platformQuery
+    ? enabledPlatforms.filter((platform) =>
+        platformMatchesQuery(platform, intent.platformQuery ?? "")
+      )
+    : enabledPlatforms;
+
+  if (selectedPlatforms.length === 0) {
+    return intent.platformQuery
+      ? `No enabled platform matched "${intent.platformQuery}".`
+      : "Connect and enable at least one platform first.";
+  }
+
+  const now = new Date();
+  const id = crypto.randomUUID();
+  const hasMedia = Boolean(intent.mediaUrl);
+  const name =
+    intent.name ??
+    `Recurring ${hasMedia ? "image" : "text"} post ${now.toISOString().slice(0, 10)}`;
+  const content = intent.content ?? "Image post";
+  const config: Record<string, unknown> = {
+    postMode: "fixed",
+    title: name,
+    summary: "Created from SMM Agent chat",
+    content,
+    contentCategory: "opinion_take",
+  };
+  if (intent.mediaUrl) config.mediaUrl = intent.mediaUrl;
+
+  const [row] = await db
+    .insert(schedules)
+    .values({
+      id,
+      workspaceId,
+      name,
+      description: "Created from SMM Agent chat.",
+      cron: scheduleCron,
+      cronHuman: intent.cronHuman,
+      jobType: hasMedia ? "image_post" : "text_post",
+      profileId: profile.id,
+      targetPlatformIds: selectedPlatforms.map((platform) => platform.id),
+      config,
+      enabled: true,
+      createdAt: now,
+      updatedAt: now,
+    })
+    .returning();
+
+  await reconcileSchedules("social-agent:schedule:create");
+  await recordTenantAuditEvent(tenant, {
+    action: "schedule.create",
+    targetType: "schedule",
+    targetId: id,
+    metadata: {
+      status: "scheduled",
+      endpoint: "POST /api/social-agent",
+      jobType: row.jobType,
+      platformTargetCount: selectedPlatforms.length,
+      source: "social-agent",
+      hasMedia,
+    },
+  });
+
+  const targetLabels = selectedPlatforms
+    .map((platform) => platform.handle || platform.name || platform.type)
+    .join(", ");
+  return `Created recurring ${hasMedia ? "image" : "text"} post schedule "${row.name}" for ${targetLabels} on ${row.cronHuman ?? row.cron}.`;
+}
+
+function rssSourceMatches(
+  source: typeof rssSources.$inferSelect,
+  query: string
+) {
+  const normalizedQuery = normalizeSearchText(query);
+  if (!normalizedQuery) return false;
+
+  const haystack = [
+    source.name,
+    source.url,
+    safeHostname(source.url),
+  ]
+    .map(normalizeSearchText)
+    .filter(Boolean);
+
+  return haystack.some(
+    (value) => value === normalizedQuery || value.includes(normalizedQuery)
+  );
+}
+
+function platformMatchesQuery(
+  platform: typeof platforms.$inferSelect,
+  query: string
+) {
+  const terms = query
+    .split(/,|\/|\+|\band\b/i)
+    .map(normalizeSearchText)
+    .filter(Boolean);
+  if (terms.length === 0) return false;
+
+  const values = [
+    platform.type,
+    platform.name,
+    platform.handle ?? "",
+    platform.type === "x" ? "twitter" : "",
+  ]
+    .map(normalizeSearchText)
+    .filter(Boolean);
+
+  return terms.some((term) =>
+    values.some((value) => value === term || value.includes(term) || term.includes(value))
+  );
+}
+
+function normalizeSearchText(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/^@/, "")
+    .replace(/^https?:\/\//, "")
+    .replace(/^www\./, "")
+    .replace(/[^a-z0-9._/-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function safeHostname(value: string) {
+  try {
+    return new URL(value).hostname;
+  } catch {
+    return "";
   }
 }
 
@@ -416,7 +690,8 @@ async function answerWithContext(
   context: SocialAgentContext,
   message: string,
   messages: ChatMessage[],
-  pageContext: ClientPageContext
+  pageContext: ClientPageContext,
+  attachments: SocialAgentAttachment[] = []
 ) {
   const directReply = answerDirectlyFromContext(context, message);
   if (directReply) return directReply;
@@ -437,7 +712,7 @@ async function answerWithContext(
       apiKey: runtime.apiKey,
       body: {
         model: runtime.model,
-        input: buildPrompt(context, message, messages, pageContext),
+        input: buildPrompt(context, message, messages, pageContext, attachments),
       },
       tags: ["social-agent"],
       metadata: {
@@ -470,11 +745,18 @@ function buildPrompt(
   context: SocialAgentContext,
   message: string,
   messages: ChatMessage[],
-  pageContext: ClientPageContext
+  pageContext: ClientPageContext,
+  attachments: SocialAgentAttachment[] = []
 ) {
   const modeInstruction = pageContext.productMode === "saas"
-    ? "Mode: SaaS. Behave like a dashboard copilot: explain where to click, summarize state, and avoid suggesting autonomous multi-step execution."
+    ? "Mode: SaaS. Behave like a dashboard copilot: explain state and execute supported workspace-scoped chat actions when enough information is provided."
     : "Mode: Agentic. Behave like an AI social media manager: propose plans, draft next actions, and ask for approval before side effects.";
+  const attachmentSummary = attachments.map((attachment) => ({
+    url: attachment.url,
+    name: attachment.name ?? null,
+    contentType: attachment.contentType ?? null,
+    size: attachment.size ?? null,
+  }));
 
   return `You are SMM Agent inside the SMM Agent dashboard.
 ${modeInstruction}
@@ -485,7 +767,8 @@ The Replies page review stage is context.replies.review. It contains reply candi
 The Replies page Ready to Post stage is context.replies.ready. Recent posted reply activity is context.replies.postedRecent and context.replies.recentEvents.
 If user asks about X, Twitter, review replies, or reply queue, answer from the replies context before recent posts.
 Only say there are no review replies when context.summary.reviewReplyCount is 0.
-If user asks to post or schedule, ask for missing platform, copy, media URL, and time. Mention the API route but do not pretend an action already happened.
+Supported chat write actions already execute before this prompt when enough information is provided: RSS bulk removal except one kept source, support tickets, invitations, and recurring post schedule creation. If those actions are missing required information, ask only for the missing fields.
+For recurring posts, ask for cadence, platform, and copy when missing. Attached images can be used as the schedule media URL; do not claim you inspected image pixels unless the user described them.
 If an org admin asks to invite a teammate, tell them to use the exact command /invite email@example.com as viewer|client|contributor|editor|manager. Do not invent invite links or claim an invite was sent unless the command succeeds.
 If user asks to report a bug, broken flow, failed connection, or support issue, tell them to use /support type | topic | explanation | image-url. Valid types are from_user_triage, from_bot, from_github_issue, and from_me. Do not claim a ticket exists unless the command succeeds.
 Keep answers concise and operational.
@@ -495,6 +778,9 @@ ${JSON.stringify(context)}
 
 Current page:
 ${JSON.stringify(pageContext)}
+
+Current message attachments:
+${JSON.stringify(attachmentSummary)}
 
 Recent chat:
 ${JSON.stringify(messages.slice(-8))}
@@ -533,6 +819,10 @@ function fallbackAnswer(context: SocialAgentContext, message: string) {
 
 function answerDirectlyFromContext(context: SocialAgentContext, message: string) {
   const lowered = message.toLowerCase();
+
+  if (isPostPublishStatusQuestion(message)) {
+    return formatLatestPostPublishStatus(context);
+  }
 
   if (isReplyQuestion(lowered)) {
     if (lowered.includes("ready")) {

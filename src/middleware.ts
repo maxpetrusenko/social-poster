@@ -1,4 +1,3 @@
-import { createServerClient } from "@supabase/ssr";
 import { NextRequest, NextResponse } from "next/server";
 import {
   AUTH_MODE,
@@ -13,6 +12,7 @@ import {
 import {
   SITE_DOMAINS,
   getRedirectHost,
+  isPublicMarketingHost,
   normalizeHost,
 } from "@/lib/site-domains";
 
@@ -37,6 +37,37 @@ function permanentHostRedirect(request: NextRequest, host: string) {
   return NextResponse.redirect(url, 301);
 }
 
+function hasCookieLike(request: NextRequest, name: string) {
+  return request.cookies
+    .getAll()
+    .some((cookie) => cookie.name === name || cookie.name.startsWith(`${name}.`));
+}
+
+function dashboardLoginRedirect(request: NextRequest) {
+  const loginUrl = new URL("/login", request.url);
+  loginUrl.searchParams.set(
+    "next",
+    `${request.nextUrl.pathname}${request.nextUrl.search}`
+  );
+  return NextResponse.redirect(loginUrl);
+}
+
+function appHostRedirect(request: NextRequest) {
+  const url = request.nextUrl.clone();
+  url.protocol = "https:";
+  url.host = SITE_DOMAINS.app;
+  url.port = "";
+  return NextResponse.redirect(url);
+}
+
+function isAppOnlyPath(pathname: string) {
+  return (
+    pathname === "/login" ||
+    pathname === "/auth/callback" ||
+    pathname.startsWith("/dashboard")
+  );
+}
+
 export async function middleware(request: NextRequest) {
   const host = normalizeHost(
     request.headers.get("x-forwarded-host") ?? request.headers.get("host")
@@ -54,6 +85,15 @@ export async function middleware(request: NextRequest) {
     return permanentHostRedirect(request, SITE_DOMAINS.product);
   }
 
+  if (
+    host &&
+    host !== SITE_DOMAINS.app &&
+    isPublicMarketingHost(host) &&
+    isAppOnlyPath(request.nextUrl.pathname)
+  ) {
+    return appHostRedirect(request);
+  }
+
   if (!request.nextUrl.pathname.startsWith("/dashboard")) {
     return NextResponse.next();
   }
@@ -64,55 +104,19 @@ export async function middleware(request: NextRequest) {
         request.cookies.get(BYPASS_SIGNED_OUT_COOKIE)?.value
       )
     ) {
-      const loginUrl = new URL("/login", request.url);
-      loginUrl.searchParams.set(
-        "next",
-        `${request.nextUrl.pathname}${request.nextUrl.search}`
-      );
-      return NextResponse.redirect(loginUrl);
+      return dashboardLoginRedirect(request);
     }
 
     return NextResponse.next();
   }
 
   if (AUTH_MODE === "supabase" && isSupabaseConfigured()) {
-    const { url, anonKey, storageKey } = getSupabaseServerEnv();
-    const response = NextResponse.next({
-      request: {
-        headers: request.headers,
-      },
-    });
-
-    const supabase = createServerClient(url, anonKey, {
-      auth: {
-        storageKey,
-      },
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            response.cookies.set(name, value, options);
-          });
-        },
-      },
-    });
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (user?.email) {
-      return response;
+    const { storageKey } = getSupabaseServerEnv();
+    if (hasCookieLike(request, storageKey)) {
+      return NextResponse.next();
     }
 
-    const loginUrl = new URL("/login", request.url);
-    loginUrl.searchParams.set(
-      "next",
-      `${request.nextUrl.pathname}${request.nextUrl.search}`
-    );
-    return NextResponse.redirect(loginUrl);
+    return dashboardLoginRedirect(request);
   }
 
   const session =
@@ -121,12 +125,7 @@ export async function middleware(request: NextRequest) {
       : null;
 
   if (!session) {
-    const loginUrl = new URL("/login", request.url);
-    loginUrl.searchParams.set(
-      "next",
-      `${request.nextUrl.pathname}${request.nextUrl.search}`
-    );
-    return NextResponse.redirect(loginUrl);
+    return dashboardLoginRedirect(request);
   }
 
   return NextResponse.next();
