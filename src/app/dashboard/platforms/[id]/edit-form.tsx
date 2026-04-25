@@ -45,6 +45,8 @@ export default function EditPlatformForm({ platform }: { platform: Platform }) {
     "ct0",
     "accessTokenSecret"
   );
+  const enableDirectFallbackForPublishing =
+    storedConfig.enableDirectFallbackForPublishing === true;
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -62,6 +64,8 @@ export default function EditPlatformForm({ platform }: { platform: Platform }) {
             config: buildXBirdConfig(platform.config, {
               xAuthToken: (formData.get("X_AUTH_TOKEN") as string) || "",
               xCt0: (formData.get("X_CT0") as string) || "",
+              enableDirectFallbackForPublishing:
+                formData.get("enableDirectFallbackForPublishing") === "on",
             }),
             enabled: platform.enabled,
           }
@@ -305,6 +309,23 @@ export default function EditPlatformForm({ platform }: { platform: Platform }) {
               Optional for prod. Refresh both cookies if X rejects explicit tokens.
             </p>
           </div>
+
+          <div className="mb-8">
+            <label className="flex items-center gap-3 text-sm">
+              <input
+                type="checkbox"
+                name="enableDirectFallbackForPublishing"
+                defaultChecked={enableDirectFallbackForPublishing}
+                className="w-4 h-4 border border-gray-200 rounded focus:ring-2 focus:ring-indigo-500"
+              />
+              <span className="text-gray-900 font-medium">
+                Enable Direct X API fallback when Bird publish fails
+              </span>
+            </label>
+            <p className="mt-2 text-xs text-gray-500">
+              Bird stays primary. Direct X only retries failed publishes when this is checked.
+            </p>
+          </div>
         </>
       ) : null}
 
@@ -420,7 +441,11 @@ function readCredentialValue(
 
 function buildXBirdConfig(
   currentConfig: Record<string, unknown> | null,
-  credentials: { xAuthToken: string; xCt0: string }
+  credentials: {
+    xAuthToken: string;
+    xCt0: string;
+    enableDirectFallbackForPublishing: boolean;
+  }
 ) {
   const stored = readStoredConnectionConfig(currentConfig);
   const nextCredentials = {
@@ -429,6 +454,8 @@ function buildXBirdConfig(
       ? { X_AUTH_TOKEN: credentials.xAuthToken.trim() }
       : {}),
     ...(credentials.xCt0.trim() ? { X_CT0: credentials.xCt0.trim() } : {}),
+    enableDirectFallbackForPublishing:
+      credentials.enableDirectFallbackForPublishing,
   };
 
   return {

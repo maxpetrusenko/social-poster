@@ -3,7 +3,7 @@ import { rssSettings } from "@/db/schema";
 import { requireApiWorkspaceEditor } from "@/lib/api-authorization";
 import { requireApiSession } from "@/lib/auth";
 import {
-  ensureWorkspaceRssConfig,
+  getWorkspaceRssSettings,
   normalizeRssSettingsInput,
 } from "@/lib/rss-config";
 import { getTenantContext } from "@/lib/tenancy";
@@ -18,14 +18,7 @@ export async function GET() {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  await ensureWorkspaceRssConfig(tenant.currentWorkspace.id);
-  const row = await db
-    .select()
-    .from(rssSettings)
-    .where(eq(rssSettings.workspaceId, tenant.currentWorkspace.id))
-    .get();
-
-  return Response.json(row);
+  return Response.json(await getWorkspaceRssSettings(tenant.currentWorkspace.id));
 }
 
 export async function POST(request: Request) {
@@ -46,17 +39,32 @@ export async function POST(request: Request) {
       imageSelectionNotes?: string;
     };
 
-    await ensureWorkspaceRssConfig(tenant.currentWorkspace.id);
     const normalized = normalizeRssSettingsInput(body);
-
-    const [row] = await db
-      .update(rssSettings)
-      .set({
-        ...normalized,
-        updatedAt: new Date(),
-      })
+    const now = new Date();
+    const existing = await db
+      .select({ workspaceId: rssSettings.workspaceId })
+      .from(rssSettings)
       .where(eq(rssSettings.workspaceId, tenant.currentWorkspace.id))
-      .returning();
+      .get();
+
+    const [row] = existing
+      ? await db
+          .update(rssSettings)
+          .set({
+            ...normalized,
+            updatedAt: now,
+          })
+          .where(eq(rssSettings.workspaceId, tenant.currentWorkspace.id))
+          .returning()
+      : await db
+          .insert(rssSettings)
+          .values({
+            workspaceId: tenant.currentWorkspace.id,
+            ...normalized,
+            createdAt: now,
+            updatedAt: now,
+          })
+          .returning();
 
     return Response.json(row);
   } catch (error) {

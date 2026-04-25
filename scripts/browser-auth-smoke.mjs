@@ -419,6 +419,58 @@ async function main() {
       }
     });
 
+    const createPostPage = pages[0];
+    const createPostResponse = await createPostPage.goto(
+      `${baseUrl}/dashboard/posts/create`,
+      {
+        waitUntil: "networkidle0",
+        timeout: 120_000,
+      }
+    );
+    assert.ok(createPostResponse);
+    assert.equal(createPostResponse.status(), 200);
+    const rssButtonState = await createPostPage.evaluate(() => {
+      const button = document.querySelector(
+        'button[aria-label="Add an RSS source first"]'
+      );
+      return {
+        found: Boolean(button),
+        disabled: button instanceof HTMLButtonElement ? button.disabled : false,
+        body: document.body.innerText,
+      };
+    });
+    assert.equal(rssButtonState.found, true);
+    assert.equal(rssButtonState.disabled, true);
+    assert.doesNotMatch(rssButtonState.body, /Application error/);
+
+    const rssPage = pages[1];
+    const rssResponse = await rssPage.goto(`${baseUrl}/dashboard/rss`, {
+      waitUntil: "networkidle0",
+      timeout: 120_000,
+    });
+    assert.ok(rssResponse);
+    assert.equal(rssResponse.status(), 200);
+    let rssBody = await rssPage.evaluate(() => document.body.innerText);
+    assert.match(rssBody, /No RSS feeds added yet/);
+
+    await rssPage.evaluate(() => {
+      const button = Array.from(document.querySelectorAll("button")).find(
+        (candidate) => candidate.textContent?.includes("Selection Logic")
+      );
+      if (button instanceof HTMLButtonElement) button.click();
+    });
+    rssBody = await rssPage.evaluate(() => document.body.innerText);
+    assert.match(rssBody, /No RSS candidates yet/);
+
+    await rssPage.evaluate(() => {
+      const button = Array.from(document.querySelectorAll("button")).find(
+        (candidate) => candidate.textContent?.includes("Writing Skill")
+      );
+      if (button instanceof HTMLButtonElement) button.click();
+    });
+    rssBody = await rssPage.evaluate(() => document.body.innerText);
+    assert.match(rssBody, /No selected candidates yet/);
+
     const db = new Database(dbPath);
     try {
       const memberships = db
@@ -449,6 +501,16 @@ async function main() {
           `Unexpected browser-created tenant: ${JSON.stringify(membership)}`
         );
       }
+
+      const rssCounts = db
+        .prepare(
+          `SELECT
+            (SELECT COUNT(*) FROM rss_sources) AS sources,
+            (SELECT COUNT(*) FROM rss_settings) AS settings,
+            (SELECT COUNT(*) FROM drip_queue) AS drip`
+        )
+        .get();
+      assert.deepEqual(rssCounts, { sources: 0, settings: 0, drip: 0 });
     } finally {
       db.close();
     }

@@ -7,8 +7,6 @@ import { platforms } from "@/db/schema";
 import { readStoredConnectionConfig } from "@/lib/connection-config";
 import {
   buildBirdEnv,
-  buildBirdMentionCommandArgs,
-  normalizeBirdUserHandle,
   resolveBirdCredentialsFromSource,
 } from "@/lib/pipeline/bird-publisher-core";
 
@@ -136,16 +134,8 @@ async function runBirdSessionCheck(
     return result(platform, checkedAt, "failed", "unknown", "Bird session checks only support X connections.");
   }
 
-  const handle = normalizeBirdUserHandle(platform.handle);
-  if (!handle) {
-    return result(platform, checkedAt, "failed", "unknown", "Add an X handle before checking this Bird session.");
-  }
-
   const runtime = buildBirdRuntime(platform);
-  const commandArgs = [
-    ...runtime.args,
-    ...buildBirdMentionCommandArgs(["mentions", "-n", "1", "--json"], handle),
-  ];
+  const commandArgs = [...runtime.args, "whoami"];
   const runner = process.env.BIRD_RUNNER || "npx";
   const runnerArgs =
     runner === "npx" ? ["-y", BIRD_PACKAGE, ...commandArgs] : commandArgs;
@@ -161,7 +151,7 @@ async function runBirdSessionCheck(
       checkedAt,
       "ok",
       runtime.source,
-      `Bird reached X for ${handle}.`
+      "Bird authenticated to X."
     );
   } catch (error) {
     return result(

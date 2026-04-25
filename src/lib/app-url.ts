@@ -1,4 +1,4 @@
-import { SITE_DOMAINS } from "@/lib/site-domains";
+import { APP_ORIGIN, SITE_DOMAINS } from "@/lib/site-domains";
 
 const DEFAULT_APP_URL = "http://localhost:3000";
 
@@ -46,6 +46,19 @@ export function getAppUrlFromEnv(env: NodeJS.ProcessEnv = process.env): string {
     normalizeAppUrl(env.COOLIFY_URL) ||
     normalizeAppUrl(env.NEXT_PUBLIC_APP_URL) ||
     DEFAULT_APP_URL
+  );
+}
+
+export function getPublicAppUrlFromEnv(
+  env: NodeJS.ProcessEnv = process.env
+): string {
+  return (
+    normalizeAppUrl(env.PUBLIC_APP_URL) ||
+    normalizeAppUrl(env.APP_PUBLIC_URL) ||
+    normalizeAppUrl(env.APP_URL) ||
+    normalizeAppUrl(env.COOLIFY_URL) ||
+    normalizeAppUrl(env.NEXT_PUBLIC_APP_URL) ||
+    APP_ORIGIN
   );
 }
 

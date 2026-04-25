@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { requireApiWorkspaceEditor } from "@/lib/api-authorization";
-import { getCachedDashboardCandidates } from "@/lib/dashboard/candidates";
+import { getDashboardCandidates } from "@/lib/dashboard/candidates";
 import { writePostCaption } from "@/lib/pipeline/script-writer";
 import { getWorkspaceRssSettings } from "@/lib/rss-config";
 
@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
       : [];
     const workspaceId = tenant.currentWorkspace.id;
     const settings = await getWorkspaceRssSettings(workspaceId);
-    const stories = await getCachedDashboardCandidates(6);
+    const stories = await getDashboardCandidates(6, workspaceId);
 
     const story = stories[0];
     if (!story) {

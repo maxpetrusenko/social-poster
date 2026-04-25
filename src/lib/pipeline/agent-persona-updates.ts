@@ -1,5 +1,5 @@
 import type { FixedScheduleContent } from "./fixed-schedule-post";
-import { getAppUrlFromEnv } from "@/lib/app-url";
+import { getPublicAppUrlFromEnv } from "@/lib/app-url";
 
 const GITHUB_API_BASE = "https://api.github.com";
 const GITHUB_HEADERS = {
@@ -96,7 +96,7 @@ function resolveAssetUrl(value: string | null) {
   if (!value.startsWith("/")) return value;
 
   try {
-    return new URL(value, getAppUrlFromEnv()).toString();
+    return new URL(value, getPublicAppUrlFromEnv()).toString();
   } catch {
     return value;
   }

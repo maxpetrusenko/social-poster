@@ -15,8 +15,9 @@ const AUTH_URL = "https://www.linkedin.com/oauth/v2/authorization";
 const TOKEN_URL = "https://www.linkedin.com/oauth/v2/accessToken";
 const API_BASE = "https://api.linkedin.com";
 const USERINFO_URL = `${API_BASE}/v2/userinfo`;
+const LINKEDIN_API_VERSION = process.env.LINKEDIN_API_VERSION?.trim() || "202604";
 const LINKEDIN_HEADERS = {
-  "LinkedIn-Version": "202401",
+  "LinkedIn-Version": LINKEDIN_API_VERSION,
   "X-Restli-Protocol-Version": "2.0.0",
 };
 

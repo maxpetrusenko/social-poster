@@ -1,6 +1,6 @@
 # Plans Index
 
-Last updated: 2026-04-22
+Last updated: 2026-04-24
 
 ## Purpose
 
@@ -34,6 +34,8 @@ Read these in order before major feature work:
 25. `/Users/maxpetrusenko/Desktop/Projects/social-poster/docs/plans/platform-flow-reference.html`
 26. `/Users/maxpetrusenko/Desktop/Projects/social-poster/docs/plans/page-flow-reference.html`
 27. `/Users/maxpetrusenko/Desktop/Projects/social-poster/docs/plans/flow-handoff-tabs.html`
+28. `/Users/maxpetrusenko/Desktop/Projects/social-poster/docs/plans/post-history-architecture.md`
+29. `/Users/maxpetrusenko/Desktop/Projects/social-poster/docs/plans/post-history-migration-plan.md`
 
 ## What Each Doc Solves
 
@@ -95,6 +97,16 @@ Read these in order before major feature work:
   - migration rules
   - cutover checks
   - rollback posture
+
+- `post-history-architecture.md`
+  - durable post identity
+  - revisions, lifecycle events, and deletion semantics
+  - calendar/history source of truth
+
+- `post-history-migration-plan.md`
+  - additive migration sequence
+  - dual-write and backfill plan
+  - cutover order for logs, posts, and calendar
 
 - `open-decisions.md`
   - unresolved architecture calls

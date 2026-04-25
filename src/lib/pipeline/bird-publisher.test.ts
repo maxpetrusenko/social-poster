@@ -6,6 +6,7 @@ import {
   buildBirdMentionCommandArgs,
   classifyBirdError,
   resolveBirdCredentialsFromSource,
+  shouldRetryBirdWithInstalledSession,
   splitBirdThreadContent,
 } from "./bird-publisher-core.ts";
 
@@ -140,6 +141,32 @@ test("classifyBirdError maps tweet-too-long to validation error", () => {
   assert.equal(
     classifyBirdError("Authorization: Tweet needs to be a bit shorter. (186)"),
     "validation_error"
+  );
+});
+
+test("Bird retries installed session after explicit auth media upload fails", () => {
+  assert.equal(
+    shouldRetryBirdWithInstalledSession(
+      {
+        authToken: "stale-auth",
+        ct0: "stale-ct0",
+        useInstalledBirdSession: true,
+      },
+      "Media upload failed: HTTP 401: Could not authenticate you"
+    ),
+    true
+  );
+
+  assert.equal(
+    shouldRetryBirdWithInstalledSession(
+      {
+        authToken: "stale-auth",
+        ct0: "stale-ct0",
+        useInstalledBirdSession: false,
+      },
+      "Media upload failed: HTTP 401: Could not authenticate you"
+    ),
+    false
   );
 });
 

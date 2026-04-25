@@ -18,6 +18,7 @@
 - node-cron for scheduling
 - Remotion for video rendering (bundled in Docker)
 - Docker base: `node:22-bookworm-slim` + chromium + ffmpeg
+- Runtime image: `ghcr.io/maxpetrusenko/social-poster:sha-<commit>`; `latest` is also pushed for fallback/manual pulls
 
 ## Repo Location
 
@@ -58,7 +59,8 @@ doppler secrets get CARTESIA_API_KEY SIMLI_API_KEY GETLATE_DEV_API_KEY_FREE --pr
 ## Deploy Flow
 
 Target state:
-- Coolify owns build, restart, logs, env vars, domain routing
+- GitHub Actions owns build/test/push with BuildKit cache
+- Coolify owns image pull, restart, logs, env vars, domain routing
 - avoid ad-hoc standalone containers once Coolify app is live
 - app expects SQLite at `/data/social-poster.db`
 - app always serves Next.js on `3000`; entrypoint bridges any Coolify rollout port to `3000`
@@ -68,17 +70,66 @@ Target state:
 - required reply env vars in Coolify: `X_AUTH_TOKEN`, `X_CT0`, `BIRD_RUNNER=bird`
 - optional Bird health interval: `BIRD_SESSION_CHECK_HOURS=24`
 - `APP_URL` is optional in Coolify; when set, use the single dashboard origin `https://social.maxpetrusenko.com`. Do not paste the comma-separated Coolify domain list into `APP_URL`.
+- `PUBLIC_APP_URL` is optional; use it only if social-platform media fetch URLs should differ from `APP_URL`. Default fallback is `https://social.maxpetrusenko.com`.
 - X/Bird image posts should use PNG/JPG/WebP assets, not SVG
+- Coolify should deploy from the prebuilt GHCR image, not build the repo on the VPS.
+- Keep Coolify health checks and rolling deployment enabled. Health path: `/api/health`.
+- Leave `force_rebuild` off for normal deploys. Use it only when intentionally bypassing image cache during an incident.
+
+### Fast Deploy Flow
+
+GitHub Actions runs the local deploy gates, builds the Docker image with BuildKit/GHA cache, then pushes:
+
+- `ghcr.io/maxpetrusenko/social-poster:sha-<commit>`
+- `ghcr.io/maxpetrusenko/social-poster:main`
+- `ghcr.io/maxpetrusenko/social-poster:latest`
+
+Workflow: `.github/workflows/fast-coolify-deploy.yml`
+
+Coolify application UUID: `ch6cjsgcqn6afd5052etgvwn`
+
+GitHub secrets required: `COOLIFY_API_URL` or `COOLIFY_URL`, and `COOLIFY_API_TOKEN` or `COOLIFY_TOKEN`.
+
+After GHCR push, the workflow patches the Coolify application to:
+
+- image: `ghcr.io/maxpetrusenko/social-poster`
+- docker image tag: `sha-${{ github.sha }}`
+- exposed port: `3000`
+- health path: `/api/health`
+
+Then it triggers `GET /api/v1/deploy?uuid=ch6cjsgcqn6afd5052etgvwn&force=false`.
+
+Coolify setup checklist:
+
+1. Configure GHCR registry credentials if the package is private.
+2. Keep persistent storage mounted at `/data`.
+3. Keep healthcheck path `/api/health` and rolling deployment enabled.
+4. Do not enable `force_rebuild` for normal deploys.
+5. Let the GitHub Actions `Fast Coolify Deploy` workflow patch the image tag and trigger deploy.
+
+Local deploy gates before image push:
+
+```bash
+npm run test:unit
+npm run typecheck
+npm run lint
+npm run test:e2e
+npm run test:browser
+```
+
+Chromium/ffmpeg stay in the runtime image because production still uses browser screenshots and Remotion video rendering. Browser test execution stays in GitHub Actions and is not part of the VPS deploy path.
 
 ```bash
 # 1. Push code
 cd ~/Desktop/Projects/social-poster
 git add -A && git commit -m "feat: ..." && git push origin main
 
-# 2. Redeploy the connected Coolify app
-# use Coolify UI or API to trigger a new deployment
+# 2. Wait for GitHub Actions to publish ghcr.io/maxpetrusenko/social-poster:sha-<commit>
 
-# 3. Verify
+# 3. The workflow triggers Coolify by UUID with force=false
+# Coolify pulls the image and rolls traffic after /api/health passes
+
+# 4. Verify
 curl -sk https://social.maxpetrusenko.com/api/health
 curl -I -L https://social.maxpetrusenko.com/dashboard/calendar
 ```

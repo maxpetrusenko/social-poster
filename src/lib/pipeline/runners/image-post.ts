@@ -22,6 +22,7 @@ import { appendSourceLink, publishFirstComment } from "../first-comment";
 import { enrichSummaryIfNeeded } from "../enrich-summary";
 import type { Story } from "../feed-engine";
 import { getWorkspaceRssSettings } from "@/lib/rss-config";
+import { probeScheduleMediaUrl } from "@/lib/schedule-media";
 import { selectFeedStoryForSchedule } from "./feed-story-selection";
 
 async function resolveStoryImages(
@@ -197,6 +198,10 @@ export async function runImagePostJob(
       })),
     };
 
+    if (scheduledContent) {
+      await assertScheduledMediaAvailable(publishTargets);
+    }
+
     // 3. Publish (text only)
     const s3: PipelineStep = { name: "publish", status: "running", startedAt: new Date().toISOString() };
     steps.push(s3);
@@ -337,6 +342,27 @@ export async function runImagePostJob(
     console.log(`[image-post] run ${runId} done — ${ok.length}/${results.length} → post ${postId}`);
   } catch (err) {
     await fail(runId, steps, startedAt, err instanceof Error ? err.message : String(err));
+  }
+}
+
+async function assertScheduledMediaAvailable(
+  targets: Array<{ mediaUrl?: string }>
+) {
+  const uniqueMediaUrls = Array.from(
+    new Set(
+      targets
+        .map((target) => target.mediaUrl?.trim())
+        .filter((value): value is string => Boolean(value))
+    )
+  );
+
+  for (const mediaUrl of uniqueMediaUrls) {
+    const probe = await probeScheduleMediaUrl(mediaUrl);
+    if (!probe.ok) {
+      throw new Error(
+        `Schedule media is stale and must be rehydrated before publish: ${probe.sourceUrl}`
+      );
+    }
   }
 }
 

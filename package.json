@@ -15,6 +15,7 @@
     "test:api": "npx tsx scripts/test-api.ts",
     "lint": "eslint . --max-warnings=0",
     "typecheck": "tsc --noEmit --project tsconfig.typecheck.json",
+    "figma:pull": "node scripts/figma-pull.mjs",
     "legacy:import": "node scripts/import-legacy.mjs",
     "db:backfill-pipeline-status": "node scripts/backfill-pipeline-status.mjs",
     "db:push": "drizzle-kit push",

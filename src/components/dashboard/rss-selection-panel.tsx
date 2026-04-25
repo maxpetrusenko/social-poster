@@ -153,34 +153,40 @@ export function RssSelectionPanel({
           subtitle="What survived selection right now."
         >
           <div className="space-y-3">
-            {candidates.map((candidate) => (
-              <button
-                key={candidate.link}
-                type="button"
-                onClick={() => onPickCandidate(candidate.link)}
-                className={`block w-full rounded-[16px] border px-4 py-3 text-left transition ${
-                  selectedCandidateLink === candidate.link
-                    ? "border-[var(--ink)] bg-[rgba(12,17,21,0.03)]"
-                    : "border-[rgba(12,17,21,0.08)] bg-white"
-                }`}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <p className="text-sm font-semibold text-[var(--ink)]">
-                    {candidate.title}
-                  </p>
-                  <div className="flex shrink-0 flex-wrap items-center gap-2">
-                    <StatusBadge tone="good">{candidate.score}</StatusBadge>
-                    <StatusBadge tone="neutral">
-                      traction {candidate.tractionScore.toFixed(1)}
-                    </StatusBadge>
+            {candidates.length === 0 ? (
+              <div className="rounded-[16px] border border-dashed border-[rgba(12,17,21,0.12)] px-4 py-4 text-sm text-[var(--muted)]">
+                No RSS candidates yet.
+              </div>
+            ) : (
+              candidates.map((candidate) => (
+                <button
+                  key={candidate.link}
+                  type="button"
+                  onClick={() => onPickCandidate(candidate.link)}
+                  className={`block w-full rounded-[16px] border px-4 py-3 text-left transition ${
+                    selectedCandidateLink === candidate.link
+                      ? "border-[var(--ink)] bg-[rgba(12,17,21,0.03)]"
+                      : "border-[rgba(12,17,21,0.08)] bg-white"
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="text-sm font-semibold text-[var(--ink)]">
+                      {candidate.title}
+                    </p>
+                    <div className="flex shrink-0 flex-wrap items-center gap-2">
+                      <StatusBadge tone="good">{candidate.score}</StatusBadge>
+                      <StatusBadge tone="neutral">
+                        traction {candidate.tractionScore.toFixed(1)}
+                      </StatusBadge>
+                    </div>
                   </div>
-                </div>
-                <p className="mt-1 text-xs uppercase tracking-[0.12em] text-[var(--muted)]">
-                  {candidate.sourceLabel}
-                </p>
-                <p className="mt-2 text-sm text-[var(--muted)]">{candidate.summary}</p>
-              </button>
-            ))}
+                  <p className="mt-1 text-xs uppercase tracking-[0.12em] text-[var(--muted)]">
+                    {candidate.sourceLabel}
+                  </p>
+                  <p className="mt-2 text-sm text-[var(--muted)]">{candidate.summary}</p>
+                </button>
+              ))
+            )}
           </div>
         </SectionCard>
 

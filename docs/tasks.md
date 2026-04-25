@@ -1,6 +1,6 @@
 # Social Agent — Tasks & Status
 
-Last updated: 2026-04-22 (Campaign creative engine and delivery path)
+Last updated: 2026-04-24 (post history architecture plan)
 
 ## Current State
 
@@ -36,6 +36,7 @@ Deploys to `social.maxpetrusenko.com` on Contabo/Coolify.
 - [x] `dedup_cache` — content deduplication
 - [x] `candidate_cache` — manual candidate snapshot + OG-image cache
 - [x] `activity_log`, `notifications`, `notification_deliveries`, `email_events`, `email_suppressions`, `lead_magnet_downloads` — email notification and marketing audit foundation
+- [x] Durable post-history architecture and migration plan documented in `docs/plans/post-history-architecture.md` and `docs/plans/post-history-migration-plan.md`
 
 ### Auth
 - [x] Magic link + workspace invite email flow (Resend-first, SMTP fallback, preview URL fallback)
@@ -83,7 +84,11 @@ Deploys to `social.maxpetrusenko.com` on Contabo/Coolify.
 - [x] Schedules — list, create, edit, delete, manual "Run Now", success/error stats
 - [x] Schedule detail preview now shows fixed, Agent Persona, or RSS-candidate mode with source visibility and per-platform generated copy
 - [x] RSS page now uses a tabbed operator UI: compact editable source table with per-source drilldowns, traction-aware candidate scoring, visible selection pipeline, editable transformation prompt/templates/image rules, and regenerateable X/LinkedIn previews for a chosen candidate
+- [x] Fresh workspaces no longer auto-seed RSS feeds/settings, queue drip emails, or claim legacy unscoped records during login; RSS generation requires user-added feeds
 - [x] Social Agent chat widget now answers from sanitized workspace context, including connected platforms, reply review/ready queues, recent reply events, post targets, pipeline runs, RSS setup, and current page hints
+- [x] Social Agent chat can now remove all RSS sources except a named source, create recurring post schedules from chat, and pass uploaded chat images into recurring image-post schedules
+- [x] Social Agent chat now has a one-click post status check and answers whether the latest post published, partially failed, failed, or is still pending
+- [x] Public brand domains now redirect `/dashboard`, `/login`, and `/auth/callback` to `social.maxpetrusenko.com`, so shared Supabase auth does not fall back into Tantra Studio
 - [x] Notifications page now reads durable notification rows instead of a placeholder scaffold
 - [x] Admin dashboard exists at `/admin` with email-gated overview, users, waitlist, marketing, usage, and waitlist CSV export
 - [x] Admin blog automation exists at `/admin/blog` with daily draft generation plumbing, Medium automation handoff, review-only publish gate, article image/source tracking, framework validation, and public blog publishing after admin approval
@@ -159,8 +164,11 @@ Deploys to `social.maxpetrusenko.com` on Contabo/Coolify.
 - [ ] Idempotency keys on every publish attempt
 
 ### Deploy
-- [x] Dockerfile (standalone Next.js + chromium + ffmpeg)
-- [x] docker-compose.yml for local dev
+- [x] Dockerfile (standalone Next.js + chromium + ffmpeg, BuildKit npm cache mounts)
+- [x] docker-compose.yml uses the prebuilt GHCR image with pull-only deploys
+- [x] GitHub Actions builds/pushes `ghcr.io/maxpetrusenko/social-poster:main` after local deploy gates
+- [x] Coolify fast deploy path documented: pull image, keep rolling healthcheck, avoid normal `force_rebuild`
+- [x] Docker context excludes local browser profiles, data, caches, and build outputs
 - [x] VPS deploy live behind Traefik at `social.maxpetrusenko.com`
 - [x] Coolify project cleanup (`Root Team -> social-poster -> production -> social-poster`)
 - [x] Runtime SQLite path aligned to Coolify volume mount (`/data/social-poster.db`)
@@ -201,6 +209,9 @@ Deploys to `social.maxpetrusenko.com` on Contabo/Coolify.
 - [ ] Add live DM adapters for Bluesky, Reddit modmail, Google Business messages, and WhatsApp where platform access is approved
 - [ ] Add left-nav Analytics with cross-platform provider metrics, X/Bird fallback, optional Sweetistics import, and platform drilldowns. Plan: `docs/plans/analytics-dashboard.md`
 - [x] Sidebar now shows the current workspace and a switch entry into the workspace control plane
+- [ ] Replace mutable post history with revisions + lifecycle events + tombstones
+- [ ] Stop hard-deleting published posts and stop recreating target rows destructively on edit
+- [ ] Rebuild calendar/history reads so deleted and rolled-back posts remain visible after refresh
 
 ### Cutover Plan
 1. Deploy new social-poster to Coolify
@@ -251,7 +262,7 @@ social-poster/
 - `/health` returns JSON health status for Coolify / load balancer probes
 - `/api/health` returns app + active scheduler state
 - `/api/health.schedules` now includes both `dbEnabledCount` and `runtimeRegisteredCount`
-- fixed schedule asset URLs now fall back to `COOLIFY_URL` when `APP_URL` is unset
+- fixed schedule and X media publish URLs now fall back to the public app origin when `APP_URL` is unset, so external platforms do not receive localhost asset URLs
 - invite and magic-link URLs normalize comma-separated app origin env values and prefer `social.maxpetrusenko.com`
 - Supabase Auth + Supabase Postgres migration plan lives at `docs/plans/supabase-postgres-migration-plan.md`
 - Social Poster Supabase bootstrap SQL lives at `supabase/social-poster/20260422_social_poster_schema.sql`

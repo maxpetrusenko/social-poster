@@ -5,7 +5,7 @@ import path from "node:path";
 import { promisify } from "node:util";
 
 import { platforms } from "@/db/schema";
-import { getAppUrlFromEnv } from "@/lib/app-url";
+import { getPublicAppUrlFromEnv } from "@/lib/app-url";
 import { readStoredConnectionConfig } from "@/lib/connection-config";
 
 import type { PublishResult } from "./publisher";
@@ -13,6 +13,7 @@ import {
   buildBirdEnv,
   classifyBirdError,
   resolveBirdCredentialsFromSource,
+  shouldRetryBirdWithInstalledSession,
   splitBirdThreadContent,
   type BirdCredentials,
 } from "./bird-publisher-core";
@@ -122,7 +123,7 @@ function redactBirdSecrets(message: string, credentials: BirdCredentials) {
 async function downloadBirdMedia(url: string) {
   const resolvedUrl = /^https?:\/\//i.test(url)
     ? url
-    : new URL(url, getAppUrlFromEnv()).toString();
+    : new URL(url, getPublicAppUrlFromEnv()).toString();
   const response = await fetch(resolvedUrl);
   if (!response.ok) {
     throw new Error(`Failed to fetch media: ${response.status}`);
@@ -157,6 +158,46 @@ export async function publishToBird(
   target: BirdPublishTarget
 ): Promise<PublishResult> {
   const credentials = resolveBirdCredentials(target.platform);
+
+  const result = await publishToBirdWithCredentials(target, credentials);
+  if (shouldRetryBirdWithInstalledSession(credentials, result.error)) {
+    const installedSessionCredentials = {
+      ...credentials,
+      authToken: null,
+      ct0: null,
+    };
+    const retryResult = await publishToBirdWithCredentials(
+      target,
+      installedSessionCredentials
+    );
+    if (retryResult.success) {
+      return {
+        ...retryResult,
+        raw: {
+          ...(typeof retryResult.raw === "object" && retryResult.raw !== null
+            ? retryResult.raw
+            : {}),
+          credentialFallback: "installed_session",
+        },
+      };
+    }
+
+    return {
+      ...retryResult,
+      error: [
+        result.error ?? "Bird CLI credential publish failed.",
+        retryResult.error ?? "Bird installed-session retry failed.",
+      ].join("; "),
+    };
+  }
+
+  return result;
+}
+
+async function publishToBirdWithCredentials(
+  target: BirdPublishTarget,
+  credentials: BirdCredentials
+): Promise<PublishResult> {
   const normalizedPlatform =
     target.platform.type === "x" ? "twitter" : target.platform.type;
 

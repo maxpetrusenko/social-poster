@@ -2,6 +2,7 @@ import { db } from "@/db";
 import { sessions, magicLinks } from "@/db/schema";
 import { eq, and, gt } from "drizzle-orm";
 import { cookies } from "next/headers";
+import { unstable_rethrow } from "next/navigation";
 import { NextResponse } from "next/server";
 import crypto from "node:crypto";
 import {
@@ -43,21 +44,37 @@ function getBypassSession() {
 async function getSupabaseSession() {
   if (AUTH_MODE !== "supabase" || !isSupabaseConfigured()) return null;
 
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
+  let userId: string | undefined;
+  let userEmail: string | undefined;
 
-  if (error || !(await isEmailAllowedForAuth(user?.email))) {
+  try {
+    const supabase = await createSupabaseServerClient();
+    const {
+      data: { user },
+      error,
+    } = await supabase.auth.getUser();
+
+    if (error) return null;
+    userId = user?.id;
+    userEmail = user?.email ?? undefined;
+  } catch (error) {
+    unstable_rethrow(error);
+    console.warn(
+      "Supabase session check failed:",
+      error instanceof Error ? error.message : error
+    );
+    return null;
+  }
+
+  if (!(await isEmailAllowedForAuth(userEmail))) {
     return null;
   }
 
   const now = new Date();
 
   return {
-    id: user!.id,
-    email: user!.email ?? ALLOWED_EMAIL,
+    id: userId ?? "supabase",
+    email: userEmail ?? ALLOWED_EMAIL,
     token: "supabase",
     expiresAt: new Date(now.getTime() + SESSION_TTL_MS),
     createdAt: now,

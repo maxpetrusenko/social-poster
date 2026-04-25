@@ -12,6 +12,7 @@ data/
 *.tsbuildinfo
 .DS_Store
 .playwright-cli/
+.figma/
 .codex
 .claude
 .cursor

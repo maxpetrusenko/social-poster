@@ -1,4 +1,4 @@
-import { getAppUrlFromEnv } from "@/lib/app-url";
+import { getPublicAppUrlFromEnv } from "@/lib/app-url";
 
 function normalizePlatform(platform: string) {
   return platform === "x" ? "twitter" : platform.toLowerCase();
@@ -15,7 +15,7 @@ function resolveAssetUrl(value: string | null) {
   if (!value.startsWith("/")) return value;
 
   try {
-    return new URL(value, getAppUrlFromEnv()).toString();
+    return new URL(value, getPublicAppUrlFromEnv()).toString();
   } catch {
     return value;
   }

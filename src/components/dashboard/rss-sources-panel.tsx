@@ -69,6 +69,16 @@ export function RssSourcesPanel({
               </tr>
             </thead>
             <tbody className="bg-white">
+              {sources.length === 0 ? (
+                <tr className="border-t border-[rgba(12,17,21,0.08)]">
+                  <td colSpan={7} className="px-3 py-6">
+                    <div className="rounded-[16px] border border-dashed border-[rgba(12,17,21,0.12)] bg-white px-4 py-4 text-sm text-[var(--muted)]">
+                      No RSS feeds added yet.
+                    </div>
+                  </td>
+                </tr>
+              ) : null}
+
               {sources.map((feed) => {
                 const expanded = Boolean(expandedSources[feed.id]);
                 const diagnostic = diagnosticsByUrl.get(feed.url);

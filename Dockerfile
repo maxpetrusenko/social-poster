@@ -1,3 +1,5 @@
+# syntax=docker/dockerfile:1.7
+
 FROM node:22-bookworm-slim AS base
 
 ENV NEXT_TELEMETRY_DISABLED=1
@@ -5,7 +7,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 FROM base AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN --mount=type=cache,target=/root/.npm npm ci
 
 FROM base AS builder
 WORKDIR /app
@@ -29,7 +31,8 @@ ENV DATABASE_URL=/data/social-poster.db
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 ENV BIRD_RUNNER=bird
 
-RUN apt-get update \
+RUN --mount=type=cache,target=/root/.npm \
+  apt-get update \
   && apt-get install -y --no-install-recommends chromium ffmpeg ca-certificates curl dumb-init \
   && npm install -g @steipete/bird \
   && rm -rf /var/lib/apt/lists/*

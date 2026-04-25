@@ -1,8 +1,7 @@
 services:
   social-poster:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ${SOCIAL_POSTER_IMAGE:-ghcr.io/maxpetrusenko/social-poster:main}
+    pull_policy: always
     env_file:
       - .env
     environment:
@@ -13,4 +12,10 @@ services:
       - "3000:3000"
     volumes:
       - ./data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:3000/api/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 30s
     restart: unless-stopped

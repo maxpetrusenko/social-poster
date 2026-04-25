@@ -8,14 +8,6 @@ import {
   auditEvents,
   orgMemberships,
   organizations,
-  platforms,
-  pipelineRuns,
-  profiles,
-  posts,
-  postTargets,
-  replyCandidates,
-  replyEvents,
-  schedules,
   users,
   workspaceInvitations,
   workspaceMemberships,
@@ -292,172 +284,6 @@ function effectiveWorkspaceTimezone(
   return workspace.timezone || organization.defaultTimezone || "UTC";
 }
 
-async function ensureLegacyPlatformsBound(workspaceId: string) {
-  const unbound = await db
-    .select({ id: platforms.id })
-    .from(platforms)
-    .where(isNull(platforms.workspaceId));
-
-  if (!unbound.length) {
-    return;
-  }
-
-  await db
-    .update(platforms)
-    .set({ workspaceId })
-    .where(isNull(platforms.workspaceId));
-}
-
-async function ensureLegacyProfilesBound(workspaceId: string) {
-  const unbound = await db
-    .select({ id: profiles.id })
-    .from(profiles)
-    .where(isNull(profiles.workspaceId));
-
-  if (!unbound.length) {
-    return;
-  }
-
-  await db
-    .update(profiles)
-    .set({ workspaceId })
-    .where(isNull(profiles.workspaceId));
-}
-
-async function firstWorkspaceIdForPost(postId: string) {
-  const targets = await db
-    .select({
-      workspaceId: platforms.workspaceId,
-    })
-    .from(postTargets)
-    .innerJoin(platforms, eq(postTargets.platformId, platforms.id))
-    .where(eq(postTargets.postId, postId));
-
-  return targets.find((row) => row.workspaceId)?.workspaceId ?? null;
-}
-
-async function firstWorkspaceIdForSchedule(scheduleId: string) {
-  const schedule = await db
-    .select()
-    .from(schedules)
-    .where(eq(schedules.id, scheduleId))
-    .get();
-
-  if (!schedule) {
-    return null;
-  }
-
-  for (const platformId of schedule.targetPlatformIds ?? []) {
-    const platform = await db
-      .select({ workspaceId: platforms.workspaceId })
-      .from(platforms)
-      .where(eq(platforms.id, platformId))
-      .get();
-
-    if (platform?.workspaceId) {
-      return platform.workspaceId;
-    }
-  }
-
-  return null;
-}
-
-async function ensureLegacyWorkspaceBindings(defaultWorkspaceId: string) {
-  await ensureLegacyPlatformsBound(defaultWorkspaceId);
-  await ensureLegacyProfilesBound(defaultWorkspaceId);
-
-  const unboundPosts = await db
-    .select({ id: posts.id })
-    .from(posts)
-    .where(isNull(posts.workspaceId));
-  for (const row of unboundPosts) {
-    const workspaceId = (await firstWorkspaceIdForPost(row.id)) ?? defaultWorkspaceId;
-    await db
-      .update(posts)
-      .set({ workspaceId })
-      .where(eq(posts.id, row.id));
-  }
-
-  const unboundSchedules = await db
-    .select({ id: schedules.id })
-    .from(schedules)
-    .where(isNull(schedules.workspaceId));
-  for (const row of unboundSchedules) {
-    const workspaceId = (await firstWorkspaceIdForSchedule(row.id)) ?? defaultWorkspaceId;
-    await db
-      .update(schedules)
-      .set({ workspaceId })
-      .where(eq(schedules.id, row.id));
-  }
-
-  const scheduleRows = await db
-    .select({ id: schedules.id, workspaceId: schedules.workspaceId })
-    .from(schedules);
-  const postRows = await db
-    .select({ id: posts.id, workspaceId: posts.workspaceId })
-    .from(posts);
-  const platformRows = await db
-    .select({ id: platforms.id, workspaceId: platforms.workspaceId })
-    .from(platforms);
-  const scheduleWorkspaceById = new Map(
-    scheduleRows.map((row) => [row.id, row.workspaceId])
-  );
-  const postWorkspaceById = new Map(postRows.map((row) => [row.id, row.workspaceId]));
-  const platformWorkspaceById = new Map(
-    platformRows.map((row) => [row.id, row.workspaceId])
-  );
-
-  const unboundRuns = await db
-    .select()
-    .from(pipelineRuns)
-    .where(isNull(pipelineRuns.workspaceId));
-  for (const row of unboundRuns) {
-    const workspaceId =
-      (row.scheduleId ? scheduleWorkspaceById.get(row.scheduleId) : null) ??
-      (row.postId ? postWorkspaceById.get(row.postId) : null) ??
-      defaultWorkspaceId;
-    await db
-      .update(pipelineRuns)
-      .set({ workspaceId })
-      .where(eq(pipelineRuns.id, row.id));
-  }
-
-  const runRows = await db
-    .select({ id: pipelineRuns.id, workspaceId: pipelineRuns.workspaceId })
-    .from(pipelineRuns);
-  const runWorkspaceById = new Map(runRows.map((row) => [row.id, row.workspaceId]));
-
-  const unboundReplyCandidates = await db
-    .select()
-    .from(replyCandidates)
-    .where(isNull(replyCandidates.workspaceId));
-  for (const row of unboundReplyCandidates) {
-    const workspaceId =
-      (row.platformId ? platformWorkspaceById.get(row.platformId) : null) ??
-      defaultWorkspaceId;
-    await db
-      .update(replyCandidates)
-      .set({ workspaceId })
-      .where(eq(replyCandidates.id, row.id));
-  }
-
-  const unboundReplyEvents = await db
-    .select()
-    .from(replyEvents)
-    .where(isNull(replyEvents.workspaceId));
-  for (const row of unboundReplyEvents) {
-    const workspaceId =
-      (row.platformId ? platformWorkspaceById.get(row.platformId) : null) ??
-      (row.scheduleId ? scheduleWorkspaceById.get(row.scheduleId) : null) ??
-      (row.runId ? runWorkspaceById.get(row.runId) : null) ??
-      defaultWorkspaceId;
-    await db
-      .update(replyEvents)
-      .set({ workspaceId })
-      .where(eq(replyEvents.id, row.id));
-  }
-}
-
 async function ensureDefaultTenantForEmail(email: string) {
   const normalizedEmail = normalizeEmail(email);
   const now = new Date();
@@ -585,12 +411,6 @@ async function createDefaultTenantForUser(
     organizationId,
     name: "Primary Workspace",
     slug: "primary-workspace",
-    description: "Default workspace for legacy SMM Agent data.",
-    timezone: "America/New_York",
-    primaryColor: "#d86d36",
-    secondaryColor: "#0c5f6b",
-    approvalWorkflowMode: "none",
-    defaultHashtags: [],
     createdAt: now,
     updatedAt: now,
   });
@@ -611,16 +431,6 @@ async function createDefaultTenantForUser(
       updatedAt: now,
     })
     .where(eq(users.id, user.id));
-
-  await ensureLegacyPlatformsBound(workspaceId);
-
-  // Enqueue welcome drip sequence for new users
-  try {
-    const { enqueueDrip } = await import("@/lib/marketing/drip");
-    enqueueDrip(user.id, workspaceId);
-  } catch (e) {
-    console.warn("[tenancy] failed to enqueue drip:", e);
-  }
 
   return {
     user: {
@@ -699,10 +509,6 @@ export async function getTenantContext(): Promise<TenantContext | null> {
         updatedAt: now,
       })
       .where(eq(users.id, user.id));
-  }
-
-  if (memberships.length === 1) {
-    await ensureLegacyWorkspaceBindings(activeWorkspaceEntry.workspace.id);
   }
 
   return {

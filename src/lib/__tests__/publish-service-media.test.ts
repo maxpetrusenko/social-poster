@@ -7,6 +7,14 @@ const mocks = vi.hoisted(() => ({
   publishToBird: vi.fn(),
   getPlatformCapabilities: vi.fn(),
   getCapabilityFailureReason: vi.fn(),
+  dbRows: [] as unknown[],
+  dbSelect: vi.fn(),
+}));
+
+vi.mock("@/db", () => ({
+  db: {
+    select: mocks.dbSelect,
+  },
 }));
 
 vi.mock("@/lib/providers/native-publisher", () => ({
@@ -34,6 +42,12 @@ type TestPlatform = Parameters<typeof publishPlatformTargets>[0][number]["platfo
 describe("publish service media routing", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.dbRows = [];
+    mocks.dbSelect.mockImplementation(() => ({
+      from: () => ({
+        where: () => Promise.resolve(mocks.dbRows),
+      }),
+    }));
     mocks.getPlatformCapabilities.mockReturnValue({
       canPublishText: true,
       canPublishImage: true,
@@ -133,5 +147,336 @@ describe("publish service media routing", () => {
       }),
     ]);
     expect(result.outcomes[0]?.success).toBe(true);
+  });
+
+  it("uses Bird as primary when a Direct X target has a matching Bird connection", async () => {
+    const directPlatform = {
+      id: "direct-x",
+      workspaceId: "workspace-1",
+      type: "twitter",
+      provider: "direct",
+      accountId: "direct-account",
+      handle: "@max",
+      enabled: true,
+      config: { authMethod: "x_oauth" },
+    } as unknown as TestPlatform;
+    const birdPlatform = {
+      id: "bird-x",
+      workspaceId: "workspace-1",
+      type: "twitter",
+      provider: "bird",
+      accountId: "bird-account",
+      handle: "@max",
+      enabled: true,
+      config: {
+        credentials: {
+          enableDirectFallbackForPublishing: true,
+        },
+      },
+    } as unknown as TestPlatform;
+
+    mocks.dbRows = [birdPlatform];
+    mocks.shouldPublishViaNativeProvider.mockImplementation((platform) => {
+      return platform.provider === "direct";
+    });
+
+    const result = await publishPlatformTargets([
+      {
+        platform: directPlatform,
+        content: "Bird first",
+        mediaUrls: ["https://cdn.example.com/one.jpg"],
+      },
+    ]);
+
+    expect(mocks.publishToBird).toHaveBeenCalledWith(
+      expect.objectContaining({
+        platform: birdPlatform,
+        mediaUrls: ["https://cdn.example.com/one.jpg"],
+      })
+    );
+    expect(mocks.publishViaNativeProvider).not.toHaveBeenCalled();
+    expect(result.outcomes[0]?.provider).toBe("bird");
+    expect(result.outcomes[0]?.success).toBe(true);
+  });
+
+  it("falls back to Direct X when Bird primary fails", async () => {
+    const birdPlatform = {
+      id: "bird-x",
+      workspaceId: "workspace-1",
+      type: "twitter",
+      provider: "bird",
+      accountId: "bird-account",
+      handle: "@max",
+      enabled: true,
+      config: {
+        credentials: {
+          enableDirectFallbackForPublishing: true,
+        },
+      },
+    } as unknown as TestPlatform;
+    const directPlatform = {
+      id: "direct-x",
+      workspaceId: "workspace-1",
+      type: "twitter",
+      provider: "direct",
+      accountId: "direct-account",
+      handle: "@max",
+      enabled: true,
+      config: { authMethod: "x_oauth" },
+    } as unknown as TestPlatform;
+
+    mocks.dbRows = [directPlatform];
+    mocks.shouldPublishViaNativeProvider.mockImplementation((platform) => {
+      return platform.provider === "direct";
+    });
+    mocks.publishToBird.mockResolvedValueOnce({
+      platform: "twitter",
+      provider: "bird",
+      accountId: "bird-account",
+      success: false,
+      classification: "auth_error",
+      error: "Media upload failed: HTTP 401",
+    });
+    mocks.publishViaNativeProvider.mockResolvedValueOnce({
+      platform: "twitter",
+      provider: "direct",
+      accountId: "direct-account",
+      success: true,
+      classification: "success",
+      postId: "tweet-1",
+    });
+
+    const result = await publishPlatformTargets([
+      {
+        platform: birdPlatform,
+        content: "Fallback post",
+        mediaUrls: ["https://cdn.example.com/one.jpg"],
+      },
+    ]);
+
+    expect(mocks.publishToBird).toHaveBeenCalledOnce();
+    expect(mocks.publishViaNativeProvider).toHaveBeenCalledWith(
+      expect.objectContaining({
+        platform: directPlatform,
+        mediaUrls: ["https://cdn.example.com/one.jpg"],
+      })
+    );
+    expect(result.outcomes[0]).toEqual(
+      expect.objectContaining({
+        provider: "direct",
+        success: true,
+        postId: "tweet-1",
+      })
+    );
+  });
+
+  it("retries X through Bird without media when the media URL is stale", async () => {
+    const birdPlatform = {
+      id: "bird-x",
+      workspaceId: "workspace-1",
+      type: "twitter",
+      provider: "bird",
+      accountId: "bird-account",
+      handle: "@max",
+      enabled: true,
+      config: {
+        credentials: {
+          enableDirectFallbackForPublishing: true,
+        },
+      },
+    } as unknown as TestPlatform;
+
+    mocks.publishToBird
+      .mockResolvedValueOnce({
+        platform: "twitter",
+        provider: "bird",
+        accountId: "bird-account",
+        success: false,
+        classification: "provider_error",
+        error: "Failed to fetch media: 404",
+      })
+      .mockResolvedValueOnce({
+        platform: "twitter",
+        provider: "bird",
+        accountId: "bird-account",
+        success: true,
+        classification: "success",
+        postId: "tweet-text-only",
+        raw: { threadParts: 1 },
+      });
+
+    const result = await publishPlatformTargets([
+      {
+        platform: birdPlatform,
+        content: "Fallback text post",
+        mediaUrls: ["https://cdn.example.com/missing.jpg"],
+        mediaType: "image",
+      },
+    ]);
+
+    expect(mocks.publishToBird).toHaveBeenCalledTimes(2);
+    expect(mocks.publishToBird).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        platform: birdPlatform,
+        content: "Fallback text post",
+      })
+    );
+    expect(mocks.publishToBird.mock.calls[1]?.[0]).not.toHaveProperty(
+      "mediaUrls"
+    );
+    expect(mocks.publishViaNativeProvider).not.toHaveBeenCalled();
+    expect(result.outcomes[0]).toEqual(
+      expect.objectContaining({
+        provider: "bird",
+        success: true,
+        postId: "tweet-text-only",
+      })
+    );
+    expect(result.outcomes[0]?.raw).toEqual(
+      expect.objectContaining({
+        mediaFallback: expect.objectContaining({
+          action: "published_without_media",
+          primaryError: "Failed to fetch media: 404",
+        }),
+      })
+    );
+  });
+
+  it("uses text-only Direct fallback after an X media fetch failure", async () => {
+    const birdPlatform = {
+      id: "bird-x",
+      workspaceId: "workspace-1",
+      type: "twitter",
+      provider: "bird",
+      accountId: "bird-account",
+      handle: "@max",
+      enabled: true,
+      config: {
+        credentials: {
+          enableDirectFallbackForPublishing: true,
+        },
+      },
+    } as unknown as TestPlatform;
+    const directPlatform = {
+      id: "direct-x",
+      workspaceId: "workspace-1",
+      type: "twitter",
+      provider: "direct",
+      accountId: "direct-account",
+      handle: "@max",
+      enabled: true,
+      config: { authMethod: "x_oauth" },
+    } as unknown as TestPlatform;
+
+    mocks.dbRows = [directPlatform];
+    mocks.shouldPublishViaNativeProvider.mockImplementation((platform) => {
+      return platform.provider === "direct";
+    });
+    mocks.publishToBird
+      .mockResolvedValueOnce({
+        platform: "twitter",
+        provider: "bird",
+        accountId: "bird-account",
+        success: false,
+        classification: "provider_error",
+        error: "Failed to fetch media: 404",
+      })
+      .mockResolvedValueOnce({
+        platform: "twitter",
+        provider: "bird",
+        accountId: "bird-account",
+        success: false,
+        classification: "auth_error",
+        error: "Bird auth failed",
+      });
+    mocks.publishViaNativeProvider.mockResolvedValueOnce({
+      platform: "twitter",
+      provider: "direct",
+      accountId: "direct-account",
+      success: true,
+      classification: "success",
+      postId: "tweet-direct-text",
+    });
+
+    const result = await publishPlatformTargets([
+      {
+        platform: birdPlatform,
+        content: "Direct text fallback",
+        mediaUrls: ["https://cdn.example.com/missing.jpg"],
+        mediaType: "image",
+      },
+    ]);
+
+    expect(mocks.publishViaNativeProvider).toHaveBeenCalledWith(
+      expect.not.objectContaining({
+        mediaUrls: expect.anything(),
+      })
+    );
+    expect(mocks.publishViaNativeProvider).toHaveBeenCalledWith(
+      expect.not.objectContaining({
+        mediaUrl: expect.anything(),
+      })
+    );
+    expect(result.outcomes[0]).toEqual(
+      expect.objectContaining({
+        provider: "direct",
+        success: true,
+        postId: "tweet-direct-text",
+      })
+    );
+  });
+
+  it("does not use Direct X fallback unless the Bird config enables it", async () => {
+    const birdPlatform = {
+      id: "bird-x",
+      workspaceId: "workspace-1",
+      type: "twitter",
+      provider: "bird",
+      accountId: "bird-account",
+      handle: "@max",
+      enabled: true,
+      config: {},
+    } as unknown as TestPlatform;
+    const directPlatform = {
+      id: "direct-x",
+      workspaceId: "workspace-1",
+      type: "twitter",
+      provider: "direct",
+      accountId: "direct-account",
+      handle: "@max",
+      enabled: true,
+      config: { authMethod: "x_oauth" },
+    } as unknown as TestPlatform;
+
+    mocks.dbRows = [directPlatform];
+    mocks.shouldPublishViaNativeProvider.mockImplementation((platform) => {
+      return platform.provider === "direct";
+    });
+    mocks.publishToBird.mockResolvedValueOnce({
+      platform: "twitter",
+      provider: "bird",
+      accountId: "bird-account",
+      success: false,
+      classification: "auth_error",
+      error: "Media upload failed: HTTP 401",
+    });
+
+    const result = await publishPlatformTargets([
+      {
+        platform: birdPlatform,
+        content: "No direct fallback",
+        mediaUrls: ["https://cdn.example.com/one.jpg"],
+      },
+    ]);
+
+    expect(mocks.publishViaNativeProvider).not.toHaveBeenCalled();
+    expect(result.outcomes[0]).toEqual(
+      expect.objectContaining({
+        provider: "bird",
+        success: false,
+        error: "Media upload failed: HTTP 401",
+      })
+    );
   });
 });

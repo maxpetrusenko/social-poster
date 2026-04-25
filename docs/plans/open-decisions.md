@@ -1,6 +1,6 @@
 # Open Decisions
 
-Last updated: 2026-04-13
+Last updated: 2026-04-24
 
 ## Purpose
 
@@ -57,3 +57,13 @@ Recommendation: keep Bird as the short-term X sidecar, but move the product cont
 Tradeoff: this preserves the current working path while avoiding a Bird-shaped product model that blocks inbox portability later.
 
 Provisional default: X publishing and reply transport may use Bird where needed; inbox should be modeled as an abstract transport surface, not a Bird-specific feature.
+
+### Post History Source Of Truth
+
+Decision needed: whether durable post history should be modeled as additive lifecycle events plus revisions, or whether the current mutable `posts` and `post_targets` tables should remain the main history surface.
+
+Recommendation: add `post_revisions` and `post_events`, keep `posts` as the stable identity/current-state table, and stop hard-deleting published posts.
+
+Tradeoff: more schema and dual-write work now, but history becomes durable, deletion semantics become explicit, and calendar/history stop disappearing after edits or rollbacks.
+
+Provisional default: move to immutable post lifecycle modeling before any major calendar/history redesign.

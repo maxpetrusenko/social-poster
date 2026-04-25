@@ -257,6 +257,21 @@ export function classifyBirdError(message: string) {
   return "provider_error" as const;
 }
 
+export function shouldRetryBirdWithInstalledSession(
+  credentials: Pick<BirdCredentials, "authToken" | "ct0" | "useInstalledBirdSession">,
+  error?: string
+) {
+  if (!credentials.authToken || !credentials.ct0) return false;
+  if (!credentials.useInstalledBirdSession) return false;
+
+  const normalized = error?.toLowerCase() ?? "";
+  return (
+    normalized.includes("could not authenticate") ||
+    normalized.includes("http 401") ||
+    normalized.includes("unauthorized")
+  );
+}
+
 function splitLongSegment(segment: string, limit: number): string[] {
   const words = segment.split(/\s+/).filter(Boolean);
   const chunks: string[] = [];

@@ -65,6 +65,17 @@ export async function publishViaNativeProvider(
     };
   }
 
+  if (isXMediaPublish(target) && !hasStoredScope(target.platform.config, "media.write")) {
+    return {
+      platform: target.platform.type,
+      provider: "direct",
+      accountId: target.platform.accountId,
+      success: false,
+      classification: "auth_error",
+      error: "X Direct token is missing media.write. Reconnect the X account, then retry media publishing.",
+    };
+  }
+
   try {
     const content = buildPublishContent(target);
     const result = await provider.publishPost(accessToken, content);
@@ -233,12 +244,35 @@ function isNativeXAuthMethod(authMethod: string | null | undefined) {
   return authMethod === "x_oauth" || authMethod === "twitter_native";
 }
 
+function isXMediaPublish(target: Pick<NativePublishInput, "platform" | "mediaUrl" | "mediaUrls">) {
+  const platformType = target.platform.type.toLowerCase();
+  return (
+    (platformType === "twitter" || platformType === "x") &&
+    Boolean(target.mediaUrl || target.mediaUrls?.some((url) => url?.trim()))
+  );
+}
+
+function hasStoredScope(
+  config: Record<string, unknown> | null | undefined,
+  requiredScope: string
+) {
+  const scope = readCredentialScope(config);
+  if (!scope) return true;
+  return scope.split(/\s+/).includes(requiredScope);
+}
+
 function readCredentialObject(config: Record<string, unknown> | null | undefined) {
   return config?.credentials &&
     typeof config.credentials === "object" &&
     !Array.isArray(config.credentials)
     ? (config.credentials as Record<string, unknown>)
     : {};
+}
+
+function readCredentialScope(config: Record<string, unknown> | null | undefined) {
+  const credentials = readCredentialObject(config);
+  const scope = credentials.scope ?? config?.scope;
+  return typeof scope === "string" ? scope : null;
 }
 
 function readTokenExpiry(config: Record<string, unknown> | null | undefined) {

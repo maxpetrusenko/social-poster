@@ -14,6 +14,7 @@ import { getImageDimensions, getSpecForPlatform, type ImageSpec } from "@/lib/pl
 
 type Props = {
   profiles: { id: string; name: string }[];
+  rssSourceCount: number;
   platforms: {
     id: string;
     name: string;
@@ -87,7 +88,7 @@ type StoredComposerDraft = {
   threadEnabled?: boolean;
 };
 
-export function CreatePostComposer({ profiles, platforms }: Props) {
+export function CreatePostComposer({ profiles, rssSourceCount, platforms }: Props) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const draftRestoredRef = useRef(false);
@@ -374,6 +375,11 @@ export function CreatePostComposer({ profiles, platforms }: Props) {
   }
 
   async function loadGeneratedDraft(source: GenerationSource, url?: string) {
+    if (source === "rss" && rssSourceCount === 0) {
+      setGenerationError("Add an RSS source before generating from RSS.");
+      return;
+    }
+
     setGenerating(source);
     setGenerationError("");
     setMediaError("");
@@ -585,6 +591,8 @@ export function CreatePostComposer({ profiles, platforms }: Props) {
     return { byPlatformId, byPlatformType, urlsByPlatformId, urlsByPlatformType };
   }
 
+  const hasRssSources = rssSourceCount > 0;
+
   return (
     <div className="min-h-screen bg-[#f5f0e6] p-6">
       <div className="mx-auto max-w-6xl">
@@ -609,10 +617,10 @@ export function CreatePostComposer({ profiles, platforms }: Props) {
                   <button
                     type="button"
                     onClick={() => void loadGeneratedDraft("rss")}
-                    disabled={generating !== null}
+                    disabled={generating !== null || !hasRssSources}
                     className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-gray-100 text-gray-600 transition hover:bg-gray-200 disabled:opacity-50"
-                    title="Generate from RSS"
-                    aria-label="Generate from RSS"
+                    title={hasRssSources ? "Generate from RSS" : "Add an RSS source first"}
+                    aria-label={hasRssSources ? "Generate from RSS" : "Add an RSS source first"}
                   >
                     {generating === "rss" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Rss className="h-4 w-4" />}
                   </button>

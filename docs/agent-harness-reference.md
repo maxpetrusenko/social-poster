@@ -13,6 +13,7 @@ The current "social agent" is a single API route with context loading:
 
 - **`src/app/api/social-agent/route.ts`** — Chat endpoint using OpenAI Responses API
 - **`src/lib/social-agent/context.ts`** — Loads workspace data (platforms, posts, replies, schedules, RSS) into a `SocialAgentContext` struct
+- **`src/lib/social-agent/action-intents.ts`** — Parses safe chat write intents for RSS source cleanup and recurring post schedule creation
 
 ### Current Architecture
 
@@ -23,7 +24,7 @@ Browser Chat Widget
 POST /api/social-agent
        │
        ├─→ loadSocialAgentContext()  (DB query → sanitized struct)
-       ├─→ handleInlineAction()      (/invite command parsing)
+       ├─→ handleInlineAction()      (/invite, /support, RSS cleanup, recurring schedule creation)
        ├─→ answerDirectlyFromContext() (keyword matching for replies, connections, schedules)
        └─→ answerWithContext()        (OpenAI call with full context in system prompt)
               │
@@ -33,13 +34,13 @@ POST /api/social-agent
 
 ### Current Limitations
 
-1. **No tool calling** — Agent can only read context, not take actions via tools
+1. **Partial write path** — Agent can execute selected workspace-scoped inline actions, but full tool calling is still pending
 2. **Single LLM call** — No multi-turn reasoning or tool-calling loop
 3. **Inline actions are string-parsed** — Only `/invite` command, regex-based
 4. **No platform API calls** — Cannot post, fetch analytics, read DMs
 5. **No guardrails** — No confirmation before destructive actions
 6. **No audit trail** — No logging of agent actions or tool executions
-7. **Context is read-only** — Agent sees DB state but cannot modify it via tools
+7. **Context is mostly read-only** — Agent sees DB state and can modify RSS/schedule state only through the current safe inline slice
 
 ---
 

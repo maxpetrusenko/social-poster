@@ -411,6 +411,20 @@ export async function loadSocialAgentContext(
         guardrail: "Requires current session and workspace scoped platform targets.",
       },
       {
+        label: "Create recurring post schedule from chat",
+        endpoint: "/api/social-agent",
+        method: "POST",
+        guardrail:
+          "Workspace editor can ask for a recurring post with cadence, target platform, copy, and optional uploaded image.",
+      },
+      {
+        label: "Bulk remove RSS sources except one kept source",
+        endpoint: "/api/social-agent",
+        method: "POST",
+        guardrail:
+          "Workspace editor can remove RSS feeds when the single source to keep is named or matched.",
+      },
+      {
         label: "Publish existing post",
         endpoint: "/api/posts/[id]/publish",
         method: "POST",

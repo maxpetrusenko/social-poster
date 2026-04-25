@@ -298,7 +298,7 @@ offline.access media.write
 | Compliance            | No        | **Yes (only)**     | No                 | N/A (app-only)                |
 | Media upload          | Yes       | No                 | Yes                | `media.write`                 |
 
-**Recommendation**: Use OAuth 2.0 with PKCE exclusively. It supports all user-context endpoints, has higher rate limits (300 -> 900 for lookups), and is the modern standard X recommends.
+**Runtime policy**: Social Poster uses Bird as the primary X publishing transport. OAuth 2.0 with PKCE can be kept connected for profile refresh, token refresh, delete support, and an operator-enabled publish fallback when the Bird connection explicitly opts into Direct X retry.
 
 ---
 
@@ -308,10 +308,10 @@ offline.access media.write
 
 | Capability            | Status        | Implementation             |
 |----------------------|---------------|----------------------------|
-| Post text tweets      | Implemented   | `POST /2/tweets`           |
+| Post text tweets      | Implemented   | Bird primary, optional X API fallback |
 | OAuth 2.0 PKCE auth   | Implemented   | Full flow with refresh     |
 | Token refresh          | Implemented   | Automatic before expiry    |
-| Post with media        | Not yet       | Need `/2/media/upload`     |
+| Post with media        | Implemented   | Bird primary, optional v2 chunked media fallback |
 | Thread posting         | Not yet       | Chained `POST /2/tweets`   |
 | Analytics              | Not yet       | Need Pro tier              |
 | Auto-DM                | Not yet       | Need Pro tier for volume   |
@@ -322,7 +322,7 @@ offline.access media.write
 | List import            | Not yet       | `GET /2/lists/:id/members` |
 | Schedule retweets      | Not yet       | `POST /users/:id/retweets` |
 | Evergreen retweets     | Not yet       | Same as above, on timer    |
-| Delete tweets          | Not yet       | `DELETE /2/tweets/:id`     |
+| Delete tweets          | Implemented   | `DELETE /2/tweets/:id`     |
 
 ### Roadmap: Feature Unlock by API Tier
 

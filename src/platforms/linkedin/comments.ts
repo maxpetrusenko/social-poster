@@ -1,8 +1,9 @@
 import type { PaginatedResult, PlatformComment, PlatformComments } from "../_shared/types";
 
 const API_BASE = "https://api.linkedin.com";
+const LINKEDIN_API_VERSION = process.env.LINKEDIN_API_VERSION?.trim() || "202604";
 const LINKEDIN_HEADERS = {
-  "LinkedIn-Version": "202401",
+  "LinkedIn-Version": LINKEDIN_API_VERSION,
   "X-Restli-Protocol-Version": "2.0.0",
 };
 

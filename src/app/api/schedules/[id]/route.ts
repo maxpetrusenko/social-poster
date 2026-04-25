@@ -2,6 +2,7 @@ import { db } from "@/db";
 import { platforms, profiles, schedules } from "@/db/schema";
 import { requireApiWorkspaceEditor } from "@/lib/api-authorization";
 import { recordTenantAuditEvent } from "@/lib/audit";
+import { hydrateScheduleConfigMedia } from "@/lib/schedule-media";
 import { reconcileSchedules } from "@/lib/scheduler";
 import { and, eq, inArray } from "drizzle-orm";
 
@@ -81,6 +82,15 @@ export async function POST(
       }
     }
 
+    const hydratedConfig = await hydrateScheduleConfigMedia(
+      body.config ?? current.config,
+      {
+        workspaceId: tenant.currentWorkspace.id,
+        scheduleId,
+        strict: true,
+      }
+    );
+
     const updates = {
       name: body.name ?? current.name,
       description: body.description ?? current.description,
@@ -89,7 +99,7 @@ export async function POST(
       jobType: body.jobType ?? current.jobType,
       profileId: normalizedProfileId,
       targetPlatformIds: normalizedPlatformIds,
-      config: body.config ?? current.config,
+      config: hydratedConfig,
       enabled: body.enabled !== undefined ? body.enabled : current.enabled,
       updatedAt: new Date(),
     };
@@ -117,6 +127,11 @@ export async function POST(
     return Response.json(result[0]);
   } catch (error) {
     console.error("POST /api/schedules/[id] error:", error);
-    return Response.json({ error: "Internal server error" }, { status: 500 });
+    return Response.json(
+      {
+        error: error instanceof Error ? error.message : "Internal server error",
+      },
+      { status: 500 }
+    );
   }
 }

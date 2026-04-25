@@ -4,10 +4,7 @@ import { db } from "@/db";
 import { rssSources } from "@/db/schema";
 import { requireApiWorkspaceEditor } from "@/lib/api-authorization";
 import { requireApiSession } from "@/lib/auth";
-import {
-  ensureWorkspaceRssConfig,
-  normalizeRssFeedInput,
-} from "@/lib/rss-config";
+import { normalizeRssFeedInput } from "@/lib/rss-config";
 import { getTenantContext } from "@/lib/tenancy";
 
 export async function GET() {
@@ -19,7 +16,6 @@ export async function GET() {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  await ensureWorkspaceRssConfig(tenant.currentWorkspace.id);
   const rows = await db
     .select()
     .from(rssSources)

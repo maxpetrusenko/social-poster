@@ -1,4 +1,4 @@
-import { redirect } from "next/navigation";
+import { redirect, unstable_rethrow } from "next/navigation";
 import { cookies } from "next/headers";
 import {
   AUTH_MODE,
@@ -63,9 +63,18 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 
   if (AUTH_MODE === "supabase" && isSupabaseConfigured()) {
     const supabase = await createSupabaseServerClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    let user: { email?: string | null } | null = null;
+
+    try {
+      const result = await supabase.auth.getUser();
+      user = result.data.user;
+    } catch (error) {
+      unstable_rethrow(error);
+      console.warn(
+        "Supabase login session check failed:",
+        error instanceof Error ? error.message : error
+      );
+    }
 
     if (await isEmailAllowedForAuth(user?.email)) {
       redirect(nextPath);

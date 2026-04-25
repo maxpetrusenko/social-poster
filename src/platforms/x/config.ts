@@ -2,6 +2,7 @@ import type { PlatformCapability, PostType, MediaType, AuthType } from "../_shar
 import {
   passwordField,
   textField,
+  toggleField,
   textareaField,
   type ConnectionPlatformDefinition,
 } from "../_shared/connection-config";
@@ -16,14 +17,14 @@ export const config = {
   tokenExpiry: true,
   capabilities: ["posting", "comments", "inbox"] as PlatformCapability[],
   futureCapabilities: ["analytics", "engagement"] as PlatformCapability[],
-  supportedPostTypes: ["text"] as PostType[],
-  supportedMediaTypes: [] as MediaType[],
+  supportedPostTypes: ["text", "image", "video"] as PostType[],
+  supportedMediaTypes: ["jpeg", "png", "gif", "mp4", "mov", "webp"] as MediaType[],
   maxCaptionLength: 280,
   info: {
     description: "Post tweets and threads to Twitter / X.",
-    authTooltip: "OAuth 2.0 with PKCE. Requires tweet.read, tweet.write, users.read, dm.read, dm.write, offline.access scopes.",
+    authTooltip: "OAuth 2.0 with PKCE. Requires tweet.read, tweet.write, users.read, media.write, dm.read, dm.write, offline.access scopes.",
     limitsTooltip: "300 tweets/day, 2,400 API requests/day. Rate limits reset hourly.",
-    mediaTooltip: "Text-only posting via native OAuth. Media uploads require elevated API access.",
+    mediaTooltip: "Native OAuth uploads media through the X API v2 media endpoints.",
     analyticsTooltip: "Post impressions, likes, retweets, replies, and profile visits (coming soon).",
   },
 } as const;
@@ -65,7 +66,7 @@ export const connectionDefinition: ConnectionPlatformDefinition = {
         bullets: [
           "Best long-term path for account-bound posting and future analytics.",
           "Requires callback URL and app credentials from the X developer portal.",
-          "Supports inbound mentions, replies, and DMs when the app has the matching X permissions.",
+          "Supports media posts, inbound mentions, replies, and DMs when the app has the matching X permissions.",
         ],
         learnMoreUrl: "https://docs.x.com/fundamentals/authentication/oauth-2-0/overview",
       },
@@ -150,6 +151,11 @@ export const connectionDefinition: ConnectionPlatformDefinition = {
           "X_CT0",
           "Paste X ct0 cookie",
           "Fast path: ask Claude Code or Codex to run the agent prompt below. Manual path: copy ct0 from the same x.com cookies table."
+        ),
+        toggleField(
+          "enableDirectFallbackForPublishing",
+          "Enable X API fallback for publish failures",
+          "If Bird publish fails, retry through the connected Direct X account for this handle."
         ),
       ],
       docs: [

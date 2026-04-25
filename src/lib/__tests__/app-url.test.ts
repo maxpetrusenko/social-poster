@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { getAppUrlFromEnv, normalizeAppUrl } from "@/lib/app-url";
+import {
+  getAppUrlFromEnv,
+  getPublicAppUrlFromEnv,
+  normalizeAppUrl,
+} from "@/lib/app-url";
 
 describe("app url resolution", () => {
   it("chooses the app domain from a comma-separated APP_URL", () => {
@@ -16,5 +20,17 @@ describe("app url resolution", () => {
     expect(
       normalizeAppUrl("bad-value,https://smmagent.app/path,ftp://invalid.example")
     ).toBe("https://smmagent.app");
+  });
+
+  it("uses the canonical app origin for externally fetched media when env is unset", () => {
+    expect(getPublicAppUrlFromEnv({} as NodeJS.ProcessEnv)).toBe(
+      "https://social.maxpetrusenko.com"
+    );
+  });
+
+  it("keeps localhost as the regular app url fallback for local app links", () => {
+    expect(getAppUrlFromEnv({} as NodeJS.ProcessEnv)).toBe(
+      "http://localhost:3000"
+    );
   });
 });

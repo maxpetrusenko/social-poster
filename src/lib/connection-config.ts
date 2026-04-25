@@ -3,6 +3,7 @@ export type StoredConnectionConfig = {
   authMethod?: string | null;
   customInstructions?: string | null;
   credentials?: Record<string, unknown> | null;
+  enableDirectFallbackForPublishing?: boolean;
   notes?: string | null;
   birdSession?: {
     status?: string | null;
@@ -31,10 +32,17 @@ export function readStoredConnectionConfig(
       typeof source.customInstructions === "string"
         ? source.customInstructions
         : null,
+    enableDirectFallbackForPublishing: readBooleanFlag(
+      credentials?.enableDirectFallbackForPublishing ?? source.enableDirectFallbackForPublishing
+    ),
     notes: typeof source.notes === "string" ? source.notes : null,
     birdSession: readBirdSession(source.birdSession),
     credentials,
   };
+}
+
+function readBooleanFlag(value: unknown) {
+  return value === true;
 }
 
 function readBirdSession(value: unknown): StoredConnectionConfig["birdSession"] {

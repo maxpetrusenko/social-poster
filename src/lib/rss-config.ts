@@ -1,6 +1,5 @@
 import "server-only";
 
-import crypto from "node:crypto";
 import { and, asc, desc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { rssSettings, rssSources, schedules } from "@/db/schema";
@@ -201,51 +200,9 @@ export function normalizeRssFeedInput(
   };
 }
 
-export async function ensureWorkspaceRssConfig(workspaceId: string) {
-  const [existingSources, existingSettings] = await Promise.all([
-    db
-      .select({ id: rssSources.id })
-      .from(rssSources)
-      .where(eq(rssSources.workspaceId, workspaceId)),
-    db
-      .select()
-      .from(rssSettings)
-      .where(eq(rssSettings.workspaceId, workspaceId))
-      .get(),
-  ]);
-
-  const now = new Date();
-
-  if (existingSources.length === 0) {
-    await db.insert(rssSources).values(
-      DEFAULT_RSS_FEEDS.map((feed) => ({
-        id: crypto.randomUUID(),
-        workspaceId,
-        name: feed.name,
-        url: feed.url,
-        weight: feed.weight,
-        enabled: feed.enabled,
-        createdAt: now,
-        updatedAt: now,
-      }))
-    ).onConflictDoNothing();
-  }
-
-  if (!existingSettings) {
-    await db.insert(rssSettings).values({
-      workspaceId,
-      ...DEFAULT_RSS_SETTINGS,
-      createdAt: now,
-      updatedAt: now,
-    }).onConflictDoNothing();
-  }
-}
-
 export async function getWorkspaceRssSources(
   workspaceId: string
 ): Promise<RssFeedSource[]> {
-  await ensureWorkspaceRssConfig(workspaceId);
-
   return db
     .select()
     .from(rssSources)
@@ -256,8 +213,6 @@ export async function getWorkspaceRssSources(
 export async function getWorkspaceRssSettings(
   workspaceId: string
 ): Promise<RssSettingsConfig> {
-  await ensureWorkspaceRssConfig(workspaceId);
-
   const row = await db
     .select()
     .from(rssSettings)
