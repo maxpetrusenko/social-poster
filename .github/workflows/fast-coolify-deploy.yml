@@ -92,7 +92,7 @@ jobs:
       COOLIFY_BASE_URL: ${{ secrets.COOLIFY_API_URL || secrets.COOLIFY_URL }}
       COOLIFY_API_TOKEN: ${{ secrets.COOLIFY_API_TOKEN || secrets.COOLIFY_TOKEN }}
     steps:
-      - name: Point Coolify at this image tag
+      - name: Validate Coolify credentials
         shell: bash
         run: |
           set -euo pipefail
@@ -111,18 +111,10 @@ jobs:
           api_base="${api_base%/api/v1}/api/v1"
 
           curl --fail-with-body --silent --show-error \
-            --request PATCH \
+            --request GET \
             --url "${api_base}/applications/${COOLIFY_UUID}" \
             --header "Authorization: Bearer ${COOLIFY_API_TOKEN}" \
-            --header "Content-Type: application/json" \
-            --data "{
-              \"docker_registry_image_name\": \"${IMAGE_NAME}\",
-              \"docker_registry_image_tag\": \"${IMAGE_TAG}\",
-              \"ports_exposes\": \"${COOLIFY_PORT}\",
-              \"health_check_enabled\": true,
-              \"health_check_path\": \"${COOLIFY_HEALTH_PATH}\",
-              \"health_check_port\": \"${COOLIFY_PORT}\"
-            }"
+            --output /dev/null
 
       - name: Deploy Coolify application
         shell: bash

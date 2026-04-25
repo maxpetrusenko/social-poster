@@ -91,15 +91,11 @@ Coolify application UUID: `ch6cjsgcqn6afd5052etgvwn`
 GitHub secrets required: `COOLIFY_API_URL` or `COOLIFY_URL`, and `COOLIFY_API_TOKEN` or `COOLIFY_TOKEN`.
 Use `COOLIFY_URL=https://coolify.maxpetrusenko.com` and a token with application update/deploy access.
 
-After GHCR push, the workflow patches the Coolify application to:
+After GHCR push, the workflow validates Coolify API access, then triggers:
 
-- image: `ghcr.io/maxpetrusenko/social-poster`
-- docker image tag: `sha-${{ github.sha }}`
-- exposed port: `3000`
-- health path: `/api/health`
+`GET /api/v1/deploy?uuid=ch6cjsgcqn6afd5052etgvwn&force=false`
 
-Then it triggers `GET /api/v1/deploy?uuid=ch6cjsgcqn6afd5052etgvwn&force=false`.
-The workflow assumes the Coolify resource is already compatible with image-tag deploys; the update endpoint on the current Coolify instance rejects changing `build_pack` in-place.
+Current Coolify resource note: the app is still a Dockerfile resource. The current Coolify update endpoint rejects changing `build_pack` in-place, so the deploy trigger builds from Git on the VPS until the app is recreated as a Docker Image resource or registry auth is configured for Dockerfile image pushes.
 
 Coolify setup checklist:
 
@@ -107,7 +103,7 @@ Coolify setup checklist:
 2. Keep persistent storage mounted at `/data`.
 3. Keep healthcheck path `/api/health` and rolling deployment enabled.
 4. Do not enable `force_rebuild` for normal deploys.
-5. Let the GitHub Actions `Fast Coolify Deploy` workflow patch the image tag and trigger deploy.
+5. Let the GitHub Actions `Fast Coolify Deploy` workflow trigger deploy after the gates and GHCR image build pass.
 
 Local deploy gates before image push:
 
