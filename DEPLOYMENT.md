@@ -89,6 +89,7 @@ Workflow: `.github/workflows/fast-coolify-deploy.yml`
 Coolify application UUID: `ch6cjsgcqn6afd5052etgvwn`
 
 GitHub secrets required: `COOLIFY_API_URL` or `COOLIFY_URL`, and `COOLIFY_API_TOKEN` or `COOLIFY_TOKEN`.
+Use `COOLIFY_URL=https://coolify.maxpetrusenko.com` and a token with application update/deploy access.
 
 After GHCR push, the workflow patches the Coolify application to:
 
@@ -98,6 +99,7 @@ After GHCR push, the workflow patches the Coolify application to:
 - health path: `/api/health`
 
 Then it triggers `GET /api/v1/deploy?uuid=ch6cjsgcqn6afd5052etgvwn&force=false`.
+The workflow assumes the Coolify resource is already compatible with image-tag deploys; the update endpoint on the current Coolify instance rejects changing `build_pack` in-place.
 
 Coolify setup checklist:
 

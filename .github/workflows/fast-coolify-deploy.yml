@@ -116,7 +116,6 @@ jobs:
             --header "Authorization: Bearer ${COOLIFY_API_TOKEN}" \
             --header "Content-Type: application/json" \
             --data "{
-              \"build_pack\": \"dockerimage\",
               \"docker_registry_image_name\": \"${IMAGE_NAME}\",
               \"docker_registry_image_tag\": \"${IMAGE_TAG}\",
               \"ports_exposes\": \"${COOLIFY_PORT}\",
