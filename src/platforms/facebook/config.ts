@@ -36,18 +36,18 @@ export const connectionDefinition: ConnectionPlatformDefinition = {
   methods: [
     {
       id: "facebook_meta",
-      label: "Connect with Meta (Direct)",
+      label: "Connect Facebook Page",
       provider: "direct",
       authType: "oauth",
       description:
-        "Authorize through Meta OAuth and store a token for direct page publishing.",
+        "Authorize through Facebook Login and store Page access tokens for direct publishing.",
       recommendation: "Use for direct page publishing and page-bound automations.",
       infoTooltip: {
         title: "Facebook Page OAuth",
         bullets: [
-          "Connects a Page through a Meta app and page-scoped permissions.",
-          "Required for first-party posting and future comments/inbox access.",
-          "User must have Page access and grant publishing permissions.",
+          "Requests only the Page list, read engagement, and publish permissions needed for posting.",
+          "Saves each returned Facebook Page as its own connection with a Page access token.",
+          "Comments and inbox permissions should be added only after Meta app review approves them.",
         ],
         learnMoreUrl: "https://developers.facebook.com/docs/pages-api/",
       },

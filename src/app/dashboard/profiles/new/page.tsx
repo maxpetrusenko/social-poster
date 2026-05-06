@@ -3,7 +3,13 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2, Save } from "lucide-react";
+import {
+  DashboardHero,
+  DashboardPageContent,
+  HeroButton,
+  SectionCard,
+} from "@/components/dashboard/ui";
 
 const TONE_OPTIONS = [
   { value: "professional", label: "Professional" },
@@ -71,36 +77,40 @@ export default function NewProfilePage() {
   };
 
   return (
-    <div className="min-h-screen bg-white p-8">
-      <div className="max-w-2xl mx-auto">
-        {/* Header */}
-        <div className="flex items-center gap-3 mb-8">
+    <DashboardPageContent className="max-w-[980px]">
+      <DashboardHero
+        eyebrow="Profiles"
+        title="New profile"
+        description="Create a reusable brand identity with voice, face, tone, and workspace defaults."
+        actions={
+          <HeroButton href="/dashboard/profiles" tone="ghost">
+            Profiles
+          </HeroButton>
+        }
+      />
+
+      <SectionCard
+        title="Identity details"
+        subtitle="These values become the defaults for campaigns and generated content that use this profile."
+        action={
           <Link
             href="/dashboard/profiles"
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            aria-label="Back to profiles"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-[12px] border border-[rgba(12,17,21,0.08)] bg-white text-[var(--ink)]"
           >
-            <ArrowLeft size={20} className="text-gray-600" />
+            <ArrowLeft className="h-4 w-4" />
           </Link>
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">New Profile</h1>
-            <p className="text-sm text-gray-500 mt-1">
-              Create a new brand identity with voice and face settings
-            </p>
-          </div>
-        </div>
-
-        {/* Form Card */}
-        <div className="border border-gray-200 rounded-lg p-8 bg-white">
+        }
+      >
           {error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <div className="mb-6 rounded-[14px] border border-red-200 bg-red-50 px-4 py-3">
               <p className="text-sm text-red-700">{error}</p>
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Name */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="mb-2 block text-sm font-semibold text-[var(--ink)]">
                 Profile Name
               </label>
               <input
@@ -110,13 +120,12 @@ export default function NewProfilePage() {
                 onChange={handleChange}
                 placeholder="e.g., Max Petrusenko"
                 required
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-600 text-sm"
+                className="w-full rounded-[14px] border border-[rgba(12,17,21,0.12)] bg-white px-4 py-3 text-sm text-[var(--ink)] outline-none transition focus:border-[var(--accent-tech)]"
               />
             </div>
 
-            {/* Bio */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="mb-2 block text-sm font-semibold text-[var(--ink)]">
                 Bio
               </label>
               <textarea
@@ -125,13 +134,12 @@ export default function NewProfilePage() {
                 onChange={handleChange}
                 placeholder="Describe this profile..."
                 rows={4}
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-600 text-sm resize-none"
+                className="w-full resize-none rounded-[14px] border border-[rgba(12,17,21,0.12)] bg-white px-4 py-3 text-sm text-[var(--ink)] outline-none transition focus:border-[var(--accent-tech)]"
               />
             </div>
 
-            {/* Avatar URL */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="mb-2 block text-sm font-semibold text-[var(--ink)]">
                 Avatar URL
               </label>
               <input
@@ -140,13 +148,12 @@ export default function NewProfilePage() {
                 value={formData.avatarUrl}
                 onChange={handleChange}
                 placeholder="https://example.com/avatar.jpg"
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-600 text-sm"
+                className="w-full rounded-[14px] border border-[rgba(12,17,21,0.12)] bg-white px-4 py-3 text-sm text-[var(--ink)] outline-none transition focus:border-[var(--accent-tech)]"
               />
             </div>
 
-            {/* Voice ID */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="mb-2 block text-sm font-semibold text-[var(--ink)]">
                 Voice ID
               </label>
               <input
@@ -155,16 +162,15 @@ export default function NewProfilePage() {
                 value={formData.voiceId}
                 onChange={handleChange}
                 placeholder={DEFAULT_VOICE_ID}
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-600 text-sm font-mono"
+                className="w-full rounded-[14px] border border-[rgba(12,17,21,0.12)] bg-white px-4 py-3 font-mono text-sm text-[var(--ink)] outline-none transition focus:border-[var(--accent-tech)]"
               />
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="mt-2 text-xs leading-5 text-[var(--muted)]">
                 Cartesia voice identifier
               </p>
             </div>
 
-            {/* Face ID */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="mb-2 block text-sm font-semibold text-[var(--ink)]">
                 Face ID
               </label>
               <input
@@ -173,23 +179,22 @@ export default function NewProfilePage() {
                 value={formData.faceId}
                 onChange={handleChange}
                 placeholder={DEFAULT_FACE_ID}
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-600 text-sm font-mono"
+                className="w-full rounded-[14px] border border-[rgba(12,17,21,0.12)] bg-white px-4 py-3 font-mono text-sm text-[var(--ink)] outline-none transition focus:border-[var(--accent-tech)]"
               />
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="mt-2 text-xs leading-5 text-[var(--muted)]">
                 Simli face identifier
               </p>
             </div>
 
-            {/* Tone */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="mb-2 block text-sm font-semibold text-[var(--ink)]">
                 Tone
               </label>
               <select
                 name="tone"
                 value={formData.tone}
                 onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-600 text-sm"
+                className="w-full rounded-[14px] border border-[rgba(12,17,21,0.12)] bg-white px-4 py-3 text-sm text-[var(--ink)] outline-none transition focus:border-[var(--accent-tech)]"
               >
                 {TONE_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -199,44 +204,45 @@ export default function NewProfilePage() {
               </select>
             </div>
 
-            {/* Is Default */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 rounded-[14px] border border-[rgba(12,17,21,0.08)] bg-[var(--paper)] px-4 py-3">
               <input
                 type="checkbox"
                 name="isDefault"
                 id="isDefault"
                 checked={formData.isDefault}
                 onChange={handleChange}
-                className="w-4 h-4 border border-gray-200 rounded cursor-pointer"
+                className="h-4 w-4 cursor-pointer rounded border border-[rgba(12,17,21,0.18)]"
               />
               <label
                 htmlFor="isDefault"
-                className="text-sm text-gray-700 cursor-pointer"
+                className="cursor-pointer text-sm font-semibold text-[var(--ink)]"
               >
                 Set as default profile
               </label>
             </div>
 
-            {/* Actions */}
-            <div className="flex gap-3 pt-6 border-t border-gray-200">
+            <div className="flex flex-col gap-3 border-t border-[rgba(12,17,21,0.08)] pt-6 sm:flex-row">
               <button
                 type="submit"
                 disabled={loading}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="inline-flex flex-1 items-center justify-center gap-2 rounded-[12px] bg-[var(--ink)] px-4 py-3 text-sm font-semibold text-[var(--sand)] transition disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {loading && <Loader2 size={16} className="animate-spin" />}
+                {loading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Save className="h-4 w-4" />
+                )}
                 {loading ? "Creating..." : "Create Profile"}
               </button>
               <Link
                 href="/dashboard/profiles"
-                className="flex-1 px-4 py-2 border border-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors text-center"
+                className="inline-flex flex-1 items-center justify-center rounded-[12px] border border-[rgba(12,17,21,0.10)] bg-white px-4 py-3 text-center text-sm font-semibold text-[var(--ink)] transition"
               >
                 Cancel
               </Link>
             </div>
           </form>
-        </div>
-      </div>
-    </div>
+      </SectionCard>
+    </DashboardPageContent>
   );
 }

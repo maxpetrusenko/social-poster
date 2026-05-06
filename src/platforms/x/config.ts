@@ -22,7 +22,7 @@ export const config = {
   maxCaptionLength: 280,
   info: {
     description: "Post tweets and threads to Twitter / X.",
-    authTooltip: "OAuth 2.0 with PKCE. Requires tweet.read, tweet.write, users.read, media.write, dm.read, dm.write, offline.access scopes.",
+    authTooltip: "OAuth 2.0 with PKCE. Requests tweet.read, tweet.write, users.read, and offline.access by default. Add media.write or DM scopes only after the X app is approved for them.",
     limitsTooltip: "300 tweets/day, 2,400 API requests/day. Rate limits reset hourly.",
     mediaTooltip: "Native OAuth uploads media through the X API v2 media endpoints.",
     analyticsTooltip: "Post impressions, likes, retweets, replies, and profile visits (coming soon).",
@@ -66,7 +66,8 @@ export const connectionDefinition: ConnectionPlatformDefinition = {
         bullets: [
           "Best long-term path for account-bound posting and future analytics.",
           "Requires callback URL and app credentials from the X developer portal.",
-          "Supports media posts, inbound mentions, replies, and DMs when the app has the matching X permissions.",
+          "Requests the minimum read/write posting scopes by default so consent is not blocked by unapproved DM or media permissions.",
+          "Media and DM permissions can be added later with X_EXTRA_SCOPES after the X app is configured for them.",
         ],
         learnMoreUrl: "https://docs.x.com/fundamentals/authentication/oauth-2-0/overview",
       },
@@ -136,7 +137,7 @@ export const connectionDefinition: ConnectionPlatformDefinition = {
         bullets: [
           "Uses the local Bird CLI and browser/cookie session instead of official OAuth.",
           "Good fallback for posting, outreach replies, inbound mentions, search, and reading threads.",
-          "Bird does not expose DMs in the current CLI, so DM inbox uses direct X OAuth.",
+          "Bird does not expose DMs in the current CLI, and the DM inbox is paused while the safer workflow is finished.",
         ],
       },
       fields: [

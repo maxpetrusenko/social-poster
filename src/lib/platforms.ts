@@ -34,7 +34,7 @@ export const PLATFORM_OPTIONS: Array<{ value: PlatformType; label: string }> = [
   { value: "bluesky", label: "Bluesky" },
   { value: "google_business", label: "Google Business Profile" },
   { value: "mastodon", label: "Mastodon" },
-  { value: "instagram_personal", label: "Instagram Personal" },
+  { value: "instagram_personal", label: "Instagram Personal / Relay" },
   { value: "whatsapp", label: "WhatsApp" },
 ];
 

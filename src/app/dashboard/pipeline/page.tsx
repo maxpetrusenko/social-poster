@@ -2,6 +2,7 @@ import { db } from "@/db";
 import { pipelineRuns, schedules } from "@/db/schema";
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { CheckCircle2, Clock, XCircle } from "lucide-react";
+import { DashboardPageContent } from "@/components/dashboard/ui";
 import { relativeTime } from "@/lib/utils";
 import { resolvePipelineRunStatus } from "@/lib/pipeline/status";
 import { getTenantContext } from "@/lib/tenancy";
@@ -71,7 +72,7 @@ export default async function PipelinePage() {
   const scheduleMap = new Map(scheduleRows.map((schedule) => [schedule.id, schedule]));
 
   return (
-    <div className="p-6">
+    <DashboardPageContent>
       <h1 className="text-2xl font-bold text-gray-900 mb-6">Pipeline Runs</h1>
 
       {runs.length === 0 ? (
@@ -175,6 +176,6 @@ export default async function PipelinePage() {
           })}
         </div>
       )}
-    </div>
+    </DashboardPageContent>
   );
 }

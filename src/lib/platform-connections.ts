@@ -5,6 +5,7 @@ import { and, eq, ne } from "drizzle-orm";
 import { db } from "@/db";
 import { platforms } from "@/db/schema";
 import { pickPreferredPlatformRow } from "@/lib/platform-dedupe";
+import { isPlatformConnectionDisconnected } from "@/lib/platform-connection-state";
 import type { PlatformType } from "@/lib/platforms";
 
 export type PlatformProvider = "zernio" | "bird" | "direct";
@@ -19,6 +20,7 @@ type PlatformConnectionInput = {
   config?: Record<string, unknown> | null;
   enabled: boolean;
   now?: Date;
+  reactivateDisconnected?: boolean;
 };
 
 export async function findPlatformByExternalAccount({
@@ -27,12 +29,14 @@ export async function findPlatformByExternalAccount({
   type,
   accountId,
   excludeId,
+  includeDisconnected = false,
 }: {
   workspaceId: string;
   provider: PlatformProvider;
   type: PlatformType;
   accountId?: string | null;
   excludeId?: string;
+  includeDisconnected?: boolean;
 }) {
   const normalizedAccountId = normalizeAccountId(accountId);
   if (!normalizedAccountId) return null;
@@ -49,20 +53,30 @@ export async function findPlatformByExternalAccount({
     .from(platforms)
     .where(and(...(excludeId ? [...filters, ne(platforms.id, excludeId)] : filters)));
 
-  return pickPreferredPlatformRow(rows);
+  return pickPreferredPlatformRow(
+    includeDisconnected
+      ? rows
+      : rows.filter((row) => !isPlatformConnectionDisconnected(row.config))
+  );
 }
 
 export async function upsertPlatformConnection(input: PlatformConnectionInput) {
   const now = input.now ?? new Date();
+  const reactivateDisconnected = input.reactivateDisconnected ?? true;
   const accountId = normalizeAccountId(input.accountId);
   const existing = await findPlatformByExternalAccount({
     workspaceId: input.workspaceId,
     provider: input.provider,
     type: input.type,
     accountId,
+    includeDisconnected: true,
   });
 
   if (existing) {
+    if (isPlatformConnectionDisconnected(existing.config) && !reactivateDisconnected) {
+      return { id: existing.id, created: false, skipped: true };
+    }
+
     await db
       .update(platforms)
       .set({

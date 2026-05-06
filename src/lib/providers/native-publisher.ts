@@ -220,10 +220,34 @@ function buildPublishContent(target: NativePublishInput): PublishContent {
     mediaUrls,
     postType,
     firstComment: target.firstComment,
-    extra: target.collaborators?.length
-      ? { collaborators: target.collaborators }
-      : undefined,
+    extra: buildPublishExtra(target),
   };
+}
+
+function buildPublishExtra(target: NativePublishInput) {
+  const extra: Record<string, unknown> = {};
+
+  if (target.collaborators?.length) {
+    extra.collaborators = target.collaborators;
+  }
+
+  if (
+    target.platform.type === "linkedin_company" &&
+    typeof target.platform.accountId === "string" &&
+    target.platform.accountId.startsWith("urn:li:organization:")
+  ) {
+    extra.author = target.platform.accountId;
+  }
+
+  if (
+    target.platform.type === "facebook" &&
+    typeof target.platform.accountId === "string" &&
+    target.platform.accountId.trim()
+  ) {
+    extra.page_id = target.platform.accountId.trim();
+  }
+
+  return Object.keys(extra).length ? extra : undefined;
 }
 
 function classifyNativeError(error: unknown): PipelinePublishResult["classification"] {

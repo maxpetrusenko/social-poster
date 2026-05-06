@@ -5,7 +5,7 @@ import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { platforms, posts, postTargets, profiles } from "@/db/schema";
 import { NewPostForm } from "@/components/new-post-form";
-import { DashboardHero, HeroButton } from "@/components/dashboard/ui";
+import { DashboardHero, DashboardPageContent, HeroButton } from "@/components/dashboard/ui";
 import { mapComposerPlatforms } from "@/lib/dashboard/composer";
 import { getTenantContext } from "@/lib/tenancy";
 import { getLatestApprovalRequestForPost } from "@/lib/approval-requests";
@@ -47,7 +47,7 @@ export default async function EditPostPage({
   });
 
   return (
-    <div className="space-y-6">
+    <DashboardPageContent>
       <DashboardHero
         eyebrow="Edit Draft"
         title={post.title || "Refine post"}
@@ -94,6 +94,6 @@ export default async function EditPostPage({
           }}
         />
       </div>
-    </div>
+    </DashboardPageContent>
   );
 }

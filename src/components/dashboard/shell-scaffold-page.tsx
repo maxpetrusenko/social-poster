@@ -1,5 +1,6 @@
 import {
   DashboardHero,
+  DashboardPageContent,
   SectionCard,
   StatusBadge,
 } from "@/components/dashboard/ui";
@@ -28,7 +29,7 @@ export function ShellScaffoldPage({
   sections: ScaffoldSection[];
 }) {
   return (
-    <div className="space-y-6">
+    <DashboardPageContent>
       <DashboardHero
         eyebrow={eyebrow}
         title={title}
@@ -59,6 +60,6 @@ export function ShellScaffoldPage({
           ))}
         </div>
       </SectionCard>
-    </div>
+    </DashboardPageContent>
   );
 }

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Check, Info } from "lucide-react";
+import { AlertTriangle, Check, Info } from "lucide-react";
 import type {
   ConnectionMethod,
   ConnectionPlatformDefinition,
@@ -45,6 +45,10 @@ export function ConnectionMethodOption({
     !appManagedOAuth && Boolean(clientId && clientSecret);
   const canStartOAuth =
     method.authType === "oauth" && (!deactivated || hasInlineCredentials);
+  const showInstagramEligibility =
+    method.authType === "oauth" &&
+    (definition.type === "instagram" ||
+      definition.type === "instagram_personal");
   const handleSelect = () => {
     if (method.authType === "oauth" && appManagedOAuth && canStartOAuth) {
       onSelect();
@@ -107,10 +111,13 @@ export function ConnectionMethodOption({
             ) : null}
           </div>
           {appManagedOAuth ? (
-            <p className="text-sm leading-6 text-[#4d3f34]">
-              Uses the configured {appManagedCopy.appLabel} app. Users sign in
-              and approve access; no app keys are needed here.
-            </p>
+            <>
+              <p className="text-sm leading-6 text-[#4d3f34]">
+                Uses the configured {appManagedCopy.appLabel} app. Users sign in
+                and approve access; no app keys are needed here.
+              </p>
+              {showInstagramEligibility ? <InstagramEligibilityNotice /> : null}
+            </>
           ) : (
             <>
               <CredentialInput
@@ -136,6 +143,26 @@ export function ConnectionMethodOption({
           </button>
         </div>
       ) : null}
+    </div>
+  );
+}
+
+function InstagramEligibilityNotice() {
+  return (
+    <div className="rounded-[12px] border border-[#ead7a7] bg-[#fff8e3] px-3 py-2 text-xs leading-5 text-[#6f4f12]">
+      <div className="flex gap-2">
+        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+        <div>
+          <p className="font-semibold text-[#5d420f]">
+            Meta requires an Instagram Business or Creator account for this OAuth path.
+          </p>
+          <p className="mt-1">
+            Default personal accounts cannot grant the requested publishing permissions.
+            Use Managed relay for personal accounts, or switch the Instagram account to
+            a professional type before connecting.
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
@@ -230,6 +257,9 @@ export function getBrowserOAuthCallbackUrl(
   oauthCallbackUrlOverride: string | null
 ) {
   if (typeof window === "undefined") return null;
+  if (platformType === "twitter" && isHttpsLoopback(window.location.origin)) {
+    return "http://127.0.0.1:3001/api/auth/callback";
+  }
   if (oauthCallbackUrlOverride) return oauthCallbackUrlOverride;
   return `${window.location.origin}${getOAuthCallbackPath(platformType)}`;
 }
@@ -342,7 +372,10 @@ function MethodInfoTooltip({
 function hasCallbackOriginMismatch(callbackUrl: string | null) {
   if (!callbackUrl || typeof window === "undefined") return false;
   try {
-    return new URL(callbackUrl).origin !== window.location.origin;
+    const callback = new URL(callbackUrl);
+    const current = new URL(window.location.origin);
+    if (callback.origin === current.origin) return false;
+    return !(isLoopbackHost(callback.hostname) && isLoopbackHost(current.hostname));
   } catch {
     return false;
   }
@@ -351,4 +384,18 @@ function hasCallbackOriginMismatch(callbackUrl: string | null) {
 function getOAuthCallbackPath(platformType: PlatformType) {
   void platformType;
   return "/api/auth/callback";
+}
+
+function isHttpsLoopback(origin: string) {
+  try {
+    const parsed = new URL(origin);
+    return parsed.protocol === "https:" && isLoopbackHost(parsed.hostname);
+  } catch {
+    return false;
+  }
+}
+
+function isLoopbackHost(hostname: string) {
+  const normalized = hostname.toLowerCase();
+  return normalized === "localhost" || normalized === "127.0.0.1";
 }

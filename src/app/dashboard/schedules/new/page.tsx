@@ -2,6 +2,7 @@ import { db } from "@/db";
 import { platforms, profiles } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
 import { NewScheduleForm } from "@/components/new-schedule-form";
+import { DashboardPageContent } from "@/components/dashboard/ui";
 import { getTenantContext } from "@/lib/tenancy";
 import { redirect } from "next/navigation";
 
@@ -39,7 +40,7 @@ export default async function NewSchedulePage({
   ]);
 
   return (
-    <div className="p-6">
+    <DashboardPageContent>
       <h1 className="text-2xl font-bold text-gray-900 mb-6">
         Create Schedule
       </h1>
@@ -48,6 +49,6 @@ export default async function NewSchedulePage({
         platforms={platformRows}
         initialCategory={category}
       />
-    </div>
+    </DashboardPageContent>
   );
 }

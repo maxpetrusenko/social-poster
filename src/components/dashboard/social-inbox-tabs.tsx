@@ -15,11 +15,13 @@ const tabs = [
     href: "/dashboard/inbox/comments",
     label: "Comments",
     icon: MessageCircle,
+    paused: true,
   },
   {
     href: "/dashboard/inbox/dms",
     label: "DMs",
     icon: Send,
+    paused: true,
   },
 ];
 
@@ -49,6 +51,18 @@ export function SocialInboxTabs() {
             >
               <Icon className="h-4 w-4" />
               <span>{tab.label}</span>
+              {tab.paused ? (
+                <span
+                  className={cn(
+                    "rounded-full px-1.5 py-0.5 text-[0.62rem] font-bold uppercase tracking-[0.08em]",
+                    active
+                      ? "bg-[#fffaf2] text-[#171717]"
+                      : "bg-[#f4ebdd] text-[#8e7556]"
+                  )}
+                >
+                  Paused
+                </span>
+              ) : null}
             </Link>
           );
         })}

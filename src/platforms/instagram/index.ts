@@ -15,12 +15,12 @@ export function createPlatformModule(
 ): PlatformModule {
   return {
     id: variant === "personal" ? "instagram_personal" : "instagram",
-    name: variant === "personal" ? "Instagram (Personal)" : "Instagram",
+    name: variant === "personal" ? "Instagram Personal / Relay" : "Instagram",
     capabilities: [...config.capabilities],
     rateLimits: { requestsPerHour: 200, requestsPerDay: 200, publishPerDay: 25 },
     auth: createAuth(credentials, variant),
     posting: createPosting(credentials, variant),
-    comments: createComments(variant),
+    comments: createComments(),
     inbox: createInbox(
       typeof credentials.igUserId === "string"
         ? credentials.igUserId

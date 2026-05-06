@@ -1,12 +1,14 @@
 import type { ProviderCredentials, SocialProvider } from "./base";
 import { FacebookProvider } from "./facebook";
-import { InstagramProvider } from "./instagram";
-import { InstagramPersonalProvider } from "./instagram-personal";
+import {
+  InstagramLoginProvider,
+  InstagramPersonalProvider,
+} from "./instagram-personal";
 import { ThreadsProvider } from "./threads";
 
 export const metaProviderConstructors = {
   facebook: FacebookProvider,
-  instagram: InstagramProvider,
+  instagram: InstagramLoginProvider,
   instagram_personal: InstagramPersonalProvider,
   threads: ThreadsProvider,
 } as const;

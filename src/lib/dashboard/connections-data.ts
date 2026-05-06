@@ -9,6 +9,7 @@ import {
   findPlatformByExternalAccount,
   upsertPlatformConnection,
 } from "@/lib/platform-connections";
+import { isPlatformConnectionDisconnected } from "@/lib/platform-connection-state";
 import type {
   PlatformRow as ConnectionPlatformRow,
   ProfileRow as ConnectionProfileRow,
@@ -27,7 +28,9 @@ export async function getConnectionsPageData(workspaceId: string) {
   ]);
 
   return {
-    platforms: dedupePlatformRows(platformRows) as ConnectionPlatformRow[],
+    platforms: dedupePlatformRows(
+      platformRows.filter((row) => !isPlatformConnectionDisconnected(row.config))
+    ) as ConnectionPlatformRow[],
     profiles: profileRows as ConnectionProfileRow[],
     insights: dashboard.platformInsights,
   };
@@ -59,7 +62,9 @@ async function syncLateAccountsForWorkspace(workspaceId: string) {
       provider: "zernio",
       type: platformType,
       accountId,
+      includeDisconnected: true,
     });
+    if (isPlatformConnectionDisconnected(existing?.config)) continue;
 
     const displayName =
       account.displayName?.trim() ||
@@ -87,6 +92,7 @@ async function syncLateAccountsForWorkspace(workspaceId: string) {
       config,
       enabled,
       now,
+      reactivateDisconnected: false,
     });
   }
 }

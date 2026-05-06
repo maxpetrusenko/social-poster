@@ -5,7 +5,7 @@ import {
   CalendarEventSurface,
   type CalendarSurfaceEvent,
 } from "@/components/dashboard/calendar-event-surface";
-import { SectionCard } from "@/components/dashboard/ui";
+import { DashboardPageContent, SectionCard } from "@/components/dashboard/ui";
 import { getCalendarInsights } from "@/lib/dashboard/calendar";
 import { getZonedDateParts } from "@/lib/timezone";
 import { getTenantContext } from "@/lib/tenancy";
@@ -223,7 +223,7 @@ export default async function CalendarPage({
   const groupedDayKeys = Array.from(new Set(filteredEvents.map((event) => event.dayKey)));
 
   return (
-    <div className="space-y-6">
+    <DashboardPageContent>
       <SectionCard
         title={view === "calendar" ? "Month View" : "List View"}
         action={
@@ -296,6 +296,6 @@ export default async function CalendarPage({
           todayKey={todayKey}
         />
       </SectionCard>
-    </div>
+    </DashboardPageContent>
   );
 }

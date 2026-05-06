@@ -5,6 +5,7 @@ import { notFound, redirect } from "next/navigation";
 import { formatDate } from "@/lib/utils";
 import Link from "next/link";
 import { ArrowLeft, ExternalLink } from "lucide-react";
+import { DashboardPageContent } from "@/components/dashboard/ui";
 import { PostDeleteButton } from "@/components/post-delete-button";
 import { PostApprovalRequestCard } from "@/components/post-approval-request-card";
 import { getLatestApprovalRequestForPost } from "@/lib/approval-requests";
@@ -78,7 +79,7 @@ export default async function PostDetailPage({
   });
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <DashboardPageContent className="max-w-4xl">
       {/* Back Button */}
       <Link
         href="/dashboard/posts"
@@ -243,6 +244,6 @@ export default async function PostDetailPage({
           Edit Post
         </Link>
       )}
-    </div>
+    </DashboardPageContent>
   );
 }

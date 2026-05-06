@@ -1,6 +1,6 @@
 # Social Agent — Tasks & Status
 
-Last updated: 2026-05-06 (Article FS + one production schedule re-enabled)
+Last updated: 2026-05-06 (Article FS, RSS publishing, and X OAuth bridge)
 
 ## Current State
 
@@ -67,13 +67,28 @@ RSS post quality note 2026-05-06: scheduled image posts had a broken partial pat
 - [x] Schedule category presets via `schedules.config` — take/opinion, product update, source share, hype/future, hiring
 - [x] Platforms — list, create, edit, delete, per-platform skills/config editor
 - [x] Platforms native connection flow starts configured OAuth providers directly and exposes credential setup docs from each method
+- [x] Facebook direct OAuth now requests only the minimal Page publishing scopes by default, saves returned Facebook Pages with Page access tokens for native publishing, and documents the exact Meta app Basic settings needed to clear the Facebook Login app-details blocker
 - [x] LinkedIn native OAuth now uses app-managed auth connections: users approve LinkedIn access without pasting client IDs or secrets
 - [x] Connections filter groups LinkedIn native profile/page rows under LinkedIn, so saved OAuth profiles remain visible beside X native connections
+- [x] LinkedIn Page OAuth now requests `rw_organization_admin`, resolves a page with `ORGANIC_SHARE_CREATE` authorization during callback, and stores the organization URN for page publishing
 - [x] Native/proxy connections now collapse duplicate same-account rows and enforce one row per workspace, provider, platform, and account ID
+- [x] Social accounts settings now warns that Proxy connections are still in progress when the Proxy connections view is selected
+- [x] Proxy/Late account disconnects now persist a local disconnect marker so background account sync does not immediately recreate removed cards
 - [x] Local OAuth setup guide shows both localhost and 127.0.0.1 redirect URIs for native providers
+- [x] OAuth callback generation now honors safe callback overrides and the Google setup guide calls out exact redirect URI matching
+- [x] X local OAuth now points at 127.0.0.1 because X requires that host for local redirect URIs
+- [x] Pinterest setup guide now spells out the exact env keys needed to activate direct OAuth
+- [x] Instagram setup guide now explains the Facebook Login "Feature unavailable" blocker, Advanced Access, Data Use Checkup, Business Verification, and app basic-info requirements
+- [x] Regular Instagram direct OAuth now uses Instagram Login + Instagram app credentials instead of the Facebook Login product that was returning Meta's "Feature unavailable" screen
+- [x] Instagram connection UI now treats direct Instagram OAuth as professional-account only, disables one-click redirect for Instagram, and routes default personal accounts toward relay/manual handling instead of promising unsupported Meta OAuth
+- [x] Duplicate Instagram Personal connection entry removed from the connection catalog; Instagram now has one entry with professional OAuth and relay methods
 - [x] Connection catalog now lives in per-platform configs, with method info tooltips and live/planned capability badges in the connection drawer
 - [x] X proxy/Bird setup now only asks for `X_AUTH_TOKEN` and `X_CT0`, includes cookie-copy guidance, and exposes a read-only connection test
+- [x] X and other platform disconnects now soft-disable rows, clear stored credentials, avoid foreign-key delete failures, and allow explicit reconnects to reactivate hidden rows
+- [x] X OAuth now requests only tweet.read, tweet.write, users.read, and offline.access by default so unapproved media/DM scopes do not block the consent screen
+- [x] X local OAuth now uses an HTTP 127.0.0.1 callback bridge for HTTPS dev so X receives a loopback callback URI it accepts while Social Poster keeps running on HTTPS
 - [x] Profiles — list, create, edit, delete (voice ID, face ID, tone)
+- [x] Profiles list and new-profile form now use the shared dashboard hero/card layout and consistent content gutters
 - [x] Campaigns — profile-scoped campaign board/editor wired to campaign records, Gemini image generation via workspace Image model keys, platform rendition chips, Draft/Calendar/Publish delivery modes, schedule picker, and direct post creation/publish handoff
 - [x] Posts — Zernio-style card grid with media thumbnails, status badges, platform dots, status filter tabs
 - [x] Posts nav restructured: Posts parent with collapsible submenu (All Posts, Create Post, Recurrent Posts)
@@ -92,6 +107,8 @@ RSS post quality note 2026-05-06: scheduled image posts had a broken partial pat
 - [x] Social Agent chat widget now answers from sanitized workspace context, including connected platforms, reply review/ready queues, recent reply events, post targets, pipeline runs, RSS setup, and current page hints
 - [x] Social Agent chat can now remove all RSS sources except a named source, create recurring post schedules from chat, and pass uploaded chat images into recurring image-post schedules
 - [x] Social Agent chat now has a one-click post status check and answers whether the latest post published, partially failed, failed, or is still pending
+- [x] Social Inbox Comments and DMs are temporarily blocked with styled paused-state warnings while their safer workflows are finished
+- [x] X Replies now cancels in-flight reply API work during internal navigation and avoids automatic heavy refill searches so dashboard links respond quickly
 - [x] Public brand domains now redirect `/dashboard`, `/login`, and `/auth/callback` to `social.maxpetrusenko.com`, so shared Supabase auth does not fall back into Tantra Studio
 - [x] Notifications page now reads durable notification rows instead of a placeholder scaffold
 - [x] Admin dashboard exists at `/admin` with email-gated overview, users, waitlist, marketing, usage, and waitlist CSV export

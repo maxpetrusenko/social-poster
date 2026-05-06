@@ -45,7 +45,7 @@ export const COMPOSER_PLATFORM_META: Record<PlatformType, ComposerPlatformMeta> 
     hashtagLimit: 30,
   },
   instagram_personal: {
-    label: "Instagram Personal",
+    label: "Instagram Personal / Relay",
     icon: "IP",
     accent: "#c13584",
     charLimit: 2200,

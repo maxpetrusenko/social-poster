@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { db } from "@/db";
 import { posts, postTargets } from "@/db/schema";
-import { DashboardHero, HeroButton, SectionCard, StatusBadge } from "@/components/dashboard/ui";
+import { DashboardHero, DashboardPageContent, HeroButton, SectionCard, StatusBadge } from "@/components/dashboard/ui";
 import { getCalendarInsights, getDashboardInsights } from "@/lib/dashboard/insights";
 import { getDashboardWorkspaceScope } from "@/lib/dashboard/workspace-scope";
 import { formatDate } from "@/lib/utils";
@@ -149,7 +149,7 @@ export default async function PublishPage({
   }
 
   return (
-    <div className="space-y-6">
+    <DashboardPageContent>
       <DashboardHero
         eyebrow="Publish"
         title="Calendar, queue, approvals, sent"
@@ -388,7 +388,7 @@ export default async function PublishPage({
           </div>
         )}
       </SectionCard>
-    </div>
+    </DashboardPageContent>
   );
 }
 

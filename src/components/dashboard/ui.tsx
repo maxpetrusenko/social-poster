@@ -4,6 +4,25 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { PlatformBrandIcon } from "./platform-brand-icon";
 
+export function DashboardPageContent({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "mx-auto flex w-full max-w-[1500px] flex-col gap-6 px-5 py-6 md:px-8 md:py-8 xl:px-10",
+        className
+      )}
+    >
+      {children}
+    </div>
+  );
+}
+
 export function DashboardHero({
   eyebrow,
   title,

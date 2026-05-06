@@ -1,7 +1,14 @@
 import { db } from "@/db";
 import { profiles } from "@/db/schema";
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { ArrowUpRight, Mic2, PenLine, Plus, ScanFace, UserCircle } from "lucide-react";
+import {
+  DashboardHero,
+  DashboardPageContent,
+  HeroButton,
+  MetricCard,
+  SectionCard,
+} from "@/components/dashboard/ui";
 import { getTenantContext } from "@/lib/tenancy";
 import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
@@ -16,110 +23,161 @@ export default async function ProfilesPage() {
     .select()
     .from(profiles)
     .where(eq(profiles.workspaceId, tenant.currentWorkspace.id));
+  const sortedProfiles = [...allProfiles].sort((left, right) => {
+    if (left.isDefault !== right.isDefault) {
+      return left.isDefault ? -1 : 1;
+    }
+
+    return left.name.localeCompare(right.name);
+  });
+  const defaultProfile = allProfiles.find((profile) => profile.isDefault);
+  const voiceCount = allProfiles.filter((profile) => profile.voiceId).length;
+  const faceCount = allProfiles.filter((profile) => profile.faceId).length;
 
   return (
-    <div className="min-h-screen bg-white p-8">
-      <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Profiles</h1>
-            <p className="text-sm text-gray-500 mt-2">
-              Manage your brand identities and voice settings
-            </p>
-          </div>
+    <DashboardPageContent>
+      <DashboardHero
+        eyebrow="Profiles"
+        title="Voice and identity presets"
+        description="Manage the brand voices, face IDs, tones, and reusable profile workspaces used by campaigns and scheduled content."
+        actions={
+          <>
+            <HeroButton href="/dashboard/campaigns" tone="ghost">
+              Campaigns
+            </HeroButton>
+            <HeroButton href="/dashboard/profiles/new">Add profile</HeroButton>
+          </>
+        }
+      />
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <MetricCard
+          label="Profiles"
+          value={allProfiles.length}
+          sub={defaultProfile ? `Default: ${defaultProfile.name}` : "No default selected"}
+        />
+        <MetricCard
+          label="Voice IDs"
+          value={voiceCount}
+          sub="Cartesia-ready identities"
+          accent="var(--accent-mindfold)"
+        />
+        <MetricCard
+          label="Face IDs"
+          value={faceCount}
+          sub="Simli-ready identities"
+          accent="var(--accent-spirit)"
+        />
+      </div>
+
+      <SectionCard
+        title="Profile library"
+        subtitle="Edit persona details or open the workspace for campaign knowledge."
+        action={
           <Link
             href="/dashboard/profiles/new"
-            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors"
+            className="inline-flex items-center gap-2 rounded-[10px] bg-[var(--ink)] px-4 py-2 text-sm font-semibold text-[var(--sand)]"
           >
-            <Plus size={16} />
-            Add Profile
+            <Plus className="h-4 w-4" />
+            Add
           </Link>
-        </div>
-
-        {/* Profiles Table */}
-        {allProfiles.length === 0 ? (
-          <div className="border border-gray-200 rounded-lg p-8 text-center">
-            <p className="text-sm text-gray-600">
-              No profiles yet. Create one to get started.
+        }
+      >
+        {sortedProfiles.length === 0 ? (
+          <div className="rounded-[20px] border border-dashed border-[rgba(12,17,21,0.16)] bg-[var(--paper)] px-5 py-10 text-center">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-[rgba(12,17,21,0.08)] bg-white text-[var(--muted)]">
+              <UserCircle className="h-5 w-5" />
+            </div>
+            <p className="mt-4 font-serif text-[1.5rem] text-[var(--ink)]">
+              No profiles yet
+            </p>
+            <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+              Create a profile before building campaigns or recurring content.
             </p>
           </div>
         ) : (
-          <div className="border border-gray-200 rounded-lg overflow-hidden">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="text-left px-6 py-4 text-sm font-medium text-gray-700">
-                    Name
-                  </th>
-                  <th className="text-left px-6 py-4 text-sm font-medium text-gray-700">
-                    Tone
-                  </th>
-                  <th className="text-left px-6 py-4 text-sm font-medium text-gray-700">
-                    Voice ID
-                  </th>
-                  <th className="text-left px-6 py-4 text-sm font-medium text-gray-700">
-                    Face ID
-                  </th>
-                  <th className="text-left px-6 py-4 text-sm font-medium text-gray-700">
-                    Default
-                  </th>
-                  <th className="text-left px-6 py-4 text-sm font-medium text-gray-700">
-                    Action
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {allProfiles.map((profile) => (
-                  <tr key={profile.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4">
-                      <p className="text-sm font-medium text-gray-900">
+          <div className="grid gap-4 lg:grid-cols-2">
+            {sortedProfiles.map((profile) => (
+              <article
+                key={profile.id}
+                className="rounded-[20px] border border-[rgba(12,17,21,0.08)] bg-[var(--paper)] p-5"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h2 className="truncate font-serif text-[1.45rem] leading-none text-[var(--ink)]">
                         {profile.name}
-                      </p>
-                    </td>
-                    <td className="px-6 py-4">
-                      <p className="text-sm text-gray-600">
-                        {profile.tone || "—"}
-                      </p>
-                    </td>
-                    <td className="px-6 py-4">
-                      <p className="text-xs text-gray-500 font-mono">
-                        {profile.voiceId
-                          ? `${profile.voiceId.substring(0, 8)}…`
-                          : "—"}
-                      </p>
-                    </td>
-                    <td className="px-6 py-4">
-                      <p className="text-xs text-gray-500 font-mono">
-                        {profile.faceId
-                          ? `${profile.faceId.substring(0, 8)}…`
-                          : "—"}
-                      </p>
-                    </td>
-                    <td className="px-6 py-4">
+                      </h2>
                       {profile.isDefault ? (
-                        <span className="inline-block px-2 py-1 bg-indigo-100 text-indigo-700 text-xs font-medium rounded">
-                          Yes
+                        <span className="rounded-full border border-[#c5ddbc] bg-[#edf8e9] px-2.5 py-1 text-xs font-semibold text-[#397227]">
+                          Default
                         </span>
-                      ) : (
-                        <span className="text-xs text-gray-500">No</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4">
-                      <Link
-                        href={`/dashboard/profiles/${profile.id}`}
-                        className="text-sm text-indigo-600 hover:text-indigo-700 font-medium transition-colors"
-                      >
-                        Edit
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                      ) : null}
+                    </div>
+                    <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+                      {profile.bio?.trim() || "No bio saved for this profile yet."}
+                    </p>
+                  </div>
+                  <Link
+                    href={`/dashboard/profiles/${profile.id}`}
+                    aria-label={`Open ${profile.name}`}
+                    className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] border border-[rgba(12,17,21,0.08)] bg-white text-[var(--ink)]"
+                  >
+                    <ArrowUpRight className="h-4 w-4" />
+                  </Link>
+                </div>
+
+                <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                  <ProfileFact
+                    icon={<PenLine className="h-4 w-4" />}
+                    label="Tone"
+                    value={profile.tone || "Unset"}
+                  />
+                  <ProfileFact
+                    icon={<Mic2 className="h-4 w-4" />}
+                    label="Voice"
+                    value={formatIdentifier(profile.voiceId)}
+                  />
+                  <ProfileFact
+                    icon={<ScanFace className="h-4 w-4" />}
+                    label="Face"
+                    value={formatIdentifier(profile.faceId)}
+                  />
+                </div>
+              </article>
+            ))}
           </div>
         )}
+      </SectionCard>
+    </DashboardPageContent>
+  );
+}
+
+function ProfileFact({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-[14px] border border-[rgba(12,17,21,0.08)] bg-white/75 px-3 py-3">
+      <div className="flex items-center gap-2 text-[var(--muted)]">
+        {icon}
+        <p className="text-[11px] font-semibold uppercase tracking-[0.14em]">
+          {label}
+        </p>
       </div>
+      <p className="mt-2 truncate text-sm font-semibold text-[var(--ink)]">
+        {value}
+      </p>
     </div>
   );
+}
+
+function formatIdentifier(value: string | null) {
+  if (!value) return "Unset";
+  return value.length > 12 ? `${value.slice(0, 8)}...` : value;
 }

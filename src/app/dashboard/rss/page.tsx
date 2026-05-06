@@ -42,31 +42,33 @@ export default async function RssPage() {
   ]);
 
   return (
-    <RssManager
-      initialSources={sources.map((source) => ({
-        id: source.id,
-        name: source.name,
-        url: source.url,
-        weight: source.weight,
-        enabled: source.enabled,
-      }))}
-      initialSettings={settings}
-      initialCandidates={candidates.map((candidate) => ({
-        title: candidate.title,
-        link: candidate.link,
-        summary: candidate.summary,
-        score: candidate.score,
-        tractionScore: candidate.tractionScore ?? 0,
-        sourceLabel: sourceLabel(candidate.link, candidate.sourceName),
-      }))}
-      initialDiagnostics={diagnostics}
-      feedSchedules={feedSchedules.map((schedule) => ({
-        id: schedule.id,
-        name: schedule.name,
-        jobType: schedule.jobType,
-        cronLabel: schedule.cronHuman || schedule.cron,
-        nextRuns: getUpcomingScheduleLabels(schedule, 3),
-      }))}
-    />
+    <div className="mx-auto w-full max-w-[1500px] px-5 py-6 md:px-8 xl:px-10">
+      <RssManager
+        initialSources={sources.map((source) => ({
+          id: source.id,
+          name: source.name,
+          url: source.url,
+          weight: source.weight,
+          enabled: source.enabled,
+        }))}
+        initialSettings={settings}
+        initialCandidates={candidates.map((candidate) => ({
+          title: candidate.title,
+          link: candidate.link,
+          summary: candidate.summary,
+          score: candidate.score,
+          tractionScore: candidate.tractionScore ?? 0,
+          sourceLabel: sourceLabel(candidate.link, candidate.sourceName),
+        }))}
+        initialDiagnostics={diagnostics}
+        feedSchedules={feedSchedules.map((schedule) => ({
+          id: schedule.id,
+          name: schedule.name,
+          jobType: schedule.jobType,
+          cronLabel: schedule.cronHuman || schedule.cron,
+          nextRuns: getUpcomingScheduleLabels(schedule, 3),
+        }))}
+      />
+    </div>
   );
 }

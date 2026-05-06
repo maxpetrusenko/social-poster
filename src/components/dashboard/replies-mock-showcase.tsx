@@ -56,7 +56,8 @@ export function RepliesMockShowcase({
   initialLanguage: ReplyLanguage;
 }) {
   const hasLiveConnections = connections.length > 0;
-  const autoRefillAtByKey = useRef(new Map<string, number>());
+  const activeRequests = useRef(new Set<AbortController>());
+  const isNavigatingAway = useRef(false);
   const [view, setView] = useState<ViewMode>("replies1");
   const [cards, setCards] = useState(initialCards);
   const [selectedId, setSelectedId] = useState(initialCards[0]?.id ?? "");
@@ -78,14 +79,31 @@ export function RepliesMockShowcase({
   const [refreshSummary, setRefreshSummary] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
+  const abortActiveRequests = useCallback(() => {
+    activeRequests.current.forEach((controller) => controller.abort());
+    activeRequests.current.clear();
+  }, []);
+
+  const replyFetch = useCallback(
+    (input: RequestInfo | URL, init?: RequestInit) => {
+      const controller = new AbortController();
+      activeRequests.current.add(controller);
+
+      return fetch(input, {
+        ...init,
+        signal: controller.signal,
+      }).finally(() => {
+        activeRequests.current.delete(controller);
+      });
+    },
+    []
+  );
+
   const selected = cards.find((card) => card.id === selectedId) ?? cards[0] ?? null;
   const selectedConnection =
     connections.find((connection) => connection.id === selectedConnectionId) ?? null;
   const selectedProfile =
     profiles.find((profile) => profile.id === selectedProfileId) ?? profiles[0] ?? null;
-  const reviewCount = cards.filter(
-    (card) => card.status === "new" || card.status === "analyzed" || card.status === "drafted"
-  ).length;
 
   const counts = useMemo(() => {
     const next = {
@@ -113,7 +131,7 @@ export function RepliesMockShowcase({
       try {
         setError(null);
         setRefreshSummary(null);
-        const response = await fetch("/api/replies", {
+        const response = await replyFetch("/api/replies", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -133,10 +151,49 @@ export function RepliesMockShowcase({
         setRefreshSummary(summarizeReplyRefresh(body.diagnostics));
         setSelectedId((current) => body.cards?.some((item) => item.id === current) ? current : body.cards?.[0]?.id || "");
       } catch (refreshError) {
+        if (isAbortError(refreshError) || isNavigatingAway.current) return;
         setError(refreshError instanceof Error ? refreshError.message : "Failed to refresh replies");
       }
     });
-  }, [selectedConnectionId, selectedLanguage, selectedProfileId]);
+  }, [replyFetch, selectedConnectionId, selectedLanguage, selectedProfileId]);
+
+  useEffect(() => {
+    function prepareForNavigation(event: MouseEvent | PointerEvent) {
+      if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+        return;
+      }
+
+      const target = event.target instanceof Element
+        ? event.target.closest<HTMLAnchorElement>("a[href]")
+        : null;
+      if (!target || target.target || target.hasAttribute("download")) return;
+
+      const nextUrl = new URL(target.href, window.location.href);
+      if (nextUrl.origin !== window.location.origin) return;
+
+      const currentRoute = `${window.location.pathname}${window.location.search}`;
+      const nextRoute = `${nextUrl.pathname}${nextUrl.search}`;
+      if (nextRoute === currentRoute) return;
+
+      isNavigatingAway.current = true;
+      setIsModalOpen(false);
+      setEditingId(null);
+      abortActiveRequests();
+    }
+
+    function handlePageHide() {
+      isNavigatingAway.current = true;
+      abortActiveRequests();
+    }
+
+    document.addEventListener("pointerdown", prepareForNavigation, true);
+    window.addEventListener("pagehide", handlePageHide);
+    return () => {
+      document.removeEventListener("pointerdown", prepareForNavigation, true);
+      window.removeEventListener("pagehide", handlePageHide);
+      abortActiveRequests();
+    };
+  }, [abortActiveRequests]);
 
   useEffect(() => {
     const storedLanguage = window.localStorage.getItem(REPLY_LANGUAGE_STORAGE_KEY);
@@ -156,49 +213,21 @@ export function RepliesMockShowcase({
       try {
         setError(null);
         setRefreshSummary(null);
-        const response = await fetch(
+        const response = await replyFetch(
           buildRepliesUrl(selectedConnectionId, selectedProfileId, selectedLanguage)
         );
         const body = (await response.json()) as { cards?: ReplyCard[]; error?: string };
         if (!response.ok) throw new Error(body.error || "Failed to load replies");
 
-        let nextCards = body.cards ?? [];
-
-        const refreshKey = `${selectedConnectionId}:${selectedProfileId}`;
-        const shouldAutoRefresh =
-          !nextCards.some(
-            (card) => card.status === "new" || card.status === "analyzed" || card.status === "drafted"
-          ) && shouldAutoRefill(refreshKey, autoRefillAtByKey.current);
-
-        if (shouldAutoRefresh) {
-          autoRefillAtByKey.current.set(refreshKey, Date.now());
-          const refreshResponse = await fetch("/api/replies", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              platformId: selectedConnectionId,
-              profileId: selectedProfileId,
-              mode: "manual",
-              language: selectedLanguage,
-            }),
-          });
-          const refreshBody = (await refreshResponse.json()) as {
-            cards?: ReplyCard[];
-            diagnostics?: ReplyRefreshDiagnostics;
-            error?: string;
-          };
-          if (!refreshResponse.ok) throw new Error(refreshBody.error || "Failed to refresh replies");
-          nextCards = refreshBody.cards ?? [];
-          setRefreshSummary(summarizeReplyRefresh(refreshBody.diagnostics));
-        }
-
+        const nextCards = body.cards ?? [];
         setCards(nextCards);
         setSelectedId((current) => nextCards.some((item) => item.id === current) ? current : nextCards[0]?.id || "");
       } catch (fetchError) {
+        if (isAbortError(fetchError) || isNavigatingAway.current) return;
         setError(fetchError instanceof Error ? fetchError.message : "Failed to load replies");
       }
     });
-  }, [selectedConnectionId, selectedLanguage, selectedProfile?.label, selectedProfileId]);
+  }, [replyFetch, selectedConnectionId, selectedLanguage, selectedProfileId]);
 
   useEffect(() => {
     if (!selectedConnectionId) return;
@@ -207,7 +236,7 @@ export function RepliesMockShowcase({
     const interval = window.setInterval(() => {
       startTransition(async () => {
         try {
-          const response = await fetch(
+          const response = await replyFetch(
             buildRepliesUrl(selectedConnectionId, selectedProfileId, selectedLanguage)
           );
           const body = (await response.json()) as { cards?: ReplyCard[]; error?: string };
@@ -220,24 +249,14 @@ export function RepliesMockShowcase({
           setError(null);
           if (nextCards.length > 0) setRefreshSummary(null);
         } catch (syncError) {
+          if (isAbortError(syncError) || isNavigatingAway.current) return;
           setError(syncError instanceof Error ? syncError.message : "Failed to sync replies");
         }
       });
     }, 30_000);
 
     return () => window.clearInterval(interval);
-  }, [cards, selectedConnectionId, selectedLanguage, selectedProfileId]);
-
-  useEffect(() => {
-    if (!selectedConnectionId) return;
-    if (reviewCount > 0 || isPending) return;
-
-    const refreshKey = `${selectedConnectionId}:${selectedProfileId}`;
-    if (!shouldAutoRefill(refreshKey, autoRefillAtByKey.current)) return;
-
-    autoRefillAtByKey.current.set(refreshKey, Date.now());
-    refreshLiveReplies("manual");
-  }, [isPending, refreshLiveReplies, reviewCount, selectedConnectionId, selectedProfileId]);
+  }, [cards, replyFetch, selectedConnectionId, selectedLanguage, selectedProfileId]);
 
   function moveCard(id: string, status: ReplyStatus, selectedDraftIndex?: number) {
     const previous = cards;
@@ -247,7 +266,7 @@ export function RepliesMockShowcase({
       try {
         setError(null);
         const endpoint = status === "posted" ? `/api/replies/${id}/post` : `/api/replies/${id}`;
-        const response = await fetch(endpoint, {
+        const response = await replyFetch(endpoint, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body:
@@ -262,7 +281,7 @@ export function RepliesMockShowcase({
         const body = (await response.json()) as { error?: string };
         if (!response.ok) throw new Error(body.error || "Failed to update reply");
         if (selectedConnectionId) {
-          const next = await fetch(
+          const next = await replyFetch(
             buildRepliesUrl(selectedConnectionId, selectedProfileId, selectedLanguage)
           );
           const nextBody = (await next.json()) as { cards?: ReplyCard[]; error?: string };
@@ -270,6 +289,7 @@ export function RepliesMockShowcase({
           setCards(nextBody.cards ?? []);
         }
       } catch (updateError) {
+        if (isAbortError(updateError) || isNavigatingAway.current) return;
         setCards(previous);
         setError(updateError instanceof Error ? updateError.message : "Failed to update reply");
       }
@@ -293,7 +313,7 @@ export function RepliesMockShowcase({
     startTransition(async () => {
       try {
         setError(null);
-        const response = await fetch(`/api/replies/${id}`, {
+        const response = await replyFetch(`/api/replies/${id}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ draftIndex, draftText: value }),
@@ -301,6 +321,7 @@ export function RepliesMockShowcase({
         const body = (await response.json()) as { error?: string };
         if (!response.ok) throw new Error(body.error || "Failed to save draft");
       } catch (updateError) {
+        if (isAbortError(updateError) || isNavigatingAway.current) return;
         setCards(previous);
         setError(updateError instanceof Error ? updateError.message : "Failed to save draft");
       }
@@ -482,7 +503,7 @@ export function RepliesMockShowcase({
             {refreshSummary
               ? refreshSummary
               : hasLiveConnections
-              ? "Open the page to auto-backfill a small review batch, or hit Refresh now for a broader manual pull."
+              ? "Hit Refresh now to pull a review batch when you are ready. The page will not start heavy X searches while you are just passing through."
               : "Add an X connection first. Reply candidates will appear here after a live refresh."}
           </p>
         </div>
@@ -528,9 +549,8 @@ export function RepliesMockShowcase({
   );
 }
 
-function shouldAutoRefill(key: string, state: Map<string, number>) {
-  const lastTriggeredAt = state.get(key) ?? 0;
-  return Date.now() - lastTriggeredAt >= 10 * 60_000;
+function isAbortError(error: unknown) {
+  return error instanceof DOMException && error.name === "AbortError";
 }
 
 function summarizeReplyRefresh(diagnostics?: ReplyRefreshDiagnostics) {

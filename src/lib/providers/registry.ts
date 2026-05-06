@@ -7,8 +7,10 @@ import type { SocialProvider, ProviderCredentials } from "./base";
 import { BlueskyProvider } from "./bluesky";
 import { FacebookProvider } from "./facebook";
 import { GoogleBusinessProvider } from "./google-business";
-import { InstagramProvider } from "./instagram";
-import { InstagramPersonalProvider } from "./instagram-personal";
+import {
+  InstagramLoginProvider,
+  InstagramPersonalProvider,
+} from "./instagram-personal";
 import { LinkedInCompanyProvider } from "./linkedin-company";
 import { LinkedInPersonalProvider } from "./linkedin-personal";
 import { MastodonProvider } from "./mastodon";
@@ -24,7 +26,7 @@ const providers: Record<string, ProviderFactory> = {
   bluesky: (c) => new BlueskyProvider(c),
   facebook: (c) => new FacebookProvider(c),
   google_business: (c) => new GoogleBusinessProvider(c),
-  instagram: (c) => new InstagramProvider(c),
+  instagram: (c) => new InstagramLoginProvider(c),
   instagram_personal: (c) => new InstagramPersonalProvider(c),
   linkedin: (c) => new LinkedInPersonalProvider(c),
   linkedin_company: (c) => new LinkedInCompanyProvider(c),
