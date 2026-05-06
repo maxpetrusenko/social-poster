@@ -1,12 +1,16 @@
 # Social Agent — Tasks & Status
 
-Last updated: 2026-04-24 (post history architecture plan)
+Last updated: 2026-05-06 (Article FS + one production schedule re-enabled)
 
 ## Current State
 
 Dashboard-first social automation platform. Separate repo from maxpetrusenko.com.
 Replaces `social-agent/` subfolder in the website repo and the Cowork scheduled tasks.
 Deploys to `social.maxpetrusenko.com` on Contabo/Coolify.
+
+Operational note 2026-05-06: production had all schedules disabled (`dbEnabledCount: 0`, `runtimeRegisteredCount: 0`). After Max approved a limited restart, exactly one production schedule was re-enabled: `post-x-linkedin-11am` (`11 AM post — X + LinkedIn with image`). `/api/health` verified `dbEnabledCount: 1`, `runtimeRegisteredCount: 1`, `runtimeRegisteredScheduleIds: ["post-x-linkedin-11am"]`, `drift: 0`. Backups exist on the VPS at `/var/lib/docker/volumes/ch6cjsgcqn6afd5052etgvwn-data/_data/backups/social-poster-before-schedule-reenable-20260506T161114Z.db` and `/data/backups/social-poster-before-enable-one-schedule-20260506T182456Z.db`. A local manual run of `post-x-linkedin-11am` completed successfully: pipeline run `36b0d970-4f8b-4033-9d7d-6974fc632fda`, post `5a2cd7d2-0a5e-41e2-8a66-5c5e689af632`, X `https://x.com/i/status/2052061686702428645`, LinkedIn `https://www.linkedin.com/feed/update/urn:li:share:7457827383212093440/`. Do not enable additional public post schedules without approval.
+
+RSS post quality note 2026-05-06: scheduled image posts had a broken partial patch (`draftHumanPostContent` imported while `writePostCaption` was still called) and could produce generic `title. summary/title` captions from noisy RSS/reddit metadata. Scheduled posts and manual RSS generation now use the human-perspective writer with summary hygiene, one strict retry, and a deterministic fallback that frames a concrete source signal plus an operator takeaway. The quality gate rejects title regurgitation, duplicated headlines, `submitted by` / `[link] [comments]`, hashtags, emoji, `BREAKING`, and known generic filler. Dashboard candidates and scheduled posts now resolve verified source images by preferring source-page OG images, falling back to verified feed images, and rejecting localhost/private URLs, tiny/tracking/placeholder URLs, reddit external-preview thumbnails, and non-image content types. Remaining risk: the LLM can still be conservative on very thin title-only sources, but the fallback prevents embarrassing metadata/title-regurgitation posts.
 
 ## What's Done
 
@@ -92,9 +96,12 @@ Deploys to `social.maxpetrusenko.com` on Contabo/Coolify.
 - [x] Notifications page now reads durable notification rows instead of a placeholder scaffold
 - [x] Admin dashboard exists at `/admin` with email-gated overview, users, waitlist, marketing, usage, and waitlist CSV export
 - [x] Admin blog automation exists at `/admin/blog` with daily draft generation plumbing, Medium automation handoff, review-only publish gate, article image/source tracking, framework validation, and public blog publishing after admin approval
+- [x] Dashboard Article Generation exists at `/dashboard/articles` with Articles, New Article chat, editable generation control menus, and Settings subpages, backed by Medium automation, file-based `article-agent/prompt.md` plus `article-agent/skills/`, persisted `article-agent/generation-settings.json`, and `/api/article/create` + `/api/article/[id]` + `/api/article/settings` agent APIs
+- [x] Articles now include a filesystem-backed Knowledge FS at `/dashboard/articles`: imported Medium automation corpus and finished Notion/Medium references under `data/article-workspace/articles/<slug>/vNNN`, artifacts under `artifacts/{images,sources,evals,original}`, Notion Done import via `npm run articles:import:notion-done`, a left-explorer search input that filters visible files/folders in place with persisted folder collapse state, article directory cards with title/subtitle/hero image, movable Kanban toggle with custom columns persisted to `data/article-workspace/kanban-state.json`, read-only Article Skills and GBrain/Wiki tree context for agent learning, a toolbar rich-copy button for pasting articles into Medium, model-backed hero image generation, and Medium-style `overview.md` / `rating.md` / `workflow.json` / `evals/rating-v*.json` rating metadata surfaced as number plus model, pros, and cons.
 - [x] Logs page at `/dashboard/logs` shows latest user actions, post/schedule/reply activity, pipeline runs, and LangSmith trace references
 - [x] Top-bar support intake now creates Linear tickets with source, topic, explanation, page context, selected-image preview, and optional Linear-hosted image links attached to Linear
 - [x] Social Agent can create the same Linear tickets through `/support`, with optional repair-agent webhook routing for `from_bot` issues
+- [x] Hermes fleet ticket automation runbook and dry-run-safe Linear poller added for ready-label tickets, draft PR handoff, and Telegram notification
 - [x] Recurrent Posts exposed in left navigation for recurring content buckets and slot planning
 - [x] Settings — read-only config display
 
@@ -188,6 +195,7 @@ Deploys to `social.maxpetrusenko.com` on Contabo/Coolify.
 - [ ] Real-time status updates (polling or SSE on pipeline page)
 - [ ] Toast notifications for form actions
 - [ ] Mobile-responsive sidebar (hamburger on small screens)
+- [ ] Roll out the shared support widget and Hermes Linear project mapping to every other Coolify app
 - [x] Missing `/dashboard/posts/[id]/edit` route now folds into the canonical composer
 - [x] Manual candidate caching in SQLite with stale-while-refresh reads
 - [x] Fixed schedules can now resolve per-platform media assets

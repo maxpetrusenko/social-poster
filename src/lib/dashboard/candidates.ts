@@ -1,9 +1,13 @@
 import { db } from "@/db";
 import { candidateCache } from "@/db/schema";
-import { getCandidateStories, type Story } from "@/lib/pipeline/feed-engine";
+import {
+  getCandidateStories,
+  resolveStoryImageUrl,
+  type Story,
+} from "@/lib/pipeline/feed-engine";
 import { desc } from "drizzle-orm";
 import { shouldRefreshCandidateCache } from "./candidate-cache-policy";
-import { fetchOpenGraphImage } from "@/lib/open-graph-image";
+import { getWorkspaceRssSettings, type ImageSelectionMode } from "@/lib/rss-config";
 
 export type DashboardCandidate = Story & {
   ogImageUrl: string | null;
@@ -59,11 +63,16 @@ async function loadLiveCandidates(
     count,
     workspaceId,
   });
+  const settings = await getWorkspaceRssSettings(workspaceId);
   const rows = await Promise.all(
     stories.map(async (story) => {
-      const ogImageUrl = story.imageUrl ?? await fetchOpenGraphImage(story.link);
+      const ogImageUrl = await resolveDashboardCandidateImage(
+        story,
+        settings.imageSelectionMode
+      );
       return {
         ...story,
+        imageUrl: ogImageUrl ?? undefined,
         ogImageUrl,
         previewImageUrl: getImagePreviewUrl(ogImageUrl),
         sourceHost: getSourceHost(story.link),
@@ -90,7 +99,7 @@ async function loadCachedCandidates(): Promise<DashboardCandidate[]> {
       link: row.link,
       summary: row.summary,
       score: row.score,
-      imageUrl: row.imageUrl ?? undefined,
+      imageUrl: row.ogImageUrl ?? undefined,
       ogImageUrl: row.ogImageUrl,
       previewImageUrl: getImagePreviewUrl(row.ogImageUrl),
       sourceName: row.sourceName ?? undefined,
@@ -111,13 +120,16 @@ async function refreshCandidateCache(): Promise<void> {
     });
     const rows = await Promise.all(
       stories.map(async (story) => {
-        const ogImageUrl = story.imageUrl ?? await fetchOpenGraphImage(story.link);
+        const ogImageUrl = await resolveDashboardCandidateImage(
+          story,
+          "prefer_open_graph"
+        );
         return {
           link: story.link,
           title: story.title,
           summary: story.summary,
           score: story.score,
-          imageUrl: story.imageUrl ?? null,
+          imageUrl: ogImageUrl,
           ogImageUrl,
           sourceName: story.sourceName ?? null,
           publishedAt: story.publishedAt ? new Date(story.publishedAt) : null,
@@ -139,6 +151,16 @@ async function refreshCandidateCache(): Promise<void> {
   });
 
   return refreshInFlight;
+}
+
+async function resolveDashboardCandidateImage(
+  story: Story,
+  mode: ImageSelectionMode
+) {
+  return resolveStoryImageUrl(
+    story,
+    mode === "feed_only" ? "feed_only" : "prefer_open_graph"
+  );
 }
 
 function getImagePreviewUrl(url: string | null): string | null {

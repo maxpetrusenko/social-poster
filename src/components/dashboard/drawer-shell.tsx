@@ -67,6 +67,7 @@ const iconMap = {
   pipeline: Activity,
   team: UsersRound,
   settings: Settings,
+  articles: FileText,
 } satisfies Record<ShellNavItem["icon"], React.ComponentType<{ className?: string }>>;
 
 type HeaderConfig = {

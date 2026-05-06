@@ -428,10 +428,25 @@ function formatFileSize(bytes: number) {
 }
 
 function readPageContext(productMode: ProductMode) {
+  const url = new URL(window.location.href);
+  const path = window.location.pathname;
+  const articleOpenRef = path === "/dashboard/articles"
+    ? url.searchParams.get("open")
+    : null;
+  const articleIdMatch = path.match(/^\/dashboard\/articles\/([^/]+)$/);
+
   return {
     path: window.location.pathname,
     title: document.title,
     heading: document.querySelector("h1")?.textContent?.trim(),
+    article: path.startsWith("/dashboard/articles")
+      ? {
+          articleId: articleIdMatch?.[1] ?? null,
+          openRef: articleOpenRef,
+          visibleTitle: document.querySelector("h1")?.textContent?.trim() ?? null,
+          visiblePath: document.querySelector("h2")?.textContent?.trim() ?? null,
+        }
+      : null,
     replyLanguage: window.localStorage.getItem("social-poster.replyLanguage"),
     productMode,
   };

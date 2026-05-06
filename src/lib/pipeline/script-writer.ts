@@ -100,9 +100,10 @@ export function writePostCaption(
     options?.linkedinTemplate ||
     "{{title}}\n\n{{summarySentence}}\n\n{{whyMatters}}.";
 
-  switch (platform.toLowerCase()) {
+  const normalizedPlatform = normalizeCaptionPlatform(platform);
+
+  switch (normalizedPlatform) {
     case "twitter":
-    case "x":
       return truncate(renderTemplate(xTemplate, t, s, { prompt, platform: "x", seed }), 275);
     case "linkedin":
       return renderTemplate(linkedinTemplate, t, s, {
@@ -159,6 +160,13 @@ function renderTemplate(
 }
 
 // ─── Prompt config ───────────────────────────────────────────────────────
+
+function normalizeCaptionPlatform(platform: string) {
+  const value = platform.toLowerCase();
+  if (value === "x" || value === "twitter") return "twitter";
+  if (value.startsWith("linkedin")) return "linkedin";
+  return value;
+}
 
 function parseTransformationPrompt(prompt: string | undefined): PromptConfig {
   const source = (prompt || "").trim().toLowerCase();

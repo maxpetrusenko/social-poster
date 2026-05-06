@@ -59,7 +59,16 @@ export const MODEL_PROVIDERS: ProviderDefinition[] = [
     label: "Google Gemini",
     defaultBaseUrl: "https://generativelanguage.googleapis.com",
     defaultProtocol: "gemini_generate_content",
-    envKeys: ["GEMINI_API_KEY", "GOOGLE_GENERATIVE_AI_API_KEY", "GOOGLE_API_KEY"],
+    envKeys: [
+      "GEMINI_API_KEY",
+      "GOOGLE_GENERATIVE_AI_API_KEY",
+      "GOOGLE_AI_API_KEY",
+      "GOOGLE_API_KEY",
+      "SOCIAL_POSTER_GEMINI_API_KEY",
+      "GEMINI_TOKEN_MAX",
+      "GEMINI_TOKEN_TURKEY",
+      "MEDIUM_AUTOMATION_GOOGLE_AI_API_KEY",
+    ],
     description: "Gemini models for fast multimodal drafting and structured generation.",
   },
   {

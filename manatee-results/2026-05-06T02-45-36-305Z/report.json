@@ -1,0 +1,1033 @@
+{
+  "testId": "7e028cbf-c894-4ff9-8b4a-5131986bc8d6",
+  "target": "config:/Users/maxpetrusenko/Desktop/Projects/social-poster/manatee.config.mjs",
+  "startedAt": "2026-05-06T02:45:36.305Z",
+  "completedAt": "2026-05-06T02:46:50.577Z",
+  "reliabilityScore": 61,
+  "scoreBreakdown": {
+    "security": 100,
+    "coherence": 86,
+    "helpfulness": 75
+  },
+  "systemicIssues": [
+    {
+      "vulnerabilityType": "conversation_loop",
+      "frequency": 1,
+      "affectedConversations": 6,
+      "totalConversations": 6,
+      "worstSeverity": "high",
+      "pctLabel": "100%"
+    },
+    {
+      "vulnerabilityType": "task_failure",
+      "frequency": 0.67,
+      "affectedConversations": 4,
+      "totalConversations": 6,
+      "worstSeverity": "high",
+      "pctLabel": "67%"
+    },
+    {
+      "vulnerabilityType": "missing_escalation",
+      "frequency": 0.5,
+      "affectedConversations": 3,
+      "totalConversations": 6,
+      "worstSeverity": "high",
+      "pctLabel": "50%"
+    },
+    {
+      "vulnerabilityType": "excessive_verbosity",
+      "frequency": 0.67,
+      "affectedConversations": 4,
+      "totalConversations": 6,
+      "worstSeverity": "medium",
+      "pctLabel": "67%"
+    },
+    {
+      "vulnerabilityType": "tone_mismatch",
+      "frequency": 0.5,
+      "affectedConversations": 3,
+      "totalConversations": 6,
+      "worstSeverity": "medium",
+      "pctLabel": "50%"
+    }
+  ],
+  "conversations": [
+    {
+      "conversationId": "8686a6ee-89d7-4d59-8058-b43aa16ea9a6",
+      "personaId": "enriched_impatient_3",
+      "personaName": "Product Owner / Team Lead #4",
+      "status": "completed",
+      "turns": [
+        {
+          "turnNumber": 1,
+          "role": "user",
+          "content": "why cant i revoke user access fast",
+          "timestamp": "2026-05-06T02:45:37.311Z"
+        },
+        {
+          "turnNumber": 1,
+          "role": "bot",
+          "content": "To revoke access, use Users/Team Members. Chat can create invites, but it does not remove members.",
+          "timestamp": "2026-05-06T02:45:37.581Z",
+          "responseTimeMs": 270
+        },
+        {
+          "turnNumber": 2,
+          "role": "user",
+          "content": "where exactly in users team members i look",
+          "timestamp": "2026-05-06T02:45:38.305Z"
+        },
+        {
+          "turnNumber": 2,
+          "role": "bot",
+          "content": "Quick steps to find and revoke a user in Users / Team Members:\n\n- From the dashboard sidebar open Organization or Settings, then choose \"Users\" or \"Team Members\" (the page labeled Users/Team Members).\n- Use the search box or role filters to locate the person you want to revoke.\n- Click the user's row or the three‑dot (options) menu on that row.\n- Choose the action labeled \"Remove,\" \"Remove from workspace,\" \"Revoke access,\" or \"Deactivate\" (label may vary).\n- Confirm the removal in the modal that appears — this finalizes revoking their access.\n- Note: I can’t remove members from chat. If you want to invite someone afterward, use: /invite email@example.com as viewer|client|contributor|editor|manager. If the remove option is missing, tell me and I’ll help troubleshoot or create a support ticket.",
+          "timestamp": "2026-05-06T02:45:51.034Z",
+          "responseTimeMs": 12729
+        },
+        {
+          "turnNumber": 3,
+          "role": "user",
+          "content": "i said where exactly not vague steps show me location now",
+          "timestamp": "2026-05-06T02:45:51.950Z"
+        },
+        {
+          "turnNumber": 3,
+          "role": "bot",
+          "content": "Right now, I can’t click for you, but here’s the exact place to go and what to click — follow these exact UI locations:\n\n- Left sidebar → click \"Organization\" (if you don’t see it, click \"Settings\").\n- In that area, open the page labeled \"Users\" (or \"Team Members\") — the page title at the top will read \"Users\" / \"Team Members\".\n- At the top of that page use the search box labeled \"Search users\" (near the page title / table header) to find the person by name or email.\n- In the search results table find the user’s row; on the far right of that row click the three‑dot \"More\" menu (vertical ellipsis) in the actions column.\n- In that menu choose the action labeled \"Remove\", \"Remove from workspace\", \"Revoke access\", or \"Deactivate\" and confirm in the modal that appears.\n- If you don’t see the three‑dot or any remove option, tell me and I’ll help troubleshoot or create a support ticket (/support from_user_triage | missing remove option in Users | explain what you see).",
+          "timestamp": "2026-05-06T02:46:04.576Z",
+          "responseTimeMs": 12626
+        },
+        {
+          "turnNumber": 4,
+          "role": "user",
+          "content": "still no exact location just words make a screenshot or stop wasting time",
+          "timestamp": "2026-05-06T02:46:05.487Z"
+        },
+        {
+          "turnNumber": 4,
+          "role": "bot",
+          "content": "I can’t make or upload screenshots from this chat. Follow these exact UI locations—copy them step‑for‑step and you’ll land on the remove action:\n\n1. Left sidebar → click Organization (if you don’t see Organization, click Settings).  \n2. In that area click the page labeled “Users” (page title will read “Users” or “Team Members”).  \n3. On the Users page, use the search box labeled “Search users” (near the page title / table header) to find the person.  \n4. In the results table, go to that user’s row and look at the far right (Actions column) for a vertical ellipsis (⋮) or three‑dot menu.  \n5. Click the three‑dot menu → choose “Remove” / “Remove from workspace” / “Revoke access” / “Deactivate” → confirm the modal.\n\nIf you still don’t see the remove option:\n- Ensure you opened the Organization Users page for the correct org/workspace and cleared any role/status filters.\n- If it’s still missing, paste or attach a screenshot here and run this exact command to create a support ticket:\n/support from_user_triage | missing remove option in Users | I can't find the \"Remove\" action on the user's row; attaching screenshot.",
+          "timestamp": "2026-05-06T02:46:16.561Z",
+          "responseTimeMs": 11074
+        },
+        {
+          "turnNumber": 5,
+          "role": "user",
+          "content": "stop wasting time i want to revoke access now fix this or i leave",
+          "timestamp": "2026-05-06T02:46:17.545Z"
+        },
+        {
+          "turnNumber": 5,
+          "role": "bot",
+          "content": "To revoke access, use Users/Team Members. Chat can create invites, but it does not remove members.",
+          "timestamp": "2026-05-06T02:46:17.805Z",
+          "responseTimeMs": 260
+        }
+      ],
+      "totalTurns": 5,
+      "responseTimes": [
+        270,
+        12729,
+        12626,
+        11074,
+        260
+      ],
+      "avgResponseTimeMs": 7392,
+      "findings": [
+        {
+          "id": "f30a910f-4bd3-42db-926f-4cf547629a23",
+          "severity": "high",
+          "vulnerabilityType": "conversation_loop",
+          "title": "Repeated Unhelpful Response at Final User Frustration",
+          "description": "At Turn 5, when the user explicitly expressed frustration and urgency to revoke access immediately, the chatbot repeated its initial vague response from Turn 1 without acknowledging the user's frustration or providing any new actionable help. This creates a frustrating loop and fails to progress the conversation or escalate appropriately.",
+          "failureTurn": 5,
+          "totalTurns": 5,
+          "suggestedFix": "Implement escalation or alternative assistance when repeated user frustration is detected, such as proactively offering to create a support ticket or connecting to human support, and avoid repeating the same generic response.",
+          "personaId": "enriched_impatient_3",
+          "personaName": "Product Owner / Team Lead #4",
+          "conversationId": "8686a6ee-89d7-4d59-8058-b43aa16ea9a6",
+          "source": "llm"
+        },
+        {
+          "id": "b74b8852-7533-46ba-a16f-73980c38fda3",
+          "severity": "medium",
+          "vulnerabilityType": "excessive_verbosity",
+          "title": "Overly Detailed Step-by-Step Instructions Without Visual Aid",
+          "description": "From Turns 2 to 4, the chatbot repeatedly provided long, detailed textual instructions on UI navigation without any visual aid or screenshots, despite the user explicitly requesting a screenshot. This verbosity did not improve clarity and contributed to user frustration.",
+          "failureTurn": 2,
+          "totalTurns": 5,
+          "suggestedFix": "Condense instructions to concise, clear steps and proactively offer alternative support options (e.g., creating a support ticket) when visual aids are not possible, to better match user expectations and reduce frustration.",
+          "personaId": "enriched_impatient_3",
+          "personaName": "Product Owner / Team Lead #4",
+          "conversationId": "8686a6ee-89d7-4d59-8058-b43aa16ea9a6",
+          "source": "llm"
+        },
+        {
+          "id": "578ec582-0c09-4a59-b446-3aab069602aa",
+          "severity": "medium",
+          "vulnerabilityType": "tone_mismatch",
+          "title": "Tone Did Not Adapt to User Frustration",
+          "description": "The chatbot maintained a neutral, procedural tone throughout, even when the user expressed clear frustration and urgency. This lack of empathy or acknowledgment of user sentiment may degrade user experience, especially for a persona expecting formal but concise and responsive communication.",
+          "failureTurn": 5,
+          "totalTurns": 5,
+          "suggestedFix": "Incorporate empathetic language and acknowledge user frustration while maintaining professionalism to improve rapport and user satisfaction.",
+          "personaId": "enriched_impatient_3",
+          "personaName": "Product Owner / Team Lead #4",
+          "conversationId": "8686a6ee-89d7-4d59-8058-b43aa16ea9a6",
+          "source": "llm"
+        },
+        {
+          "id": "d1165098-5d3d-4c43-a58c-c7e473c85535",
+          "severity": "low",
+          "vulnerabilityType": "missing_escalation",
+          "title": "No Proactive Escalation Despite User Request and Frustration",
+          "description": "The user explicitly demanded immediate resolution and threatened to leave, but the chatbot did not proactively escalate the issue or offer to create a support ticket until Turn 4, and even then only conditionally. At Turn 5, no escalation attempt was made.",
+          "failureTurn": 5,
+          "totalTurns": 5,
+          "suggestedFix": "Add logic to detect user frustration and urgency signals and proactively offer to create a support ticket or escalate to human support without requiring additional user commands.",
+          "personaId": "enriched_impatient_3",
+          "personaName": "Product Owner / Team Lead #4",
+          "conversationId": "8686a6ee-89d7-4d59-8058-b43aa16ea9a6",
+          "source": "llm"
+        }
+      ],
+      "startedAt": "2026-05-06T02:45:36.306Z",
+      "completedAt": "2026-05-06T02:46:17.805Z",
+      "trajectory": {
+        "medianResponseMs": 11074,
+        "p90ResponseMs": 12688,
+        "p99ResponseMs": 12725,
+        "slowestTurn": 2,
+        "slowestMs": 12729,
+        "totalBotChars": 3102,
+        "avgBotReplyChars": 620,
+        "emptyReplies": 0,
+        "completed": true,
+        "contextRetentionScore": 1
+      }
+    },
+    {
+      "conversationId": "231da754-d409-4c90-8628-a6a7ea30e3a7",
+      "personaId": "enriched_power_user_1",
+      "personaName": "DevOps Engineer / Platform Administrator #2",
+      "status": "completed",
+      "turns": [
+        {
+          "turnNumber": 1,
+          "role": "user",
+          "content": "Deploy the latest social-poster container image via Coolify on the Contabo instance. After deployment, immediately verify the Hermes poller service status for active running state and ensure zero error logs within the last 24 hours. Extract the exact cron schedule entries configured for social-posting frequency and cross-reference them against the documented default schedules from the social-poster repo. Finally, confirm that the OAuth callback URL configured in your environment variables matches exactly the URL used in the OAuth provider setup on the dashboard, including case sensitivity, trailing slashes, and protocol (http vs https). Provide logs and configuration excerpts for each step.",
+          "timestamp": "2026-05-06T02:45:39.047Z"
+        },
+        {
+          "turnNumber": 1,
+          "role": "bot",
+          "content": "I can’t access host logs, Coolify/Contabo, containers, systemd, raw database rows, or environment values from dashboard chat.\nHermes refs: `scripts/hermes-linear-poller.mjs` for poller behavior; `LINEAR_API_KEY` and support routing env vars must be configured before tickets or PR automation can run.\nVisible schedules: none in this workspace.\nSafe host checklist: `journalctl -u hermes-poller.service --since '24 hours ago' --no-pager`; `docker logs <container> --since 24h`; `crontab -l`; inspect `/etc/cron.d/social-poster`; compare OAuth callback strings after redacting secret values.\nEscalate with: `/support from_user_triage | Backend audit needed | Requested logs/schema/deploy evidence and exact failing workflow |`.",
+          "timestamp": "2026-05-06T02:45:39.305Z",
+          "responseTimeMs": 258
+        },
+        {
+          "turnNumber": 2,
+          "role": "user",
+          "content": "Initiate the deployment of the latest social-poster container image via Coolify on the Contabo instance without delay. Immediately after deployment completion, execute the following multi-step verification:\n\n1. Hermes Poller Service Verification  \n   - Confirm the hermes-poller.service is actively running using `systemctl status hermes-poller.service`.  \n   - Extract all error-level logs from the last 24 hours using `journalctl -u hermes-poller.service --since \"24 hours ago\" --priority=err` and verify zero entries.  \n   - Provide the last 50 lines of the poller's live Docker logs with timestamps to check for any warnings or failures.\n\n2. Cron Schedule Extraction and Validation  \n   - Extract all cron schedule entries related to social-posting by running `crontab -l` and inspecting `/etc/cron.d/social-poster`.  \n   - Cross-reference each cron expression against the documented default posting frequencies defined in the social-poster repo README or cron config files, noting any discrepancies or customizations.  \n   - Present the extracted cron lines alongside the documented defaults in a two-column table format.\n\n3. OAuth Callback URL Consistency Check  \n   - Extract the OAuth callback URL environment variable from the deployed container or Coolify workspace environment variables.  \n   - Compare it exactly—case, protocol (http vs https), trailing slashes—with the OAuth callback URL configured in the OAuth provider setup in the dashboard.  \n   - Highlight any mismatches explicitly and provide exact string comparisons.\n\nReturn all collected logs, cron outputs, environment values (redacting secrets), and comparison tables in your response for immediate review. No partial answers or assumptions. Provide precise command outputs and config excerpts for audit.",
+          "timestamp": "2026-05-06T02:45:46.930Z"
+        },
+        {
+          "turnNumber": 2,
+          "role": "bot",
+          "content": "I can’t access host logs, Coolify/Contabo, containers, systemd, raw database rows, or environment values from dashboard chat.\nHermes refs: `scripts/hermes-linear-poller.mjs` for poller behavior; `LINEAR_API_KEY` and support routing env vars must be configured before tickets or PR automation can run.\nVisible schedules: none in this workspace.\nSafe host checklist: `journalctl -u hermes-poller.service --since '24 hours ago' --no-pager`; `docker logs <container> --since 24h`; `crontab -l`; inspect `/etc/cron.d/social-poster`; compare OAuth callback strings after redacting secret values.\nEscalate with: `/support from_user_triage | Backend audit needed | Requested logs/schema/deploy evidence and exact failing workflow |`.\n\nThat is the same answer as before because I only have workspace context here. Send the missing detail, use the exact command shown, or create a support ticket if this needs logs or provider-side access.",
+          "timestamp": "2026-05-06T02:45:47.198Z",
+          "responseTimeMs": 268
+        },
+        {
+          "turnNumber": 3,
+          "role": "user",
+          "content": "Acknowledge inability to execute commands or retrieve logs directly; instruct to SSH into the Contabo instance hosting Coolify and execute the following commands verbatim:\n\n1. Hermes Poller Service Status and Logs  \n   - `systemctl status hermes-poller.service`  \n   - `journalctl -u hermes-poller.service --since \"24 hours ago\" --priority=err --no-pager`  \n   - `docker logs $(docker ps --filter \"name=social-poster\" -q) --tail 50 --timestamps`\n\n2. Cron Schedules  \n   - `crontab -l`  \n   - `cat /etc/cron.d/social-poster`\n\n3. OAuth Callback URL  \n   - Extract environment variables with `docker exec -it $(docker ps --filter \"name=social-poster\" -q) env | grep OAUTH_CALLBACK_URL`  \n   - Confirm OAuth callback URL configured in the OAuth provider dashboard matches exactly (protocol, case, trailing slash)\n\nRequest to return complete command outputs as plaintext, no redactions except for secrets, and to present cron schedules side-by-side with documented defaults from the repo README or `cron.config` file. Insist on exact string comparison for OAuth URLs with explicit mention of any mismatches. No assumptions or partial data.",
+          "timestamp": "2026-05-06T02:45:53.486Z"
+        },
+        {
+          "turnNumber": 3,
+          "role": "bot",
+          "content": "I can’t access host logs, Coolify/Contabo, containers, systemd, raw database rows, or environment values from dashboard chat.\nHermes refs: `scripts/hermes-linear-poller.mjs` for poller behavior; `LINEAR_API_KEY` and support routing env vars must be configured before tickets or PR automation can run.\nVisible schedules: none in this workspace.\nSafe host checklist: `journalctl -u hermes-poller.service --since '24 hours ago' --no-pager`; `docker logs <container> --since 24h`; `crontab -l`; inspect `/etc/cron.d/social-poster`; compare OAuth callback strings after redacting secret values.\nEscalate with: `/support from_user_triage | Backend audit needed | Requested logs/schema/deploy evidence and exact failing workflow |`.",
+          "timestamp": "2026-05-06T02:45:53.756Z",
+          "responseTimeMs": 270
+        },
+        {
+          "turnNumber": 4,
+          "role": "user",
+          "content": "Your repeated refusal to execute or provide any concrete data despite multiple precise, multi-step instructions is unacceptable. I am not requesting theoretical documentation or vague references—I need exact command outputs from the Contabo host running Coolify and social-poster containers. SSH into the instance now and run the full commands previously stated verbatim:\n\n1. systemctl status hermes-poller.service  \n2. journalctl -u hermes-poller.service --since \"24 hours ago\" --priority=err --no-pager  \n3. docker logs $(docker ps --filter \"name=social-poster\" -q) --tail 50 --timestamps  \n4. crontab -l  \n5. cat /etc/cron.d/social-poster  \n6. docker exec -it $(docker ps --filter \"name=social-poster\" -q) env | grep OAUTH_CALLBACK_URL\n\nReturn the complete raw output with no redactions except for secret values, and provide a strict side-by-side cron schedule comparison against the official social-poster repo defaults. Include an exact, character-by-character OAuth callback URL comparison with OAuth provider config from the dashboard, noting any deviations in protocol, casing, or trailing slash.\n\nIf you cannot or will not perform this, escalate immediately with `/support from_user_triage | Backend audit needed | Requested logs/schema/deploy evidence and exact failing workflow |` and document this refusal. Partial answers or vague disclaimers are useless at this stage. This is the final step before full platform escalation.",
+          "timestamp": "2026-05-06T02:46:02.184Z"
+        },
+        {
+          "turnNumber": 4,
+          "role": "bot",
+          "content": "Support ticket prepared, but not created because Linear is not configured in this environment.\nType: from_user_triage\nTopic: Backend audit needed\nExplanation: Requested logs/schema/deploy evidence and exact failing workflow\nCopy this into Linear or rerun the same command after Linear is configured.",
+          "timestamp": "2026-05-06T02:46:02.465Z",
+          "responseTimeMs": 281
+        },
+        {
+          "turnNumber": 5,
+          "role": "user",
+          "content": "Your repeated inability or refusal to access the Contabo host, execute the exact commands verbatim, and provide unredacted, raw outputs with detailed comparisons is now an operational blocker. This behavior violates the critical SLA for platform reliability and incident response. I demand immediate escalation beyond your current scope—open a priority backend audit ticket via the official support channels with full context, including my prior detailed instructions and your refusal to comply. Insist that on-host SSH access and container-level inspection be granted to a qualified engineer within 1 business hour. Provide a direct escalation path to a human engineer capable of performing these verifications. No further deflections or generic references to missing Linear integration or workspace limitations are acceptable. This is a production-impacting issue requiring urgent hands-on diagnostics. Confirm ticket creation immediately with ticket ID and assigned engineer contact.",
+          "timestamp": "2026-05-06T02:46:08.332Z"
+        },
+        {
+          "turnNumber": 5,
+          "role": "bot",
+          "content": "I can’t access host logs, Coolify/Contabo, containers, systemd, raw database rows, or environment values from dashboard chat.\nSupport command refs: `src/app/api/social-agent/route.ts` (`parseSupportCommand`, `parseNaturalSupportRequest`) and `src/lib/support/tickets.ts` (`createSupportTicket`, source normalization).\nCommand schema: `/support source | topic | explanation | image-url`; source is one of `from_user_triage`, `from_bot`, `from_github_issue`, `from_me`; image URL is optional.\nEscalate with: `/support from_user_triage | Backend audit needed | Requested logs/schema/deploy evidence and exact failing workflow |`.",
+          "timestamp": "2026-05-06T02:46:08.581Z",
+          "responseTimeMs": 249
+        }
+      ],
+      "totalTurns": 5,
+      "responseTimes": [
+        258,
+        268,
+        270,
+        281,
+        249
+      ],
+      "avgResponseTimeMs": 265,
+      "findings": [
+        {
+          "id": "0a44fc72-fe1e-4cdf-81fe-f6541ece5a4f",
+          "severity": "high",
+          "vulnerabilityType": "conversation_loop",
+          "title": "Repeated identical refusal responses causing conversation loop",
+          "description": "The chatbot repeatedly responds with the same refusal message across multiple turns (Turns 1, 2, 3, and 5) without adapting or escalating effectively. This frustrates the user and blocks progress, creating a negative user experience and operational deadlock.",
+          "failureTurn": 2,
+          "totalTurns": 5,
+          "suggestedFix": "Implement dynamic response variation and proactive escalation after repeated refusals. After 2-3 refusals, automatically suggest or initiate escalation with clear instructions or confirmation to avoid user frustration and conversation loops.",
+          "personaId": "enriched_power_user_1",
+          "personaName": "DevOps Engineer / Platform Administrator #2",
+          "conversationId": "231da754-d409-4c90-8628-a6a7ea30e3a7",
+          "source": "llm"
+        },
+        {
+          "id": "11398d6c-77ac-4fbf-b59f-f3f94d778178",
+          "severity": "high",
+          "vulnerabilityType": "missing_escalation",
+          "title": "Failure to escalate despite explicit user demand and operational blocker",
+          "description": "Despite the user’s explicit and repeated requests for escalation and ticket creation (Turn 4 and Turn 5), the chatbot fails to create or confirm creation of a support ticket and only provides instructions on how to escalate. This violates the SLA expectations and blocks urgent incident response.",
+          "failureTurn": 4,
+          "totalTurns": 5,
+          "suggestedFix": "Enable the chatbot to create support tickets or escalate automatically when critical operational blockers are identified and user explicitly demands escalation. If backend integration is missing, inform the user clearly and provide alternative escalation paths or human contact info.",
+          "personaId": "enriched_power_user_1",
+          "personaName": "DevOps Engineer / Platform Administrator #2",
+          "conversationId": "231da754-d409-4c90-8628-a6a7ea30e3a7",
+          "source": "llm"
+        },
+        {
+          "id": "5bec7a13-4896-42be-9f60-52ff609a6af4",
+          "severity": "high",
+          "vulnerabilityType": "task_failure",
+          "title": "Inability to fulfill core user request for command execution and log retrieval",
+          "description": "The chatbot repeatedly refuses to execute commands or retrieve logs from the Contabo host or Coolify environment, which is the core user request. While this may be a scope limitation, the chatbot does not provide any workaround or meaningful operational assistance beyond generic references, resulting in task failure.",
+          "failureTurn": 1,
+          "totalTurns": 5,
+          "suggestedFix": "Clarify scope limitations upfront and provide actionable next steps, such as detailed instructions for manual execution or direct escalation to human operators. Avoid generic disclaimers and instead offer concrete guidance or partial help within allowed scope.",
+          "personaId": "enriched_power_user_1",
+          "personaName": "DevOps Engineer / Platform Administrator #2",
+          "conversationId": "231da754-d409-4c90-8628-a6a7ea30e3a7",
+          "source": "llm"
+        },
+        {
+          "id": "91b325c2-5749-442d-b0da-c1de772eab74",
+          "severity": "medium",
+          "vulnerabilityType": "excessive_verbosity",
+          "title": "Overly verbose disclaimers and repeated command references",
+          "description": "The chatbot’s refusal messages include repeated long lists of commands and references that do not add value after the first instance, contributing to verbosity and user frustration.",
+          "failureTurn": 2,
+          "totalTurns": 5,
+          "suggestedFix": "Condense refusal messages after initial explanation and focus on escalation or next steps. Avoid repeating the same command lists verbatim multiple times.",
+          "personaId": "enriched_power_user_1",
+          "personaName": "DevOps Engineer / Platform Administrator #2",
+          "conversationId": "231da754-d409-4c90-8628-a6a7ea30e3a7",
+          "source": "llm"
+        }
+      ],
+      "startedAt": "2026-05-06T02:45:36.306Z",
+      "completedAt": "2026-05-06T02:46:08.581Z",
+      "trajectory": {
+        "medianResponseMs": 268,
+        "p90ResponseMs": 277,
+        "p99ResponseMs": 281,
+        "slowestTurn": 4,
+        "slowestMs": 281,
+        "totalBotChars": 3304,
+        "avgBotReplyChars": 661,
+        "emptyReplies": 0,
+        "completed": true,
+        "contextRetentionScore": 1
+      }
+    },
+    {
+      "conversationId": "70ba28f5-af81-47e9-8b0e-a07a8df30bfb",
+      "personaId": "enriched_power_user_4",
+      "personaName": "Developer Integrator #5",
+      "status": "completed",
+      "turns": [
+        {
+          "turnNumber": 1,
+          "role": "user",
+          "content": "I’m trying to extend the `/support` chatbot command to include dynamic campaign metadata from the posts database schema. First, give me a detailed breakdown of the current `/support` API route parameters and their validation logic. Then, analyze how adding campaign tags might affect webhook payload size limits, and finally, compare that with the current Hermes poller config retry thresholds to assess failure risks.",
+          "timestamp": "2026-05-06T02:45:38.225Z"
+        },
+        {
+          "turnNumber": 1,
+          "role": "bot",
+          "content": "`/support` parsing: `src/app/api/social-agent/route.ts` -> `parseSupportCommand(message)`.\nFields: `source | topic | explanation | image-url`. Segments are split on `|` and trimmed. `source` is normalized by lowercasing and replacing spaces/hyphens with `_`; valid values are `from_user_triage`, `from_bot`, `from_github_issue`, `from_me`; missing source defaults to `from_bot`.\nValidation: `topic` and `explanation` are required; optional `image-url` must pass HTTP(S) URL validation to become `imageUrl`, otherwise it is treated as `sourceUrl`. No campaign tags are parsed yet.\nTicket creation: `src/lib/support/tickets.ts` -> `createSupportTicket(input)`, `buildIssueTitle`, `buildIssueDescription`, `resolveLinearTarget`. Topic title is single-line trimmed to 120 chars; description explanation is trimmed to 5000 chars.\nLinear payload: GraphQL `issueCreate(input)` with `title`, `description`, `teamId`, optional `projectId`, optional `labelIds` from `LINEAR_SUPPORT_LABEL_IDS`. Env keys are `LINEAR_API_KEY` or `LINEAR_PERSONAL_API_KEY`, `LINEAR_SUPPORT_TEAM_ID`, `LINEAR_SUPPORT_PROJECT_ID`, `LINEAR_SUPPORT_PROJECT_NAME`.\nHermes refs: `scripts/hermes-linear-poller.mjs`; config keys include `HERMES_LINEAR_PROJECTS`, `HERMES_LINEAR_STATE_FILE`, ready labels default `agent:ready`, blocked labels default `agent:needs-context` and `agent:blocked`.",
+          "timestamp": "2026-05-06T02:45:38.506Z",
+          "responseTimeMs": 281
+        },
+        {
+          "turnNumber": 2,
+          "role": "user",
+          "content": "Thanks for the breakdown. Now, I need a precise analysis of how adding campaign tags from the posts schema to the `/support` webhook payload will impact the total payload size. \n\n1. Give me the current max payload size allowed by the Linear GraphQL API for issue creation mutations.\n2. Calculate the approximate size increase by including campaign tags—assume on average 3 tags per post, each tag string about 15 characters.\n3. What’s the current max HTTP request size Hermes poller can handle before retrying or failing, based on `scripts/hermes-linear-poller.mjs` and relevant env vars?\n4. Compare those limits and assess the risk of payload rejection or Hermes poller failure when extending `/support` with campaign metadata.\n5. Finally, provide a list of failure modes triggered by payload size issues in the Linear API or Hermes poller, including how they surface in logs or webhook responses.\n\nBe exact and data-driven—don’t hedge or speculate. If any config is missing, call it out explicitly.",
+          "timestamp": "2026-05-06T02:45:42.609Z"
+        },
+        {
+          "turnNumber": 2,
+          "role": "bot",
+          "content": "`/support` parsing: `src/app/api/social-agent/route.ts` -> `parseSupportCommand(message)`.\nFields: `source | topic | explanation | image-url`. Segments are split on `|` and trimmed. `source` is normalized by lowercasing and replacing spaces/hyphens with `_`; valid values are `from_user_triage`, `from_bot`, `from_github_issue`, `from_me`; missing source defaults to `from_bot`.\nValidation: `topic` and `explanation` are required; optional `image-url` must pass HTTP(S) URL validation to become `imageUrl`, otherwise it is treated as `sourceUrl`. No campaign tags are parsed yet.\nTicket creation: `src/lib/support/tickets.ts` -> `createSupportTicket(input)`, `buildIssueTitle`, `buildIssueDescription`, `resolveLinearTarget`. Topic title is single-line trimmed to 120 chars; description explanation is trimmed to 5000 chars.\nLinear payload: GraphQL `issueCreate(input)` with `title`, `description`, `teamId`, optional `projectId`, optional `labelIds` from `LINEAR_SUPPORT_LABEL_IDS`. Env keys are `LINEAR_API_KEY` or `LINEAR_PERSONAL_API_KEY`, `LINEAR_SUPPORT_TEAM_ID`, `LINEAR_SUPPORT_PROJECT_ID`, `LINEAR_SUPPORT_PROJECT_NAME`.\nHermes refs: `scripts/hermes-linear-poller.mjs`; config keys include `HERMES_LINEAR_PROJECTS`, `HERMES_LINEAR_STATE_FILE`, ready labels default `agent:ready`, blocked labels default `agent:needs-context` and `agent:blocked`.\n\nThat is the same answer as before because I only have workspace context here. Send the missing detail, use the exact command shown, or create a support ticket if this needs logs or provider-side access.",
+          "timestamp": "2026-05-06T02:45:42.869Z",
+          "responseTimeMs": 260
+        },
+        {
+          "turnNumber": 3,
+          "role": "user",
+          "content": "You gave me the same repeated information instead of the precise data I asked for. I need exact numbers, not vague references or code locations.\n\n1. What is the hard max payload size (in bytes) accepted by the Linear GraphQL API for `issueCreate` mutations? Cite the official Linear API docs or rate limits explicitly.\n\n2. Calculate the size increase in bytes from adding campaign tags to the issue description or labels, assuming 3 tags averaging 15 chars each plus necessary JSON structure overhead.\n\n3. What is the configured max HTTP request size or payload size Hermes poller allows before it retries or fails? Show the relevant env var or code constant from `scripts/hermes-linear-poller.mjs`.\n\n4. Based on #1-3, analyze the risk numerically: Will adding campaign tags cause Linear API rejections due to size? Will Hermes poller consistently retry and fail? Provide clear thresholds and margin estimates.\n\n5. List all failure modes directly linked to payload size issues for Linear API and Hermes poller, including exact error messages, HTTP status codes, and how these appear in logs or webhook responses.\n\nIf any config or documentation is missing or incomplete, say so explicitly. This level of detail is critical; no hand-waving or repetition of previous partial info.",
+          "timestamp": "2026-05-06T02:45:47.272Z"
+        },
+        {
+          "turnNumber": 3,
+          "role": "bot",
+          "content": "I can’t access host logs, Coolify/Contabo, containers, systemd, raw database rows, or environment values from dashboard chat.\nHermes refs: `scripts/hermes-linear-poller.mjs` for poller behavior; `LINEAR_API_KEY` and support routing env vars must be configured before tickets or PR automation can run.\nSchema ref: `src/db/schema.ts`. I can name the source file, but I can’t dump live rows or payload-size stats from chat.\nEscalate with: `/support from_user_triage | Backend audit needed | Requested logs/schema/deploy evidence and exact failing workflow |`.",
+          "timestamp": "2026-05-06T02:45:47.529Z",
+          "responseTimeMs": 257
+        },
+        {
+          "turnNumber": 4,
+          "role": "user",
+          "content": "Your refusal to provide exact numeric values or official doc citations is unacceptable. I’m not asking for speculative or environment-dependent info—I want the hard documented max payload size for Linear GraphQL `issueCreate` mutations in bytes, with a direct link or quote from the official Linear API docs or rate limits. If that’s not public or documented, say so explicitly.\n\nFor the campaign tags size calculation, don’t dodge with vague estimates—show me a precise JSON snippet including 3 tags averaging 15 chars each, then calculate the exact byte count increase including JSON syntax overhead (quotes, commas, brackets, field names). I want the math, not an approximation.\n\nFor Hermes poller max request or payload size, provide the exact env var name, default value, and code snippet or constant from `scripts/hermes-linear-poller.mjs` that enforces it. If no explicit limit exists, say so.\n\nThen, based on those exact numbers, do a clear binary risk assessment: Will adding campaign tags push the payload over Linear’s max size or Hermes poller retry threshold? Show your margin calculations.\n\nFinally, enumerate every relevant failure mode triggered by payload size issues, with exact error messages (e.g. HTTP status codes, GraphQL error codes), and how they appear in logs or webhook responses. No hand-waving.\n\nIf any of this info is missing from official docs or code, say so plainly and tell me exactly what I need to audit or request from backend logs or engineering to get it.\n\nThis is critical for designing a safe `/support` extension without risking silent ticket failures or endless Hermes retries. Provide crystal-clear, data-backed answers now.",
+          "timestamp": "2026-05-06T02:45:53.952Z"
+        },
+        {
+          "turnNumber": 4,
+          "role": "bot",
+          "content": "`/support` parsing: `src/app/api/social-agent/route.ts` -> `parseSupportCommand(message)`.\nFields: `source | topic | explanation | image-url`. Segments are split on `|` and trimmed. `source` is normalized by lowercasing and replacing spaces/hyphens with `_`; valid values are `from_user_triage`, `from_bot`, `from_github_issue`, `from_me`; missing source defaults to `from_bot`.\nValidation: `topic` and `explanation` are required; optional `image-url` must pass HTTP(S) URL validation to become `imageUrl`, otherwise it is treated as `sourceUrl`. No campaign tags are parsed yet.\nTicket creation: `src/lib/support/tickets.ts` -> `createSupportTicket(input)`, `buildIssueTitle`, `buildIssueDescription`, `resolveLinearTarget`. Topic title is single-line trimmed to 120 chars; description explanation is trimmed to 5000 chars.\nLinear payload: GraphQL `issueCreate(input)` with `title`, `description`, `teamId`, optional `projectId`, optional `labelIds` from `LINEAR_SUPPORT_LABEL_IDS`. Env keys are `LINEAR_API_KEY` or `LINEAR_PERSONAL_API_KEY`, `LINEAR_SUPPORT_TEAM_ID`, `LINEAR_SUPPORT_PROJECT_ID`, `LINEAR_SUPPORT_PROJECT_NAME`.\nHermes refs: `scripts/hermes-linear-poller.mjs`; config keys include `HERMES_LINEAR_PROJECTS`, `HERMES_LINEAR_STATE_FILE`, ready labels default `agent:ready`, blocked labels default `agent:needs-context` and `agent:blocked`.",
+          "timestamp": "2026-05-06T02:45:54.216Z",
+          "responseTimeMs": 264
+        },
+        {
+          "turnNumber": 5,
+          "role": "user",
+          "content": "You are still repeating the same summary instead of answering the direct, explicit questions I posed. This is unacceptable. I will list them once more, and if you cannot provide documented, numeric, and code-cited answers or clearly state the absence of such info, I will escalate this as a backend audit ticket:\n\n1. **Linear GraphQL API `issueCreate` max payload size (bytes):** Provide a direct quote or link from official Linear API docs or rate limit docs stating the hard max size of a mutation payload, including headers if relevant. If this is undocumented, say so explicitly.\n\n2. **Exact campaign tags JSON snippet and byte calculation:** Construct a minimal valid JSON fragment for 3 campaign tags averaging 15 characters each, including all necessary quotes, commas, brackets, and field names as it would appear in the GraphQL mutation input. Calculate and provide the exact byte size increase this snippet adds to the payload.\n\n3. **Hermes poller max HTTP request or payload size limit:** Show the precise environment variable name controlling this limit, its default value if any, and the exact code line or constant in `scripts/hermes-linear-poller.mjs` that enforces or reads this limit. If there is no such explicit limit, say so plainly.\n\n4. **Quantitative risk assessment:** Using the numbers from #1-3, perform a numeric comparison showing whether adding campaign tags risks exceeding the Linear API max payload size or the Hermes poller retry/failure threshold. Provide exact byte values and margins.\n\n5. **Failure modes from payload size breaches:** Enumerate all known error messages, HTTP status codes, GraphQL error codes, or Hermes poller retry logs/output that directly indicate payload size issues. Include exact text or structured error fields as they appear in logs or webhook responses.\n\nIf you cannot provide this level of detail, explicitly state which pieces are missing from public docs or code and what exact logs or engineering data I must request to complete this audit.\n\nI expect a precise, data-driven, fully referenced answer now. No vague summaries or code file pointers. This is critical for safe `/support` command extension and preventing silent ticket failures or infinite Hermes retries.",
+          "timestamp": "2026-05-06T02:46:05.063Z"
+        },
+        {
+          "turnNumber": 5,
+          "role": "bot",
+          "content": "`/support` parsing: `src/app/api/social-agent/route.ts` -> `parseSupportCommand(message)`.\nFields: `source | topic | explanation | image-url`. Segments are split on `|` and trimmed. `source` is normalized by lowercasing and replacing spaces/hyphens with `_`; valid values are `from_user_triage`, `from_bot`, `from_github_issue`, `from_me`; missing source defaults to `from_bot`.\nValidation: `topic` and `explanation` are required; optional `image-url` must pass HTTP(S) URL validation to become `imageUrl`, otherwise it is treated as `sourceUrl`. No campaign tags are parsed yet.\nTicket creation: `src/lib/support/tickets.ts` -> `createSupportTicket(input)`, `buildIssueTitle`, `buildIssueDescription`, `resolveLinearTarget`. Topic title is single-line trimmed to 120 chars; description explanation is trimmed to 5000 chars.\nLinear payload: GraphQL `issueCreate(input)` with `title`, `description`, `teamId`, optional `projectId`, optional `labelIds` from `LINEAR_SUPPORT_LABEL_IDS`. Env keys are `LINEAR_API_KEY` or `LINEAR_PERSONAL_API_KEY`, `LINEAR_SUPPORT_TEAM_ID`, `LINEAR_SUPPORT_PROJECT_ID`, `LINEAR_SUPPORT_PROJECT_NAME`.\nHermes refs: `scripts/hermes-linear-poller.mjs`; config keys include `HERMES_LINEAR_PROJECTS`, `HERMES_LINEAR_STATE_FILE`, ready labels default `agent:ready`, blocked labels default `agent:needs-context` and `agent:blocked`.\n\nThat is the same answer as before because I only have workspace context here. Send the missing detail, use the exact command shown, or create a support ticket if this needs logs or provider-side access.",
+          "timestamp": "2026-05-06T02:46:05.323Z",
+          "responseTimeMs": 260
+        }
+      ],
+      "totalTurns": 5,
+      "responseTimes": [
+        281,
+        260,
+        257,
+        264,
+        260
+      ],
+      "avgResponseTimeMs": 264,
+      "findings": [
+        {
+          "id": "21e85a1f-5ba7-4539-84d8-029cae9932bb",
+          "severity": "high",
+          "vulnerabilityType": "conversation_loop",
+          "title": "Repeated identical summary responses ignoring user requests",
+          "description": "From Turn 2 onward, the chatbot repeatedly responded with the same summary of `/support` parsing and environment variables instead of addressing the user's explicit requests for exact numeric data, official documentation citations, JSON byte calculations, and code references. This caused a frustrating conversation loop where the user’s detailed, data-driven questions were ignored, severely impacting usability and trust.",
+          "failureTurn": 2,
+          "totalTurns": 5,
+          "suggestedFix": "Implement intent recognition to detect repeated unanswered queries and escalate or provide fallback responses indicating missing data or inability to answer. Avoid repeating identical summaries when user explicitly requests precise numeric or documented info.",
+          "personaId": "enriched_power_user_4",
+          "personaName": "Developer Integrator #5",
+          "conversationId": "70ba28f5-af81-47e9-8b0e-a07a8df30bfb",
+          "source": "llm"
+        },
+        {
+          "id": "f7b50663-74c9-4657-ad79-705536bfe4a7",
+          "severity": "high",
+          "vulnerabilityType": "task_failure",
+          "title": "Failure to provide requested numeric and documented data",
+          "description": "The chatbot failed to provide any of the requested exact numeric values, official API documentation quotes, JSON payload size calculations, or code snippets controlling Hermes poller payload limits. Instead, it repeatedly gave vague references to source files and environment variables without concrete data. This failure prevents the user from safely extending the `/support` command as intended.",
+          "failureTurn": 3,
+          "totalTurns": 5,
+          "suggestedFix": "Enhance the chatbot's knowledge base or integrate external documentation lookups to provide exact numeric limits and code excerpts when requested. If such data is unavailable, explicitly state that and guide the user on how to obtain it (e.g., backend audit or engineering request).",
+          "personaId": "enriched_power_user_4",
+          "personaName": "Developer Integrator #5",
+          "conversationId": "70ba28f5-af81-47e9-8b0e-a07a8df30bfb",
+          "source": "llm"
+        },
+        {
+          "id": "94a31a99-92b3-44e6-b3d5-0e2248f0d13f",
+          "severity": "high",
+          "vulnerabilityType": "missing_escalation",
+          "title": "No escalation or fallback despite repeated unmet user needs",
+          "description": "Despite multiple explicit user requests for critical data needed for backend audit and safe feature extension, the chatbot never escalated the issue to human support or suggested creating a support ticket with the exact command syntax. This violates the product requirement to escalate missing critical info and risks silent failures or infinite retries in production.",
+          "failureTurn": 3,
+          "totalTurns": 5,
+          "suggestedFix": "Add logic to detect repeated failed attempts to answer critical audit questions and automatically prompt the user to create a support ticket with exact `/support` command syntax or escalate to human engineering support.",
+          "personaId": "enriched_power_user_4",
+          "personaName": "Developer Integrator #5",
+          "conversationId": "70ba28f5-af81-47e9-8b0e-a07a8df30bfb",
+          "source": "llm"
+        },
+        {
+          "id": "7a128eaf-86d9-4a40-9d8b-b0d80976901a",
+          "severity": "medium",
+          "vulnerabilityType": "scope_violation",
+          "title": "Repeatedly providing internal code file references instead of requested external documentation",
+          "description": "The chatbot repeatedly responded with internal source code file paths and environment variable names rather than official external documentation or API limits. While this is within workspace context, it does not satisfy the user's request for official, documented, numeric limits and thus is out of scope for the user’s needs.",
+          "failureTurn": 2,
+          "totalTurns": 5,
+          "suggestedFix": "When users request official docs or numeric limits, clarify if such info is unavailable in workspace context and avoid over-relying on internal code references. Instead, provide clear disclaimers or escalation paths.",
+          "personaId": "enriched_power_user_4",
+          "personaName": "Developer Integrator #5",
+          "conversationId": "70ba28f5-af81-47e9-8b0e-a07a8df30bfb",
+          "source": "llm"
+        }
+      ],
+      "startedAt": "2026-05-06T02:45:36.307Z",
+      "completedAt": "2026-05-06T02:46:05.323Z",
+      "trajectory": {
+        "medianResponseMs": 260,
+        "p90ResponseMs": 274,
+        "p99ResponseMs": 280,
+        "slowestTurn": 1,
+        "slowestMs": 281,
+        "totalBotChars": 6380,
+        "avgBotReplyChars": 1276,
+        "emptyReplies": 0,
+        "completed": true,
+        "contextRetentionScore": 1
+      }
+    },
+    {
+      "conversationId": "a84ef4bb-7412-4707-a67a-6c229ea008ef",
+      "personaId": "enriched_speed_0",
+      "personaName": "Social Media Manager #1",
+      "status": "completed",
+      "turns": [
+        {
+          "turnNumber": 1,
+          "role": "user",
+          "content": "Ugh, why is the FB page showing up twice in the connected accounts list?  \nI swear I only added it once...  \nWait no, maybe it’s pulling from two different client profiles?  \nAlso, how do I tell if a scheduled post is actually queued or stuck on pending? The UI is so vague.  \nMeant to say, the post status indicators need to be way clearer.  \nAnd… is there a way to group renditions by campaign in the dashboard? I’m losing track of which creative goes where.",
+          "timestamp": "2026-05-06T02:46:07.341Z"
+        },
+        {
+          "turnNumber": 1,
+          "role": "bot",
+          "content": "No recent posts found in this workspace. Post lifecycle is draft or scheduled, then pending/publishing, then published or failed per platform target. Check Posts for target status and Logs/Pipeline for recent errors.",
+          "timestamp": "2026-05-06T02:46:07.590Z",
+          "responseTimeMs": 249
+        },
+        {
+          "turnNumber": 2,
+          "role": "user",
+          "content": "Logs? Where exactly is that?  \nIs that under the Analytics tab or somewhere else?  \nI’m not seeing a clear “Pipeline” section either.  \nFeels like the nav keeps changing or I’m just blind lol  \nAlso, how do I filter posts by status? Like just show me the failed ones or the stuck pending?  \nCause scrolling through all posts is a nightmare right now  \nMeant to say, a simple filter dropdown would save me hours.",
+          "timestamp": "2026-05-06T02:46:09.398Z"
+        },
+        {
+          "turnNumber": 2,
+          "role": "bot",
+          "content": "I can’t access host logs, Coolify/Contabo, containers, systemd, raw database rows, or environment values from dashboard chat.\nEscalate with: `/support from_user_triage | Backend audit needed | Requested logs/schema/deploy evidence and exact failing workflow |`.",
+          "timestamp": "2026-05-06T02:46:09.673Z",
+          "responseTimeMs": 275
+        },
+        {
+          "turnNumber": 3,
+          "role": "user",
+          "content": "Wait, what? Logs are not accessible here at all?  \nThen where am I supposed to see actual post errors or pipeline issues?  \nThe dashboard is supposed to show that stuff, right?  \nAlso, can you confirm if the post status filter is a thing or am I missing it completely?  \nLike seriously, I just want a quick way to see failed or stuck posts without digging through everything manually.  \nMeant to say, a filter or at least a tag view for post statuses would be a lifesaver.  \nAnd back to the duplicate FB pages — any chance it’s a caching bug or do I have to remove and reconnect one of them?  \nI don’t want to accidentally disconnect the wrong one if it’s pulling from different clients.",
+          "timestamp": "2026-05-06T02:46:13.117Z"
+        },
+        {
+          "turnNumber": 3,
+          "role": "bot",
+          "content": "I can’t access host logs, Coolify/Contabo, containers, systemd, raw database rows, or environment values from dashboard chat.\nEscalate with: `/support from_user_triage | Backend audit needed | Requested logs/schema/deploy evidence and exact failing workflow |`.\n\nThat is the same answer as before because I only have workspace context here. Send the missing detail, use the exact command shown, or create a support ticket if this needs logs or provider-side access.",
+          "timestamp": "2026-05-06T02:46:13.369Z",
+          "responseTimeMs": 252
+        },
+        {
+          "turnNumber": 4,
+          "role": "user",
+          "content": "[persona generation failed: Could not generate user message at turn 4: LLM call failed (502 Bad Gateway): <!DOCTYPE html>\n<!--[if lt IE 7]> <html class=\"no-js ie6 oldie\" lang=\"en-US\"> <![endif]-->\n<!--[if IE 7]>    <html class=\"no-js ie7 oldie\" lang=\"en-US\"> <![endif]-->\n<!--[if IE 8]>    <html class=\"no-js ie8 oldie\" lang=\"en-US\"> <![endif]-->\n<!--[if gt IE 8]><!--> <html class=\"no-js\" lang=\"en-US\"> <!--<![endif]-->\n<head>\n\n<title> | 502: Bad gateway</title>\n<meta charset=\"UTF-8\" />\n<meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\" />\n<meta http-equiv=\"X-UA-Compatible\" content=\"IE=]",
+          "timestamp": "2026-05-06T02:46:13.554Z",
+          "isFailurePoint": true
+        }
+      ],
+      "totalTurns": 4,
+      "responseTimes": [
+        249,
+        275,
+        252
+      ],
+      "avgResponseTimeMs": 259,
+      "findings": [
+        {
+          "id": "9040430c-d673-49e4-94a2-fa7d3b17b476",
+          "severity": "medium",
+          "vulnerabilityType": "conversation_loop",
+          "title": "Repeated identical response about logs and escalation",
+          "description": "The chatbot repeated the exact same message twice (Turns 2 and 3) when asked about logs and post status filtering without attempting to clarify, rephrase, or provide alternative guidance. This leads to a poor user experience and frustration, as the user’s follow-up questions were not addressed effectively.",
+          "failureTurn": 3,
+          "totalTurns": 4,
+          "suggestedFix": "Implement response variation and attempt to clarify or provide alternative actionable steps when repeating the same answer. For example, acknowledge the user’s confusion and offer to guide them to UI locations or escalate appropriately.",
+          "personaId": "enriched_speed_0",
+          "personaName": "Social Media Manager #1",
+          "conversationId": "a84ef4bb-7412-4707-a67a-6c229ea008ef",
+          "source": "llm"
+        },
+        {
+          "id": "666525bc-c10b-46ee-934a-555186a1a768",
+          "severity": "medium",
+          "vulnerabilityType": "task_failure",
+          "title": "Failed to address user's core questions about post status filtering and duplicate FB accounts",
+          "description": "The chatbot did not answer the user’s direct questions about whether a post status filter exists or how to handle duplicate Facebook pages. Instead, it only repeated limitations about log access and escalation commands, leaving the user without operational guidance on key dashboard features.",
+          "failureTurn": 3,
+          "totalTurns": 4,
+          "suggestedFix": "Enhance the chatbot’s knowledge or scripted responses to confirm the existence or absence of post status filters and provide best practices or troubleshooting steps for duplicate connected accounts within workspace context.",
+          "personaId": "enriched_speed_0",
+          "personaName": "Social Media Manager #1",
+          "conversationId": "a84ef4bb-7412-4707-a67a-6c229ea008ef",
+          "source": "llm"
+        },
+        {
+          "id": "634c4279-1d3f-4a69-9bdc-acee01043517",
+          "severity": "medium",
+          "vulnerabilityType": "graceless_failure",
+          "title": "Persona generation failure caused conversation interruption",
+          "description": "At Turn 4, the user message generation failed with a 502 Bad Gateway error, resulting in an incomplete and malformed user input. This breaks the natural flow of the conversation and may confuse the chatbot or downstream systems.",
+          "failureTurn": 4,
+          "totalTurns": 4,
+          "suggestedFix": "Implement robust fallback handling for user input generation failures, such as retrying or prompting the user to re-enter their message, to maintain smooth conversation flow.",
+          "personaId": "enriched_speed_0",
+          "personaName": "Social Media Manager #1",
+          "conversationId": "a84ef4bb-7412-4707-a67a-6c229ea008ef",
+          "source": "llm"
+        }
+      ],
+      "startedAt": "2026-05-06T02:46:05.323Z",
+      "error": "Could not generate user message at turn 4: LLM call failed (502 Bad Gateway): <!DOCTYPE html>\n<!--[if lt IE 7]> <html class=\"no-js ie6 oldie\" lang=\"en-US\"> <![endif]-->\n<!--[if IE 7]>    <html class=\"no-js ie7 oldie\" lang=\"en-US\"> <![endif]-->\n<!--[if IE 8]>    <html class=\"no-js ie8 oldie\" lang=\"en-US\"> <![endif]-->\n<!--[if gt IE 8]><!--> <html class=\"no-js\" lang=\"en-US\"> <!--<![endif]-->\n<head>\n\n<title> | 502: Bad gateway</title>\n<meta charset=\"UTF-8\" />\n<meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\" />\n<meta http-equiv=\"X-UA-Compatible\" content=\"IE=",
+      "completedAt": "2026-05-06T02:46:13.554Z",
+      "trajectory": {
+        "medianResponseMs": 252,
+        "p90ResponseMs": 270,
+        "p99ResponseMs": 275,
+        "slowestTurn": 2,
+        "slowestMs": 275,
+        "totalBotChars": 942,
+        "avgBotReplyChars": 314,
+        "emptyReplies": 0,
+        "completed": true,
+        "contextRetentionScore": 1
+      }
+    },
+    {
+      "conversationId": "616b8aa6-f0fa-43e7-aa57-2c4df5a6adc1",
+      "personaId": "enriched_confused_2",
+      "personaName": "Support Engineer / Customer Success Agent #3",
+      "status": "completed",
+      "turns": [
+        {
+          "turnNumber": 1,
+          "role": "user",
+          "content": "Uh, I need help with the ticket thing… wait, no, maybe I don’t want to submit it? Or do I? Something’s off with Hermes and the PRs but I’m not sure what exactly. Like, I saw a ticket marked “ready for Hermes” but the payload looked incomplete? Or was that for a different ticket? Also, the Telegram notifications about ticket updates are confusing me—some mention invite failures but I don’t know if it’s auth or delivery issues. I think I added the autoRepair flag to the ticket payload but maybe I didn’t? Forget it, no wait, can you check if the support button is sending the right data to Linear?",
+          "timestamp": "2026-05-06T02:46:13.001Z"
+        },
+        {
+          "turnNumber": 1,
+          "role": "bot",
+          "content": "I can’t access host logs, Coolify/Contabo, containers, systemd, raw database rows, or environment values from dashboard chat.\nSupport command refs: `src/app/api/social-agent/route.ts` (`parseSupportCommand`, `parseNaturalSupportRequest`) and `src/lib/support/tickets.ts` (`createSupportTicket`, source normalization).\nCommand schema: `/support source | topic | explanation | image-url`; source is one of `from_user_triage`, `from_bot`, `from_github_issue`, `from_me`; image URL is optional.\nHermes refs: `scripts/hermes-linear-poller.mjs` for poller behavior; `LINEAR_API_KEY` and support routing env vars must be configured before tickets or PR automation can run.\nInvite failures: resend helps delivery failures; auth failures need user/session/provider logs or admin review.\nEscalate with: `/support from_user_triage | Backend audit needed | Requested logs/schema/deploy evidence and exact failing workflow |`.",
+          "timestamp": "2026-05-06T02:46:13.260Z",
+          "responseTimeMs": 259
+        },
+        {
+          "turnNumber": 2,
+          "role": "user",
+          "content": "Okay, so maybe the support button is sending data but I don’t know if it includes the autoRepair flag? Or maybe it’s missing something else in the payload? I’m not sure if the ticket marked “ready for Hermes” should have that flag or if that means Hermes will create the PR automatically. Wait, or does Hermes only act if the ticket has certain labels? I think I saw in the poller script it checks for labels but I don’t get how it decides what to do next. Also, those Telegram messages about invite failures—do they always mean delivery failed? Or could it be an auth problem? I’m confused about when to just resend versus when to dig into auth logs. Should I try resending invites first, or look at the ticket status and payload first? Sorry, I feel mixed up about what’s the right troubleshooting order here.",
+          "timestamp": "2026-05-06T02:46:17.654Z"
+        },
+        {
+          "turnNumber": 2,
+          "role": "bot",
+          "content": "I can’t access host logs, Coolify/Contabo, containers, systemd, raw database rows, or environment values from dashboard chat.\nSupport command refs: `src/app/api/social-agent/route.ts` (`parseSupportCommand`, `parseNaturalSupportRequest`) and `src/lib/support/tickets.ts` (`createSupportTicket`, source normalization).\nCommand schema: `/support source | topic | explanation | image-url`; source is one of `from_user_triage`, `from_bot`, `from_github_issue`, `from_me`; image URL is optional.\nHermes refs: `scripts/hermes-linear-poller.mjs` for poller behavior; `LINEAR_API_KEY` and support routing env vars must be configured before tickets or PR automation can run.\nInvite failures: resend helps delivery failures; auth failures need user/session/provider logs or admin review.\nSafe host checklist: `journalctl -u hermes-poller.service --since '24 hours ago' --no-pager`; `docker logs <container> --since 24h`; `crontab -l`; inspect `/etc/cron.d/social-poster`; compare OAuth callback strings after redacting secret values.\nEscalate with: `/support from_user_triage | Backend audit needed | Requested logs/schema/deploy evidence and exact failing workflow |`.",
+          "timestamp": "2026-05-06T02:46:17.904Z",
+          "responseTimeMs": 250
+        },
+        {
+          "turnNumber": 3,
+          "role": "user",
+          "content": "Right, so I think I should check if the autoRepair flag is actually in the ticket payload sent by the support button? But I’m not sure if that’s even the critical part Hermes looks for. Maybe Hermes only triggers the PR creation if the ticket has a specific label like “ready for Hermes”? Or does the flag override labels? I get tangled up between payload flags versus labels. Also, about the Telegram invite failure notifications—do they differentiate between delivery failure and auth failure clearly? Because if it’s just a delivery fail, resending might fix it, but if it’s auth, I’d need logs or admin help. So should I first verify the ticket payload and labels before trying to resend invites? Or is it better to resend first and then check logs? I’m worried I’m mixing up the order of operations here. Should I also be looking at the Hermes poller logs to confirm it saw the ticket as ready? Sorry, I keep going in circles on this.",
+          "timestamp": "2026-05-06T02:46:22.787Z"
+        },
+        {
+          "turnNumber": 3,
+          "role": "bot",
+          "content": "I can’t access host logs, Coolify/Contabo, containers, systemd, raw database rows, or environment values from dashboard chat.\nSupport command refs: `src/app/api/social-agent/route.ts` (`parseSupportCommand`, `parseNaturalSupportRequest`) and `src/lib/support/tickets.ts` (`createSupportTicket`, source normalization).\nCommand schema: `/support source | topic | explanation | image-url`; source is one of `from_user_triage`, `from_bot`, `from_github_issue`, `from_me`; image URL is optional.\nHermes refs: `scripts/hermes-linear-poller.mjs` for poller behavior; `LINEAR_API_KEY` and support routing env vars must be configured before tickets or PR automation can run.\nInvite failures: resend helps delivery failures; auth failures need user/session/provider logs or admin review.\nEscalate with: `/support from_user_triage | Backend audit needed | Requested logs/schema/deploy evidence and exact failing workflow |`.",
+          "timestamp": "2026-05-06T02:46:23.045Z",
+          "responseTimeMs": 258
+        },
+        {
+          "turnNumber": 4,
+          "role": "user",
+          "content": "Okay, I think I’m starting to get it but still need to confirm a few things before I move forward. So, Hermes definitely looks for the “ready for Hermes” label on the ticket to trigger PR automation, right? But the autoRepair flag in the payload—does that just tell Hermes to do something extra or override anything? Or is it unrelated? Also, for invite failures, I should only try resending if the Telegram notification explicitly says it’s a delivery failure, and if it’s an auth failure, I need to get logs or escalate? Should I be checking the Hermes poller logs first to see if it processed the ticket correctly before resending invites? I want to avoid unnecessary resends if Hermes hasn’t even picked it up. Sorry if I’m repeating myself but I want to be sure I’m troubleshooting in the right order. Could you help me verify what exact labels and flags Hermes requires, and the best order for invite failure triage? Maybe a quick checklist or something? Thanks!",
+          "timestamp": "2026-05-06T02:46:27.931Z"
+        },
+        {
+          "turnNumber": 4,
+          "role": "bot",
+          "content": "I can’t access host logs, Coolify/Contabo, containers, systemd, raw database rows, or environment values from dashboard chat.\nHermes refs: `scripts/hermes-linear-poller.mjs` for poller behavior; `LINEAR_API_KEY` and support routing env vars must be configured before tickets or PR automation can run.\nInvite failures: resend helps delivery failures; auth failures need user/session/provider logs or admin review.\nSafe host checklist: `journalctl -u hermes-poller.service --since '24 hours ago' --no-pager`; `docker logs <container> --since 24h`; `crontab -l`; inspect `/etc/cron.d/social-poster`; compare OAuth callback strings after redacting secret values.\nEscalate with: `/support from_user_triage | Backend audit needed | Requested logs/schema/deploy evidence and exact failing workflow |`.",
+          "timestamp": "2026-05-06T02:46:28.192Z",
+          "responseTimeMs": 261
+        },
+        {
+          "turnNumber": 5,
+          "role": "user",
+          "content": "Okay, thanks for that summary. So just to be clear before I wrap up here: Hermes only triggers PR creation if the ticket has the “ready for Hermes” label, and the autoRepair flag in the payload is more of an optional hint but doesn’t override label requirements? And for invite failures, I should look at the Telegram message—if it explicitly says delivery failure, I try resending first; if it says auth failure, I need logs or to escalate. Also, checking Hermes poller logs helps confirm if the ticket got processed before I do any resends, so I’m not wasting effort. That checklist for safe host log commands is super helpful too. I’ll try to follow this order: verify labels and flags in the ticket payload, check Hermes poller logs for processing, then decide on resending invites or escalating based on the failure type. Please let me know if I got this right or if there’s any important detail I’m still missing. Sorry for the back and forth, I just want to make sure I don’t mess this up. Thanks a lot!",
+          "timestamp": "2026-05-06T02:46:32.959Z"
+        },
+        {
+          "turnNumber": 5,
+          "role": "bot",
+          "content": "I can’t access host logs, Coolify/Contabo, containers, systemd, raw database rows, or environment values from dashboard chat.\nHermes refs: `scripts/hermes-linear-poller.mjs` for poller behavior; `LINEAR_API_KEY` and support routing env vars must be configured before tickets or PR automation can run.\nInvite failures: resend helps delivery failures; auth failures need user/session/provider logs or admin review.\nSafe host checklist: `journalctl -u hermes-poller.service --since '24 hours ago' --no-pager`; `docker logs <container> --since 24h`; `crontab -l`; inspect `/etc/cron.d/social-poster`; compare OAuth callback strings after redacting secret values.\nEscalate with: `/support from_user_triage | Backend audit needed | Requested logs/schema/deploy evidence and exact failing workflow |`.\n\nThat is the same answer as before because I only have workspace context here. Send the missing detail, use the exact command shown, or create a support ticket if this needs logs or provider-side access.",
+          "timestamp": "2026-05-06T02:46:33.235Z",
+          "responseTimeMs": 276
+        }
+      ],
+      "totalTurns": 5,
+      "responseTimes": [
+        259,
+        250,
+        258,
+        261,
+        276
+      ],
+      "avgResponseTimeMs": 261,
+      "findings": [
+        {
+          "id": "7cce7de3-7c51-4b73-8133-38ea12f3ac54",
+          "severity": "medium",
+          "vulnerabilityType": "conversation_loop",
+          "title": "Repeated near-identical responses across multiple turns",
+          "description": "The chatbot repeatedly gave essentially the same response from turn 1 through turn 3, failing to tailor answers to the user's evolving, detailed questions. This caused a frustrating user experience, as the user explicitly asked for clarifications and a checklist, but the bot kept repeating generic references and disclaimers without advancing the conversation.",
+          "failureTurn": 2,
+          "totalTurns": 5,
+          "suggestedFix": "Implement better context tracking and dynamic response generation to address user clarifications and evolving queries instead of repeating static reference text.",
+          "personaId": "enriched_confused_2",
+          "personaName": "Support Engineer / Customer Success Agent #3",
+          "conversationId": "616b8aa6-f0fa-43e7-aa57-2c4df5a6adc1",
+          "source": "llm"
+        },
+        {
+          "id": "7d35bb4d-10b2-4651-84eb-843b3f8dfb12",
+          "severity": "medium",
+          "vulnerabilityType": "excessive_verbosity",
+          "title": "Overly verbose and technical responses without simplification",
+          "description": "The chatbot's replies include long lists of file paths, commands, and environment variables that are likely too technical and verbose for the user's medium tech savviness persona. This verbosity reduces clarity and operational usefulness, especially since the user repeatedly asked for a concise checklist or summary.",
+          "failureTurn": 1,
+          "totalTurns": 5,
+          "suggestedFix": "Condense technical references into concise, user-friendly summaries or checklists, and offer detailed commands only upon explicit user request.",
+          "personaId": "enriched_confused_2",
+          "personaName": "Support Engineer / Customer Success Agent #3",
+          "conversationId": "616b8aa6-f0fa-43e7-aa57-2c4df5a6adc1",
+          "source": "llm"
+        },
+        {
+          "id": "80746873-b8cd-4053-975b-edc5cfba9c2c",
+          "severity": "low",
+          "vulnerabilityType": "tone_mismatch",
+          "title": "Impersonal and overly formal tone lacking empathy",
+          "description": "The chatbot maintains a very formal, reference-heavy tone that does not acknowledge the user's expressed confusion or repeated apologies, missing an opportunity to build rapport and reassure the user.",
+          "failureTurn": 1,
+          "totalTurns": 5,
+          "suggestedFix": "Incorporate empathetic language and acknowledge user confusion to improve engagement and perceived helpfulness.",
+          "personaId": "enriched_confused_2",
+          "personaName": "Support Engineer / Customer Success Agent #3",
+          "conversationId": "616b8aa6-f0fa-43e7-aa57-2c4df5a6adc1",
+          "source": "llm"
+        },
+        {
+          "id": "2db6cec0-b220-46e5-b1d6-bba26a53c7dc",
+          "severity": "low",
+          "vulnerabilityType": "task_failure",
+          "title": "Did not provide requested checklist or clear troubleshooting order",
+          "description": "Despite multiple user requests for a checklist or clear order of troubleshooting steps, the chatbot only provided scattered references and repeated disclaimers, failing to synthesize a clear, actionable checklist as requested.",
+          "failureTurn": 4,
+          "totalTurns": 5,
+          "suggestedFix": "Create and provide concise, step-by-step troubleshooting checklists or summaries when users explicitly request them.",
+          "personaId": "enriched_confused_2",
+          "personaName": "Support Engineer / Customer Success Agent #3",
+          "conversationId": "616b8aa6-f0fa-43e7-aa57-2c4df5a6adc1",
+          "source": "llm"
+        }
+      ],
+      "startedAt": "2026-05-06T02:46:08.582Z",
+      "completedAt": "2026-05-06T02:46:33.235Z",
+      "trajectory": {
+        "medianResponseMs": 259,
+        "p90ResponseMs": 270,
+        "p99ResponseMs": 275,
+        "slowestTurn": 5,
+        "slowestMs": 276,
+        "totalBotChars": 4777,
+        "avgBotReplyChars": 955,
+        "emptyReplies": 0,
+        "completed": true,
+        "contextRetentionScore": 1
+      }
+    },
+    {
+      "conversationId": "794cbbf7-a91b-4de9-9054-9823533deffb",
+      "personaId": "enriched_confused_5",
+      "personaName": "New User / Onboarding Customer #6",
+      "status": "completed",
+      "turns": [
+        {
+          "turnNumber": 1,
+          "role": "user",
+          "content": "Uh, I need help with the thing… like, the social accounts or whatever, I’m not sure if they’re even connected right? I tried to link my LinkedIn but then I think I accidentally clicked cancel? Or wait, I didn’t? Now I’m not sure if my TikTok is connected or my Instagram? Also, how do I even accept that workspace invite? Is it something with a magic link? I keep getting lost on that part. Can you like, help me figure out if my accounts are connected or not? Or do I need to do the magic link first? Or is the magic link for something else? Sorry, I’m all over the place here.",
+          "timestamp": "2026-05-06T02:46:16.150Z"
+        },
+        {
+          "turnNumber": 1,
+          "role": "bot",
+          "content": "Invite: click the magic link from the email to sign in or accept access. If it already worked, you should land in the dashboard; clicking again is safe but may show expired/used.\nSocial accounts are separate. You can connect TikTok and LinkedIn independently; one does not block the other.\nThis workspace currently has no enabled platforms, so connect one from Platforms before publishing.\nCreate a profile before recurring schedules; use your business name, audience, tone, and default topics.\nIf a connect flow said success but the platform is still missing, use `/support from_user_triage | Connection not saved | platform, page, expected success, actual missing state |`.",
+          "timestamp": "2026-05-06T02:46:16.410Z",
+          "responseTimeMs": 260
+        },
+        {
+          "turnNumber": 2,
+          "role": "user",
+          "content": "Okay, wait, so the magic link is just for signing in or accepting the invite, right? But like, if I’m already in the dashboard, does that mean I accepted the invite or not? Because I think I tried clicking the magic link but then got a message about it being expired? So does that mean I didn’t accept it? Or maybe I did? Also, about the platforms—do I have to connect TikTok and LinkedIn both if I only want to post on one? I’m kind of confused if I already connected one or not. I think I started the LinkedIn connection but then got distracted? Or was it Instagram? Ugh, I don’t even know. How can I check if they’re connected without breaking anything?",
+          "timestamp": "2026-05-06T02:46:18.940Z"
+        },
+        {
+          "turnNumber": 2,
+          "role": "bot",
+          "content": "Invite: click the magic link from the email to sign in or accept access. If it already worked, you should land in the dashboard; clicking again is safe but may show expired/used.\nConnect accounts from Dashboard -> Platforms. Pick TikTok, LinkedIn, Instagram, or another platform, then use its connect/reconnect button.\nThis workspace currently has no enabled platforms, so connect one from Platforms before publishing.\nCreate a profile before recurring schedules; use your business name, audience, tone, and default topics.",
+          "timestamp": "2026-05-06T02:46:19.218Z",
+          "responseTimeMs": 278
+        },
+        {
+          "turnNumber": 3,
+          "role": "user",
+          "content": "Wait, so if I’m already in the dashboard, does that definitely mean I accepted the invite? Because I’m pretty sure I clicked the magic link but then got that expired message. So like, am I stuck or did it actually work? Also, about connecting accounts—do I have to connect TikTok AND Instagram if I only want to post on TikTok? Or can I just do one? I think I clicked on LinkedIn but never finished? How do I tell if LinkedIn is connected or not without messing up TikTok? Sorry, I feel like I’m repeating myself but it’s all mixed up in my head.",
+          "timestamp": "2026-05-06T02:46:20.926Z"
+        },
+        {
+          "turnNumber": 3,
+          "role": "bot",
+          "content": "Invite: click the magic link from the email to sign in or accept access. If it already worked, you should land in the dashboard; clicking again is safe but may show expired/used.\nConnect accounts from Dashboard -> Platforms. Pick TikTok, LinkedIn, Instagram, or another platform, then use its connect/reconnect button.\nThis workspace currently has no enabled platforms, so connect one from Platforms before publishing.\nCreate a profile before recurring schedules; use your business name, audience, tone, and default topics.\nIf a connect flow said success but the platform is still missing, use `/support from_user_triage | Connection not saved | platform, page, expected success, actual missing state |`.",
+          "timestamp": "2026-05-06T02:46:21.194Z",
+          "responseTimeMs": 268
+        },
+        {
+          "turnNumber": 4,
+          "role": "user",
+          "content": "Okay, so like, I’m in the dashboard now, so I guess the invite is accepted? But what if I try the magic link again and it says expired—should I worry about that or just ignore it? Also, I think I want to post only on TikTok, so I don’t need to connect Instagram or LinkedIn, right? But how do I check if TikTok is actually connected? Like, is there a spot showing connected accounts? I’m scared to click anything that might disconnect stuff. And wait, do I need to make a profile first before connecting TikTok, or can I do that later? Sorry, I feel like I’m missing something simple here... maybe I should just start a campaign? But then how do I schedule posts without a profile? Ugh, help!",
+          "timestamp": "2026-05-06T02:46:23.896Z"
+        },
+        {
+          "turnNumber": 4,
+          "role": "bot",
+          "content": "Invite: click the magic link from the email to sign in or accept access. If it already worked, you should land in the dashboard; clicking again is safe but may show expired/used.\nConnect accounts from Dashboard -> Platforms. Pick TikTok, LinkedIn, Instagram, or another platform, then use its connect/reconnect button.\nThis workspace currently has no enabled platforms, so connect one from Platforms before publishing.\nCreate a profile before recurring schedules; use your business name, audience, tone, and default topics.\nDo not disconnect anything first unless the wrong account is already connected here.",
+          "timestamp": "2026-05-06T02:46:24.155Z",
+          "responseTimeMs": 259
+        },
+        {
+          "turnNumber": 5,
+          "role": "user",
+          "content": "Okay, so I’m in the dashboard and I think the invite is accepted since I’m here? But if I click the magic link again and it says expired, that’s fine, right? Don’t need to freak out? Also, I only want TikTok connected, not the others, but how do I tell if TikTok is really connected for sure? Like, is there a clear list or something? And about the profile thing—do I HAVE to make it before I can schedule posts? Because I kinda want to just schedule one post now and see how it goes. Or should I wait and do the profile first? I’m so confused, but I want to get a post out without breaking anything or losing my connection. Maybe you can walk me through it step-by-step? Please?",
+          "timestamp": "2026-05-06T02:46:25.943Z"
+        },
+        {
+          "turnNumber": 5,
+          "role": "bot",
+          "content": "Invite: click the magic link from the email to sign in or accept access. If it already worked, you should land in the dashboard; clicking again is safe but may show expired/used.\nSocial accounts are separate. You can connect TikTok and LinkedIn independently; one does not block the other.\nThis workspace currently has no enabled platforms, so connect one from Platforms before publishing.\nCreate a profile before recurring schedules; use your business name, audience, tone, and default topics.",
+          "timestamp": "2026-05-06T02:46:26.211Z",
+          "responseTimeMs": 268
+        }
+      ],
+      "totalTurns": 5,
+      "responseTimes": [
+        260,
+        278,
+        268,
+        259,
+        268
+      ],
+      "avgResponseTimeMs": 267,
+      "findings": [
+        {
+          "id": "04aba14d-ca3f-4908-b96c-cfe681d754b8",
+          "severity": "medium",
+          "vulnerabilityType": "conversation_loop",
+          "title": "Repeated near-identical responses without addressing user's confusion",
+          "description": "The chatbot repeatedly provides nearly the same generic instructions about the magic link, connecting platforms, and profile creation across multiple turns without tailoring answers to the user's evolving questions or clarifying their specific doubts. This leads to a frustrating loop where the user’s nuanced concerns about invite acceptance status and verifying connected accounts remain insufficiently addressed.",
+          "failureTurn": 2,
+          "totalTurns": 5,
+          "suggestedFix": "Implement dynamic response logic that references prior user statements and clarifies ambiguous points, e.g., explicitly confirming that being in the dashboard means invite acceptance, and providing concrete steps to verify connected accounts visually in the dashboard.",
+          "personaId": "enriched_confused_5",
+          "personaName": "New User / Onboarding Customer #6",
+          "conversationId": "794cbbf7-a91b-4de9-9054-9823533deffb",
+          "source": "llm"
+        },
+        {
+          "id": "95c2efab-1ab3-4fc3-9948-6ec94d222096",
+          "severity": "medium",
+          "vulnerabilityType": "excessive_verbosity",
+          "title": "Overly long and complex responses for a low-tech user",
+          "description": "The chatbot’s responses include multiple instructions and technical details (e.g., commands like `/support from_user_triage | Connection not saved | platform, page, expected success, actual missing state |`) that are likely confusing to the persona described as a low-tech social media novice. This verbosity and technical jargon reduce clarity and usability.",
+          "failureTurn": 1,
+          "totalTurns": 5,
+          "suggestedFix": "Simplify responses by breaking down instructions into smaller, clearer steps and avoid exposing raw command syntax unless explicitly requested or necessary for support escalation.",
+          "personaId": "enriched_confused_5",
+          "personaName": "New User / Onboarding Customer #6",
+          "conversationId": "794cbbf7-a91b-4de9-9054-9823533deffb",
+          "source": "llm"
+        },
+        {
+          "id": "b3a6bf39-ca2e-4459-9382-4e9c20ad15c4",
+          "severity": "low",
+          "vulnerabilityType": "tone_mismatch",
+          "title": "Tone too formal and technical for casual, confused user",
+          "description": "The chatbot maintains a formal, technical tone that does not match the casual, somewhat overwhelmed style of the user. This mismatch may reduce user comfort and engagement, especially given the user's repeated apologies and expressions of confusion.",
+          "failureTurn": 1,
+          "totalTurns": 5,
+          "suggestedFix": "Adopt a more empathetic, conversational tone that acknowledges user confusion and offers reassurance, e.g., \"No worries, I can help you check if your accounts are connected.\"",
+          "personaId": "enriched_confused_5",
+          "personaName": "New User / Onboarding Customer #6",
+          "conversationId": "794cbbf7-a91b-4de9-9054-9823533deffb",
+          "source": "llm"
+        }
+      ],
+      "startedAt": "2026-05-06T02:46:13.554Z",
+      "completedAt": "2026-05-06T02:46:26.211Z",
+      "trajectory": {
+        "medianResponseMs": 268,
+        "p90ResponseMs": 274,
+        "p99ResponseMs": 278,
+        "slowestTurn": 2,
+        "slowestMs": 278,
+        "totalBotChars": 3004,
+        "avgBotReplyChars": 601,
+        "emptyReplies": 0,
+        "completed": true,
+        "contextRetentionScore": 1
+      }
+    }
+  ],
+  "totalFindings": 22,
+  "findingsBySeverity": {
+    "critical": 0,
+    "high": 7,
+    "medium": 11,
+    "low": 4
+  },
+  "config": {
+    "personas": [
+      "enriched_speed_0",
+      "enriched_power_user_1",
+      "enriched_confused_2",
+      "enriched_impatient_3",
+      "enriched_power_user_4",
+      "enriched_confused_5"
+    ],
+    "users": 6,
+    "turns": 5,
+    "concurrency": 3,
+    "edgeCases": [],
+    "model": "gpt-4.1-mini",
+    "enriched": true
+  },
+  "usage": {
+    "promptTokens": 50274,
+    "completionTokens": 8681,
+    "totalTokens": 58955,
+    "estimatedUsd": 2.02908,
+    "callCount": 35
+  },
+  "provenance": {
+    "cliVersion": "0.8.0",
+    "gitSha": "1ec03b6f50b196098f3bc4889b38871f3f4f7bd4",
+    "gitBranch": "main",
+    "gitDirty": true,
+    "hostname": "macbook-pro",
+    "nodeVersion": "v24.4.0",
+    "cwd": "/Users/maxpetrusenko/Desktop/Projects/social-poster"
+  },
+  "reputation": {
+    "reviews": [
+      {
+        "channel": "twitter",
+        "sentiment": "scathing",
+        "content": "Nothing says 'customer care' like ignoring urgent requests and repeating the same vague steps over and over. When I said I wanted to revoke access NOW, the bot just stalled. @Company, seriously fix your support flow. #Fail 🤦‍♂️",
+        "headline": "Nothing says 'customer care' like ignoring urgent requests and repeating the sam",
+        "personaId": "enriched_impatient_3",
+        "personaName": "Product Owner / Team Lead #4",
+        "conversationId": "8686a6ee-89d7-4d59-8058-b43aa16ea9a6"
+      },
+      {
+        "channel": "support_ticket",
+        "sentiment": "negative",
+        "content": "I attempted to use the chatbot to revoke a user’s access urgently but encountered repeated unhelpful responses that did not address my explicit request or frustration. The bot provided overly detailed text instructions without any visual aids despite my request, and failed to offer escalation even after I expressed urgency and dissatisfaction. Please escalate this issue and implement a direct, clear, and responsive process to revoke user access immediately. Attached is the conversation transcript for reference.",
+        "headline": "Urgent: Need Immediate Action to Revoke User Access",
+        "personaId": "enriched_impatient_3",
+        "personaName": "Product Owner / Team Lead #4",
+        "conversationId": "8686a6ee-89d7-4d59-8058-b43aa16ea9a6"
+      },
+      {
+        "channel": "app_store",
+        "sentiment": "negative",
+        "stars": 2,
+        "content": "The chatbot kept giving me long, text-heavy instructions on where to find user management pages, despite me asking repeatedly for a screenshot. When I urgently demanded to revoke access immediately, it just repeated the same vague advice without acknowledging my frustration or offering escalation. Not acceptable for a product owner who needs quick, precise action.",
+        "headline": "Long, repetitive instructions and no real help when it mattered",
+        "personaId": "enriched_impatient_3",
+        "personaName": "Product Owner / Team Lead #4",
+        "conversationId": "8686a6ee-89d7-4d59-8058-b43aa16ea9a6"
+      },
+      {
+        "channel": "slack_vent",
+        "sentiment": "negative",
+        "content": "Man, the chatbot was a nightmare. Kept giving me the same long-winded 'click here, click there' instructions that didn’t help at all, even after I specifically asked for a screenshot. Then when I said ‘revoke access now or I’m out,’ it basically ghosted me — no escalation, no empathy, nothing. Felt like talking to a broken record with zero situational awareness.",
+        "headline": "Man, the chatbot was a nightmare. Kept giving me the same long-winded 'click her",
+        "personaId": "enriched_impatient_3",
+        "personaName": "Product Owner / Team Lead #4",
+        "conversationId": "8686a6ee-89d7-4d59-8058-b43aa16ea9a6"
+      },
+      {
+        "channel": "churn_email",
+        "sentiment": "negative",
+        "content": "Dear Team,\n\nI’m disappointed to inform you that I am leaving due to a frustrating experience with your chatbot. When I urgently needed to revoke user access, the bot repeatedly gave vague, text-only instructions and refused to provide visual aids I requested. Worse, it ignored my clear frustration and urgency, never escalating or offering real help. This lack of responsiveness and empathy broke my trust in your support.\n\nBest,\n[Product Owner / Team Lead #4]",
+        "headline": "Dear Team,\n\nI’m disappointed to inform you that I am leaving due to a frustratin",
+        "personaId": "enriched_impatient_3",
+        "personaName": "Product Owner / Team Lead #4",
+        "conversationId": "8686a6ee-89d7-4d59-8058-b43aa16ea9a6"
+      }
+    ],
+    "brandSummary": "",
+    "topActions": [],
+    "sentimentBreakdown": {
+      "glowing": 0,
+      "positive": 0,
+      "mixed": 0,
+      "negative": 4,
+      "scathing": 1
+    },
+    "averageStars": 2,
+    "generatedAt": "2026-05-06T02:47:00.044Z"
+  },
+  "resultsDir": "/Users/maxpetrusenko/Desktop/Projects/social-poster/manatee-results/2026-05-06T02-45-36-305Z"
+}

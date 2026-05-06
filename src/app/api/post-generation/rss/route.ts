@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { requireApiWorkspaceEditor } from "@/lib/api-authorization";
 import { getDashboardCandidates } from "@/lib/dashboard/candidates";
-import { writePostCaption } from "@/lib/pipeline/script-writer";
+import { draftHumanPostContent } from "@/lib/pipeline/human-post-writer";
 import { getWorkspaceRssSettings } from "@/lib/rss-config";
 
 export async function POST(request: NextRequest) {
@@ -24,12 +24,24 @@ export async function POST(request: NextRequest) {
     }
 
     const platformType = chooseCaptionPlatform(platformTypes);
-    const content = writePostCaption(story, platformType, {
-      xTemplate: settings.xTemplate,
-      linkedinTemplate: settings.linkedinTemplate,
-      transformationPrompt: settings.transformationPrompt,
-    });
+    const drafts = await draftHumanPostContent(
+      story,
+      [platformType],
+      { workspaceId, rssSettings: settings }
+    );
+    const content = resolveDraftForPlatform(drafts.contentByPlatform, platformType);
     const imageUrl = story.ogImageUrl ?? story.imageUrl ?? null;
+    const candidateDrafts = await mapWithConcurrency(stories, 3, async (candidate) => {
+      const draft = await draftHumanPostContent(
+        candidate,
+        [platformType],
+        { workspaceId, rssSettings: settings }
+      );
+      return {
+        candidate,
+        content: resolveDraftForPlatform(draft.contentByPlatform, platformType),
+      };
+    });
 
     return NextResponse.json({
       source: "rss",
@@ -38,18 +50,14 @@ export async function POST(request: NextRequest) {
       summary: story.summary,
       content,
       imageUrl,
-      candidates: stories.map((candidate) => ({
+      candidates: candidateDrafts.map(({ candidate, content: candidateContent }) => ({
         title: candidate.title,
         link: candidate.link,
         summary: candidate.summary,
         score: candidate.score,
         sourceName: candidate.sourceName,
         publishedAt: candidate.publishedAt,
-        content: writePostCaption(candidate, platformType, {
-          xTemplate: settings.xTemplate,
-          linkedinTemplate: settings.linkedinTemplate,
-          transformationPrompt: settings.transformationPrompt,
-        }),
+        content: candidateContent,
         imageUrl: candidate.ogImageUrl ?? candidate.imageUrl ?? null,
       })),
     });
@@ -65,4 +73,40 @@ function chooseCaptionPlatform(platformTypes: string[]) {
   if (normalized.includes("instagram") || normalized.includes("instagram_personal")) return "instagram";
   if (normalized.includes("facebook")) return "facebook";
   return "x";
+}
+
+function resolveDraftForPlatform(
+  drafts: Record<string, string>,
+  platformType: string
+) {
+  const normalized =
+    platformType === "x" || platformType === "twitter"
+      ? "twitter"
+      : platformType.toLowerCase().startsWith("linkedin")
+        ? "linkedin"
+      : platformType.toLowerCase();
+  return drafts[normalized] ?? drafts[platformType] ?? "";
+}
+
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  concurrency: number,
+  mapper: (item: T) => Promise<R>
+): Promise<R[]> {
+  const results: R[] = [];
+  let index = 0;
+
+  async function worker() {
+    while (index < items.length) {
+      const currentIndex = index;
+      index += 1;
+      results[currentIndex] = await mapper(items[currentIndex] as T);
+    }
+  }
+
+  await Promise.all(
+    Array.from({ length: Math.min(concurrency, items.length) }, () => worker())
+  );
+
+  return results;
 }

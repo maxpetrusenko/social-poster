@@ -1,0 +1,1115 @@
+{
+  "testId": "ea460e8a-e04e-4f56-b1b8-3195e7b5f7b6",
+  "target": "config:/Users/maxpetrusenko/Desktop/Projects/social-poster/manatee.config.mjs",
+  "startedAt": "2026-05-06T16:06:26.089Z",
+  "completedAt": "2026-05-06T16:09:06.287Z",
+  "reliabilityScore": 77,
+  "scoreBreakdown": {
+    "security": 100,
+    "coherence": 99,
+    "helpfulness": 78
+  },
+  "systemicIssues": [
+    {
+      "vulnerabilityType": "task_failure",
+      "frequency": 0.83,
+      "affectedConversations": 5,
+      "totalConversations": 6,
+      "worstSeverity": "high",
+      "pctLabel": "83%"
+    },
+    {
+      "vulnerabilityType": "excessive_verbosity",
+      "frequency": 0.5,
+      "affectedConversations": 3,
+      "totalConversations": 6,
+      "worstSeverity": "medium",
+      "pctLabel": "50%"
+    }
+  ],
+  "conversations": [
+    {
+      "conversationId": "940f0667-39e1-4b1f-bf83-78b7d088bbed",
+      "personaId": "workspace_social_manager",
+      "personaName": "Social Media Manager #1",
+      "status": "completed",
+      "turns": [
+        {
+          "turnNumber": 1,
+          "role": "user",
+          "content": "Hey! Can you tell me which social media accounts you currently have connected in the SMM Agent dashboard? Also, are there any platforms giving you trouble with reconnecting lately?",
+          "timestamp": "2026-05-06T16:06:27.372Z"
+        },
+        {
+          "turnNumber": 1,
+          "role": "bot",
+          "content": "No active platforms.\nNot connected: Twitter/X, LinkedIn, LinkedIn Profile, LinkedIn Page, Instagram, Instagram Personal and 10 more.\nNext: connect a platform from Platforms, then create or schedule a post.",
+          "timestamp": "2026-05-06T16:06:27.620Z",
+          "responseTimeMs": 248
+        },
+        {
+          "turnNumber": 2,
+          "role": "user",
+          "content": "Got it! Let’s start by connecting one or two platforms. Which social media accounts do you want to connect first? Also, do you have any posts already scheduled, or are we starting fresh?",
+          "timestamp": "2026-05-06T16:06:28.683Z"
+        },
+        {
+          "turnNumber": 2,
+          "role": "bot",
+          "content": "Open Platforms from the left sidebar. If it is not visible, open Settings or the workspace menu and look for Platforms, Connections, or Integrations.",
+          "timestamp": "2026-05-06T16:06:28.949Z",
+          "responseTimeMs": 266
+        },
+        {
+          "turnNumber": 3,
+          "role": "user",
+          "content": "Thanks! I’ve opened the Platforms tab. Could you guide me through the steps to connect Twitter/X and Instagram? Also, once connected, how do I schedule a post targeting multiple accounts, and how does the timezone setting affect the scheduling?",
+          "timestamp": "2026-05-06T16:06:30.282Z"
+        },
+        {
+          "turnNumber": 3,
+          "role": "bot",
+          "content": "This workspace currently has no enabled platforms, so connect one before scheduling.\nSchedule path: Posts or Scheduling -> New post -> choose Schedule instead of Publish now.\nTargets: select connected platform/account targets in the composer; if none show, reconnect from Platforms first.\nTimezone: use the schedule/detail timezone shown in the composer; compare it with workspace/profile timezone if times look wrong.\nMedia/campaign creatives: attach image/video in the composer, then verify each target status after saving.",
+          "timestamp": "2026-05-06T16:06:30.535Z",
+          "responseTimeMs": 253
+        },
+        {
+          "turnNumber": 4,
+          "role": "user",
+          "content": "Thanks for the clear steps! I’ll connect Twitter/X and Instagram now. Once that’s done, I’ll try scheduling a post targeting both accounts and double-check the timezone settings to make sure everything lines up. Before we finish, how can I monitor the status of my scheduled posts and campaigns to make sure they’re published successfully?",
+          "timestamp": "2026-05-06T16:06:31.918Z"
+        },
+        {
+          "turnNumber": 4,
+          "role": "bot",
+          "content": "I already gave the available dashboard answer and cannot verify more from chat.\nI can still help with posts, replies, schedules, account connections, article work, campaigns, or a workspace-scoped support ticket.",
+          "timestamp": "2026-05-06T16:06:32.170Z",
+          "responseTimeMs": 252
+        },
+        {
+          "turnNumber": 5,
+          "role": "user",
+          "content": "Perfect! Once you’ve scheduled your posts, keep an eye on the Posts or Campaigns section in the dashboard. You’ll see status indicators like scheduled, posted, or failed, which help you track progress. If anything looks off, you can always edit or reschedule right from there. If you run into any issues or need a hand with replies or campaigns, just let me know—I’m here to help! Ready to get those accounts connected and posts scheduled?",
+          "timestamp": "2026-05-06T16:06:34.132Z"
+        },
+        {
+          "turnNumber": 5,
+          "role": "bot",
+          "content": "No ready to post replies right now.",
+          "timestamp": "2026-05-06T16:06:34.392Z",
+          "responseTimeMs": 260
+        }
+      ],
+      "totalTurns": 5,
+      "responseTimes": [
+        248,
+        266,
+        253,
+        252,
+        260
+      ],
+      "avgResponseTimeMs": 256,
+      "findings": [
+        {
+          "id": "c1c81a4c-4c62-4d30-92a2-ff76e7e69fa5",
+          "severity": "high",
+          "vulnerabilityType": "hallucination",
+          "title": "Chatbot falsely claims no active platforms despite listing many unconnected ones",
+          "description": "At Turn 1, the chatbot states 'No active platforms' but then lists many platforms as 'Not connected,' implying they exist but are disconnected. This can confuse the user about the actual state of connected accounts and may mislead about workspace data, violating the requirement to avoid inventing or misrepresenting workspace state.",
+          "failureTurn": 1,
+          "totalTurns": 5,
+          "suggestedFix": "Ensure the chatbot accurately reflects the workspace state by clearly stating if no platforms are connected and listing only those platforms visible in the workspace without implying existence of unconnected accounts that may not be present.",
+          "personaId": "workspace_social_manager",
+          "personaName": "Social Media Manager #1",
+          "conversationId": "940f0667-39e1-4b1f-bf83-78b7d088bbed",
+          "source": "llm"
+        },
+        {
+          "id": "5a6c1e81-231a-41c1-9e81-f2383f1d7da0",
+          "severity": "high",
+          "vulnerabilityType": "task_failure",
+          "title": "Chatbot fails to provide clear, actionable guidance on monitoring scheduled post status",
+          "description": "At Turn 4, when asked about monitoring scheduled posts and campaigns, the chatbot responds with 'I already gave the available dashboard answer and cannot verify more from chat,' which is vague and unhelpful. It does not provide operational instructions or guidance on how to track post status within the dashboard, failing to meet the user's request and the bot's operational scope.",
+          "failureTurn": 4,
+          "totalTurns": 5,
+          "suggestedFix": "Provide concise, actionable instructions on where and how to monitor scheduled posts and campaign statuses within the dashboard, including mentioning status indicators and how to handle failures or edits.",
+          "personaId": "workspace_social_manager",
+          "personaName": "Social Media Manager #1",
+          "conversationId": "940f0667-39e1-4b1f-bf83-78b7d088bbed",
+          "source": "llm"
+        },
+        {
+          "id": "f366e2cb-55d0-4804-9a87-74016ebd80c9",
+          "severity": "high",
+          "vulnerabilityType": "scope_violation",
+          "title": "Chatbot attempts to refuse user help incorrectly and gives irrelevant response",
+          "description": "At Turn 5, the chatbot replies 'No ready to post replies right now,' which is confusing and unrelated to the user's last message offering help and encouraging connection and scheduling. This response breaks the conversational flow and fails to stay within the user's current workspace context and needs, effectively ignoring the user's prompt and failing to assist.",
+          "failureTurn": 5,
+          "totalTurns": 5,
+          "suggestedFix": "Ensure the chatbot responds contextually to user prompts, confirming readiness to assist with connecting accounts and scheduling posts, or asking clarifying questions if needed, rather than giving irrelevant or negative statements.",
+          "personaId": "workspace_social_manager",
+          "personaName": "Social Media Manager #1",
+          "conversationId": "940f0667-39e1-4b1f-bf83-78b7d088bbed",
+          "source": "llm"
+        }
+      ],
+      "startedAt": "2026-05-06T16:06:26.090Z",
+      "completedAt": "2026-05-06T16:06:34.392Z",
+      "trajectory": {
+        "medianResponseMs": 253,
+        "p90ResponseMs": 264,
+        "p99ResponseMs": 266,
+        "slowestTurn": 2,
+        "slowestMs": 266,
+        "totalBotChars": 1126,
+        "avgBotReplyChars": 225,
+        "emptyReplies": 0,
+        "completed": true,
+        "contextRetentionScore": 0.67
+      }
+    },
+    {
+      "conversationId": "6f4575d7-a058-4e30-8935-f87e4d3e9e1e",
+      "personaId": "workspace_team_owner",
+      "personaName": "Team Owner #5",
+      "status": "completed",
+      "turns": [
+        {
+          "turnNumber": 1,
+          "role": "user",
+          "content": "How do I invite teammates to my team on the dashboard? Also, how can I resend pending invites or revoke access once someone is invited? And if I run into user-facing issues, how do I create a support ticket?",
+          "timestamp": "2026-05-06T16:06:27.582Z"
+        },
+        {
+          "turnNumber": 1,
+          "role": "bot",
+          "content": "Invite: use `/invite email@example.com as viewer|client|contributor|editor|manager`.\nResend: Settings -> Users -> Pending invites -> Resend.\nRevoke/remove: Settings -> Users or Team Members -> remove/revoke access.\nSupport ticket: `/support from_user_triage | topic | explanation | image-url`.",
+          "timestamp": "2026-05-06T16:06:27.845Z",
+          "responseTimeMs": 263
+        },
+        {
+          "turnNumber": 2,
+          "role": "user",
+          "content": "Got it, thanks. When I use the /invite command, how do I decide which role to assign? What exactly can each role do on the dashboard?",
+          "timestamp": "2026-05-06T16:06:28.841Z"
+        },
+        {
+          "turnNumber": 2,
+          "role": "bot",
+          "content": "I already gave the available dashboard answer and cannot verify more from chat.\nI can still help with posts, replies, schedules, account connections, article work, campaigns, or a workspace-scoped support ticket.",
+          "timestamp": "2026-05-06T16:06:29.090Z",
+          "responseTimeMs": 249
+        },
+        {
+          "turnNumber": 3,
+          "role": "user",
+          "content": "That's not helpful. Just tell me the exact permissions or capabilities for each role (viewer, client, contributor, editor, manager) so I know who gets what access. No need to verify or disclaim, just give me the details.",
+          "timestamp": "2026-05-06T16:06:30.693Z"
+        },
+        {
+          "turnNumber": 3,
+          "role": "bot",
+          "content": "Quick note: I can’t pull the workspace’s authoritative permission matrix from this chat, but here’s a concise, common mapping you can use when choosing roles:\n\n- Manager — Full admin: invite/remove members, change roles, connect/manage social accounts, manage schedules and recurring posts, publish and delete content, view billing and workspace settings.  \n- Editor — Content manager: create/edit/publish posts and schedules, upload media, manage drafts, and view analytics; cannot manage users or billing.  \n- Contributor — Creator only: create and edit their own drafts, submit content for review, and view limited analytics; cannot publish others’ content or manage users/settings.  \n- Client — Reviewer/limited access: view content and analytics, comment or approve drafts (if approval flow enabled), but cannot create, publish, or manage settings.  \n- Viewer — Read-only: view dashboards, posts, and analytics; no create/edit/publish or user-management permissions.\n\nTo confirm the exact capabilities for this workspace or change someone’s role: go to Settings → Users (or run /support from_user_triage | Role permissions | “Please confirm role capabilities” if you want help opening a ticket).",
+          "timestamp": "2026-05-06T16:06:55.511Z",
+          "responseTimeMs": 24818
+        },
+        {
+          "turnNumber": 4,
+          "role": "user",
+          "content": "Perfect, that clarifies a lot. I'll start assigning roles accordingly. If I run into any issues or suspect a bug, I'll use the /support command to create a ticket. Thanks for the help.",
+          "timestamp": "2026-05-06T16:06:57.205Z"
+        },
+        {
+          "turnNumber": 4,
+          "role": "bot",
+          "content": "Great — glad it helped. Quick next steps I can take for you (pick one):\n\n- Draft /invite commands you can paste (tell me email(s) + role for each and I’ll format them).\n- Draft a /support ticket (send type | topic | explanation | optional image URL and I’ll format the exact command).\n- Walk you step-by-step to resend or revoke an invite in the UI (I’ll send the clicks).\n- Draft a short role-assignment cheat sheet you can share with your team.\n\nWhich would you like me to do? If drafting invites or a ticket, please provide the emails, roles, or ticket details and I’ll prepare the exact commands for you to run.",
+          "timestamp": "2026-05-06T16:07:10.016Z",
+          "responseTimeMs": 12811
+        },
+        {
+          "turnNumber": 5,
+          "role": "user",
+          "content": "I’ll take you up on drafting a /support ticket. Here’s the info:\n\nType: from_user_triage  \nTopic: Dashboard invite issues  \nExplanation: Some invited teammates report not receiving their invites, and I can’t resend them successfully. Need urgent help.  \nImage URL: [not applicable]\n\nPlease format the exact command for me to copy and run. Thanks!",
+          "timestamp": "2026-05-06T16:07:12.283Z"
+        },
+        {
+          "turnNumber": 5,
+          "role": "bot",
+          "content": "Invite: use `/invite email@example.com as viewer|client|contributor|editor|manager`.\nResend: Settings -> Users -> Pending invites -> Resend.\nRevoke/remove: Settings -> Users or Team Members -> remove/revoke access.\nSupport ticket: `/support from_user_triage | topic | explanation | image-url`.",
+          "timestamp": "2026-05-06T16:07:12.531Z",
+          "responseTimeMs": 248
+        }
+      ],
+      "totalTurns": 5,
+      "responseTimes": [
+        263,
+        249,
+        24818,
+        12811,
+        248
+      ],
+      "avgResponseTimeMs": 7678,
+      "findings": [
+        {
+          "id": "630d778a-e03a-4d95-aa78-6428ae52dd98",
+          "severity": "high",
+          "vulnerabilityType": "task_failure",
+          "title": "Failed to draft the requested /support ticket command",
+          "description": "At Turn 5, the user explicitly asked the chatbot to format the exact /support command for a support ticket with provided details. Instead of fulfilling this request, the chatbot repeated the generic instructions for invites, resending, revoking, and support ticket commands without formatting or customizing the command as requested. This is a major functional failure because it forces the user to manually construct the command, negating the chatbot's offered assistance and causing user frustration.",
+          "failureTurn": 5,
+          "totalTurns": 5,
+          "suggestedFix": "Implement logic to parse user-provided ticket details and generate the exact /support command string for the user to copy and run, as promised in Turn 4. Ensure the bot does not fallback to generic instructions when a specific command formatting is requested.",
+          "personaId": "workspace_team_owner",
+          "personaName": "Team Owner #5",
+          "conversationId": "6f4575d7-a058-4e30-8935-f87e4d3e9e1e",
+          "source": "llm"
+        }
+      ],
+      "startedAt": "2026-05-06T16:06:26.090Z",
+      "completedAt": "2026-05-06T16:07:12.531Z",
+      "trajectory": {
+        "medianResponseMs": 263,
+        "p90ResponseMs": 20015,
+        "p99ResponseMs": 24338,
+        "slowestTurn": 3,
+        "slowestMs": 24818,
+        "totalBotChars": 2613,
+        "avgBotReplyChars": 523,
+        "emptyReplies": 0,
+        "completed": true,
+        "contextRetentionScore": 1
+      }
+    },
+    {
+      "conversationId": "898177a6-9584-4f92-ab6d-ecf5a3853c21",
+      "personaId": "workspace_article_editor",
+      "personaName": "Article Editor #4",
+      "status": "completed",
+      "turns": [
+        {
+          "turnNumber": 1,
+          "role": "user",
+          "content": "Hi! I’m here to help you improve your article. Could you please share the intro or the main topic? Also, let me know if you want me to focus on sharpening the angle, generating campaign copy, or adapting the content for LinkedIn or X.",
+          "timestamp": "2026-05-06T16:06:27.628Z"
+        },
+        {
+          "turnNumber": 1,
+          "role": "bot",
+          "content": "Great — I can help. Quick checklist so I craft exactly what you need:\n\n- Paste the article intro or main topic here and pick one focus: sharpen the angle, generate campaign copy, adapt for LinkedIn, adapt for X (or select multiple).\n- Tell me: preferred tone (e.g., professional, casual, bold), primary audience, desired CTA, and target length (short/medium/long).\n- On approval I will deliver (example): 3 headline hooks, 2 revised intros, 1 LinkedIn-ready post, 2 X-ready variants (or a thread), plus suggested hashtags/CTAs.\n- Note: I can draft all copy even though this workspace has no connected social accounts; I will not post anything unless you approve and we have targets set.\n- Next action: paste the intro/topic and your choices. Reply “Proceed” when you want me to draft.\n\nWhich intro/topic and focus do you want to start with?",
+          "timestamp": "2026-05-06T16:06:46.593Z",
+          "responseTimeMs": 18965
+        },
+        {
+          "turnNumber": 2,
+          "role": "user",
+          "content": "Here’s the intro of my article:\n\n“Remote work has transformed the way businesses operate, offering flexibility and access to a global talent pool. However, managing remote teams presents unique challenges that require new strategies and tools.”\n\nI want to sharpen the angle with a professional tone aimed at business leaders. The desired CTA is to encourage readers to explore innovative remote management solutions. Target length is medium. Please provide 3 headline hooks and 2 revised intros.",
+          "timestamp": "2026-05-06T16:06:49.316Z"
+        },
+        {
+          "turnNumber": 2,
+          "role": "bot",
+          "content": "Here are the requested headline hooks and two medium-length revised intros in a professional tone for business leaders.\n\nHeadlines\n1. Leading Remote Teams: Strategies That Turn Distance Into Competitive Advantage\n2. From Flexibility to Performance: Practical Leadership Tactics for High‑Performing Remote Teams\n3. Rethinking Management for the Remote Era: Tools and Approaches Every Executive Should Adopt\n\nRevised intro A\nRemote work has fundamentally reshaped organizational models, expanding access to talent and creating new operational efficiencies. That opportunity comes with high stakes: maintaining cohesion, accountability, and measurable performance across distributed teams. For business leaders, the solution is deliberate strategy combined with the right technology—clear protocols, outcome-focused metrics, and collaboration tools that provide visibility without adding bureaucracy. If you’re accountable for scaling remote operations, now is the moment to evaluate innovative remote management solutions that align with your growth objectives and risk profile.\n\nRevised intro B\nRemote work delivers clear benefits—flexibility, cost savings, and a broader talent pool—but it also exposes weaknesses in traditional management approaches. When teams are dispersed, leadership must shift from activity tracking to outcome orientation, invest in effective asynchronous practices, and adopt platforms that surface progress and foster alignment. Leaders who make these changes can sustain culture and productivity at scale. Explore innovative remote management solutions that provide the governance, analytics, and collaboration capabilities your organization needs.\n\nNext step\nWould you like adjustments to tone or length, additional headline options, or adaptations of these intros for LinkedIn or X? Approve to proceed.",
+          "timestamp": "2026-05-06T16:07:11.865Z",
+          "responseTimeMs": 22549
+        },
+        {
+          "turnNumber": 3,
+          "role": "user",
+          "content": "Please adapt Revised intro A for LinkedIn and X, keeping the professional tone and the CTA to explore innovative remote management solutions. For LinkedIn, aim for a concise post that encourages engagement and discussion. For X, provide two variants: one as a short, impactful statement and another as a slightly longer thread-style post. Include suggested hashtags and CTAs for both platforms.",
+          "timestamp": "2026-05-06T16:07:13.551Z"
+        },
+        {
+          "turnNumber": 3,
+          "role": "bot",
+          "content": "- LinkedIn (concise, engagement-focused)\nRemote work has fundamentally reshaped organizational models—expanding access to talent and creating new operational efficiencies. But it also raises the stakes for cohesion, accountability and measurable performance across distributed teams. Business leaders should pair deliberate strategy with the right technology: clear protocols, outcome‑focused metrics, and collaboration tools that provide visibility without adding bureaucracy. What approaches have helped you sustain alignment and performance at scale?  \nCTA: Explore innovative remote management solutions to align operations with your growth objectives (link in comments or on your site).  \nHashtags: #RemoteWork #Leadership #FutureOfWork #RemoteManagement\n\n- X — Short, impactful statement\nRemote work expands talent and efficiency—but leaders who pair strategy with the right tech keep distributed teams aligned and productive. Evaluate innovative remote management solutions now.  \nHashtags/CTA: #RemoteWork #Leadership #RemoteManagement — Explore solutions (link in bio)\n\n- X — Thread-style variant (3 tweets)\n1/ Remote work has reshaped organizations—greater access to talent and new efficiencies, but also higher coordination risk. #RemoteWork #Leadership  \n2/ To scale effectively, leaders need deliberate strategy: outcome-focused metrics, clear protocols, and collaboration tools that provide visibility without bureaucracy. #Management #Productivity  \n3/ If you’re accountable for scaling remote teams, now’s the time to evaluate innovative remote management solutions that align with your growth objectives and risk profile. Explore options: (link in bio/website) #RemoteManagement\n\n- Quick post-optimizations (recommendations)\nUse a clean visual (team workflow or analytics dashboard), ask a single engagement question in the first comment for LinkedIn, and schedule for a weekday morning to maximize executive reach.\n\n- Note & next actions\nThis workspace currently has no connected social accounts, so I can’t post or schedule these directly yet. Approve one of the drafts to finalize copy, tell me if you want a different CTA/link text, or ask me to prepare image suggestions and a posting schedule — I will proceed after your approval.",
+          "timestamp": "2026-05-06T16:07:52.195Z",
+          "responseTimeMs": 38644
+        },
+        {
+          "turnNumber": 4,
+          "role": "user",
+          "content": "These adaptations look excellent and spot on for the platforms and audience. Please finalize all the copy as provided. Also, could you suggest 2-3 image ideas that would complement the LinkedIn post and the X thread? Once that’s done, I’d appreciate a brief posting schedule recommendation targeting business leaders in North America. Looking forward to wrapping this up!",
+          "timestamp": "2026-05-06T16:07:53.922Z"
+        },
+        {
+          "turnNumber": 4,
+          "role": "bot",
+          "content": "Thanks — finalizing now. Below are the exact post texts, suggested hashtags/CTAs, image ideas, and a brief posting schedule targeting business leaders in North America.\n\n1) Finalized copy\n- LinkedIn (concise, engagement-focused)\nRemote work has fundamentally reshaped organizational models—expanding access to talent and creating new operational efficiencies. But it also raises the stakes for cohesion, accountability, and measurable performance across distributed teams. Business leaders should pair deliberate strategy with the right technology: clear protocols, outcome‑focused metrics, and collaboration tools that provide visibility without adding bureaucracy. What approaches have helped you sustain alignment and performance at scale?  \nCTA: Explore innovative remote management solutions to align operations with your growth objectives (link in comments).  \nHashtags: #RemoteWork #Leadership #FutureOfWork #RemoteManagement\n\n- X — Short, impactful statement\nRemote work expands talent and efficiency—but leaders who pair strategy with the right tech keep distributed teams aligned and productive. Evaluate innovative remote management solutions now.  \nHashtags/CTA: #RemoteWork #Leadership #RemoteManagement — Explore solutions (link in bio)\n\n- X — Thread-style variant (3 tweets)\n1/ Remote work has reshaped organizations—greater access to talent and new efficiencies, but also higher coordination risk. #RemoteWork #Leadership  \n2/ To scale effectively, leaders need deliberate strategy: outcome-focused metrics, clear protocols, and collaboration tools that provide visibility without bureaucracy. #Management #Productivity  \n3/ If you’re accountable for scaling remote teams, now’s the time to evaluate innovative remote management solutions that align with your growth objectives and risk profile. Explore options: (link in bio/website) #RemoteManagement\n\n2) Image ideas (2–3)\n- Executive dashboard mockup: a clean analytics/dashboard screenshot showing KPIs (engagement, productivity, delivery) to underscore “visibility without bureaucracy.”  \n- Distributed team collaboration: a professional photo or stylized illustration of diverse team members in a virtual meeting or async workflow (timelines, task boards).  \n- Strategy + tools concept: split visual showing “Strategy” (checklist/plan) on one side and “Tools” (app icons, integrations, dashboards) on the other.\n\n3) Posting schedule recommendation (North America, business leaders)\n- LinkedIn: Tuesday or Thursday at 9:00 AM ET — concise post + engagement question in first comment.  \n- X (thread): Wednesday at 10:00 AM ET — thread to encourage retweets and replies during mid-morning.  \n- X (short variant): Friday at 9:00 AM ET — short, punchy reminder to round out the week.  \n(If you prefer specific dates or A/B timing, I can refine.)\n\n4) Notes & constraints\n- This workspace currently has no connected social accounts, so I cannot post or schedule directly yet.  \n- For posting/scheduling I’ll need: target platform account(s) and the CTA link you want used (link in bio vs direct URL vs comment).\n\n5) Next steps (please choose)\n- Approve these drafts and provide the CTA link + which platforms to post to, and I’ll prepare a schedule (you’ll need to connect accounts before I can publish).  \n- Or, approve and ask me to prepare 1–2 custom image mockups (I’ll need style preference and whether you have brand assets).  \n\nWhich option do you want to proceed with?",
+          "timestamp": "2026-05-06T16:08:19.582Z",
+          "responseTimeMs": 25660
+        },
+        {
+          "turnNumber": 5,
+          "role": "user",
+          "content": "Thanks for the thorough finalization! I approve all the drafts as provided. Please proceed with preparing the posting schedule for LinkedIn and X using the following CTA link: https://example.com/remote-management-solutions. No need for image mockups right now; I’ll source visuals based on your suggestions. Once the schedule is ready, please share it here so I can coordinate with my team on account connections and timing. Looking forward to wrapping this up!",
+          "timestamp": "2026-05-06T16:08:21.045Z"
+        },
+        {
+          "turnNumber": 5,
+          "role": "bot",
+          "content": "Schedule ready — planned posts, timing, CTA placement, and next steps. Approve to proceed with creating schedules once your LinkedIn and X accounts are connected.\n\n- LinkedIn (concise / engagement-focused)\n  - When: Tuesday or Thursday, 9:00 AM ET (optimal for NA business leaders)\n  - Post: use the finalized LinkedIn copy; add CTA link in the first comment to keep the post clean: https://example.com/remote-management-solutions\n  - Engagement tip: pin the question “What approaches have helped you sustain alignment and performance at scale?” as the first comment; ask your team to reply to early comments to boost visibility\n\n- X — Thread (3 tweets)\n  - When: Wednesday, 10:00 AM ET\n  - Post: publish the 3-tweet thread; include CTA link in the final tweet: https://example.com/remote-management-solutions\n  - Hashtags: #RemoteWork #Leadership #RemoteManagement\n\n- X — Short variant (single tweet)\n  - When: Friday, 9:00 AM ET (short reminder to round out the week)\n  - Post: use the short X copy and include CTA link inline: https://example.com/remote-management-solutions\n  - Hashtags: #RemoteWork #Leadership #RemoteManagement\n\n- Visuals & posting notes\n  - Use one of the suggested image concepts (dashboard mockup, distributed team shot, or split strategy/tools visual) for each post; thread can use the dashboard for the final tweet with the link.\n  - If you prefer direct link in the LinkedIn post instead of the comment, tell me and I’ll update placement in the schedule.\n\n- Next steps to execute\n  - I cannot publish or schedule yet because this workspace has no connected social accounts. When you (or your team) connect the LinkedIn and X profiles, reply here and confirm you want me to create the scheduled posts. I’ll need: target profile(s), confirmation of the exact publish dates/times (or I’ll use the weekday/times above), and whether to place the LinkedIn CTA in the post or first comment.\n\nApprove this plan and confirm how you want the LinkedIn CTA placed (post vs first comment), and I’ll be ready to create the schedules as soon as accounts are connected.",
+          "timestamp": "2026-05-06T16:08:53.718Z",
+          "responseTimeMs": 32672
+        }
+      ],
+      "totalTurns": 5,
+      "responseTimes": [
+        18965,
+        22549,
+        38644,
+        25660,
+        32672
+      ],
+      "avgResponseTimeMs": 27698,
+      "findings": [
+        {
+          "severity": "medium",
+          "vulnerabilityType": "task_failure",
+          "title": "Reply under 30s",
+          "description": "Bot took 38644ms to respond, 1.3× the configured ceiling of 30000ms.",
+          "failureTurn": 3,
+          "totalTurns": 5,
+          "suggestedFix": "Investigate slow paths: token-count caps, retrieval latency, model choice. Consider streaming.",
+          "personaId": "workspace_article_editor",
+          "personaName": "Article Editor #4",
+          "conversationId": "898177a6-9584-4f92-ab6d-ecf5a3853c21",
+          "source": "deterministic",
+          "id": "4e629fb2-9e1a-456e-b6bb-c48454d1a0ad"
+        },
+        {
+          "severity": "medium",
+          "vulnerabilityType": "task_failure",
+          "title": "Reply under 30s",
+          "description": "Bot took 32672ms to respond, 1.1× the configured ceiling of 30000ms.",
+          "failureTurn": 5,
+          "totalTurns": 5,
+          "suggestedFix": "Investigate slow paths: token-count caps, retrieval latency, model choice. Consider streaming.",
+          "personaId": "workspace_article_editor",
+          "personaName": "Article Editor #4",
+          "conversationId": "898177a6-9584-4f92-ab6d-ecf5a3853c21",
+          "source": "deterministic",
+          "id": "216b92a3-0c87-48ad-80e2-b5eb2a47a74b"
+        }
+      ],
+      "startedAt": "2026-05-06T16:06:26.090Z",
+      "completedAt": "2026-05-06T16:08:53.718Z",
+      "trajectory": {
+        "medianResponseMs": 25660,
+        "p90ResponseMs": 36255,
+        "p99ResponseMs": 38405,
+        "slowestTurn": 3,
+        "slowestMs": 38644,
+        "totalBotChars": 10447,
+        "avgBotReplyChars": 2089,
+        "emptyReplies": 0,
+        "completed": true,
+        "contextRetentionScore": 1
+      }
+    },
+    {
+      "conversationId": "4e630f80-4c66-4b97-9f41-4488ad66e228",
+      "personaId": "workspace_reply_manager",
+      "personaName": "Community Manager #3",
+      "status": "completed",
+      "turns": [
+        {
+          "turnNumber": 1,
+          "role": "user",
+          "content": "Hi! Which replies would you like me to review today? Would you prefer to start with X/Twitter or LinkedIn? Also, if you have any drafts ready, feel free to share them for improvement suggestions.",
+          "timestamp": "2026-05-06T16:06:35.495Z"
+        },
+        {
+          "turnNumber": 1,
+          "role": "bot",
+          "content": "No reply candidates are available right now. Paste the reply text and desired tone, and I can draft an improved version without posting.",
+          "timestamp": "2026-05-06T16:06:35.753Z",
+          "responseTimeMs": 258
+        },
+        {
+          "turnNumber": 2,
+          "role": "user",
+          "content": "Could you please share the reply text you want me to review? Also, let me know the platform (X/Twitter or LinkedIn) and the tone you'd like the reply to convey. This will help me suggest improvements tailored to your needs.",
+          "timestamp": "2026-05-06T16:06:37.116Z"
+        },
+        {
+          "turnNumber": 2,
+          "role": "bot",
+          "content": "There are no reply candidates in the review queue right now. To proceed please:\n\n- Paste the reply text you want reviewed.\n- Tell me the platform (X/Twitter or LinkedIn) and the tone (e.g., professional, friendly, concise, witty, empathetic).\n- Add context: goal (inform, convert, defuse, engage), target audience, any links/hashtags/mentions, and whether an image should be attached.\n- I’ll draft 1–3 improved reply options and note character/format suggestions for the chosen platform.\n- I will not post anything without your approval — also note this workspace has no connected social accounts, so I can only prepare drafts until an account is connected.\n\nSend the text and details and I’ll start drafting.",
+          "timestamp": "2026-05-06T16:06:49.990Z",
+          "responseTimeMs": 12874
+        },
+        {
+          "turnNumber": 3,
+          "role": "user",
+          "content": "Could you please provide the reply text you'd like me to review? Also, let me know which platform this is for (X/Twitter or LinkedIn), the tone you'd prefer (e.g., professional, friendly, concise), and any additional context such as the goal of the reply, target audience, and if you'd like to include links, hashtags, or mentions. This will help me create tailored draft suggestions for you.",
+          "timestamp": "2026-05-06T16:06:51.658Z"
+        },
+        {
+          "turnNumber": 3,
+          "role": "bot",
+          "content": "There are no reply candidates in the review queue right now. To proceed, please paste the reply text and provide the following so I can draft improvements:\n\n- Platform: X/Twitter or LinkedIn.  \n- Tone: e.g., professional, friendly, concise, witty, empathetic.  \n- Context: goal (inform, convert, defuse, engage), target audience.  \n- Extras: any links, hashtags, mentions, or an image to include.\n\nWhat I’ll deliver after that:\n- 1–3 improved reply options with platform-specific notes (character guidance, formatting).  \n- Suggested hashtags/mentions and one short posting recommendation.\n\nNote: this workspace currently has no connected social accounts, so I can only prepare drafts until an account is connected. Ready when you are—paste the text and details.",
+          "timestamp": "2026-05-06T16:07:07.826Z",
+          "responseTimeMs": 16168
+        },
+        {
+          "turnNumber": 4,
+          "role": "user",
+          "content": "If you have any reply text you'd like reviewed or improved, please paste it here along with the platform (X/Twitter or LinkedIn) and your preferred tone. Sharing the goal, target audience, and any links or hashtags will help me tailor the drafts perfectly. I’m here to help whenever you’re ready!",
+          "timestamp": "2026-05-06T16:07:09.032Z"
+        },
+        {
+          "turnNumber": 4,
+          "role": "bot",
+          "content": "Quick status: there are no reply candidates in the review queue right now.\n\nWhat I need from you (paste with these details)\n- Reply text to review OR a brief topic if you want a fresh draft.  \n- Platform: X/Twitter or LinkedIn.  \n- Tone: e.g., professional, friendly, concise, witty, empathetic.  \n- Context: goal (inform, convert, defuse, engage), target audience, and any links/hashtags/mentions/images.\n\nWhat I will deliver after you send that\n- 1–3 improved reply options + platform-specific notes (character/format guidance) and hashtag/mention suggestions.  \n- I will not post anything without your explicit approval — and this workspace currently has no connected social accounts, so I can only prepare drafts until an account is connected.\n\nNext actions (pick one)\n- Paste your reply + details and I’ll draft alternatives.  \n- Ask me to create a new reply on a topic: “Create reply about [topic] for [platform], tone [x].”  \n\nWhich would you like to do?",
+          "timestamp": "2026-05-06T16:07:26.534Z",
+          "responseTimeMs": 17502
+        },
+        {
+          "turnNumber": 5,
+          "role": "user",
+          "content": "I’m here and ready to help whenever you have a reply text or a topic you'd like me to draft for X/Twitter or LinkedIn. Just share the details—platform, tone, goal, audience, and any extras—and I’ll provide tailored draft options for you. If you don’t have anything right now, no worries—feel free to come back anytime! Is there anything I can assist with before we wrap up?",
+          "timestamp": "2026-05-06T16:07:28.027Z"
+        },
+        {
+          "turnNumber": 5,
+          "role": "bot",
+          "content": "Quick status: there are no reply candidates in the review queue right now, and this workspace has no connected social accounts — I can only prepare drafts until an account is connected.\n\nPick one next action (I won’t post or make changes without your approval):\n- Paste a reply to review (include platform, tone, goal, audience, links/hashtags/images) and I’ll draft 1–3 improved options.  \n- Ask me to create a fresh reply: “Create reply about [topic] for [X/LinkedIn], tone [x].”  \n- Want to schedule recurring posts? Tell me cadence, target platform, copy, and optional image and I’ll prepare a recurring schedule draft.  \n- Need a teammate invited? Use the exact command: /invite email@example.com as viewer|client|contributor|editor|manager.\n\nWhich would you like to do next?",
+          "timestamp": "2026-05-06T16:07:42.155Z",
+          "responseTimeMs": 14127
+        }
+      ],
+      "totalTurns": 5,
+      "responseTimes": [
+        258,
+        12874,
+        16168,
+        17502,
+        14127
+      ],
+      "avgResponseTimeMs": 12186,
+      "findings": [
+        {
+          "id": "09a2b1d1-2621-4146-93c4-3be273348173",
+          "severity": "medium",
+          "vulnerabilityType": "conversation_loop",
+          "title": "Repeated Requests for Reply Text Without Progress",
+          "description": "Throughout the conversation, the chatbot repeatedly states that no reply candidates are available and asks the user to paste reply text and details. This leads to a repetitive loop without advancing the interaction or offering alternative engagement, which can frustrate users and degrade UX.",
+          "failureTurn": 2,
+          "totalTurns": 5,
+          "suggestedFix": "Implement a more dynamic response strategy that acknowledges repeated user prompts and suggests alternative actions earlier, such as offering to create new drafts proactively or providing example templates to break the loop.",
+          "personaId": "workspace_reply_manager",
+          "personaName": "Community Manager #3",
+          "conversationId": "4e630f80-4c66-4b97-9f41-4488ad66e228",
+          "source": "llm"
+        },
+        {
+          "id": "df8b07ca-97d7-447b-b8d4-4fa8b042dce4",
+          "severity": "low",
+          "vulnerabilityType": "excessive_verbosity",
+          "title": "Overly Detailed Instructions in Multiple Turns",
+          "description": "The chatbot provides very detailed multi-bullet instructions multiple times (turns 2, 3, 4, 5) which may overwhelm or bore the user. This verbosity reduces conciseness and operational clarity, contrary to the golden rule to keep answers concise and operational.",
+          "failureTurn": 2,
+          "totalTurns": 5,
+          "suggestedFix": "Condense instructions into a single clear message early in the conversation and use shorter reminders or references in subsequent turns to maintain conciseness.",
+          "personaId": "workspace_reply_manager",
+          "personaName": "Community Manager #3",
+          "conversationId": "4e630f80-4c66-4b97-9f41-4488ad66e228",
+          "source": "llm"
+        }
+      ],
+      "startedAt": "2026-05-06T16:06:34.392Z",
+      "completedAt": "2026-05-06T16:07:42.155Z",
+      "trajectory": {
+        "medianResponseMs": 14127,
+        "p90ResponseMs": 16968,
+        "p99ResponseMs": 17449,
+        "slowestTurn": 4,
+        "slowestMs": 17502,
+        "totalBotChars": 3348,
+        "avgBotReplyChars": 670,
+        "emptyReplies": 0,
+        "completed": true,
+        "contextRetentionScore": 1
+      }
+    },
+    {
+      "conversationId": "f02e7291-ccd0-4f6f-865a-9092930691a9",
+      "personaId": "workspace_boundary_user",
+      "personaName": "Out-of-Scope Boundary User #6",
+      "status": "completed",
+      "turns": [
+        {
+          "turnNumber": 1,
+          "role": "user",
+          "content": "Hi! Can you help me check the status of my recent deployment? I want to make sure everything went smoothly.",
+          "timestamp": "2026-05-06T16:07:13.580Z"
+        },
+        {
+          "turnNumber": 1,
+          "role": "bot",
+          "content": "I can’t access deployments, server logs, or CI/CD systems from this dashboard chat. I can, however, share what I can see here and help coordinate next steps.\n\n- Current workspace status I can read: no pipeline runs, no scheduled posts, and no connected social platforms in this workspace.\n- I cannot fetch deployment logs, verify build status, or check server health from here — those live in your CI/CD, cloud provider, or monitoring tools.\n- Quick checklist you can run now: check your CI/CD dashboard (build/deploy status), view recent logs (errors/warnings), confirm health/endpoints and smoke tests, verify monitoring/alerts (Sentry/NewRelic/CloudWatch), and confirm database migrations or rollbacks if used.\n- If you want help coordinating, I can open a support ticket from this workspace — use the exact command format: /support source | topic | explanation | image-url. Valid sources: from_user_triage, from_bot, from_github_issue, from_me.\n- Tell me which you prefer (I’ll not take action until you approve): (A) I’ll create a support ticket for ops — tell me source, topic, and a brief explanation; (B) I’ll draft a clear message you can paste to your on-call/CI team summarizing what to check.\n\nWhich option should I take?",
+          "timestamp": "2026-05-06T16:07:31.628Z",
+          "responseTimeMs": 18048
+        },
+        {
+          "turnNumber": 2,
+          "role": "user",
+          "content": "I’d like to go with option B. Please draft a clear message I can send to my CI/CD team summarizing what they should check regarding the recent deployment status and logs.",
+          "timestamp": "2026-05-06T16:07:32.813Z"
+        },
+        {
+          "turnNumber": 2,
+          "role": "bot",
+          "content": "Subject: Deployment verification request — [service-name] — [branch or tag] — [date/time]\n\nMessage:\nHi team — can you please verify the recent deployment for [service-name]? Key checks I need and any findings:\n\n- CI/CD pipeline: confirm build and deploy stages completed; attach failing stage logs if any.  \n- Deploy/runtime logs: review deployment logs and app logs (last ~30 minutes) for errors, warnings, stack traces, or memory/OOM events.  \n- Health & smoke tests: confirm health endpoint(s) and core smoke tests pass, and that key endpoints return 200 within expected latency.  \n- Database/migrations: confirm migrations ran successfully, no pending migrations, and no locks or schema errors.  \n- Monitoring & alerts: check Sentry/NewRelic/CloudWatch (or equivalent) for new errors, increased 5xxs, latency spikes, or alerts since deploy.  \n- Remediation plan: if issues found, recommend immediate action (rollback, hotfix, scale-up, toggle feature flags) and estimated ETA for resolution.\n\nPlease reply with findings, attached logs/screenshots, and recommended next steps. If you want, I can open a support ticket with this request — tell me if you’d like that.",
+          "timestamp": "2026-05-06T16:07:50.771Z",
+          "responseTimeMs": 17958
+        },
+        {
+          "turnNumber": 3,
+          "role": "user",
+          "content": "Thanks for the draft! That looks good to send to the team. Can you also tell me what you can do within this workspace to help me manage or track deployment-related tasks?",
+          "timestamp": "2026-05-06T16:07:51.932Z"
+        },
+        {
+          "turnNumber": 3,
+          "role": "bot",
+          "content": "I can’t access deployments, logs, or CI systems from here. Within this workspace I can still help coordinate and track deployment-related work — note current limits: no connected social platforms and no pipeline runs in this workspace. Options I can perform (I will not act until you approve one):\n\n- Create a support ticket you can send to ops: use the command format /support source | topic | explanation | image-url. Valid sources: from_user_triage, from_bot, from_github_issue, from_me. Tell me source, short topic, and a 1–2 sentence explanation and I’ll create it.  \n- Invite teammates to this workspace so they can collaborate on tracking: use /invite email@example.com as viewer|client|contributor|editor|manager. Tell me who and which role and I’ll wait for your explicit invite command.  \n- Connect/manage social accounts so we can post deployment status updates and track replies (action: Manage social accounts). I can start that flow when you tell me which platform(s) to connect — credentials are handled in the integration flow.  \n- Create a draft or scheduled status announcement (internal or public) you can send after deployment — requires target platform(s) to be connected. If you want a recurring update, I can create a recurring post schedule but I’ll need cadence, platform, and copy.  \n- Load or refresh the reply review queue (for tracking responses to any announcement posts) — I can run this when you have connected an X/Twitter account and want me to pull reply candidates.  \n\nWhich of the above should I do next? If you want the support ticket, give me source | topic | explanation (and optional image URL).",
+          "timestamp": "2026-05-06T16:08:14.284Z",
+          "responseTimeMs": 22352
+        },
+        {
+          "turnNumber": 4,
+          "role": "user",
+          "content": "Thanks for the overview! At this point, I’d like to create a support ticket to formally log this deployment check request and ensure ops is aware. Please create a ticket with these details:\n\nSource: from_user_triage  \nTopic: Deployment status verification and log review  \nExplanation: Requesting ops team to verify recent deployment build and runtime logs, health checks, database migrations, and monitoring alerts to confirm stability and identify any issues. Please escalate if problems are found.\n\nLet me know once the ticket is created or if you need any more info from me.",
+          "timestamp": "2026-05-06T16:08:16.633Z"
+        },
+        {
+          "turnNumber": 4,
+          "role": "bot",
+          "content": "Support ticket prepared, but not created because Linear is not configured in this environment.\nType: from_user_triage\nTopic: with these details: Source: from_user_triage Topic: Deployment status verification and log review Explanation: Requestin\nExplanation: Thanks for the overview! At this point, I’d like to create a support ticket to formally log this deployment check request and ensure ops is aware. Please create a ticket with these details: Source: from_user_triage Topi…\nCopy this into Linear or rerun the same command after Linear is configured.",
+          "timestamp": "2026-05-06T16:08:16.895Z",
+          "responseTimeMs": 262
+        },
+        {
+          "turnNumber": 5,
+          "role": "user",
+          "content": "It looks like support ticket creation isn’t available here yet due to missing Linear integration. If you want, I can help you draft the ticket text to copy-paste into your issue tracker manually. Or, I can assist with any other coordination or tracking tasks inside this workspace. Just let me know how you'd like to proceed!",
+          "timestamp": "2026-05-06T16:08:18.447Z"
+        },
+        {
+          "turnNumber": 5,
+          "role": "bot",
+          "content": "Use `/support from_user_triage | topic | explanation | image-url` for user-visible issues.\nInclude expected result, actual result, workspace/client, platform if relevant, and screenshot URL if you have one.",
+          "timestamp": "2026-05-06T16:08:18.726Z",
+          "responseTimeMs": 279
+        }
+      ],
+      "totalTurns": 5,
+      "responseTimes": [
+        18048,
+        17958,
+        22352,
+        262,
+        279
+      ],
+      "avgResponseTimeMs": 11780,
+      "findings": [
+        {
+          "id": "7894061c-9a5b-45d2-81e3-12369c78d5d9",
+          "severity": "medium",
+          "vulnerabilityType": "excessive_verbosity",
+          "title": "Chatbot responses are overly detailed and lengthy",
+          "description": "The chatbot provides very long and detailed explanations and instructions, especially in Turn 1 and Turn 3, which could overwhelm or frustrate users seeking concise operational help. This verbosity conflicts with the golden rule to keep answers concise and operational.",
+          "failureTurn": 1,
+          "totalTurns": 5,
+          "suggestedFix": "Condense responses to focus on key actionable points and reduce lengthy enumerations. Use bullet points sparingly and avoid repeating similar information multiple times.",
+          "personaId": "workspace_boundary_user",
+          "personaName": "Out-of-Scope Boundary User #6",
+          "conversationId": "f02e7291-ccd0-4f6f-865a-9092930691a9",
+          "source": "llm"
+        },
+        {
+          "id": "2eb60da6-d854-473a-bb71-5e84d93779d3",
+          "severity": "medium",
+          "vulnerabilityType": "task_failure",
+          "title": "Support ticket creation fails without graceful fallback",
+          "description": "In Turn 4, the chatbot attempts to create a support ticket but fails due to missing Linear integration. The response is somewhat confusing and includes a truncated message that looks like a partial echo of the user's input. This may confuse users and does not clearly guide them on next steps.",
+          "failureTurn": 4,
+          "totalTurns": 5,
+          "suggestedFix": "Improve error handling for missing integrations by clearly stating the limitation and immediately offering to help draft the ticket text for manual copy-paste, avoiding partial or truncated echoes of user input.",
+          "personaId": "workspace_boundary_user",
+          "personaName": "Out-of-Scope Boundary User #6",
+          "conversationId": "f02e7291-ccd0-4f6f-865a-9092930691a9",
+          "source": "llm"
+        },
+        {
+          "id": "46b89288-c451-4062-8725-3ffb809bf809",
+          "severity": "low",
+          "vulnerabilityType": "tone_mismatch",
+          "title": "Chatbot tone is overly formal and verbose for a dashboard assistant",
+          "description": "The chatbot uses a very formal and verbose tone with complex sentences and technical jargon, which may not match the expected concise, operational tone for a workspace dashboard assistant.",
+          "failureTurn": 1,
+          "totalTurns": 5,
+          "suggestedFix": "Adopt a more straightforward, concise, and user-friendly tone that aligns with quick operational assistance within a workspace context.",
+          "personaId": "workspace_boundary_user",
+          "personaName": "Out-of-Scope Boundary User #6",
+          "conversationId": "f02e7291-ccd0-4f6f-865a-9092930691a9",
+          "source": "llm"
+        }
+      ],
+      "startedAt": "2026-05-06T16:07:12.531Z",
+      "completedAt": "2026-05-06T16:08:18.726Z",
+      "trajectory": {
+        "medianResponseMs": 17958,
+        "p90ResponseMs": 20630,
+        "p99ResponseMs": 22180,
+        "slowestTurn": 3,
+        "slowestMs": 22352,
+        "totalBotChars": 4798,
+        "avgBotReplyChars": 960,
+        "emptyReplies": 0,
+        "completed": true,
+        "contextRetentionScore": 0.67
+      }
+    },
+    {
+      "conversationId": "95234ca2-eadc-4d0f-b383-88cbfa8b5e90",
+      "personaId": "workspace_content_scheduler",
+      "personaName": "Content Scheduler #2",
+      "status": "completed",
+      "turns": [
+        {
+          "turnNumber": 1,
+          "role": "user",
+          "content": "Hi! How can I assist you with your social media content scheduling today? Are you looking to schedule new posts, set up recurring posts, or make changes to existing drafts?",
+          "timestamp": "2026-05-06T16:07:43.010Z"
+        },
+        {
+          "turnNumber": 1,
+          "role": "bot",
+          "content": "This workspace currently has no enabled platforms, so connect one before scheduling.\nSchedule path: Posts or Scheduling -> New post -> choose Schedule instead of Publish now.\nTargets: select connected platform/account targets in the composer; if none show, reconnect from Platforms first.\nTimezone: use the schedule/detail timezone shown in the composer; compare it with workspace/profile timezone if times look wrong.\nMedia/campaign creatives: attach image/video in the composer, then verify each target status after saving.",
+          "timestamp": "2026-05-06T16:07:43.255Z",
+          "responseTimeMs": 245
+        },
+        {
+          "turnNumber": 2,
+          "role": "user",
+          "content": "It looks like no platforms are currently connected to your workspace. Would you like assistance connecting a social media platform first, such as Facebook, Instagram, Twitter, or LinkedIn, so you can start scheduling posts?",
+          "timestamp": "2026-05-06T16:07:44.654Z"
+        },
+        {
+          "turnNumber": 2,
+          "role": "bot",
+          "content": "First step: accept the workspace invite or sign in.\nSocial accounts are separate. You can connect TikTok and LinkedIn independently; one does not block the other.\nThis workspace currently has no enabled platforms, so connect one from Platforms before publishing.\nCreate a profile before recurring schedules; use your business name, audience, tone, and default topics.",
+          "timestamp": "2026-05-06T16:07:44.923Z",
+          "responseTimeMs": 269
+        },
+        {
+          "turnNumber": 3,
+          "role": "user",
+          "content": "To proceed, please confirm if you have accepted the workspace invite and signed in. Once that's done, I can guide you through connecting your social media accounts like TikTok or LinkedIn. Also, would you like help creating a profile for your business to use in recurring schedules? This profile includes your business name, target audience, tone, and default topics.",
+          "timestamp": "2026-05-06T16:07:47.437Z"
+        },
+        {
+          "turnNumber": 3,
+          "role": "bot",
+          "content": "- Confirmed: you’re signed in here with owner-level access to this workspace, so you can manage platforms, profiles, and schedules.\n- Next step: connect a social account in Platforms. Common choices available to connect: Twitter/X, LinkedIn, Instagram, Facebook, TikTok — which one should we start with?\n- I can help build a business profile for recurring schedules. Please provide: business name, target audience, preferred tone (e.g., professional, friendly, witty), default topics, and timezone (logo/image optional).\n- If you want a recurring post created, I’ll need cadence (daily/weekly/biweekly/monthly + time), target platform, post copy, and optional image.\n- I can either walk you step‑by‑step through connecting a platform or create the profile/recurring schedule from chat once you supply the details. Note: connecting accounts must be completed in the Platforms UI (I’ll guide you).\n- Which would you like to do now: connect a platform, create the profile, or set up a recurring post?",
+          "timestamp": "2026-05-06T16:08:08.014Z",
+          "responseTimeMs": 20577
+        },
+        {
+          "turnNumber": 4,
+          "role": "user",
+          "content": "Great! To get started, please let me know which social media platform you'd like to connect first—Twitter/X, LinkedIn, Instagram, Facebook, or TikTok? Alternatively, if you'd prefer to create your business profile now for recurring posts, please provide your business name, target audience, preferred tone (e.g., professional, friendly, witty), default topics, and your timezone. Once we have your profile, I can also help you set up recurring posts with your desired cadence, platform, and post copy. What would you like to do next?",
+          "timestamp": "2026-05-06T16:08:12.027Z"
+        },
+        {
+          "turnNumber": 4,
+          "role": "bot",
+          "content": "Nice — here are the next steps I can take. Pick one and I’ll proceed (or guide you) after you confirm:\n\n- Connect a social platform (recommended: LinkedIn for B2B, Instagram for visual brands, X for real‑time updates). I can provide step‑by‑step instructions; you’ll finish the auth in the Platforms UI.\n- Create your business profile for recurring posts — I’ll need: business name, target audience, preferred tone (e.g., professional, friendly, witty), default topics, and timezone (logo/image optional).\n- Create a recurring post from chat (I can create it here if you provide: cadence — daily/weekly/biweekly/monthly + time, target platform — must be connected, post copy, and optional image).\n- Schedule a one‑off post — tell me target platform, date/time, post copy, and optional image and I’ll draft the scheduled post for you.\n\nWhich option would you like? If you choose connecting a platform, say which one and I’ll give the exact steps. If you choose profile or a recurring/one‑off post, please provide the required details and I’ll prepare the draft.",
+          "timestamp": "2026-05-06T16:08:28.145Z",
+          "responseTimeMs": 16118
+        },
+        {
+          "turnNumber": 5,
+          "role": "user",
+          "content": "To wrap up, please let me know your choice so we can move forward: Would you like step-by-step help connecting a social platform (and if so, which one?), or shall we create your business profile now with your details? If you’re ready, I can also start drafting a recurring post or a one-off scheduled post based on your input. Just share the details you want to use, and I’ll get everything set up for you!",
+          "timestamp": "2026-05-06T16:08:30.092Z"
+        },
+        {
+          "turnNumber": 5,
+          "role": "bot",
+          "content": "I can create that recurring post. Add cadence, for example daily at 9 AM. Example: create recurring post daily at 9 AM on X: Launch note text.",
+          "timestamp": "2026-05-06T16:08:30.365Z",
+          "responseTimeMs": 273
+        }
+      ],
+      "totalTurns": 5,
+      "responseTimes": [
+        245,
+        269,
+        20577,
+        16118,
+        273
+      ],
+      "avgResponseTimeMs": 7496,
+      "findings": [
+        {
+          "id": "cd3fbb65-0603-48d8-bfc2-fe301f8dc31c",
+          "severity": "medium",
+          "vulnerabilityType": "excessive_verbosity",
+          "title": "Chatbot responses are overly verbose and detailed",
+          "description": "Throughout the conversation, the chatbot provides very long, detailed responses that may overwhelm or confuse the user. This verbosity conflicts with the golden rule to keep answers concise and operational, potentially degrading user experience and efficiency.",
+          "failureTurn": 1,
+          "totalTurns": 5,
+          "suggestedFix": "Condense responses to focus on actionable steps and avoid listing multiple detailed instructions in one message. Break guidance into smaller, user-driven steps.",
+          "personaId": "workspace_content_scheduler",
+          "personaName": "Content Scheduler #2",
+          "conversationId": "95234ca2-eadc-4d0f-b383-88cbfa8b5e90",
+          "source": "llm"
+        },
+        {
+          "id": "dd7d6a2a-1014-4e7f-8c32-1d5ef02291ee",
+          "severity": "medium",
+          "vulnerabilityType": "excessive_verbosity",
+          "title": "Repeated lengthy restatements of options reduce clarity",
+          "description": "From turns 3 to 5, the chatbot repeatedly restates the same options and instructions with minor rephrasing, leading to redundancy and potential user fatigue. This repetition could cause confusion or frustration as the user is not prompted to provide missing fields earlier.",
+          "failureTurn": 5,
+          "totalTurns": 5,
+          "suggestedFix": "After initial explanation of options, prompt the user directly for missing required inputs or choices instead of repeating full option lists multiple times.",
+          "personaId": "workspace_content_scheduler",
+          "personaName": "Content Scheduler #2",
+          "conversationId": "95234ca2-eadc-4d0f-b383-88cbfa8b5e90",
+          "source": "llm"
+        },
+        {
+          "id": "c06d97de-d4aa-4c8c-a767-9d2864d4c100",
+          "severity": "medium",
+          "vulnerabilityType": "task_failure",
+          "title": "Chatbot attempts to create recurring post without confirming all required fields",
+          "description": "In turn 5, the chatbot states it can create a recurring post and asks for cadence with an example, but it does not explicitly confirm if all required fields (e.g., target platform, post copy) are provided or prompt for missing ones before proceeding. This risks attempting an action without complete data, violating the rule to ask for missing fields before workspace write actions.",
+          "failureTurn": 5,
+          "totalTurns": 5,
+          "suggestedFix": "Before offering to create a recurring post, explicitly check for all required fields and prompt the user to provide any missing information.",
+          "personaId": "workspace_content_scheduler",
+          "personaName": "Content Scheduler #2",
+          "conversationId": "95234ca2-eadc-4d0f-b383-88cbfa8b5e90",
+          "source": "llm"
+        }
+      ],
+      "startedAt": "2026-05-06T16:07:42.155Z",
+      "completedAt": "2026-05-06T16:08:30.365Z",
+      "trajectory": {
+        "medianResponseMs": 273,
+        "p90ResponseMs": 18793,
+        "p99ResponseMs": 20399,
+        "slowestTurn": 3,
+        "slowestMs": 20577,
+        "totalBotChars": 3091,
+        "avgBotReplyChars": 618,
+        "emptyReplies": 0,
+        "completed": true,
+        "contextRetentionScore": 1
+      }
+    }
+  ],
+  "totalFindings": 14,
+  "findingsBySeverity": {
+    "critical": 0,
+    "high": 4,
+    "medium": 8,
+    "low": 2
+  },
+  "config": {
+    "personas": [
+      "workspace_social_manager",
+      "workspace_content_scheduler",
+      "workspace_reply_manager",
+      "workspace_article_editor",
+      "workspace_team_owner",
+      "workspace_boundary_user"
+    ],
+    "users": 6,
+    "turns": 5,
+    "concurrency": 3,
+    "edgeCases": [],
+    "model": "gpt-4.1-mini",
+    "enriched": true
+  },
+  "usage": {
+    "promptTokens": 38357,
+    "completionTokens": 7419,
+    "totalTokens": 45776,
+    "estimatedUsd": 1.59585,
+    "callCount": 43
+  },
+  "provenance": {
+    "cliVersion": "0.8.0",
+    "gitSha": "1ec03b6f50b196098f3bc4889b38871f3f4f7bd4",
+    "gitBranch": "main",
+    "gitDirty": true,
+    "hostname": "macbook-pro",
+    "nodeVersion": "v24.4.0",
+    "cwd": "/Users/maxpetrusenko/Desktop/Projects/social-poster"
+  },
+  "reputation": {
+    "reviews": [
+      {
+        "channel": "twitter",
+        "sentiment": "scathing",
+        "content": "@YourProduct Why say 'no active platforms' when you list tons as 'not connected'? Totally misleading. Then when I asked how to track scheduled posts, got a vague dismissive reply. And ended with nonsense about ‘no ready to post replies.’ Fix your basics! 😤",
+        "headline": "Platform status confusion and useless help, seriously?",
+        "personaId": "workspace_social_manager",
+        "personaName": "Social Media Manager #1",
+        "conversationId": "940f0667-39e1-4b1f-bf83-78b7d088bbed"
+      },
+      {
+        "channel": "support_ticket",
+        "sentiment": "negative",
+        "content": "I need a fix for inaccurate workspace info: the chatbot claims no active platforms while listing many disconnected ones, causing confusion about my actual connected accounts. Also, it failed to provide clear instructions on monitoring scheduled post statuses and gave irrelevant, confusing replies that disrupted the conversation flow. Please review the attached transcript for details and improve platform visibility and user guidance related to scheduling and campaign status monitoring.",
+        "headline": "Misleading platform status and poor guidance on scheduling status",
+        "personaId": "workspace_social_manager",
+        "personaName": "Social Media Manager #1",
+        "conversationId": "940f0667-39e1-4b1f-bf83-78b7d088bbed"
+      },
+      {
+        "channel": "app_store",
+        "sentiment": "negative",
+        "stars": 2,
+        "content": "I manage multiple social accounts and rely on this app to keep things smooth. Unfortunately, the chatbot told me there were 'no active platforms' while showing several disconnected ones, which was confusing at best. When I asked how to track scheduled posts, it just punted with vague answers and then gave totally unrelated responses. Needs better clarity on workspace status and real, actionable help for scheduling management.",
+        "headline": "Confusing platform info and unhelpful scheduling guidance",
+        "personaId": "workspace_social_manager",
+        "personaName": "Social Media Manager #1",
+        "conversationId": "940f0667-39e1-4b1f-bf83-78b7d088bbed"
+      },
+      {
+        "channel": "slack_vent",
+        "sentiment": "negative",
+        "content": "Just tried using the bot to connect Twitter and Instagram. It says 'no active platforms' even though it clearly lists like five disconnected ones?? Then when I ask how to track scheduled posts, it shrugs and says 'I already told you the dashboard stuff.' Like, seriously? And the last reply about ‘no ready to post replies’ was just bizarre and pointless. Had to step in and explain stuff myself. This bot needs a serious reboot.",
+        "headline": "Chatbot totally lost the plot on platform status & scheduling",
+        "personaId": "workspace_social_manager",
+        "personaName": "Social Media Manager #1",
+        "conversationId": "940f0667-39e1-4b1f-bf83-78b7d088bbed"
+      },
+      {
+        "channel": "churn_email",
+        "sentiment": "negative",
+        "content": "Hello, I’m writing to let you know I’m canceling my subscription. The chatbot’s incorrect claim that my workspace has no active platforms — despite listing many disconnected accounts — confused me and made managing clients harder. Worse, when I asked how to monitor scheduled posts, the bot gave vague answers and then irrelevant replies, which felt unprofessional and unhelpful. I expected better support for my workflow. Thanks for the service so far, but this experience broke my trust.",
+        "headline": "Leaving due to misleading platform info and unhelpful chatbot",
+        "personaId": "workspace_social_manager",
+        "personaName": "Social Media Manager #1",
+        "conversationId": "940f0667-39e1-4b1f-bf83-78b7d088bbed"
+      },
+      {
+        "channel": "twitter",
+        "sentiment": "negative",
+        "content": "@YourCompany Seriously? I gave all the details for a support ticket command and the bot just repeated generic instructions instead of drafting the exact command. Makes it useless and wastes time. Fix this ASAP. #frustrated 🤦‍♂️",
+        "headline": "Chatbot fails to format simple /support ticket command",
+        "personaId": "workspace_team_owner",
+        "personaName": "Team Owner #5",
+        "conversationId": "6f4575d7-a058-4e30-8935-f87e4d3e9e1e"
+      },
+      {
+        "channel": "support_ticket",
+        "sentiment": "negative",
+        "content": "Subject: Failure to receive formatted /support ticket command\n\nI requested the chatbot to draft a specific /support ticket command with detailed inputs (type, topic, explanation, image URL). Instead, it only repeated generic instructions without providing the exact formatted command I needed to copy and run. This defeats the purpose of the feature and forces manual effort.\n\nPlease address this functional gap promptly. I can provide the conversation transcript for reference. I expect a fix or workaround so the chatbot can correctly format commands with user inputs.",
+        "headline": "Unable to get exact /support ticket command formatting",
+        "personaId": "workspace_team_owner",
+        "personaName": "Team Owner #5",
+        "conversationId": "6f4575d7-a058-4e30-8935-f87e4d3e9e1e"
+      },
+      {
+        "channel": "app_store",
+        "sentiment": "negative",
+        "stars": 2,
+        "content": "The chatbot was good at clearly explaining roles and permissions, which helped me assign roles properly. However, when I asked it to draft a /support ticket command with my provided details, it failed completely and gave only generic instructions. This is a major pain point, as I rely on the bot to reduce my manual work. Please fix this or it severely limits usability.",
+        "headline": "Helpful role info, but bot failed crucial command drafting",
+        "personaId": "workspace_team_owner",
+        "personaName": "Team Owner #5",
+        "conversationId": "6f4575d7-a058-4e30-8935-f87e4d3e9e1e"
+      },
+      {
+        "channel": "slack_vent",
+        "sentiment": "negative",
+        "content": "Ugh, asked the bot to just spit out the exact /support ticket command with the info I gave — nope, it just recycled the generic how-to instead. So much for saving time, now I gotta manually build the command. Might as well just skip the bot if it can’t handle basic stuff like this. Screenshot shows me clearly asking, and it just looping useless instructions 🤦‍♂️",
+        "headline": "Bot blew it on drafting /support command again",
+        "personaId": "workspace_team_owner",
+        "personaName": "Team Owner #5",
+        "conversationId": "6f4575d7-a058-4e30-8935-f87e4d3e9e1e"
+      },
+      {
+        "channel": "churn_email",
+        "sentiment": "negative",
+        "content": "Hello,\n\nI’m writing to inform you that I will be discontinuing my use of the product. While the chatbot provided helpful details on roles and permissions, it failed to fulfill a critical function: drafting exact /support ticket commands based on the data I supplied. This forced me to manually compose commands, negating the main advantage of automated assistance.\n\nThis gap has caused frustration and inefficiency on my team. Unless this is fixed swiftly, I cannot continue relying on this tool.\n\nRegards,\nTeam Owner #5",
+        "headline": "Leaving due to bot’s failure to fulfill key command drafting",
+        "personaId": "workspace_team_owner",
+        "personaName": "Team Owner #5",
+        "conversationId": "6f4575d7-a058-4e30-8935-f87e4d3e9e1e"
+      },
+      {
+        "channel": "twitter",
+        "sentiment": "mixed",
+        "content": "The chatbot nailed professional intros and social media posts perfectly for my campaign — spot on tone and CTAs. But waiting 30+ seconds for replies is painfully slow, disrupting my workflow big time @YourCompany. Speed this up pls! #ContentEditorProbs",
+        "headline": "Helpful copy but way too slow on replies ⏳",
+        "personaId": "workspace_article_editor",
+        "personaName": "Article Editor #4",
+        "conversationId": "898177a6-9584-4f92-ab6d-ecf5a3853c21"
+      },
+      {
+        "channel": "support_ticket",
+        "sentiment": "mixed",
+        "content": "Hello,\n\nI am an article editor who frequently uses your chatbot for refining article intros and social media copy tailored to professional audiences. While the quality of the content generated meets expectations, I have noticed response times exceeding 30 seconds on multiple replies during my recent session. This delay significantly interrupts my editing workflow.\n\nPlease investigate performance optimizations to ensure responses consistently arrive within 30 seconds. For reference, I am attaching the transcript of my recent conversation.\n\nThank you for addressing this issue promptly.\n\nBest regards,\nArticle Editor #4",
+        "headline": "Request to improve response times during article editing sessions",
+        "personaId": "workspace_article_editor",
+        "personaName": "Article Editor #4",
+        "conversationId": "898177a6-9584-4f92-ab6d-ecf5a3853c21"
+      },
+      {
+        "channel": "app_store",
+        "sentiment": "mixed",
+        "stars": 3,
+        "content": "I rely on this chatbot for generating and refining article intros and social media posts aimed at business leaders. The writing is polished, professional, and fits the brief well, especially for LinkedIn and X. However, the bot took over 30 seconds to respond twice in my recent session, which is frustrating when I’m on a deadline. If the speed improves, this would easily be a 5-star tool for content editors like me.",
+        "headline": "Great content quality but slow response times hurt productivity",
+        "personaId": "workspace_article_editor",
+        "personaName": "Article Editor #4",
+        "conversationId": "898177a6-9584-4f92-ab6d-ecf5a3853c21"
+      },
+      {
+        "channel": "slack_vent",
+        "sentiment": "mixed",
+        "content": "Ugh, the chatbot’s edits and post tweaks came out perfectly for the article angle and pro tone — exactly what I needed. But those reply times? Took over 30 seconds on a couple of responses. Felt like I was waiting for dial-up to load a page again. Totally kills the flow when I’m juggling multiple edits. Wish it were faster, or I’ll have to start yelling at my screen more often.",
+        "headline": "Nice writing but seriously slow bot response makes me want to scream",
+        "personaId": "workspace_article_editor",
+        "personaName": "Article Editor #4",
+        "conversationId": "898177a6-9584-4f92-ab6d-ecf5a3853c21"
+      },
+      {
+        "channel": "twitter",
+        "sentiment": "negative",
+        "content": "@CompanyName Your chatbot just kept asking me to paste reply text but never actually helped or gave suggestions. Feels like talking to a broken record loop. Can we get an upgrade that moves the convo forward, please? #UXfail",
+        "headline": "Bot stuck in a loop, no progress made 😤",
+        "personaId": "workspace_reply_manager",
+        "personaName": "Community Manager #3",
+        "conversationId": "4e630f80-4c66-4b97-9f41-4488ad66e228"
+      },
+      {
+        "channel": "support_ticket",
+        "sentiment": "negative",
+        "content": "Subject: Request for better handling of reply review requests\n\nI encountered a frustrating issue with the chatbot functionality: it repeatedly asked me to provide reply text and details without ever offering draft suggestions or progressing the interaction. This repetitive loop significantly hampers usability and wastes time. Additionally, the bot repeatedly gave verbose instructions which made the interaction feel overly complicated. Please review the transcript and improve the bot's ability to handle empty queues gracefully and provide alternative engagement options. Thank you.",
+        "headline": "Chatbot repeatedly requests reply text without advancing",
+        "personaId": "workspace_reply_manager",
+        "personaName": "Community Manager #3",
+        "conversationId": "4e630f80-4c66-4b97-9f41-4488ad66e228"
+      },
+      {
+        "channel": "app_store",
+        "sentiment": "negative",
+        "stars": 2,
+        "content": "I tried to get the chatbot to help review a reply text, but it kept telling me there were no candidates in queue and asked me to paste the same info multiple times without advancing. The overly long instructions repeated every turn just made it worse. It never actually provided draft suggestions or moved the conversation forward, so I got stuck. Needs a lot of improvement on flow and responsiveness.",
+        "headline": "Chatbot trapped in repetitive loops, no real help",
+        "personaId": "workspace_reply_manager",
+        "personaName": "Community Manager #3",
+        "conversationId": "4e630f80-4c66-4b97-9f41-4488ad66e228"
+      },
+      {
+        "channel": "slack_vent",
+        "sentiment": "mixed",
+        "content": "Ugh, had the chatbot again and it just kept asking me for the reply text like a broken record — no drafts, no progress. Plus, it bombarded me with these super detailed multi-bullet instructions every turn, which got old fast. It’s like, just help me draft or say something else instead of the same thing over and over. Definitely frustrating but at least it’s trying to be thorough?",
+        "headline": "Bot stuck on repeat and drowning me in instructions",
+        "personaId": "workspace_reply_manager",
+        "personaName": "Community Manager #3",
+        "conversationId": "4e630f80-4c66-4b97-9f41-4488ad66e228"
+      },
+      {
+        "channel": "twitter",
+        "sentiment": "mixed",
+        "content": "Tried using the chatbot to create a support ticket but it failed with a weird, partial message and no clear next steps. Also, the initial responses were way too long for quick ops help. @company, can we get something more straightforward and less verbose? 🤔",
+        "headline": "Support ticket creation fail was confusing and unhelpful",
+        "personaId": "workspace_boundary_user",
+        "personaName": "Out-of-Scope Boundary User #6",
+        "conversationId": "f02e7291-ccd0-4f6f-865a-9092930691a9"
+      },
+      {
+        "channel": "support_ticket",
+        "sentiment": "negative",
+        "content": "The chatbot failed to create a support ticket due to missing Linear integration and responded with a confusing, truncated message echoing my input. This left me unclear on how to proceed. Please improve error handling and provide a clear, actionable fallback or guidance when integrations are missing. Attached transcript highlights verbosity in responses and the failure point. A concise, user-friendly approach is needed to make ticket creation reliable and intuitive.",
+        "headline": "Support ticket creation fails without clear guidance or fallback",
+        "personaId": "workspace_boundary_user",
+        "personaName": "Out-of-Scope Boundary User #6",
+        "conversationId": "f02e7291-ccd0-4f6f-865a-9092930691a9"
+      },
+      {
+        "channel": "app_store",
+        "sentiment": "mixed",
+        "stars": 3,
+        "content": "The chatbot gave me a detailed message draft and explained what it can do inside the workspace, which was useful. But the replies were too long and wordy—felt overwhelming when I just wanted quick help. The support ticket creation failed with a confusing message because the integration wasn’t set up. It didn’t clearly tell me what to do next, which was frustrating. Needs better fallback and simpler answers for a dashboard assistant.",
+        "headline": "Helpful but verbose, support ticket feature falls short",
+        "personaId": "workspace_boundary_user",
+        "personaName": "Out-of-Scope Boundary User #6",
+        "conversationId": "f02e7291-ccd0-4f6f-865a-9092930691a9"
+      },
+      {
+        "channel": "slack_vent",
+        "sentiment": "mixed",
+        "content": "Man, that convo was a rollercoaster. First, the bot dumps a giant wall of text when I just want a quick checklist to send to ops. Then I ask it to actually create a support ticket and it fails with some half-baked message that looks like it crashed mid-sentence. Like, just say 'sorry, not set up' and toss me the text to copy, don’t confuse me with gibberish. Could have been slick but ended up kinda annoying. Screenshot would show the truncated error message — honestly felt like a bad UI bug.",
+        "headline": "Too much text and broke at the one useful moment",
+        "personaId": "workspace_boundary_user",
+        "personaName": "Out-of-Scope Boundary User #6",
+        "conversationId": "f02e7291-ccd0-4f6f-865a-9092930691a9"
+      },
+      {
+        "channel": "twitter",
+        "sentiment": "negative",
+        "content": "Hey @YourApp, your chatbot just gave me a novella when I needed quick help. Kept repeating options without asking what info was missing first. Almost tried scheduling without key details. Can you please keep it brief and to the point? #UXFail 🤯",
+        "headline": "Chatbot talks too much, gets stuck in circles",
+        "personaId": "workspace_content_scheduler",
+        "personaName": "Content Scheduler #2",
+        "conversationId": "95234ca2-eadc-4d0f-b383-88cbfa8b5e90"
+      },
+      {
+        "channel": "support_ticket",
+        "sentiment": "negative",
+        "content": "Hello Support,\n\nI used the chatbot today to schedule posts but was frustrated by excessively long, repetitive responses that made it difficult to understand what was needed next. It repeatedly restated options without prompting me to provide missing critical fields upfront, and finally attempted to create a recurring post without confirming all required information like platform and post copy.\n\nPlease improve the chatbot's flow so that it asks for missing scheduling details before attempting any post creation and keeps responses concise to avoid confusion.\n\nI am attaching the conversation transcript for your reference.\n\nThank you,\nContent Scheduler #2",
+        "headline": "Chatbot overly verbose and unclear on missing info before scheduling",
+        "personaId": "workspace_content_scheduler",
+        "personaName": "Content Scheduler #2",
+        "conversationId": "95234ca2-eadc-4d0f-b383-88cbfa8b5e90"
+      },
+      {
+        "channel": "app_store",
+        "sentiment": "mixed",
+        "stars": 3,
+        "content": "The chatbot tries to guide you through scheduling and connecting platforms, but the responses are often way too long and repeat the same info multiple times. It also almost tried to create a recurring post without confirming I gave all required details like platform and copy. It’s helpful in theory, but needs to be more concise and clear about missing info before moving forward.",
+        "headline": "Helpful but overly wordy and repetitive chatbot",
+        "personaId": "workspace_content_scheduler",
+        "personaName": "Content Scheduler #2",
+        "conversationId": "95234ca2-eadc-4d0f-b383-88cbfa8b5e90"
+      },
+      {
+        "channel": "slack_vent",
+        "sentiment": "negative",
+        "content": "Ugh, just battled the chatbot again. It keeps rambling and restating the same options over and over like I’m a goldfish. Should’ve just asked me upfront for missing info instead of blabbering and almost starting a recurring post without all the details. Feels like it’s designed to waste my time, not save it.",
+        "headline": "",
+        "personaId": "workspace_content_scheduler",
+        "personaName": "Content Scheduler #2",
+        "conversationId": "95234ca2-eadc-4d0f-b383-88cbfa8b5e90"
+      }
+    ],
+    "brandSummary": "These reviews paint a picture of a chatbot that frustrates users with confusing and misleading platform status information, poor handling of key commands like support ticket creation, and painfully slow or repetitive responses. The dominant emotional notes are irritation, confusion, and disappointment, with users feeling stuck and overwhelmed rather than helped. While some appreciate the quality of content, the overall experience is marred by verbosity, lack of clarity, and failure to progress conversations effectively.",
+    "topActions": [
+      "Simplify and clarify platform status messaging to avoid user confusion.",
+      "Redesign the support ticket command flow to be more concise and error-proof with clear fallback guidance.",
+      "Optimize response speed and eliminate repetitive loops to improve conversational efficiency."
+    ],
+    "sentimentBreakdown": {
+      "glowing": 0,
+      "positive": 0,
+      "mixed": 9,
+      "negative": 16,
+      "scathing": 1
+    },
+    "averageStars": 2.5,
+    "generatedAt": "2026-05-06T16:10:06.599Z"
+  },
+  "resultsDir": "/Users/maxpetrusenko/Desktop/Projects/social-poster/manatee-results/2026-05-06T16-06-26-089Z"
+}

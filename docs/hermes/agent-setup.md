@@ -78,6 +78,24 @@ MAXICLAW_GH_USER=<github-user> scripts/hermes-agent ticket-pr \
   "Pick Linear ticket SHR-123, implement it, run tests, push a branch, and open a draft PR. Do not merge."
 ```
 
+## Running The 30-Minute Linear Poller
+
+The fleet ticket flow is documented in `docs/hermes/coolify-ticket-automation.md`.
+
+Dry-run first:
+
+```bash
+npm run tickets:poll -- --dry-run
+```
+
+Run once with Hermes enabled:
+
+```bash
+npm run tickets:poll -- --run
+```
+
+Configure `HERMES_LINEAR_PROJECTS` with one entry per Coolify app and keep the state file on persistent disk. The poller only picks up tickets with the configured ready label, default `agent:ready`.
+
 ## Guardrails
 
 - The script refuses to run PR automation unless `gh api user` on the mini matches `MAXICLAW_GH_USER`.

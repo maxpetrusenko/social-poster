@@ -80,9 +80,9 @@ export const DEFAULT_RSS_SETTINGS: RssSettingsConfig = {
     "ban_phrases: wild|pay attention|been waiting for this|interesting",
     "title_case_on_x: true",
   ].join("\n"),
-  imageSelectionMode: "prefer_feed",
+  imageSelectionMode: "prefer_open_graph",
   imageSelectionNotes:
-    "prefer feed image first. if the feed has no image, fall back to open graph. use feed_only when you want stricter source fidelity.",
+    "prefer verified open graph/source images first. fall back to a verified feed image only when OG is missing. never use screenshots or tiny thumbnails for scheduled posts.",
 };
 
 const LEGACY_X_TEMPLATE = "{{reaction}} {{titleLower}}. {{insight}}";

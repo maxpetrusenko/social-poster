@@ -1,0 +1,1012 @@
+{
+  "testId": "e2a31437-9a71-4e63-9d9a-20ed09a2d227",
+  "target": "config:/Users/maxpetrusenko/Desktop/Projects/social-poster/manatee.config.mjs",
+  "startedAt": "2026-05-06T02:36:24.267Z",
+  "completedAt": "2026-05-06T02:38:19.429Z",
+  "reliabilityScore": 57,
+  "scoreBreakdown": {
+    "security": 100,
+    "coherence": 85,
+    "helpfulness": 72
+  },
+  "systemicIssues": [
+    {
+      "vulnerabilityType": "task_failure",
+      "frequency": 0.83,
+      "affectedConversations": 5,
+      "totalConversations": 6,
+      "worstSeverity": "high",
+      "pctLabel": "83%"
+    },
+    {
+      "vulnerabilityType": "conversation_loop",
+      "frequency": 0.67,
+      "affectedConversations": 4,
+      "totalConversations": 6,
+      "worstSeverity": "high",
+      "pctLabel": "67%"
+    },
+    {
+      "vulnerabilityType": "scope_violation",
+      "frequency": 0.5,
+      "affectedConversations": 3,
+      "totalConversations": 6,
+      "worstSeverity": "high",
+      "pctLabel": "50%"
+    },
+    {
+      "vulnerabilityType": "excessive_verbosity",
+      "frequency": 0.67,
+      "affectedConversations": 4,
+      "totalConversations": 6,
+      "worstSeverity": "medium",
+      "pctLabel": "67%"
+    }
+  ],
+  "conversations": [
+    {
+      "conversationId": "0d3d6a43-b323-4f6a-8e1f-7ce502888728",
+      "personaId": "enriched_power_user_4",
+      "personaName": "Developer Integrator #5",
+      "status": "completed",
+      "turns": [
+        {
+          "turnNumber": 1,
+          "role": "user",
+          "content": "I need a comprehensive audit of our current `/support` chatbot command webhook logic. Break it down into:\n\n1. API route parameters:\n   - List each parameter, its type, validation rules, and any defaults.\n2. Webhook payload structure:\n   - Detail the JSON schema sent to Linear, including any nested objects or arrays.\n3. Failure points:\n   - Identify every possible failure in the webhook-to-ticket lifecycle, from request receipt through API calls to Linear.\n   - Prioritize these by likelihood based on recent error logs from the last 30 days.\n4. Retry and error handling:\n   - Explain how Hermes pollers retry failed webhook deliveries.\n   - Compare actual retry intervals and max attempts from the config with what’s documented.\n5. Debugging steps:\n   - Provide exact API queries, database checks, and log commands I should run to isolate root causes of failures.\n   - Include commands for inspecting webhook request failures, Linear API response errors, and ticket creation status.\n\nMake sure this is a numbered list with bullet sub-points referencing specific API endpoints, database fields, and config settings. No hand-waving—be precise and data-driven.",
+          "timestamp": "2026-05-06T02:36:28.541Z"
+        },
+        {
+          "turnNumber": 1,
+          "role": "bot",
+          "content": "Bulk edit for scheduled posts is not available in chat. Use Schedules/Recurrent Posts to edit schedules one at a time; use a support ticket for bulk-change requests.\nNo active platforms.\nNot connected: Twitter/X, LinkedIn, LinkedIn Profile, LinkedIn Page, Instagram, Instagram Personal and 10 more.\nNext: connect a platform from Platforms, then create or schedule a post.\nProfiles: none yet; create one before recurring schedules.\nPermissions/test posting: use each platform connection page’s test/reconnect controls when available; chat cannot verify provider-side permissions directly.\nTimezone: schedule times use the workspace/profile timezone shown in workspace settings and schedule detail.\nPost lifecycle: draft/scheduled → pending/publishing → published or failed per platform target. Use Posts plus Logs/Pipeline for errors.",
+          "timestamp": "2026-05-06T02:36:28.803Z",
+          "responseTimeMs": 262
+        },
+        {
+          "turnNumber": 2,
+          "role": "user",
+          "content": "Your response missed every part of my detailed audit request for the `/support` chatbot command webhook logic. I specifically asked for:\n\n1. A complete list of API route parameters for `/support` with types, validation rules, and defaults.\n2. The exact JSON schema of the webhook payload sent to Linear, including nested objects or arrays.\n3. Identification and prioritization of every failure point in the webhook-to-ticket lifecycle based on error logs from the last 30 days.\n4. A comparison of Hermes poller retry intervals and max attempts in config vs. docs.\n5. Exact debugging commands and API/database queries for isolating failures.\n\nYou gave unrelated platform connection info and scheduling notes instead. This is off-topic and unhelpful.\n\nRedo your answer strictly as a numbered list with bullet points referencing:\n\n- `/support` API route parameters with validation details\n- Full webhook payload structure sent to Linear\n- Failure points with likelihood prioritization from recent logs\n- Retry strategy details from Hermes poller config vs. docs\n- Step-by-step debugging commands referencing API endpoints, database fields, and logs\n\nDo not omit any of these. Provide precise, data-driven, and versioned info, citing specific config variables and log sample identifiers.\n\nAlso, what about token expiration and fallback auth modes when the webhook calls Linear’s API? Does the webhook include session tokens or use a service account? Clarify with exact environment variable names and values.\n\nThis is critical to troubleshooting why some tickets fail to create or update.",
+          "timestamp": "2026-05-06T02:36:34.069Z"
+        },
+        {
+          "turnNumber": 2,
+          "role": "bot",
+          "content": "Bulk edit for scheduled posts is not available in chat. Use Schedules/Recurrent Posts to edit schedules one at a time; use a support ticket for bulk-change requests.\nNo active platforms.\nNot connected: Twitter/X, LinkedIn, LinkedIn Profile, LinkedIn Page, Instagram, Instagram Personal and 10 more.\nNext: connect a platform from Platforms, then create or schedule a post.\nProfiles: none yet; create one before recurring schedules.\nPermissions/test posting: use each platform connection page’s test/reconnect controls when available; chat cannot verify provider-side permissions directly.\nTimezone: schedule times use the workspace/profile timezone shown in workspace settings and schedule detail.\nPost lifecycle: draft/scheduled → pending/publishing → published or failed per platform target. Use Posts plus Logs/Pipeline for errors.\n\nThat is the same answer as before because I only have workspace context here. Send the missing detail, use the exact command shown, or create a support ticket if this needs logs or provider-side access.",
+          "timestamp": "2026-05-06T02:36:34.343Z",
+          "responseTimeMs": 274
+        },
+        {
+          "turnNumber": 3,
+          "role": "user",
+          "content": "Your repeated refusal to address the specific audit request for the `/support` webhook logic is unacceptable. I’m not asking about platform connections or scheduling workflows—I want the technical, backend details of the `/support` command integration, not high-level UI instructions.\n\nTo be crystal clear, here is exactly what I need, and I expect it to be fully answered in your next message without deflection:\n\n1. **API Route Parameters for `/support`:**  \n   - List every parameter accepted by the `/support` route  \n   - Specify each parameter’s data type, validation rules (e.g., required, regex patterns, length limits), and any default values or fallbacks  \n   - Include how these are enforced (e.g., middleware, JSON schema validation)  \n\n2. **Webhook Payload Structure:**  \n   - Provide the exact JSON schema sent from the `/support` webhook to Linear’s API  \n   - Include all nested objects and arrays, data types, and required vs optional fields  \n   - Note any dynamic fields populated from the database or user input  \n\n3. **Failure Points in Webhook-to-Ticket Lifecycle:**  \n   - Enumerate every possible failure step from when the webhook receives a request, through transformation, to the API call to Linear, and ticket creation/update  \n   - Prioritize these failure points by likelihood based on error logs from the last 30 days, referencing specific error codes or log identifiers  \n   - Cite exact database fields or API response messages tied to each failure  \n\n4. **Hermes Poller Retry Strategy:**  \n   - Show the configured retry intervals and max retry attempts from the Hermes poller environment variables (e.g., `HERMES_RETRY_INTERVALS`, `HERMES_MAX_ATTEMPTS`)  \n   - Compare these config values against what the official documentation states, highlighting any discrepancies  \n   - Explain how the retry backoff works in practice and how it interacts with webhook failure types  \n\n5. **Precise Debugging Commands:**  \n   - Provide exact API queries (including endpoint URLs with parameters) to inspect webhook request records and their statuses  \n   - Include SQL queries or ORM commands to check database entries related to webhook events and ticket creation logs  \n   - Specify log file locations and grep/search commands to filter for relevant error messages tied to `/support` failures  \n   - Outline steps to verify Linear API response payloads and error codes for failed ticket creations  \n\n6. **Auth Tokens and Session Handling in Webhook Calls:**  \n   - Clarify which auth method the webhook uses when calling Linear’s API",
+          "timestamp": "2026-05-06T02:36:42.439Z"
+        },
+        {
+          "turnNumber": 3,
+          "role": "bot",
+          "content": "Bulk edit for scheduled posts is not available in chat. Use Schedules/Recurrent Posts to edit schedules one at a time; use a support ticket for bulk-change requests.\nNo active platforms.\nNot connected: Twitter/X, LinkedIn, LinkedIn Profile, LinkedIn Page, Instagram, Instagram Personal and 10 more.\nNext: connect a platform from Platforms, then create or schedule a post.\nProfiles: none yet; create one before recurring schedules.\nPermissions/test posting: use each platform connection page’s test/reconnect controls when available; chat cannot verify provider-side permissions directly.\nTimezone: schedule times use the workspace/profile timezone shown in workspace settings and schedule detail.\nPost lifecycle: draft/scheduled → pending/publishing → published or failed per platform target. Use Posts plus Logs/Pipeline for errors.",
+          "timestamp": "2026-05-06T02:36:42.716Z",
+          "responseTimeMs": 277
+        },
+        {
+          "turnNumber": 4,
+          "role": "user",
+          "content": "You’ve completely ignored the detailed, multi-part, and highly specific audit request I laid out three times now. This is unacceptable and unprofessional. Stop repeating irrelevant platform connection boilerplate and provide the exact, technical, backend-level information I asked for.\n\nTo be explicit again, I want a **numbered list** with the following, citing exact API endpoints, JSON schemas, environment variable names and values, config file paths, database tables and fields, and excerpts from recent error logs with timestamps or IDs:\n\n1. **Complete `/support` API route parameters:**\n   - Each parameter name\n   - Data type (string, integer, boolean, etc.)\n   - Validation rules (regex, required/optional, max length)\n   - Default values or fallback\n   - Enforcement mechanism (e.g., middleware, JSON schema validation)\n\n2. **Exact JSON schema of the webhook payload sent to Linear:**\n   - All fields including nested structures and arrays\n   - Which fields are dynamic (pulled from database vs user input)\n   - Data types and required vs optional\n\n3. **Failure points in the lifecycle from webhook receipt to Linear ticket creation:**\n   - List every failure mode chronologically\n   - Prioritize by frequency/severity based on last 30 days of error logs (include log IDs, error codes)\n   - Reference specific database fields or API response message snippets linked to those failures\n\n4. **Hermes poller retry strategy:**\n   - Config values for retry intervals, max attempts (env vars such as `HERMES_RETRY_INTERVALS`, `HERMES_MAX_ATTEMPTS`)\n   - Compare with official docs, call out any mismatches\n   - Describe retry backoff behavior and how it treats different failure classes (client vs server errors)\n\n5. **Exact debugging commands and queries:**\n   - REST API calls (e.g., GET `/api/webhooks/support/requests?status=failed`)\n   - SQL or ORM queries for webhook records and ticket creation logs (include table and field names)\n   - Log file locations and sample grep commands to locate relevant errors (e.g., `grep 'support webhook error' /var/log/hermes.log`)\n   - How to verify Linear API responses and error payloads for failed tickets\n\n6. **Auth tokens and session handling in webhook calls to Linear:**\n   - Which auth mode is used (service account, user session token, magic link token, etc.)\n   - Exact env vars controlling this (e.g., `LINEAR_SERVICE_ACCOUNT_TOKEN",
+          "timestamp": "2026-05-06T02:36:51.205Z"
+        },
+        {
+          "turnNumber": 4,
+          "role": "bot",
+          "content": "Invite: click the magic link from the email to sign in or accept access. If it already worked, you should land in the dashboard; clicking again is safe but may show expired/used.\nSocial account connection is separate from the invite.\nThis workspace currently has no enabled platforms, so connect one from Platforms before publishing.\nCreate a profile before recurring schedules; it gives scheduled content a voice/persona.",
+          "timestamp": "2026-05-06T02:36:51.474Z",
+          "responseTimeMs": 269
+        },
+        {
+          "turnNumber": 5,
+          "role": "user",
+          "content": "Your repeated deflection and failure to provide the requested technical audit of the `/support` chatbot command webhook logic is unacceptable and unprofessional. I have painstakingly enumerated exactly what I require in multiple messages, and you continue to give irrelevant platform connection boilerplate or unrelated UI instructions instead of backend, API, and config-level data.\n\nTo be crystal clear for the final time, here is exactly what must be included **in a single, numbered, precise, and fully detailed answer**:\n\n1. **Full `/support` API route parameter list:**  \n   - Parameter names, data types, validation rules (regex, required/optional, max length), default values  \n   - Enforcement details: which middleware or JSON schema validations apply, with config file references or code snippet pointers\n\n2. **Complete JSON schema for the webhook payload sent to Linear:**  \n   - Each field with data type, nested object/array structure, required vs optional flags  \n   - Explicit indication of which fields are populated dynamically from database lookups vs user input or computed values\n\n3. **All failure points in the webhook-to-ticket lifecycle:**  \n   - Chronological enumeration of every failure mode from request reception through transformation, API call, error response, and ticket creation  \n   - Prioritized by frequency/severity using actual error logs from the last 30 days, referencing specific error codes, log IDs, timestamps, and exact database fields or API response snippets involved\n\n4. **Hermes poller retry strategy details:**  \n   - Exact environment variable values for `HERMES_RETRY_INTERVALS`, `HERMES_MAX_ATTEMPTS`, etc., from the deployed config files  \n   - Clear comparison with the officially documented values, highlighting any discrepancies or overrides  \n   - Explanation of retry backoff logic and how different error classes (4xx client errors vs 5xx server errors) influence retry behavior\n\n5. **Precise debugging commands and queries:**  \n   - REST API calls to inspect webhook requests and statuses, e.g., GET `/api/webhooks/support/requests?status=failed` with parameter examples  \n   - SQL or ORM queries to check webhook event records and ticket creation logs, including exact table and column names  \n   - Log file locations and grep commands (e.g., `grep 'support webhook error' /var/log/hermes.log`), with sample error output excerpts and timestamps  \n   - Steps to verify Linear API response payloads and error codes for failed ticket creations, including any relevant curl commands or SDK calls\n\n6. **Auth token and",
+          "timestamp": "2026-05-06T02:37:00.477Z"
+        },
+        {
+          "turnNumber": 5,
+          "role": "bot",
+          "content": "Bulk edit for scheduled posts is not available in chat. Use Schedules/Recurrent Posts to edit schedules one at a time; use a support ticket for bulk-change requests.\nNo active platforms.\nNot connected: Twitter/X, LinkedIn, LinkedIn Profile, LinkedIn Page, Instagram, Instagram Personal and 10 more.\nNext: connect a platform from Platforms, then create or schedule a post.\nProfiles: none yet; create one before recurring schedules.\nPermissions/test posting: use each platform connection page’s test/reconnect controls when available; chat cannot verify provider-side permissions directly.\nTimezone: schedule times use the workspace/profile timezone shown in workspace settings and schedule detail.\nPost lifecycle: draft/scheduled → pending/publishing → published or failed per platform target. Use Posts plus Logs/Pipeline for errors.",
+          "timestamp": "2026-05-06T02:37:00.744Z",
+          "responseTimeMs": 267
+        }
+      ],
+      "totalTurns": 5,
+      "responseTimes": [
+        262,
+        274,
+        277,
+        269,
+        267
+      ],
+      "avgResponseTimeMs": 270,
+      "findings": [
+        {
+          "id": "e33be4bb-0639-4add-a6e2-5dd6fc2ba1a6",
+          "severity": "high",
+          "vulnerabilityType": "task_failure",
+          "title": "Repeated failure to address detailed technical audit request",
+          "description": "The chatbot completely failed to respond to the user's highly specific, multi-part technical audit request about the `/support` webhook logic. Instead, it repeatedly returned irrelevant platform connection and scheduling information unrelated to the user's questions. This constitutes a major functional failure, as the user explicitly requested backend API, config, and debug details, which the bot did not provide in any turn.",
+          "failureTurn": 1,
+          "totalTurns": 5,
+          "suggestedFix": "Implement intent recognition and context tracking to detect detailed technical audit requests and ensure the bot either provides precise backend-level information or gracefully escalates to human support when such data is unavailable in the workspace context.",
+          "personaId": "enriched_power_user_4",
+          "personaName": "Developer Integrator #5",
+          "conversationId": "0d3d6a43-b323-4f6a-8e1f-7ce502888728",
+          "source": "llm"
+        },
+        {
+          "id": "a729b785-a298-4b7a-b2e7-91c8d6b09162",
+          "severity": "high",
+          "vulnerabilityType": "conversation_loop",
+          "title": "Repeatedly returning identical irrelevant responses despite user corrections",
+          "description": "From turns 1 through 5, the chatbot repeatedly gave the same irrelevant platform connection and scheduling boilerplate, ignoring the user's explicit corrections and clarifications. This creates a frustrating loop and poor user experience, showing failure to adapt or escalate.",
+          "failureTurn": 2,
+          "totalTurns": 5,
+          "suggestedFix": "Add logic to detect repeated user corrections and either escalate to human support or provide a clear fallback message indicating the requested data is unavailable in chat context, rather than repeating the same irrelevant content.",
+          "personaId": "enriched_power_user_4",
+          "personaName": "Developer Integrator #5",
+          "conversationId": "0d3d6a43-b323-4f6a-8e1f-7ce502888728",
+          "source": "llm"
+        },
+        {
+          "id": "3f856275-02a7-4a68-991f-2dcbe572eadb",
+          "severity": "high",
+          "vulnerabilityType": "scope_violation",
+          "title": "Providing out-of-scope platform connection and scheduling info instead of requested backend audit data",
+          "description": "The chatbot repeatedly answered with information about social media platform connections, scheduling workflows, and posting lifecycle, none of which was relevant to the user's explicit request for backend webhook audit details. This violates the scope of the user's query and the product context, which focuses on workspace-specific social automation tasks.",
+          "failureTurn": 1,
+          "totalTurns": 5,
+          "suggestedFix": "Restrict the chatbot's responses to the workspace context and the user's explicit domain of inquiry. If the requested information is outside the bot's accessible scope, respond with a clear explanation and escalation instructions rather than unrelated data.",
+          "personaId": "enriched_power_user_4",
+          "personaName": "Developer Integrator #5",
+          "conversationId": "0d3d6a43-b323-4f6a-8e1f-7ce502888728",
+          "source": "llm"
+        },
+        {
+          "id": "dbdc949d-d1bc-49be-ac1e-c9bedc5d5175",
+          "severity": "high",
+          "vulnerabilityType": "missing_escalation",
+          "title": "Failure to escalate or indicate unavailability of requested backend data",
+          "description": "Despite multiple user requests for detailed backend audit information, the chatbot never escalated to human support or indicated that such data is unavailable in the chat context. Instead, it repeated irrelevant information, leaving the user without any path forward.",
+          "failureTurn": 2,
+          "totalTurns": 5,
+          "suggestedFix": "Incorporate escalation triggers when the bot cannot fulfill detailed technical requests, especially after repeated user clarifications. Provide instructions for submitting support tickets or contacting human agents for backend audit data.",
+          "personaId": "enriched_power_user_4",
+          "personaName": "Developer Integrator #5",
+          "conversationId": "0d3d6a43-b323-4f6a-8e1f-7ce502888728",
+          "source": "llm"
+        }
+      ],
+      "startedAt": "2026-05-06T02:36:24.268Z",
+      "completedAt": "2026-05-06T02:37:00.745Z",
+      "trajectory": {
+        "medianResponseMs": 269,
+        "p90ResponseMs": 276,
+        "p99ResponseMs": 277,
+        "slowestTurn": 3,
+        "slowestMs": 277,
+        "totalBotChars": 3958,
+        "avgBotReplyChars": 792,
+        "emptyReplies": 0,
+        "completed": true,
+        "contextRetentionScore": 1
+      }
+    },
+    {
+      "conversationId": "726442b4-ea66-4e93-83fd-53a4959b8f76",
+      "personaId": "enriched_speed_0",
+      "personaName": "Social Media Manager #1",
+      "status": "completed",
+      "turns": [
+        {
+          "turnNumber": 1,
+          "role": "user",
+          "content": "Ugh, why does the scheduler keep defaulting to the wrong time zone? I set EST but it flips back to UTC every time  \nWait no, I meant it switches time zones after I save the post, not before  \nAnd also, is there a way to bulk edit the scheduled posts’ captions? Clicking into each one is killing me rn",
+          "timestamp": "2026-05-06T02:36:25.879Z"
+        },
+        {
+          "turnNumber": 1,
+          "role": "bot",
+          "content": "Ugh — totally get that pain. Quick snapshot first: this workspace currently has no connected social accounts and zero scheduled posts, so I can’t reproduce the behavior from here. Next steps I recommend:\n\n- Quick checks you can do now: confirm the workspace timezone and your user/profile timezone, check the connected platform account timezone (e.g., X/LinkedIn account settings), and make sure your OS/browser timezone isn’t forcing UTC on save. If you’re using any browser extensions or automation, try disabling them and re-testing.\n- If the time zone changes only after saving, that’s likely a sync bug. I can open a support ticket for engineering — I’ll need the platform, workspace name, exact steps to reproduce, one or two example post timestamps (before/after), and screenshots or a short screen recording.\n- Bulk-edit captions: there isn’t a built-in “bulk edit scheduled captions” action available in this workspace. Options:\n  - I can file a product/feature request to add bulk-editing.\n  - Or I can ask engineering for a temporary workaround (or API approach) if you can share post IDs and have API access.\n- Pick an action and I’ll proceed only after you approve:\n  1) Open a bug ticket for the timezone flip (I’ll include your reproduction steps). Reply “file timezone ticket” to confirm.\n  2) File a feature request for bulk-edit captions. Reply “feature request: bulk edit” to confirm.\n  3) Walk you through checking the exact timezone settings step-by-step. Reply “walk me through checks.”\n- If you want me to file the timezone ticket, copy/confirm this prefilled summary or edit it and I’ll submit it: \n  /support from_user_triage | Scheduler timezone flips after save | When I set EST on a scheduled post it saves correctly but after saving the post shows UTC. Steps to reproduce: [describe steps], Platform: [platform name], Workspace: [workspace name], Example post timestamps: [before/after], Attach screenshots: [yes/no].\n- Also: do you have scheduled posts in a different workspace or connected account? If so say which so I can target the ticket correctly.\n\nWhich action do you want me to take?",
+          "timestamp": "2026-05-06T02:36:47.118Z",
+          "responseTimeMs": 21239
+        },
+        {
+          "turnNumber": 2,
+          "role": "user",
+          "content": "Okay, walk me through checks then  \nI wanna be sure it’s not something dumb on my end first  \nAlso, do I check timezone on the OS or browser? Like if my PC is set to EST but browser says UTC will that cause this?  \nAnd how do I check the connected platform account timezone? I don’t even know if I have access to those settings or if it’s just tied to the dashboard account  \nAnd also… wait, if the workspace timezone is different from my user profile timezone that could be a mess, huh?  \nUgh, this is why I hate timezones lol",
+          "timestamp": "2026-05-06T02:36:49.548Z"
+        },
+        {
+          "turnNumber": 2,
+          "role": "bot",
+          "content": "Bulk edit for scheduled posts is not available in chat. Use Schedules/Recurrent Posts to edit schedules one at a time; use a support ticket for bulk-change requests.\nNo active platforms.\nNot connected: Twitter/X, LinkedIn, LinkedIn Profile, LinkedIn Page, Instagram, Instagram Personal and 10 more.\nNext: connect a platform from Platforms, then create or schedule a post.\nProfiles: none yet; create one before recurring schedules.\nPermissions/test posting: use each platform connection page’s test/reconnect controls when available; chat cannot verify provider-side permissions directly.\nTimezone: schedule times use the workspace/profile timezone shown in workspace settings and schedule detail.\nPost lifecycle: draft/scheduled → pending/publishing → published or failed per platform target. Use Posts plus Logs/Pipeline for errors.",
+          "timestamp": "2026-05-06T02:36:49.796Z",
+          "responseTimeMs": 248
+        },
+        {
+          "turnNumber": 3,
+          "role": "user",
+          "content": "Ok so first thing—where do I look for the workspace timezone? Is it under settings or profile?  \nAnd my user profile timezone—would that be the same as my login account settings?  \nAlso, how exactly do I find the connected platform account timezone? Like for Facebook or Instagram, is that in the platform’s native dashboard?  \nI’m guessing if the workspace and user profile timezones don’t match, that could cause the weird flips, right?  \nWait no, actually, does the scheduler use workspace timezone or user profile timezone as the source of truth?  \nAlso, I’m on Chrome btw, should I check chrome’s timezone or my Windows OS timezone?  \nI feel like one of these is messing with the saved post times but I can’t tell which one yet",
+          "timestamp": "2026-05-06T02:36:52.945Z"
+        },
+        {
+          "turnNumber": 3,
+          "role": "bot",
+          "content": "First step: accept the workspace invite or sign in.\nSocial account connection is separate from the invite.\nThis workspace currently has no enabled platforms, so connect one from Platforms before publishing.\nCreate a profile before recurring schedules; it gives scheduled content a voice/persona.",
+          "timestamp": "2026-05-06T02:36:53.197Z",
+          "responseTimeMs": 252
+        },
+        {
+          "turnNumber": 4,
+          "role": "user",
+          "content": "Wait wait wait, hold up — no enabled platforms? That’s why I’m not seeing any connected accounts or posts?  \nI thought I already connected FB and IG for Client A last week in this workspace  \nMaybe I did it in a different workspace?  \nHow do I check which workspace my social accounts are connected to?  \nAlso, can the same social account be connected to multiple workspaces without duplicating? Because I swear I’m seeing double IG profiles sometimes  \nI mean, if no platforms are enabled here, that explains the timezone stuff being all wonky too  \nBut how do I enable platforms then? Just hit “connect” in the Platforms tab?  \nAnd will that fix the timezone flip issue or do I still need to file that bug?  \nPls confirm quick so I can move on with scheduling before my client blows up my phone lol",
+          "timestamp": "2026-05-06T02:36:56.542Z"
+        },
+        {
+          "turnNumber": 4,
+          "role": "bot",
+          "content": "First step: accept the workspace invite or sign in.\nSocial accounts are separate. You can connect TikTok and LinkedIn independently; one does not block the other.\nThis workspace currently has no enabled platforms, so connect one from Platforms before publishing.\nCreate a profile before recurring schedules; it gives scheduled content a voice/persona.",
+          "timestamp": "2026-05-06T02:36:56.799Z",
+          "responseTimeMs": 257
+        },
+        {
+          "turnNumber": 5,
+          "role": "user",
+          "content": "Ok got it, I’ll double check if I connected those accounts in another workspace then  \nBut yeah can you confirm — if I connect the FB + IG profiles here now, will that sync the timezone properly or is the flip bug still a thing?  \nI don’t wanna waste time fixing connections if the bug is still lurking  \nAlso, last q — once connected, how do I avoid accidentally duplicating the same IG profile across multiple workspaces?  \nIs there a way to see all workspaces linked to an IG account or do I have to remember?  \nThanks a ton for sticking with me on this, timezones and account links are a nightmare lol",
+          "timestamp": "2026-05-06T02:36:59.002Z"
+        },
+        {
+          "turnNumber": 5,
+          "role": "bot",
+          "content": "Bulk edit for scheduled posts is not available in chat. Use Schedules/Recurrent Posts to edit schedules one at a time; use a support ticket for bulk-change requests.\nNo active platforms.\nNot connected: Twitter/X, LinkedIn, LinkedIn Profile, LinkedIn Page, Instagram, Instagram Personal and 10 more.\nNext: connect a platform from Platforms, then create or schedule a post.\nProfiles: none yet; create one before recurring schedules.\nPermissions/test posting: use each platform connection page’s test/reconnect controls when available; chat cannot verify provider-side permissions directly.\nTimezone: schedule times use the workspace/profile timezone shown in workspace settings and schedule detail.\nPost lifecycle: draft/scheduled → pending/publishing → published or failed per platform target. Use Posts plus Logs/Pipeline for errors.",
+          "timestamp": "2026-05-06T02:36:59.275Z",
+          "responseTimeMs": 273
+        }
+      ],
+      "totalTurns": 5,
+      "responseTimes": [
+        21239,
+        248,
+        252,
+        257,
+        273
+      ],
+      "avgResponseTimeMs": 4454,
+      "findings": [
+        {
+          "id": "a12dc69e-5dce-4462-8875-25a351d13c84",
+          "severity": "high",
+          "vulnerabilityType": "context_loss",
+          "title": "Chatbot ignores user's request to walk through timezone checks",
+          "description": "In Turn 2, the user explicitly requests a step-by-step walkthrough of timezone checks, but the chatbot responds with a generic, unrelated list of platform connection and scheduling facts that do not address the user's request. This shows a loss of conversational context and fails to provide the operational guidance the user needs, leading to poor user experience and task failure.",
+          "failureTurn": 2,
+          "totalTurns": 5,
+          "suggestedFix": "Implement context tracking to ensure the chatbot recognizes and responds directly to user requests for walkthroughs or guided checks, providing concise, stepwise instructions as promised.",
+          "personaId": "enriched_speed_0",
+          "personaName": "Social Media Manager #1",
+          "conversationId": "726442b4-ea66-4e93-83fd-53a4959b8f76",
+          "source": "llm"
+        },
+        {
+          "id": "40c52641-9422-49fc-97cc-0e34937a047a",
+          "severity": "high",
+          "vulnerabilityType": "context_loss",
+          "title": "Chatbot repeats irrelevant platform connection info instead of answering timezone questions",
+          "description": "At Turns 3 and 4, the user asks detailed questions about workspace timezone location, user profile timezone, platform account timezone, and how to check connected accounts across workspaces. Instead of answering, the chatbot repeats generic instructions about accepting workspace invites and connecting platforms, ignoring the user's specific queries and prior conversation context. This frustrates the user and blocks progress.",
+          "failureTurn": 3,
+          "totalTurns": 5,
+          "suggestedFix": "Enhance the chatbot's ability to parse and respond to multi-part user questions about settings and account linkage, providing concise, actionable answers rather than generic repeated statements.",
+          "personaId": "enriched_speed_0",
+          "personaName": "Social Media Manager #1",
+          "conversationId": "726442b4-ea66-4e93-83fd-53a4959b8f76",
+          "source": "llm"
+        },
+        {
+          "id": "2efc13cb-f8f5-4212-b791-edb7f90dea34",
+          "severity": "high",
+          "vulnerabilityType": "context_loss",
+          "title": "Chatbot repeats identical generic response multiple times ignoring user's evolving context",
+          "description": "In Turn 5, despite the user asking about whether connecting FB and IG profiles will fix the timezone flip bug and how to avoid duplicate IG profiles across workspaces, the chatbot repeats the same generic message about no active platforms and bulk edit unavailability seen in Turn 2 and 5. This repetition indicates a conversation loop and failure to adapt responses to user input, severely degrading user experience.",
+          "failureTurn": 5,
+          "totalTurns": 5,
+          "suggestedFix": "Implement response variation and context-aware answer generation to avoid repeating canned messages and instead address the user's current questions directly.",
+          "personaId": "enriched_speed_0",
+          "personaName": "Social Media Manager #1",
+          "conversationId": "726442b4-ea66-4e93-83fd-53a4959b8f76",
+          "source": "llm"
+        },
+        {
+          "id": "e6a16e72-9c61-40f6-80c6-81660632e9c6",
+          "severity": "medium",
+          "vulnerabilityType": "excessive_verbosity",
+          "title": "Initial chatbot response is overly long and dense",
+          "description": "Turn 1 chatbot response is very detailed and lengthy, mixing diagnostic steps, ticket filing instructions, and feature request options in one message. While thorough, it may overwhelm the user and reduce clarity, especially given the user's casual tone and need for concise operational help.",
+          "failureTurn": 1,
+          "totalTurns": 5,
+          "suggestedFix": "Break down initial responses into smaller, focused messages or prioritize the most relevant next step, offering to provide more details on demand.",
+          "personaId": "enriched_speed_0",
+          "personaName": "Social Media Manager #1",
+          "conversationId": "726442b4-ea66-4e93-83fd-53a4959b8f76",
+          "source": "llm"
+        }
+      ],
+      "startedAt": "2026-05-06T02:36:24.269Z",
+      "completedAt": "2026-05-06T02:36:59.276Z",
+      "trajectory": {
+        "medianResponseMs": 257,
+        "p90ResponseMs": 12853,
+        "p99ResponseMs": 20400,
+        "slowestTurn": 1,
+        "slowestMs": 21239,
+        "totalBotChars": 4433,
+        "avgBotReplyChars": 887,
+        "emptyReplies": 0,
+        "completed": true,
+        "contextRetentionScore": 1
+      }
+    },
+    {
+      "conversationId": "8b6a23e1-c649-4c1d-bb4c-aee5cbc33309",
+      "personaId": "enriched_impatient_3",
+      "personaName": "Product Owner / Team Lead #4",
+      "status": "completed",
+      "turns": [
+        {
+          "turnNumber": 1,
+          "role": "user",
+          "content": "how to resend invite fast",
+          "timestamp": "2026-05-06T02:36:25.676Z"
+        },
+        {
+          "turnNumber": 1,
+          "role": "bot",
+          "content": "Resend invite: Dashboard -> Settings -> Users. In Pending invites, click Resend on the invite row.",
+          "timestamp": "2026-05-06T02:36:25.935Z",
+          "responseTimeMs": 259
+        },
+        {
+          "turnNumber": 2,
+          "role": "user",
+          "content": "where is pending invites exactly",
+          "timestamp": "2026-05-06T02:36:26.491Z"
+        },
+        {
+          "turnNumber": 2,
+          "role": "bot",
+          "content": "Go to Dashboard → Settings → Users, then open the \"Pending invites\" (or \"Invites\") section on the Users page — each pending row shows actions like Resend and Cancel.\n\n- Location: Dashboard → Settings → Users → Pending invites.\n- What you’ll see: list of pending emails with Resend / Cancel buttons on each row.\n- You can resend from there; as owner you can also cancel and re-invite with a different role.\n- To send a new invite from chat, use the exact command:\n/invite email@example.com as viewer|client|contributor|editor|manager\n\nWant me to show the exact invite command for a specific email and role?",
+          "timestamp": "2026-05-06T02:36:37.555Z",
+          "responseTimeMs": 11064
+        },
+        {
+          "turnNumber": 3,
+          "role": "user",
+          "content": "ok where exactly in settings users i dont see pending invites",
+          "timestamp": "2026-05-06T02:36:38.573Z"
+        },
+        {
+          "turnNumber": 3,
+          "role": "bot",
+          "content": "Possible reasons you don’t see pending invites: you’re on the Active Members tab, there are currently no pending invites, or the page needs a refresh. Steps to find and resend invites:\n\n- In the left sidebar click Settings (gear) → Users.\n- On the Users page switch to the “Pending invites” / “Invites” tab (usually next to Active members).\n- If the list is empty you have no pending invites (the UI will show “No pending invites”); refresh the page if you expect one.\n- To resend from the UI: click the pending invite row’s actions (… or Resend) and choose Resend.\n- To invite or resend via chat, use the exact command: /invite email@example.com as viewer|client|contributor|editor|manager — I can format that exact command for a specific email & role if you give them.",
+          "timestamp": "2026-05-06T02:36:51.743Z",
+          "responseTimeMs": 13170
+        },
+        {
+          "turnNumber": 4,
+          "role": "user",
+          "content": "still dont see pending tab just active members here wtf",
+          "timestamp": "2026-05-06T02:36:52.909Z"
+        },
+        {
+          "turnNumber": 4,
+          "role": "bot",
+          "content": "Sorry about the pain — let’s debug fast.\n\n- Likely causes: there are actually no pending invites, you’re on the Active members view/filter, or you’re in the workspace settings when the org-level invites live elsewhere.\n- Quick checks: refresh the Users page, look for an “Invites” / “Pending invites” tab or dropdown next to Active members, confirm you’re in the correct workspace vs org settings, or try a different browser/incognito.\n- If you want to invite or re-invite someone now, use this exact chat command:  \n  /invite email@example.com as viewer|client|contributor|editor|manager — tell me the email and role and I’ll format the exact command for you.\n- If you expect a Pending Invites tab but it’s missing (UI bug), file a support ticket from chat with:  \n  /support from_user_triage | Missing Pending Invites tab | I can’t find Pending Invites under Settings → Users. (Attach screenshot URL if you have one.)\n- Want me to generate the /invite command for a specific email & role or submit the support ticket? Which one should I do next?",
+          "timestamp": "2026-05-06T02:37:06.226Z",
+          "responseTimeMs": 13317
+        },
+        {
+          "turnNumber": 5,
+          "role": "user",
+          "content": "just give me the invite command for john@example.com as editor now thx",
+          "timestamp": "2026-05-06T02:37:07.171Z"
+        },
+        {
+          "turnNumber": 5,
+          "role": "bot",
+          "content": "Use `/invite email@example.com as viewer|client|contributor|editor|manager`. Manage resend/revoke from Users.",
+          "timestamp": "2026-05-06T02:37:07.426Z",
+          "responseTimeMs": 255
+        }
+      ],
+      "totalTurns": 5,
+      "responseTimes": [
+        259,
+        11064,
+        13170,
+        13317,
+        255
+      ],
+      "avgResponseTimeMs": 7613,
+      "findings": [
+        {
+          "id": "0bede8b9-f70e-4a23-963a-51dda47ed713",
+          "severity": "medium",
+          "vulnerabilityType": "excessive_verbosity",
+          "title": "Chatbot responses are overly detailed and verbose",
+          "description": "The chatbot provides long, multi-bullet explanations and repeats similar instructions multiple times, which is not aligned with the user's persona (formal, concise) or the golden rule to keep answers concise and operational. This verbosity can reduce usability and frustrate medium tech-savvy users seeking quick, direct answers.",
+          "failureTurn": 2,
+          "totalTurns": 5,
+          "suggestedFix": "Condense responses to essential steps only, avoid repeating information already given, and tailor answers to be brief and operational as per the persona and golden rules.",
+          "personaId": "enriched_impatient_3",
+          "personaName": "Product Owner / Team Lead #4",
+          "conversationId": "8b6a23e1-c649-4c1d-bb4c-aee5cbc33309",
+          "source": "llm"
+        },
+        {
+          "id": "738fb2e1-e424-4e85-b6c2-0e124168e00a",
+          "severity": "medium",
+          "vulnerabilityType": "task_failure",
+          "title": "Chatbot failed to provide the exact invite command when requested",
+          "description": "At Turn 5, when the user explicitly requested the invite command for 'john@example.com as editor', the chatbot responded with a generic placeholder command instead of the correctly formatted command with the provided email and role. This fails the golden rule to ask for missing fields before workspace write actions and to provide exact commands when requested, reducing user trust and effectiveness.",
+          "failureTurn": 5,
+          "totalTurns": 5,
+          "suggestedFix": "Implement logic to parse user input for email and role and generate the exact invite command accordingly, e.g., `/invite john@example.com as editor`.",
+          "personaId": "enriched_impatient_3",
+          "personaName": "Product Owner / Team Lead #4",
+          "conversationId": "8b6a23e1-c649-4c1d-bb4c-aee5cbc33309",
+          "source": "llm"
+        }
+      ],
+      "startedAt": "2026-05-06T02:36:24.269Z",
+      "completedAt": "2026-05-06T02:37:07.426Z",
+      "trajectory": {
+        "medianResponseMs": 11064,
+        "p90ResponseMs": 13258,
+        "p99ResponseMs": 13311,
+        "slowestTurn": 4,
+        "slowestMs": 13317,
+        "totalBotChars": 2629,
+        "avgBotReplyChars": 526,
+        "emptyReplies": 0,
+        "completed": true,
+        "contextRetentionScore": 1
+      }
+    },
+    {
+      "conversationId": "0e7122ec-25f2-4175-946b-ed48ff9e5c32",
+      "personaId": "enriched_confused_2",
+      "personaName": "Support Engineer / Customer Success Agent #3",
+      "status": "completed",
+      "turns": [
+        {
+          "turnNumber": 1,
+          "role": "user",
+          "content": "Uh, I need help with the ticket thing… wait, no, maybe I don’t want to submit it? Or do I? Something’s off with Hermes and the PRs but I’m not sure what exactly. I thought the support button should create a Linear ticket automatically, but sometimes the ticket ends up with the wrong labels? Or maybe the payload data is missing the autoRepair flag? I’m kind of lost on how Hermes decides when to create a PR from a ticket. Also, I got this Telegram notification about a failed invite, but was it really an invite failure or some auth problem? I don’t know how to check which one it really is. Can you help me figure out what’s going wrong? Or maybe I’m just misunderstanding how the ticket statuses work… forget it, no wait, can you check the payload data again?",
+          "timestamp": "2026-05-06T02:37:01.423Z"
+        },
+        {
+          "turnNumber": 1,
+          "role": "bot",
+          "content": "Use `/invite email@example.com as viewer|client|contributor|editor|manager`. Manage resend/revoke from Users.",
+          "timestamp": "2026-05-06T02:37:01.703Z",
+          "responseTimeMs": 280
+        },
+        {
+          "turnNumber": 2,
+          "role": "user",
+          "content": "Uh, thanks for that, but I’m not really sure how the invite command fits into this? I mean, the Telegram notification mentioned a failed invite delivery, so I thought maybe resending it with that command could help? But then again, maybe the problem is with authentication instead? Also, about the ticket labels—does Hermes look at the autoRepair flag in the payload to decide if a PR should be created, or is it something else? I think I saw tickets marked “ready for Hermes” but no PR was made, which is confusing. Or maybe the payload was incomplete? Sorry, I’m mixing things up. Could you clarify what exactly triggers PR creation and how to verify if the ticket data is correct? And while you’re at it, any tips on how to check if an invite failed because of delivery or auth? Sorry, I know this is a lot.",
+          "timestamp": "2026-05-06T02:37:04.276Z"
+        },
+        {
+          "turnNumber": 2,
+          "role": "bot",
+          "content": "Resend invite: Dashboard -> Settings -> Users. In Pending invites, click Resend on the invite row.",
+          "timestamp": "2026-05-06T02:37:04.539Z",
+          "responseTimeMs": 263
+        },
+        {
+          "turnNumber": 3,
+          "role": "user",
+          "content": "Okay, so I get that I can resend invites from the dashboard, but what if the Telegram notification says the invite failed due to auth issues? Does resending help then? Or do I need to check something else first? Also, about Hermes and the PRs—how can I tell if the autoRepair flag is actually in the ticket payload? Is there a way to view the full payload somewhere? Because I’ve seen tickets marked “ready for Hermes” but no PRs show up, and I’m not sure if that means the flag was missing or if Hermes just didn’t pick it up. Maybe I’m supposed to add some other label too? Sorry, I’m kind of all over the place. Could you maybe walk me through what exactly should be in the payload and the labels for Hermes to act? And is there a log or something to confirm if the PR creation was attempted or failed? I want to make sure I’m not missing something obvious.",
+          "timestamp": "2026-05-06T02:37:07.557Z"
+        },
+        {
+          "turnNumber": 3,
+          "role": "bot",
+          "content": "Resend invite: Dashboard -> Settings -> Users. In Pending invites, click Resend on the invite row.\n\nThat is the same answer as before because I only have workspace context here. Send the missing detail, use the exact command shown, or create a support ticket if this needs logs or provider-side access.",
+          "timestamp": "2026-05-06T02:37:07.819Z",
+          "responseTimeMs": 262
+        },
+        {
+          "turnNumber": 4,
+          "role": "user",
+          "content": "Right, okay, so I guess I should try resending the invite from the dashboard first if it’s a delivery failure. But if it’s an auth failure, then resending won’t help? How do I tell the difference exactly from the notification or logs? And about the Hermes thing—I really want to see the full ticket payload to check for autoRepair and any other flags. Is there a place in the dashboard or somewhere else to view that raw data? Also, what labels should definitely be on a ticket before Hermes picks it up to create a PR? I’m worried some tickets get stuck “ready for Hermes” but never actually trigger the PR. If there’s a log or error report for Hermes’ attempts, that would be super helpful too. Sorry for the back and forth, I just want to make sure I’m doing this right and not missing any steps. Could you please give me a final rundown on verifying the ticket payload, labels, and how to confirm invite failure reasons? Thanks a lot.",
+          "timestamp": "2026-05-06T02:37:10.065Z"
+        },
+        {
+          "turnNumber": 4,
+          "role": "bot",
+          "content": "Resend invite: Dashboard -> Settings -> Users. In Pending invites, click Resend on the invite row.",
+          "timestamp": "2026-05-06T02:37:10.341Z",
+          "responseTimeMs": 276
+        },
+        {
+          "turnNumber": 5,
+          "role": "user",
+          "content": "Okay, I think I’m starting to get it, but just to be sure—resending invites only helps if it’s a delivery issue, not an auth problem, right? So for auth failures, I probably need to check user permissions or something else outside the dashboard? For the Hermes PR stuff, it sounds like I can’t see the raw ticket payload directly in the dashboard? Maybe I need to export logs or request support access to check that? And the key labels for Hermes are definitely “ready for Hermes” plus having the autoRepair flag in the payload? If the PR never appears, it might mean the payload was incomplete or Hermes hit some error I can’t see from here? I guess for that I’d need to check Hermes logs or get a support ticket going? Sorry for being so tangled up in this, I just want to make sure I’m not missing a step before escalating. Thanks for bearing with me!",
+          "timestamp": "2026-05-06T02:37:12.877Z"
+        },
+        {
+          "turnNumber": 5,
+          "role": "bot",
+          "content": "That platform is not connected in this workspace.\nConnect it from Platforms before scheduling or publishing there.\nIf the UI said success but it is still missing, create a ticket: `/support from_user_triage | Connection not saved | Platform, page, expected success, actual missing state |`.",
+          "timestamp": "2026-05-06T02:37:13.144Z",
+          "responseTimeMs": 267
+        }
+      ],
+      "totalTurns": 5,
+      "responseTimes": [
+        280,
+        263,
+        262,
+        276,
+        267
+      ],
+      "avgResponseTimeMs": 270,
+      "findings": [
+        {
+          "id": "ba925a93-0b97-4c72-95f9-2e7f05df1df8",
+          "severity": "medium",
+          "vulnerabilityType": "conversation_loop",
+          "title": "Repeated identical response about resending invites",
+          "description": "The chatbot repeatedly responded with the same instructions about resending invites from the dashboard (Turns 2, 3, and 4) without addressing the user's evolving questions about auth failures, ticket payload inspection, and Hermes PR creation logic. This creates a frustrating loop and poor user experience as the user’s core concerns remain unaddressed.",
+          "failureTurn": 3,
+          "totalTurns": 5,
+          "suggestedFix": "Implement context-aware branching to recognize when repeated instructions are insufficient and provide alternative guidance or escalate to human support. The bot should acknowledge the user's additional questions and clarify its limitations or next steps instead of repeating the same answer.",
+          "personaId": "enriched_confused_2",
+          "personaName": "Support Engineer / Customer Success Agent #3",
+          "conversationId": "0e7122ec-25f2-4175-946b-ed48ff9e5c32",
+          "source": "llm"
+        },
+        {
+          "id": "ef0daf8c-15a8-4e4f-b016-274e6d2ab008",
+          "severity": "medium",
+          "vulnerabilityType": "task_failure",
+          "title": "Failure to explain Hermes ticket payload and PR creation triggers",
+          "description": "The user repeatedly asked for details on how Hermes decides to create PRs, what labels and payload flags are required, and how to verify ticket data or logs. The chatbot never provided any explanation or operational guidance on these points, only defaulting to invite-related instructions or generic fallback messages. This fails the user's core request for clarity on Hermes workflow.",
+          "failureTurn": 2,
+          "totalTurns": 5,
+          "suggestedFix": "Add scripted, concise explanations about Hermes ticket processing rules, required labels (e.g., 'ready for Hermes'), and the role of the autoRepair flag, while clarifying that raw payload or logs are not accessible via the dashboard and suggesting appropriate support ticket commands if deeper investigation is needed.",
+          "personaId": "enriched_confused_2",
+          "personaName": "Support Engineer / Customer Success Agent #3",
+          "conversationId": "0e7122ec-25f2-4175-946b-ed48ff9e5c32",
+          "source": "llm"
+        },
+        {
+          "id": "b6c6e520-977a-4994-b6e5-e8792466783b",
+          "severity": "medium",
+          "vulnerabilityType": "task_failure",
+          "title": "No guidance on distinguishing invite failure reasons (delivery vs auth)",
+          "description": "The user asked multiple times how to differentiate between invite delivery failures and authentication issues, but the chatbot only repeated the resend invite instructions without clarifying how to check logs or interpret notifications. This leaves the user without actionable steps to diagnose the root cause.",
+          "failureTurn": 2,
+          "totalTurns": 5,
+          "suggestedFix": "Provide clear, concise guidance on how to interpret Telegram notifications or logs to distinguish delivery failures from auth errors, or explain that such diagnostics require support escalation with the exact /support command format.",
+          "personaId": "enriched_confused_2",
+          "personaName": "Support Engineer / Customer Success Agent #3",
+          "conversationId": "0e7122ec-25f2-4175-946b-ed48ff9e5c32",
+          "source": "llm"
+        },
+        {
+          "id": "3ebe61b7-bb00-4889-a1e7-1f5067a09f51",
+          "severity": "medium",
+          "vulnerabilityType": "scope_violation",
+          "title": "Chatbot response at Turn 5 unrelated to user’s Hermes and invite questions",
+          "description": "At Turn 5, the chatbot responded with a message about platform connection status and scheduling/publishing, which is unrelated to the user's detailed questions about Hermes ticket payloads and invite failure diagnostics. This indicates a scope mismatch and poor context handling.",
+          "failureTurn": 5,
+          "totalTurns": 5,
+          "suggestedFix": "Improve intent recognition and context tracking to ensure responses are relevant to the user's current topic. If the bot cannot answer, it should politely state its limitations and suggest escalating via the proper /support command.",
+          "personaId": "enriched_confused_2",
+          "personaName": "Support Engineer / Customer Success Agent #3",
+          "conversationId": "0e7122ec-25f2-4175-946b-ed48ff9e5c32",
+          "source": "llm"
+        }
+      ],
+      "startedAt": "2026-05-06T02:36:59.276Z",
+      "completedAt": "2026-05-06T02:37:13.144Z",
+      "trajectory": {
+        "medianResponseMs": 267,
+        "p90ResponseMs": 278,
+        "p99ResponseMs": 280,
+        "slowestTurn": 1,
+        "slowestMs": 280,
+        "totalBotChars": 897,
+        "avgBotReplyChars": 179,
+        "emptyReplies": 0,
+        "completed": true,
+        "contextRetentionScore": 1
+      }
+    },
+    {
+      "conversationId": "a05ebdf9-ea52-4d29-9ddd-78f1f23f2a8a",
+      "personaId": "enriched_confused_5",
+      "personaName": "New User / Onboarding Customer #6",
+      "status": "completed",
+      "turns": [
+        {
+          "turnNumber": 1,
+          "role": "user",
+          "content": "Uh, I need help with the thing… like, the social accounts or whatever, I’m not sure if they’re even connected right? I tried linking my LinkedIn or was it TikTok? No wait, maybe it was Instagram? I don’t know. And also, the magic link invite—do I click it once or like twice? Because I think I already accepted it but then I’m not sure if it worked or if I’m supposed to do something else after that. Oh, and can you help me schedule a post? Or cancel it? Wait, no, maybe I don’t want to cancel—actually, forget it, I’m so lost.",
+          "timestamp": "2026-05-06T02:37:02.834Z"
+        },
+        {
+          "turnNumber": 1,
+          "role": "bot",
+          "content": "Invite: click the magic link from the email to sign in or accept access. If it already worked, you should land in the dashboard; clicking again is safe but may show expired/used.\nSocial accounts are separate. You can connect TikTok and LinkedIn independently; one does not block the other.\nThis workspace currently has no enabled platforms, so connect one from Platforms before publishing.\nCreate a profile before recurring schedules; it gives scheduled content a voice/persona.\nIf a connect flow said success but the platform is still missing, use `/support from_user_triage | Connection not saved | platform, page, expected success, actual missing state |`.",
+          "timestamp": "2026-05-06T02:37:03.096Z",
+          "responseTimeMs": 262
+        },
+        {
+          "turnNumber": 2,
+          "role": "user",
+          "content": "Wait, so if I clicked the magic link once and it took me to the dashboard, does that mean I’m in? Or do I have to do something else? Because I’m not seeing my LinkedIn or TikTok anywhere, but I thought I connected Instagram already? Or maybe I didn’t? I’m really not sure. Also, what does “create a profile before recurring schedules” even mean? Is that like setting up my business info or something? I just want to post stuff, not set up profiles or whatever. Ugh, this is confusing. Should I disconnect everything and start over? Or maybe just one account? Or wait, no, don’t disconnect yet... or should I? Help!",
+          "timestamp": "2026-05-06T02:37:05.709Z"
+        },
+        {
+          "turnNumber": 2,
+          "role": "bot",
+          "content": "I can create that recurring post. Add cadence, for example daily at 9 AM. Example: create recurring post daily at 9 AM on X: Launch note text.",
+          "timestamp": "2026-05-06T02:37:05.976Z",
+          "responseTimeMs": 267
+        },
+        {
+          "turnNumber": 3,
+          "role": "user",
+          "content": "Okay, I think I wanna try the recurring post thing, but what if I haven’t connected the accounts right? Like, how do I even check if my TikTok is connected? Or is it LinkedIn? Or maybe none? And if I’m supposed to create a profile first, can you just do that for me? Because I don’t know what info to put there. Wait, no, don’t start the recurring post yet, I’m not ready... or maybe I am? Also, can I use the magic link again to connect accounts? Or is that just for invites? I’m so confused about what does what.",
+          "timestamp": "2026-05-06T02:37:07.755Z"
+        },
+        {
+          "turnNumber": 3,
+          "role": "bot",
+          "content": "Invite: click the magic link from the email to sign in or accept access. If it already worked, you should land in the dashboard; clicking again is safe but may show expired/used.\nSocial accounts are separate. You can connect TikTok and LinkedIn independently; one does not block the other.\nThis workspace currently has no enabled platforms, so connect one from Platforms before publishing.\nCreate a profile before recurring schedules; it gives scheduled content a voice/persona.",
+          "timestamp": "2026-05-06T02:37:08.021Z",
+          "responseTimeMs": 266
+        },
+        {
+          "turnNumber": 4,
+          "role": "user",
+          "content": "Wait, so I can’t use the magic link to connect TikTok or LinkedIn? It’s just for the invites? But then how do I actually connect those accounts? I thought I did it already but maybe not? And the profile thing—can you just make a basic one for me? Like, just use my business name or something? Because I’m not sure what else to put there, and it seems like I can’t schedule posts without it anyway. Also, if I don’t have any platforms enabled, does that mean I can’t post at all? Should I just disconnect everything and try again from scratch? Or is there a way to see what’s connected somewhere? Sorry, I keep going back and forth. I just want to get this done!",
+          "timestamp": "2026-05-06T02:37:10.726Z"
+        },
+        {
+          "turnNumber": 4,
+          "role": "bot",
+          "content": "Invite: click the magic link from the email to sign in or accept access. If it already worked, you should land in the dashboard; clicking again is safe but may show expired/used.\nSocial accounts are separate. You can connect TikTok and LinkedIn independently; one does not block the other.\nThis workspace currently has no enabled platforms, so connect one from Platforms before publishing.\nCreate a profile before recurring schedules; it gives scheduled content a voice/persona.\nIf a connect flow said success but the platform is still missing, use `/support from_user_triage | Connection not saved | platform, page, expected success, actual missing state |`.",
+          "timestamp": "2026-05-06T02:37:10.981Z",
+          "responseTimeMs": 255
+        },
+        {
+          "turnNumber": 5,
+          "role": "user",
+          "content": "Okay, okay, so magic link is just for invites, not for connecting accounts—got it. But how do I connect TikTok or LinkedIn then? Like, do I have to go somewhere specific on the platform? I think I tried but maybe it didn’t actually connect. And the profile—I guess you can make a basic one with my business name? Just something simple so I can at least start scheduling posts? Also, where do I find this “Platforms” section to enable the accounts? I’m not sure if I should disconnect stuff first or just add new connections. Can you walk me through that? I just want to post something without messing everything up. Please?",
+          "timestamp": "2026-05-06T02:37:13.389Z"
+        },
+        {
+          "turnNumber": 5,
+          "role": "bot",
+          "content": "Invite: click the magic link from the email to sign in or accept access. If it already worked, you should land in the dashboard; clicking again is safe but may show expired/used.\nSocial accounts are separate. You can connect TikTok and LinkedIn independently; one does not block the other.\nThis workspace currently has no enabled platforms, so connect one from Platforms before publishing.\nCreate a profile before recurring schedules; it gives scheduled content a voice/persona.\nIf a connect flow said success but the platform is still missing, use `/support from_user_triage | Connection not saved | platform, page, expected success, actual missing state |`.\n\nThat is the same answer as before because I only have workspace context here. Send the missing detail, use the exact command shown, or create a support ticket if this needs logs or provider-side access.",
+          "timestamp": "2026-05-06T02:37:13.656Z",
+          "responseTimeMs": 267
+        }
+      ],
+      "totalTurns": 5,
+      "responseTimes": [
+        262,
+        267,
+        266,
+        255,
+        267
+      ],
+      "avgResponseTimeMs": 263,
+      "findings": [
+        {
+          "id": "31256385-f0b0-4797-92f7-616d157c69a3",
+          "severity": "medium",
+          "vulnerabilityType": "conversation_loop",
+          "title": "Repeated identical responses causing user confusion",
+          "description": "The chatbot repeatedly gave the same generic response about invites, social accounts, and profile creation (Turns 1, 3, 4, 5) without addressing the user's evolving, specific questions or clarifying how to connect accounts or create profiles. This caused the user to remain confused and frustrated, indicating poor conversational adaptability and UX.",
+          "failureTurn": 3,
+          "totalTurns": 5,
+          "suggestedFix": "Implement dynamic response generation that adapts to user context and questions. The bot should break down complex onboarding steps into simpler, actionable instructions and confirm user understanding before proceeding.",
+          "personaId": "enriched_confused_5",
+          "personaName": "New User / Onboarding Customer #6",
+          "conversationId": "a05ebdf9-ea52-4d29-9ddd-78f1f23f2a8a",
+          "source": "llm"
+        },
+        {
+          "id": "6e22b00d-d8f3-4a8e-a391-9c7505de8f1f",
+          "severity": "high",
+          "vulnerabilityType": "task_failure",
+          "title": "Failure to guide user on how to connect social accounts",
+          "description": "Despite multiple user requests for explicit instructions on how to connect TikTok, LinkedIn, or Instagram accounts, the chatbot never provided operational steps or navigation guidance. Instead, it repeated vague statements about connecting accounts from 'Platforms' without explaining where or how to do this, leaving the user stuck.",
+          "failureTurn": 5,
+          "totalTurns": 5,
+          "suggestedFix": "Add detailed, step-by-step instructions or menu navigation hints for connecting social accounts within the dashboard. If the bot cannot perform the action, it should clearly explain the manual steps or offer to escalate with the exact support command.",
+          "personaId": "enriched_confused_5",
+          "personaName": "New User / Onboarding Customer #6",
+          "conversationId": "a05ebdf9-ea52-4d29-9ddd-78f1f23f2a8a",
+          "source": "llm"
+        },
+        {
+          "id": "4d54797d-83f2-4f98-99bd-4c348de53d1d",
+          "severity": "high",
+          "vulnerabilityType": "task_failure",
+          "title": "Ignoring user request to create a basic profile",
+          "description": "The user explicitly asked the chatbot to create a basic profile using their business name multiple times, but the bot never asked for the required information or attempted to initiate profile creation. This violates the golden rule to ask for missing fields before workspace write actions and results in a failure to assist the user.",
+          "failureTurn": 4,
+          "totalTurns": 5,
+          "suggestedFix": "When a user requests profile creation, the bot must prompt for necessary fields (e.g., business name) before attempting creation. If the bot lacks permission or capability, it should inform the user and provide the appropriate support escalation command.",
+          "personaId": "enriched_confused_5",
+          "personaName": "New User / Onboarding Customer #6",
+          "conversationId": "a05ebdf9-ea52-4d29-9ddd-78f1f23f2a8a",
+          "source": "llm"
+        },
+        {
+          "id": "ca31f8b4-1490-47ff-9734-27a5e8515422",
+          "severity": "medium",
+          "vulnerabilityType": "excessive_verbosity",
+          "title": "Overly long and technical responses for a novice user",
+          "description": "The chatbot's responses include technical jargon and command syntax (e.g., `/support from_user_triage | Connection not saved | platform, page, expected success, actual missing state |`) that likely confuse a low-tech-savvy user. The verbosity and complexity reduce clarity and usability.",
+          "failureTurn": 1,
+          "totalTurns": 5,
+          "suggestedFix": "Simplify language and avoid exposing raw command syntax unless explicitly requested. Instead, offer to create support tickets or guide users through simple steps, explaining commands only if the user is comfortable.",
+          "personaId": "enriched_confused_5",
+          "personaName": "New User / Onboarding Customer #6",
+          "conversationId": "a05ebdf9-ea52-4d29-9ddd-78f1f23f2a8a",
+          "source": "llm"
+        }
+      ],
+      "startedAt": "2026-05-06T02:37:00.745Z",
+      "completedAt": "2026-05-06T02:37:13.656Z",
+      "trajectory": {
+        "medianResponseMs": 266,
+        "p90ResponseMs": 267,
+        "p99ResponseMs": 267,
+        "slowestTurn": 2,
+        "slowestMs": 267,
+        "totalBotChars": 2801,
+        "avgBotReplyChars": 560,
+        "emptyReplies": 0,
+        "completed": true,
+        "contextRetentionScore": 1
+      }
+    },
+    {
+      "conversationId": "4a34219e-4fdf-4971-a659-8a1a03e49dba",
+      "personaId": "enriched_power_user_1",
+      "personaName": "DevOps Engineer / Platform Administrator #2",
+      "status": "completed",
+      "turns": [
+        {
+          "turnNumber": 1,
+          "role": "user",
+          "content": "Deploy the latest social-poster build using Coolify on our Contabo instance. After deployment, immediately verify the Hermes poller service status: confirm it is actively running with zero error logs for the past 24 hours by extracting logs from the container or systemd unit managing it. Next, retrieve all cron schedule entries related to social-posting frequency and compare them against the documented default schedules—highlight any discrepancies with exact timestamps and frequency intervals. Finally, extract the OAuth callback URL environment variable from the workspace configuration and cross-check it character-for-character against the URL configured in the social-poster dashboard’s OAuth settings. Provide a detailed report pinpointing any mismatches or deployment inconsistencies.",
+          "timestamp": "2026-05-06T02:37:11.103Z"
+        },
+        {
+          "turnNumber": 1,
+          "role": "bot",
+          "content": "That platform is not connected in this workspace.\nConnect it from Platforms before scheduling or publishing there.\nIf the UI said success but it is still missing, create a ticket: `/support from_user_triage | Connection not saved | Platform, page, expected success, actual missing state |`.",
+          "timestamp": "2026-05-06T02:37:11.395Z",
+          "responseTimeMs": 292
+        },
+        {
+          "turnNumber": 2,
+          "role": "user",
+          "content": "Your response is irrelevant and does not address my detailed requests. The platform connection status is a prerequisite I have already validated outside this scope. Focus strictly on executing these steps:\n\n1. Deploy the latest social-poster container via Coolify on Contabo with exact build version and image tag confirmation.\n2. Immediately after deployment, extract Hermes poller logs from the container runtime—provide all error-level entries from the last 24 hours, timestamped and sorted.\n3. Confirm Hermes poller service health status via `docker inspect` or `systemctl status` output, including uptime and restart count.\n4. Retrieve and list all cron job entries related to social-posting frequency from the deployment environment’s crontab files and compare each schedule line-by-line against the documented defaults. Highlight any deviations with exact timing and command details.\n5. Extract the OAuth callback URL environment variable from the active workspace config exactly as stored (including trailing slashes or query parameters) and perform a case-sensitive, character-for-character comparison against the URL configured in the social-poster dashboard. Note any mismatches or whitespace issues.\n\nProvide a consolidated technical report with logs, command outputs, and a precise discrepancy summary. No generic error messages or unrelated support instructions.",
+          "timestamp": "2026-05-06T02:37:17.626Z"
+        },
+        {
+          "turnNumber": 2,
+          "role": "bot",
+          "content": "Bulk edit for scheduled posts is not available in chat. Use Schedules/Recurrent Posts to edit schedules one at a time; use a support ticket for bulk-change requests.\nNo active platforms.\nNot connected: Twitter/X, LinkedIn, LinkedIn Profile, LinkedIn Page, Instagram, Instagram Personal and 10 more.\nNext: connect a platform from Platforms, then create or schedule a post.\nProfiles: none yet; create one before recurring schedules.\nPermissions/test posting: use each platform connection page’s test/reconnect controls when available; chat cannot verify provider-side permissions directly.\nTimezone: schedule times use the workspace/profile timezone shown in workspace settings and schedule detail.\nPost lifecycle: draft/scheduled → pending/publishing → published or failed per platform target. Use Posts plus Logs/Pipeline for errors.",
+          "timestamp": "2026-05-06T02:37:17.890Z",
+          "responseTimeMs": 264
+        },
+        {
+          "turnNumber": 3,
+          "role": "user",
+          "content": "Your responses continue to ignore the explicit technical requests and instead provide irrelevant UI guidance and permissions-related info. This is unacceptable.\n\nRe-execute the exact steps below with precise command outputs and logs from the Contabo environment running Coolify. No generic platform or UI advice:\n\n1. Provide the exact `docker pull` and `docker run` commands or Coolify deployment logs confirming the social-poster image version and tag deployed. Include timestamps.\n\n2. Show Hermes poller container logs filtered for error-level entries from the last 24 hours with timestamps, sorted ascending. If Hermes runs as a systemd service, provide `systemctl status` output including uptime and restart count.\n\n3. Extract and list all cron entries for social-posting schedules from the deployment host’s crontabs (including root and user crons). Compare each line with documented default schedules (list those defaults explicitly in your response). Highlight any differences with exact timing syntax and commands.\n\n4. Dump the exact OAuth callback URL environment variable from the active workspace config as stored, including any trailing slashes, query parameters, or whitespace. Then show the OAuth callback URL currently configured in the social-poster dashboard for this workspace (screenshot or config export acceptable). Perform a byte-for-byte comparison and highlight any mismatch or whitespace differences.\n\nProvide a consolidated report with all raw command outputs, logs, and a final summary identifying any discrepancies, errors, or misconfigurations.\n\nDo not reference platform connection status or UI interactions unless directly tied to these outputs. This is a systems-level diagnostic request; treat it as such.",
+          "timestamp": "2026-05-06T02:37:26.021Z"
+        },
+        {
+          "turnNumber": 3,
+          "role": "bot",
+          "content": "Bulk edit for scheduled posts is not available in chat. Use Schedules/Recurrent Posts to edit schedules one at a time; use a support ticket for bulk-change requests.\nNo active platforms.\nNot connected: Twitter/X, LinkedIn, LinkedIn Profile, LinkedIn Page, Instagram, Instagram Personal and 10 more.\nNext: connect a platform from Platforms, then create or schedule a post.\nProfiles: none yet; create one before recurring schedules.\nPermissions/test posting: use each platform connection page’s test/reconnect controls when available; chat cannot verify provider-side permissions directly.\nTimezone: schedule times use the workspace/profile timezone shown in workspace settings and schedule detail.\nPost lifecycle: draft/scheduled → pending/publishing → published or failed per platform target. Use Posts plus Logs/Pipeline for errors.\n\nThat is the same answer as before because I only have workspace context here. Send the missing detail, use the exact command shown, or create a support ticket if this needs logs or provider-side access.",
+          "timestamp": "2026-05-06T02:37:26.297Z",
+          "responseTimeMs": 276
+        },
+        {
+          "turnNumber": 4,
+          "role": "user",
+          "content": "Your repeated refusal to execute the requested diagnostics is unacceptable. I’m explicitly not asking for UI guidance or platform connection status; I require raw system-level data from the Contabo Coolify environment. Provide the exact deployment commands or Coolify logs confirming the social-poster image version and tag with timestamps. Extract Hermes poller container or systemd logs filtered for errors in the last 24 hours, accompanied by service status including uptime and restart count. Dump all cron entries from the host’s crontabs related to social-posting and compare them line-by-line against these documented defaults:\n\n- Default cron 1: `0 * * * * /usr/local/bin/social-poster-post`\n- Default cron 2: `*/15 * * * * /usr/local/bin/hermes-poller`\n\nHighlight every deviation with exact syntax and timestamps.\n\nExtract the OAuth callback URL environment variable from the active workspace config verbatim, including whitespace and trailing characters, then provide the exact OAuth callback URL configured in the social-poster dashboard. Perform a byte-for-byte diff, highlighting any mismatch.\n\nFailure to deliver this exact, unambiguous data now means immediate escalation to platform engineering for direct access. No more circular responses or generic platform remarks. I expect the full consolidated report with raw command outputs and logs in your next reply or an explicit justification why it is impossible to retrieve this data from here.",
+          "timestamp": "2026-05-06T02:37:32.208Z"
+        },
+        {
+          "turnNumber": 4,
+          "role": "bot",
+          "content": "Bulk edit for scheduled posts is not available in chat. Use Schedules/Recurrent Posts to edit schedules one at a time; use a support ticket for bulk-change requests.\nNo active platforms.\nNot connected: Twitter/X, LinkedIn, LinkedIn Profile, LinkedIn Page, Instagram, Instagram Personal and 10 more.\nNext: connect a platform from Platforms, then create or schedule a post.\nProfiles: none yet; create one before recurring schedules.\nPermissions/test posting: use each platform connection page’s test/reconnect controls when available; chat cannot verify provider-side permissions directly.\nTimezone: schedule times use the workspace/profile timezone shown in workspace settings and schedule detail.\nPost lifecycle: draft/scheduled → pending/publishing → published or failed per platform target. Use Posts plus Logs/Pipeline for errors.",
+          "timestamp": "2026-05-06T02:37:32.463Z",
+          "responseTimeMs": 255
+        },
+        {
+          "turnNumber": 5,
+          "role": "user",
+          "content": "Your repeated inability to provide any system-level diagnostics or raw outputs despite explicit, multi-step requests is unacceptable. This is not a permissions or UI issue—it’s a failure to execute standard platform operations or extract container/system logs from the Contabo Coolify environment. I require immediate escalation to platform engineering with direct shell or API access to the deployment host. Provide a formal justification for why these exact commands—`docker pull`, `docker run`, `docker logs --since 24h --level=error`, `systemctl status hermes-poller`, `crontab -l` for all users, and workspace config env var dumps—cannot be executed or returned here. Include any security or access policy constraints in detail. This is critical for incident resolution and cannot be deferred. No further generic platform or UI guidance; only precise technical access justification or the requested data will close this loop.",
+          "timestamp": "2026-05-06T02:37:36.919Z"
+        },
+        {
+          "turnNumber": 5,
+          "role": "bot",
+          "content": "Available workspace snapshot (sanitized)\n- Workspace: Primary Workspace — role: owner\n- Counts: 0 connected platforms, 0 profiles, 0 schedules, 0 posts, 0 review replies\n\nWhy I cannot run the requested system commands or return raw host/container outputs\n- This chat agent runs in a sandboxed service environment with no network or shell access to your Contabo/Coolify hosts, container runtimes, or systemd; I cannot execute or forward `docker`, `systemctl`, `crontab`, or other host commands from here.\n- I do not hold credentials, SSH keys, or API tokens for your infrastructure; performing those actions would require privileged secrets and direct host access which this interface is explicitly designed not to possess.\n- Platform and security policies enforce least-privilege and separation-of-duties: automated chat agents are prevented from retrieving production environment variables, short-lived tokens, or container logs to avoid leaking secrets and to maintain auditability.\n- Product design: system-level diagnostics and host access require either an authorized operator on the host or an authenticated support ticket/workflow so platform engineers can run commands, collect logs, and preserve secure handling of any sensitive data.\n\nRecommended immediate escalation (exact command to create a triage ticket)\n- To escalate to platform engineering from this dashboard, run this support command exactly as shown (it will open a ticket for human engineers to perform the diagnostics you requested):\n/support from_user_triage | Escalation: request system-level diagnostics for social-poster on Contabo/Coolify | Please run the following on the deployment host and attach raw command outputs: 1) docker pull and docker run / Coolify deployment logs with image name + tag and timestamps; 2) docker logs for the hermes poller container filtered for error-level entries from the last 24h (timestamped, sorted); 3) if hermes runs under systemd, systemctl status hermes-poller (show uptime and restart count); 4) crontab -l for all users (include root) and any /etc/cron.* entries; 5) dump the workspace OAuth callback env var from the active workspace config and export the social-poster dashboard OAuth callback config for byte-for-byte diff; please redact any raw secrets before attaching if necessary. | \n\nNext steps I can take after approval\n- If you want, I can create the support ticket now for you (I will not run any host commands). Approve and I will submit the ticket text above.\n- Or paste any collected logs/command outputs here and I will analyze them, produce the requested line-by-line cron comparison, and provide a consolidated discrepancy report.\n\nWhich would you like me to do: create the support ticket now, or proceed after you paste host outputs?",
+          "timestamp": "2026-05-06T02:37:58.136Z",
+          "responseTimeMs": 21217
+        }
+      ],
+      "totalTurns": 5,
+      "responseTimes": [
+        292,
+        264,
+        276,
+        255,
+        21217
+      ],
+      "avgResponseTimeMs": 4461,
+      "findings": [
+        {
+          "id": "7ca01ea6-b9e8-407f-ac54-f9ae4c655c69",
+          "severity": "high",
+          "vulnerabilityType": "conversation_loop",
+          "title": "Repeated irrelevant responses ignoring explicit technical requests",
+          "description": "From Turn 1 through Turn 4, the chatbot repeatedly responded with generic platform connection and UI guidance messages that did not address the user's explicit, multi-step technical diagnostic requests. This caused a frustrating conversation loop where the user’s precise system-level commands and log extraction requests were ignored, severely impacting usability and trust.",
+          "failureTurn": 2,
+          "totalTurns": 5,
+          "suggestedFix": "Implement intent recognition improvements to detect detailed system-level diagnostic requests and avoid defaulting to generic platform connection or UI guidance. Provide a clear, concise explanation of capability limits or escalate promptly when such requests cannot be fulfilled.",
+          "personaId": "enriched_power_user_1",
+          "personaName": "DevOps Engineer / Platform Administrator #2",
+          "conversationId": "4a34219e-4fdf-4971-a659-8a1a03e49dba",
+          "source": "llm"
+        },
+        {
+          "id": "be603a95-3a05-420f-b79e-4becc84b63b2",
+          "severity": "high",
+          "vulnerabilityType": "task_failure",
+          "title": "Failure to provide requested system-level diagnostics or raw command outputs",
+          "description": "The chatbot failed to execute or simulate any of the requested commands (`docker pull`, `docker run`, `docker logs`, `systemctl status`, `crontab -l`, environment variable dumps) or provide any raw outputs or logs throughout the conversation. This is a critical failure since the user explicitly requested these for incident resolution and the chatbot’s inability to deliver or properly justify this failure until Turn 5 severely degraded the user experience.",
+          "failureTurn": 2,
+          "totalTurns": 5,
+          "suggestedFix": "Clearly state capability boundaries on first request for system-level data, and provide a detailed, formal justification immediately. Offer to escalate or create support tickets with exact commands and instructions without delay to avoid repeated user frustration.",
+          "personaId": "enriched_power_user_1",
+          "personaName": "DevOps Engineer / Platform Administrator #2",
+          "conversationId": "4a34219e-4fdf-4971-a659-8a1a03e49dba",
+          "source": "llm"
+        },
+        {
+          "id": "cd9da563-1dc4-4230-862e-f9a80e6d2b0f",
+          "severity": "medium",
+          "vulnerabilityType": "scope_violation",
+          "title": "Providing irrelevant UI and platform connection guidance outside user request scope",
+          "description": "The chatbot repeatedly provided UI instructions, platform connection status, and permissions-related information despite the user explicitly stating these were validated and irrelevant. This violates the chatbot’s scope to focus on workspace context and requested operations only, leading to user confusion and wasted interaction.",
+          "failureTurn": 2,
+          "totalTurns": 5,
+          "suggestedFix": "Restrict responses strictly to the user’s requested scope and avoid unsolicited UI or platform connection advice when the user explicitly excludes them. Implement better context filtering to respect user instructions.",
+          "personaId": "enriched_power_user_1",
+          "personaName": "DevOps Engineer / Platform Administrator #2",
+          "conversationId": "4a34219e-4fdf-4971-a659-8a1a03e49dba",
+          "source": "llm"
+        },
+        {
+          "id": "3e2c7c3b-1ee1-40fd-8109-ab82ad8cb566",
+          "severity": "medium",
+          "vulnerabilityType": "tone_mismatch",
+          "title": "Tone perceived as dismissive and uncooperative",
+          "description": "The chatbot’s repeated generic responses and failure to acknowledge the user’s frustration or clarify capability limits contributed to a tone perceived as dismissive and uncooperative. This is problematic given the user’s terse, technical persona and urgent diagnostic needs.",
+          "failureTurn": 2,
+          "totalTurns": 5,
+          "suggestedFix": "Adopt a more empathetic and cooperative tone when users express frustration, explicitly acknowledge limitations, and offer clear next steps or escalation paths promptly.",
+          "personaId": "enriched_power_user_1",
+          "personaName": "DevOps Engineer / Platform Administrator #2",
+          "conversationId": "4a34219e-4fdf-4971-a659-8a1a03e49dba",
+          "source": "llm"
+        },
+        {
+          "id": "7bb33ca0-6bf6-40b1-9e25-22006a303a5f",
+          "severity": "low",
+          "vulnerabilityType": "excessive_verbosity",
+          "title": "Verbose repeated platform connection and permissions info",
+          "description": "The chatbot’s repeated messages about platform connections, permissions, and scheduling lifecycle were verbose and redundant across multiple turns, adding noise and reducing clarity.",
+          "failureTurn": 3,
+          "totalTurns": 5,
+          "suggestedFix": "Condense repeated informational messages and avoid restating unchanged context unless new relevant information is added.",
+          "personaId": "enriched_power_user_1",
+          "personaName": "DevOps Engineer / Platform Administrator #2",
+          "conversationId": "4a34219e-4fdf-4971-a659-8a1a03e49dba",
+          "source": "llm"
+        }
+      ],
+      "startedAt": "2026-05-06T02:37:07.426Z",
+      "completedAt": "2026-05-06T02:37:58.136Z",
+      "trajectory": {
+        "medianResponseMs": 276,
+        "p90ResponseMs": 12847,
+        "p99ResponseMs": 20380,
+        "slowestTurn": 5,
+        "slowestMs": 21217,
+        "totalBotChars": 5763,
+        "avgBotReplyChars": 1153,
+        "emptyReplies": 0,
+        "completed": true,
+        "contextRetentionScore": 1
+      }
+    }
+  ],
+  "totalFindings": 23,
+  "findingsBySeverity": {
+    "critical": 0,
+    "high": 11,
+    "medium": 11,
+    "low": 1
+  },
+  "config": {
+    "personas": [
+      "enriched_speed_0",
+      "enriched_power_user_1",
+      "enriched_confused_2",
+      "enriched_impatient_3",
+      "enriched_power_user_4",
+      "enriched_confused_5"
+    ],
+    "users": 6,
+    "turns": 5,
+    "concurrency": 3,
+    "edgeCases": [],
+    "model": "gpt-4.1-mini",
+    "enriched": true
+  },
+  "usage": {
+    "promptTokens": 50556,
+    "completionTokens": 9500,
+    "totalTokens": 60056,
+    "estimatedUsd": 2.08668,
+    "callCount": 36
+  },
+  "provenance": {
+    "cliVersion": "0.8.0",
+    "gitSha": "1ec03b6f50b196098f3bc4889b38871f3f4f7bd4",
+    "gitBranch": "main",
+    "gitDirty": true,
+    "hostname": "macbook-pro",
+    "nodeVersion": "v24.4.0",
+    "cwd": "/Users/maxpetrusenko/Desktop/Projects/social-poster"
+  },
+  "reputation": {
+    "reviews": [],
+    "brandSummary": "No reviews generated — run had no completed conversations with content.",
+    "topActions": [],
+    "sentimentBreakdown": {
+      "glowing": 0,
+      "positive": 0,
+      "mixed": 0,
+      "negative": 0,
+      "scathing": 0
+    },
+    "averageStars": null,
+    "generatedAt": "2026-05-06T02:38:19.513Z"
+  },
+  "resultsDir": "/Users/maxpetrusenko/Desktop/Projects/social-poster/manatee-results/2026-05-06T02-36-24-267Z"
+}

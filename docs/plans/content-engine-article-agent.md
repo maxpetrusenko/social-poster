@@ -1,6 +1,6 @@
 # Content Engine Article Agent Plan
 
-Last updated: 2026-04-21
+Last updated: 2026-05-05
 
 ## Decision
 
@@ -105,6 +105,48 @@ src/lib/content-engine/
 ```
 
 Existing `src/lib/blog/*` can either stay as the blog-specific facade or move under `content-engine` once the module expands beyond blog publishing.
+
+## Quick Generation Controls
+
+The article view should expose a compact preset bar plus an advanced popover. Do not turn every Medium automation setting into permanent chrome.
+
+### High-use controls
+
+Always visible near the prompt composer:
+
+- Length preset: Short / Standard / Deep / Custom. The current backend is word-count based, so a character UI should convert roughly to words (`chars / 6`) until native character targeting exists.
+- Research: on/off. Default on for new factual articles; off for opinion, rewrite, or provided-source-only drafts.
+- Sources section: on/off. Default on when research is enabled or source URLs are provided.
+- Hero image: Agent / Use URL / None. Default Agent for publishable drafts, None for fast outline/rewrite.
+- Format: Medium / Blog / Source-of-truth / Thread seed. Medium stays default.
+
+### Advanced popover controls
+
+Put these behind a “Generation options” button:
+
+- Writer model/provider. Useful, but not high-frequency enough for top-level UI. Avoid a fake dropdown unless the request path actually honors it.
+- Image model: Gemini image / OpenAI image / Existing URL / None.
+- Image overlay: on/off. Default on for Medium/social-ready hero images.
+- Tone/voice: Max builder, technical explainer, founder essay, practical guide.
+- SEO/AEO: on/off. Default on for public articles.
+- Bio/footer: on/off. Default on for Medium export, off for internal blog drafts if the site already has author chrome.
+- Iterations/quality: Fast draft / Balanced / Max quality. Maps to max iterations 1 / 3 / 5.
+- Language.
+
+### Format suggestions from the Medium automation repo
+
+Offer these as article format presets rather than raw template IDs:
+
+- Source-of-truth article: direct answer, thesis/tension, definitions, comparison, checklist, FAQ, sources, action close.
+- Practical builder guide: problem, constraints, implementation steps, trade-offs, mistakes, checklist.
+- Opinionated founder essay: narrative hook, argument, counterargument, operating lesson, action close.
+- Research-backed explainer: direct answer, evidence map, examples, limitations, FAQ, sources.
+- Product/update article: what changed, why it matters, how to use it, examples, rollout notes, next actions.
+- Medium-ready export: Markdown, hero image, inline links, sources, footer/bio.
+
+### Current implementation note
+
+`/dashboard/articles/new` currently only sends `prompt` and `targetWords` to `/api/article/create`. That route forwards only `topic`, `length`, and `save` to Medium automation `/api/articles/streamlined`. The richer Medium automation controls already exist in the standard `/api/articles/generate` path and prompt-pack (`template`, `length`, `tone`, `style`, `language`, `voice`, `seo`, `images`, `image_size`, `image_quality`, `image_overlay`, `links`, `research`, `sources`, `footer`, `format`, `iterations`, `provider`), but the streamlined path does not honor most of them yet. Next implementation should either expand `/api/article/create` + streamlined payload support, or switch to the standard generation endpoint when advanced controls are used.
 
 ## Workflow
 
@@ -399,7 +441,7 @@ MEDIUM_AUTOMATION_API_KEY=
 - Add Gemini/Imagen provider.
 - Add R2 upload for generated image output.
 - Add admin button to regenerate hero image.
-- Add image metadata to article preview.
+- Article workspace preview reads image provenance from `version.json` and displays provider/model/status when present.
 - Test missing image, failed image generation, and successful R2 upload with mocked provider.
 
 ### Phase 3: Research Agent
@@ -413,6 +455,7 @@ MEDIUM_AUTOMATION_API_KEY=
 ### Phase 4: Editor Loop
 
 - Add revise/regenerate action.
+- Article workspace preview reads Medium-style `rating` / `rating_model` / `iterationCount` from `overview.md`, `rating.md`, `workflow.json`, `version.json`, or eval JSON, then shows the rating as number plus model in overview cards.
 - Add framework score history.
 - Add change notes.
 - Add pass/warn/fail diff between revisions.

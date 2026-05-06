@@ -17,7 +17,9 @@ export function isPostPublishStatusQuestion(message: string) {
 
 export function formatLatestPostPublishStatus(context: Pick<SocialAgentContext, "recentPosts" | "pipelineRuns">) {
   const latestPost = context.recentPosts[0];
-  if (!latestPost) return "No recent posts found in this workspace.";
+  if (!latestPost) {
+    return "No recent posts found in this workspace. Post lifecycle is draft or scheduled, then pending/publishing, then published or failed per platform target. Check Posts for target status and Logs/Pipeline for recent errors.";
+  }
 
   const title = latestPost.title?.trim() || "Untitled post";
   const targets = latestPost.targets;

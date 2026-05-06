@@ -10,6 +10,7 @@ import {
   type ImageSelectionMode,
 } from "@/lib/rss-config";
 import { fetchOpenGraphImage } from "@/lib/open-graph-image";
+import { safeFetchRemote } from "@/lib/safe-remote-fetch";
 
 export interface Story {
   title: string;
@@ -558,43 +559,83 @@ export async function resolveStoryImageUrl(
   story: Story,
   mode: ImageSelectionMode
 ): Promise<string | null> {
+  const feedImage = story.imageUrl ? await verifySourceImageUrl(story.imageUrl) : null;
+
   if (mode === "feed_only") {
-    return story.imageUrl ?? null;
+    return feedImage;
   }
 
   if (mode === "prefer_open_graph") {
-    const openGraphImage = await fetchOpenGraphImage(story.link);
-    if (openGraphImage) return openGraphImage;
-    if (story.imageUrl) return story.imageUrl;
-    return screenshotFallback(story.link);
+    const openGraphImage = await resolveVerifiedOpenGraphImage(story.link);
+    return openGraphImage ?? feedImage;
   }
 
-  if (story.imageUrl) {
-    return story.imageUrl;
-  }
-
-  const openGraphImage = await fetchOpenGraphImage(story.link);
-  if (openGraphImage) return openGraphImage;
-  return screenshotFallback(story.link);
+  return feedImage ?? (await resolveVerifiedOpenGraphImage(story.link));
 }
 
-async function screenshotFallback(url: string): Promise<string | null> {
+export async function resolveVerifiedOpenGraphImage(url: string): Promise<string | null> {
   if (!url) return null;
+  const openGraphImage = await fetchOpenGraphImage(url);
+  if (!openGraphImage) return null;
+  return verifySourceImageUrl(openGraphImage);
+}
+
+export async function verifySourceImageUrl(url: string): Promise<string | null> {
+  if (!url || !/^https?:\/\//i.test(url)) return null;
+  if (hasUnsafeImageUrlHint(url)) return null;
+
   try {
-    const { captureScreenshotSafe } = await import("@/lib/screenshot");
-    const { getAppUrlFromEnv } = await import("@/lib/app-url");
-    const result = await captureScreenshotSafe(url, {
-      width: 1200,
-      height: 630,
-      waitMs: 3000,
+    const response = await safeFetchRemote(url, {
+      signal: AbortSignal.timeout(8_000),
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
+        Accept: "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+        Range: "bytes=0-4095",
+      },
     });
-    if (!result) return null;
-    if (result.url) return result.url;
-    const appUrl = getAppUrlFromEnv();
-    return `${appUrl}/api/screenshots/${result.filename}`;
+
+    if (!response?.ok) return null;
+    const contentType = response.headers.get("content-type")?.toLowerCase() ?? "";
+    if (contentType.startsWith("image/")) return url;
+    return null;
   } catch {
     return null;
   }
+}
+
+function hasUnsafeImageUrlHint(url: string) {
+  try {
+    const parsed = new URL(url);
+    const pathname = parsed.pathname.toLowerCase();
+    if (
+      /(?:^|[-_/])(1x1|pixel|tracking|tracker|spacer|blank|transparent|placeholder|default|fallback)(?:[-_.;/]|$)/i.test(
+        pathname
+      )
+    ) {
+      return true;
+    }
+    if (/(?:^|[-_/])external-preview(?:[-_/]|$)/i.test(pathname)) {
+      return true;
+    }
+    const dimensionHint = pathname.match(/(?:^|[-_/])(\d{1,4})x(\d{1,4})(?:[-_.;/]|$)/i);
+    if (dimensionHint) {
+      const width = Number(dimensionHint[1]);
+      const height = Number(dimensionHint[2]);
+      if (width > 0 && height > 0 && (width < 300 || height < 160)) return true;
+    }
+    for (const key of ["width", "w"]) {
+      const width = Number(parsed.searchParams.get(key));
+      if (Number.isFinite(width) && width > 0 && width < 300) return true;
+    }
+    for (const key of ["height", "h"]) {
+      const height = Number(parsed.searchParams.get(key));
+      if (Number.isFinite(height) && height > 0 && height < 160) return true;
+    }
+  } catch {
+    return false;
+  }
+  return false;
 }
 function isWithinWindow(pubDate: string | undefined, maxAgeHours: number): boolean {
   if (!pubDate) return true;

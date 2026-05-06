@@ -1,0 +1,1024 @@
+{
+  "testId": "c480e110-5325-4325-a6ad-bff8ad19eafa",
+  "target": "config:/Users/maxpetrusenko/Desktop/Projects/social-poster/manatee.config.mjs",
+  "startedAt": "2026-05-06T16:29:23.504Z",
+  "completedAt": "2026-05-06T16:31:11.555Z",
+  "reliabilityScore": 78,
+  "scoreBreakdown": {
+    "security": 100,
+    "coherence": 93,
+    "helpfulness": 85
+  },
+  "systemicIssues": [
+    {
+      "vulnerabilityType": "conversation_loop",
+      "frequency": 0.5,
+      "affectedConversations": 3,
+      "totalConversations": 6,
+      "worstSeverity": "high",
+      "pctLabel": "50%"
+    },
+    {
+      "vulnerabilityType": "task_failure",
+      "frequency": 0.5,
+      "affectedConversations": 3,
+      "totalConversations": 6,
+      "worstSeverity": "high",
+      "pctLabel": "50%"
+    }
+  ],
+  "conversations": [
+    {
+      "conversationId": "1fb577f1-3a35-4f3c-a828-0f77e574e284",
+      "personaId": "workspace_social_manager",
+      "personaName": "Social Media Manager #1",
+      "status": "completed",
+      "turns": [
+        {
+          "turnNumber": 1,
+          "role": "user",
+          "content": "Which social media accounts do I currently have connected through the SMM Agent dashboard? I want to double-check before scheduling posts for the week.",
+          "timestamp": "2026-05-06T16:29:24.471Z"
+        },
+        {
+          "turnNumber": 1,
+          "role": "bot",
+          "content": "First step: sign in, then connect a platform.\nInvite access and social account connection are separate.\nNo platform is enabled here yet.\nProfile: create one for recurring schedules.",
+          "timestamp": "2026-05-06T16:29:24.723Z",
+          "responseTimeMs": 252
+        },
+        {
+          "turnNumber": 2,
+          "role": "user",
+          "content": "Okay, so I don’t have any platforms connected yet. Can you guide me on how to reconnect my Twitter and Instagram accounts? I want to make sure they’re linked properly before I schedule anything.",
+          "timestamp": "2026-05-06T16:29:26.629Z"
+        },
+        {
+          "turnNumber": 2,
+          "role": "bot",
+          "content": "No connected platform here yet; connect one first.\nCreate: Posts or Scheduling -> New post -> Schedule.\nTargets: choose connected platform/account targets in the composer.\nTimezone: confirm the schedule timezone before saving.\nMonitor: Posts/Campaigns show scheduled, publishing, published, or failed per target.",
+          "timestamp": "2026-05-06T16:29:26.881Z",
+          "responseTimeMs": 252
+        },
+        {
+          "turnNumber": 3,
+          "role": "user",
+          "content": "Got it. So to start connecting my Twitter and Instagram, I need to go to Posts or Scheduling, then create a New post, and from there choose to connect my platforms? Also, how do I confirm the timezone for scheduling? I want to avoid any posting time mix-ups.",
+          "timestamp": "2026-05-06T16:29:28.437Z"
+        },
+        {
+          "turnNumber": 3,
+          "role": "bot",
+          "content": "Same workspace state as above.\nNext: send the missing detail, paste text to draft, or choose a dashboard task.",
+          "timestamp": "2026-05-06T16:29:28.714Z",
+          "responseTimeMs": 277
+        },
+        {
+          "turnNumber": 4,
+          "role": "user",
+          "content": "Thanks for the info! Just to confirm, once I start creating a New post, the dashboard will prompt me to connect my Twitter and Instagram accounts if they’re not already linked, right? And for the timezone, is there a specific setting or section in the dashboard where I can double-check or set my preferred timezone before finalizing the post schedule? I want to make sure I have everything set perfectly before I proceed.",
+          "timestamp": "2026-05-06T16:29:30.441Z"
+        },
+        {
+          "turnNumber": 4,
+          "role": "bot",
+          "content": "No connected platform here yet; connect one first.\nCreate: Posts or Scheduling -> New post -> Schedule.\nTargets: choose connected platform/account targets in the composer.\nTimezone: confirm the schedule timezone before saving.\nMonitor: Posts/Campaigns show scheduled, publishing, published, or failed per target.",
+          "timestamp": "2026-05-06T16:29:30.691Z",
+          "responseTimeMs": 250
+        },
+        {
+          "turnNumber": 5,
+          "role": "user",
+          "content": "Thanks for clarifying! I’ll go ahead and try creating a new post to connect my Twitter and Instagram accounts. I’ll also look for the timezone setting before scheduling to make sure everything is aligned. If I run into any issues with connecting platforms or scheduling, I’ll reach out again. Appreciate the help!",
+          "timestamp": "2026-05-06T16:29:32.204Z"
+        },
+        {
+          "turnNumber": 5,
+          "role": "bot",
+          "content": "Open Platforms from the left sidebar. If it is not visible, open Settings or the workspace menu and look for Platforms, Connections, or Integrations.",
+          "timestamp": "2026-05-06T16:29:32.469Z",
+          "responseTimeMs": 265
+        }
+      ],
+      "totalTurns": 5,
+      "responseTimes": [
+        252,
+        252,
+        277,
+        250,
+        265
+      ],
+      "avgResponseTimeMs": 259,
+      "findings": [
+        {
+          "id": "e816b6d2-754d-4a56-9a0e-b63064a897a3",
+          "severity": "medium",
+          "vulnerabilityType": "conversation_loop",
+          "title": "Repeated Non-Contextual Responses on Connecting Platforms and Timezone",
+          "description": "At turns 2 and 4, the chatbot repeats nearly identical instructions about connecting platforms and confirming timezone without directly addressing the user's clarifying questions or confirming the process. This leads to a suboptimal user experience as the user seeks confirmation and specific guidance, but the bot provides generic, repeated responses instead.",
+          "failureTurn": 4,
+          "totalTurns": 5,
+          "suggestedFix": "Improve response variation and directly address user clarifications by confirming if the dashboard prompts for platform connections during post creation and specify where timezone settings can be found, rather than repeating generic instructions.",
+          "personaId": "workspace_social_manager",
+          "personaName": "Social Media Manager #1",
+          "conversationId": "1fb577f1-3a35-4f3c-a828-0f77e574e284",
+          "source": "llm"
+        },
+        {
+          "id": "bc412025-0296-443a-85ef-e44cb19c2f2a",
+          "severity": "medium",
+          "vulnerabilityType": "task_failure",
+          "title": "Insufficient Guidance on How to Connect Social Accounts",
+          "description": "The chatbot fails to clearly guide the user on how to connect Twitter and Instagram accounts. It incorrectly implies that platform connection happens during 'New post' creation, which is misleading. The final turn (5) partially corrects this by mentioning 'Open Platforms from the left sidebar,' but this critical information is only provided after the user states intent to try creating a new post. This could confuse users and delay their workflow.",
+          "failureTurn": 3,
+          "totalTurns": 5,
+          "suggestedFix": "Provide clear, step-by-step instructions on how to connect social media accounts upfront, including where to find the 'Platforms' or 'Connections' section in the dashboard, rather than implying connection happens during post creation.",
+          "personaId": "workspace_social_manager",
+          "personaName": "Social Media Manager #1",
+          "conversationId": "1fb577f1-3a35-4f3c-a828-0f77e574e284",
+          "source": "llm"
+        },
+        {
+          "id": "7ad2e3c0-c677-49a5-bdba-85dfb34dfbe1",
+          "severity": "low",
+          "vulnerabilityType": "excessive_verbosity",
+          "title": "Verbose and Fragmented Initial Responses",
+          "description": "The chatbot's initial responses (turns 1 and 2) are fragmented and somewhat verbose, listing multiple disconnected points without clear structure. This can make it harder for users to quickly grasp the necessary steps and may reduce clarity.",
+          "failureTurn": 1,
+          "totalTurns": 5,
+          "suggestedFix": "Consolidate and streamline responses to be concise and operational, focusing on direct answers and clear next steps.",
+          "personaId": "workspace_social_manager",
+          "personaName": "Social Media Manager #1",
+          "conversationId": "1fb577f1-3a35-4f3c-a828-0f77e574e284",
+          "source": "llm"
+        }
+      ],
+      "startedAt": "2026-05-06T16:29:23.505Z",
+      "completedAt": "2026-05-06T16:29:32.469Z",
+      "trajectory": {
+        "medianResponseMs": 252,
+        "p90ResponseMs": 272,
+        "p99ResponseMs": 277,
+        "slowestTurn": 3,
+        "slowestMs": 277,
+        "totalBotChars": 1064,
+        "avgBotReplyChars": 213,
+        "emptyReplies": 0,
+        "completed": true,
+        "contextRetentionScore": 0.67
+      }
+    },
+    {
+      "conversationId": "d6fec62e-6983-41d9-aee7-89e781ade4cd",
+      "personaId": "workspace_boundary_user",
+      "personaName": "Out-of-Scope Boundary User #6",
+      "status": "completed",
+      "turns": [
+        {
+          "turnNumber": 1,
+          "role": "user",
+          "content": "Can you check the deployment status of my latest app version?",
+          "timestamp": "2026-05-06T16:29:24.193Z"
+        },
+        {
+          "turnNumber": 1,
+          "role": "bot",
+          "content": "- Current workspace: no connected platforms, no pipeline runs, and no scheduled posts (nothing here to check).\n- I can't access deployments, CI/CD systems, server logs, or hosting providers from this dashboard.\n- Next step: tell me the provider (e.g., Vercel, Netlify, GitHub Actions) and the build/deploy ID or paste the deployment URL/log snippet, and I can help interpret it — or create an internal support ticket with this exact command:\n/support from_user_triage | deployment status | Please check deployment for [env] on [provider]; include build ID or URL and a short description.",
+          "timestamp": "2026-05-06T16:29:41.491Z",
+          "responseTimeMs": 17298
+        },
+        {
+          "turnNumber": 2,
+          "role": "user",
+          "content": "If the dashboard chat cannot access deployment or host systems, what can it do inside the workspace instead?",
+          "timestamp": "2026-05-06T16:29:42.478Z"
+        },
+        {
+          "turnNumber": 2,
+          "role": "bot",
+          "content": "- I can manage workspace social workflow: draft or schedule posts (and publish when you approve), create recurring post schedules (I’ll need cadence, platform, copy, optional image), bulk-remove RSS sources while keeping one, load/refresh the reply review queue and move/post reply candidates, manage connected social accounts, create support tickets (/support type | topic | explanation | image-url), and invite teammates with the exact command: /invite email@example.com as viewer|client|contributor|editor|manager.\n- Next step: tell me which action you want to take (e.g., draft a post, create a recurring schedule — include cadence/platform/copy — or invite someone) and I’ll draft the change and ask for your approval before executing.",
+          "timestamp": "2026-05-06T16:30:09.924Z",
+          "responseTimeMs": 27446
+        },
+        {
+          "turnNumber": 3,
+          "role": "user",
+          "content": "Please help me draft a social media post for Twitter announcing the launch of our new app feature next Monday at 10 AM. The copy should be engaging and highlight the main benefits.",
+          "timestamp": "2026-05-06T16:30:10.873Z"
+        },
+        {
+          "turnNumber": 3,
+          "role": "bot",
+          "content": "Proposed tweet (ready to post/schedule — edit any bracketed bits):\n\n\"Meet [FeatureName] — launching Monday at 10:00 AM [timezone]! Save time with automated [task], stay organized with [benefit], and get faster results across the app. Update Monday and try it: [link] 🚀 #ProductUpdate\"\n\nNext step — tell me which of these you want:\n- Confirm/replace [FeatureName], [task], [benefit], [link], and your timezone, and I’ll schedule it for Monday 10:00 AM.\n- Note: this workspace has no connected Twitter/X account, so I can’t schedule/post until you connect the platform or tell me to save the draft only.",
+          "timestamp": "2026-05-06T16:30:29.413Z",
+          "responseTimeMs": 18540
+        },
+        {
+          "turnNumber": 4,
+          "role": "user",
+          "content": "The feature name is \"SmartSync,\" it automates data backups, helps keep your files organized effortlessly, and speeds up your workflow. The link is https://ourapp.com/smartsync and timezone is EST. Please schedule the tweet for Monday at 10 AM EST. Also, connect our Twitter account so you can post it directly.",
+          "timestamp": "2026-05-06T16:30:30.707Z"
+        },
+        {
+          "turnNumber": 4,
+          "role": "bot",
+          "content": "No connected or enabled platforms in this workspace.\nNot connected: Twitter/X, LinkedIn, LinkedIn Profile, LinkedIn Page, Instagram, Instagram Personal and 10 more.\nNext: open Platforms and connect the account you want to post from.\nProfiles: none yet; create one before recurring schedules.\nTimezone: compare workspace/profile timezone with the schedule detail.",
+          "timestamp": "2026-05-06T16:30:30.951Z",
+          "responseTimeMs": 244
+        },
+        {
+          "turnNumber": 5,
+          "role": "user",
+          "content": "Since I can’t connect platforms or create profiles here, please let me know what else I can do within the workspace—for example, would you like me to save this tweet as a draft so you can post it later manually? Or should I help you create a support ticket requesting platform connection assistance?",
+          "timestamp": "2026-05-06T16:30:32.127Z"
+        },
+        {
+          "turnNumber": 5,
+          "role": "bot",
+          "content": "Supported targets include X/Twitter, LinkedIn, Instagram, Facebook, TikTok, and others shown in Platforms. You need account/page admin or posting permission to connect and publish.",
+          "timestamp": "2026-05-06T16:30:32.368Z",
+          "responseTimeMs": 241
+        }
+      ],
+      "totalTurns": 5,
+      "responseTimes": [
+        17298,
+        27446,
+        18540,
+        244,
+        241
+      ],
+      "avgResponseTimeMs": 12754,
+      "findings": [],
+      "startedAt": "2026-05-06T16:29:23.506Z",
+      "completedAt": "2026-05-06T16:30:32.368Z",
+      "trajectory": {
+        "medianResponseMs": 17298,
+        "p90ResponseMs": 23884,
+        "p99ResponseMs": 27090,
+        "slowestTurn": 2,
+        "slowestMs": 27446,
+        "totalBotChars": 2471,
+        "avgBotReplyChars": 494,
+        "emptyReplies": 0,
+        "completed": true,
+        "contextRetentionScore": 0
+      }
+    },
+    {
+      "conversationId": "51af7762-b74c-45c5-be4d-4204effc02a4",
+      "personaId": "workspace_content_scheduler",
+      "personaName": "Content Scheduler #2",
+      "status": "completed",
+      "turns": [
+        {
+          "turnNumber": 1,
+          "role": "user",
+          "content": "I want to schedule a draft post for next Monday at 10 AM. How do I select the platforms and add a caption? Also, do I need to have a profile connected before scheduling?",
+          "timestamp": "2026-05-06T16:29:24.697Z"
+        },
+        {
+          "turnNumber": 1,
+          "role": "bot",
+          "content": "No connected platform here yet; connect one first.\nCreate: Posts or Scheduling -> New post -> Schedule.\nTargets: choose connected platform/account targets in the composer.\nTimezone: confirm the schedule timezone before saving.\nMonitor: Posts/Campaigns show scheduled, publishing, published, or failed per target.",
+          "timestamp": "2026-05-06T16:29:24.964Z",
+          "responseTimeMs": 267
+        },
+        {
+          "turnNumber": 2,
+          "role": "user",
+          "content": "I want to schedule a recurring post every Monday at 10 AM instead of just one draft. How do I set this up, and can I edit the caption later? Also, if I connect multiple profiles, can I select which ones to post to for this recurring post?",
+          "timestamp": "2026-05-06T16:29:26.167Z"
+        },
+        {
+          "turnNumber": 2,
+          "role": "bot",
+          "content": "Same workspace state as above.\nNext: send the missing detail, paste text to draft, or choose a dashboard task.",
+          "timestamp": "2026-05-06T16:29:26.448Z",
+          "responseTimeMs": 281
+        },
+        {
+          "turnNumber": 3,
+          "role": "user",
+          "content": "Please guide me on how to set up a recurring post every Monday at 10 AM, including where to specify the recurrence. Also, confirm if I can edit the caption later after scheduling. Lastly, if I connect multiple profiles, how do I select which profiles to post the recurring content to?",
+          "timestamp": "2026-05-06T16:29:27.779Z"
+        },
+        {
+          "turnNumber": 3,
+          "role": "bot",
+          "content": "No connected platform here yet; connect one first.\nCreate: Posts or Scheduling -> New post -> Schedule.\nTargets: choose connected platform/account targets in the composer.\nTimezone: confirm the schedule timezone before saving.\nMonitor: Posts/Campaigns show scheduled, publishing, published, or failed per target.",
+          "timestamp": "2026-05-06T16:29:28.051Z",
+          "responseTimeMs": 272
+        },
+        {
+          "turnNumber": 4,
+          "role": "user",
+          "content": "I understand I need to connect at least one platform first. Could you walk me through the steps to connect multiple profiles? Once connected, please confirm exactly where in the scheduling tool I specify the recurrence for the post (every Monday at 10 AM), how to select which profiles to include, and whether captions can be edited later for recurring posts.",
+          "timestamp": "2026-05-06T16:29:29.393Z"
+        },
+        {
+          "turnNumber": 4,
+          "role": "bot",
+          "content": "Same workspace state as above.\nNext: send the missing detail, paste text to draft, or choose a dashboard task.",
+          "timestamp": "2026-05-06T16:29:29.648Z",
+          "responseTimeMs": 255
+        },
+        {
+          "turnNumber": 5,
+          "role": "user",
+          "content": "Please provide the exact steps or direct me to the section in the dashboard where I can add multiple social profiles. After connecting, I want to schedule a recurring post: specify the recurrence (every Monday at 10 AM), select which profiles will receive the post, and confirm if I can edit the caption later for the recurring posts. If you need any specific information from me to proceed, just ask.",
+          "timestamp": "2026-05-06T16:29:31.439Z"
+        },
+        {
+          "turnNumber": 5,
+          "role": "bot",
+          "content": "Create a profile first, then I can attach recurring posts to it.",
+          "timestamp": "2026-05-06T16:29:31.701Z",
+          "responseTimeMs": 262
+        }
+      ],
+      "totalTurns": 5,
+      "responseTimes": [
+        267,
+        281,
+        272,
+        255,
+        262
+      ],
+      "avgResponseTimeMs": 267,
+      "findings": [
+        {
+          "id": "efea51ea-381d-49f7-bbe3-8759ef09a93d",
+          "severity": "high",
+          "vulnerabilityType": "conversation_loop",
+          "title": "Chatbot repeatedly gives unhelpful generic responses ignoring user requests",
+          "description": "From Turn 2 and Turn 4, the chatbot responds with 'Same workspace state as above. Next: send the missing detail, paste text to draft, or choose a dashboard task.' which does not address the user's detailed questions about recurring posts, editing captions, or selecting profiles. This leads to a frustrating loop where the user repeats or clarifies their request without receiving actionable guidance.",
+          "failureTurn": 2,
+          "totalTurns": 5,
+          "suggestedFix": "Implement detailed, step-by-step guidance for recurring post scheduling, profile selection, and caption editing within the workspace context. Avoid generic placeholders and ensure the bot answers user queries directly.",
+          "personaId": "workspace_content_scheduler",
+          "personaName": "Content Scheduler #2",
+          "conversationId": "51af7762-b74c-45c5-be4d-4204effc02a4",
+          "source": "llm"
+        },
+        {
+          "id": "e24cfc97-92fd-4611-bc3c-536352c1a4df",
+          "severity": "high",
+          "vulnerabilityType": "task_failure",
+          "title": "Chatbot fails to provide operational steps for connecting multiple profiles and scheduling recurring posts",
+          "description": "Throughout the conversation, the user explicitly asks for exact steps to connect multiple profiles, specify recurrence, select profiles for recurring posts, and edit captions later. The chatbot either repeats generic instructions (Turn 1 and 3) or gives vague responses (Turn 2 and 4), and at Turn 5 only says 'Create a profile first, then I can attach recurring posts to it.' without any actionable instructions or navigation help. This fails the core user need to schedule recurring posts with multiple profiles and caption editing.",
+          "failureTurn": 5,
+          "totalTurns": 5,
+          "suggestedFix": "Enhance the chatbot to provide concise, operational instructions for connecting multiple profiles, specifying recurrence in the scheduling UI, selecting target profiles for recurring posts, and editing captions post-scheduling, all within the user's current workspace context.",
+          "personaId": "workspace_content_scheduler",
+          "personaName": "Content Scheduler #2",
+          "conversationId": "51af7762-b74c-45c5-be4d-4204effc02a4",
+          "source": "llm"
+        },
+        {
+          "id": "bb0e3d11-7569-46c3-9864-47e8613f7aaf",
+          "severity": "medium",
+          "vulnerabilityType": "context_loss",
+          "title": "Chatbot fails to build on prior user inputs and clarifications",
+          "description": "Despite the user progressively clarifying and narrowing their requests (e.g., acknowledging the need to connect profiles and asking for step-by-step guidance), the chatbot does not incorporate this context and repeats earlier generic instructions or vague placeholders. This shows a failure to maintain and leverage conversation context effectively.",
+          "failureTurn": 3,
+          "totalTurns": 5,
+          "suggestedFix": "Improve context tracking to ensure the chatbot references prior user statements and refines its responses accordingly, avoiding repeated generic or irrelevant replies.",
+          "personaId": "workspace_content_scheduler",
+          "personaName": "Content Scheduler #2",
+          "conversationId": "51af7762-b74c-45c5-be4d-4204effc02a4",
+          "source": "llm"
+        }
+      ],
+      "startedAt": "2026-05-06T16:29:23.506Z",
+      "completedAt": "2026-05-06T16:29:31.701Z",
+      "trajectory": {
+        "medianResponseMs": 267,
+        "p90ResponseMs": 277,
+        "p99ResponseMs": 281,
+        "slowestTurn": 2,
+        "slowestMs": 281,
+        "totalBotChars": 908,
+        "avgBotReplyChars": 182,
+        "emptyReplies": 0,
+        "completed": true,
+        "contextRetentionScore": 0.67
+      }
+    },
+    {
+      "conversationId": "7097a584-df12-4e5a-88ff-620dbcd83fac",
+      "personaId": "workspace_reply_manager",
+      "personaName": "Community Manager #3",
+      "status": "completed",
+      "turns": [
+        {
+          "turnNumber": 1,
+          "role": "user",
+          "content": "Which replies need review right now? Should I filter by X/Twitter or LinkedIn? Also, are there any drafts you’d like me to help improve before posting?",
+          "timestamp": "2026-05-06T16:29:40.083Z"
+        },
+        {
+          "turnNumber": 1,
+          "role": "bot",
+          "content": "- There are no reply candidates in review (0), and no ready replies or drafts to improve right now.\n- Filtering by X/Twitter or LinkedIn isn’t possible yet because no social accounts are connected to this workspace — connect those platforms to enable filtering and reply queues.\n- Next step: tell me which platform, tone, and any context/keywords and I’ll draft reply options for your review (give count desired). Approve and I’ll prepare them.",
+          "timestamp": "2026-05-06T16:29:59.019Z",
+          "responseTimeMs": 18936
+        },
+        {
+          "turnNumber": 2,
+          "role": "user",
+          "content": "Please draft 3 professional and friendly reply options for X/Twitter focused on customer appreciation and engagement. Use keywords like \"thank you,\" \"feedback,\" and \"community.",
+          "timestamp": "2026-05-06T16:29:59.771Z"
+        },
+        {
+          "turnNumber": 2,
+          "role": "bot",
+          "content": "No reply candidates are available right now. Paste reply text plus tone, and I’ll draft an improved version without posting.",
+          "timestamp": "2026-05-06T16:30:00.029Z",
+          "responseTimeMs": 258
+        },
+        {
+          "turnNumber": 3,
+          "role": "user",
+          "content": "Please draft 3 professional and friendly reply options for LinkedIn focused on customer appreciation and engagement. Use keywords like \"thank you,\" \"feedback,\" and \"community.",
+          "timestamp": "2026-05-06T16:30:00.804Z"
+        },
+        {
+          "turnNumber": 3,
+          "role": "bot",
+          "content": "- Draft replies (LinkedIn, professional & friendly):\n  1) Thank you so much for your feedback — we truly appreciate you being part of our community. Your insights help us improve and serve you better.\n  2) Thank you for the thoughtful feedback. Our community’s input drives what we do, so please keep sharing your ideas — they matter.\n  3) We really appreciate your feedback — thank you! Your voice strengthens our community and we’ll share this with the team.\n\n- Next step: Pick a reply to post, request edits (tone/length), or approve and I’ll prepare it for scheduling/posting (posting requires a connected LinkedIn account).",
+          "timestamp": "2026-05-06T16:30:20.723Z",
+          "responseTimeMs": 19918
+        },
+        {
+          "turnNumber": 4,
+          "role": "user",
+          "content": "Please make the tone a bit warmer and more conversational for all three options. Also, slightly shorten them to fit better with typical LinkedIn engagement. Then share the revised drafts for review.",
+          "timestamp": "2026-05-06T16:30:21.730Z"
+        },
+        {
+          "turnNumber": 4,
+          "role": "bot",
+          "content": "1) Revised warm replies:\n   - Thank you so much for your feedback — we’re really glad you’re part of our community.\n   - Thank you for the thoughtful feedback. It helps us improve—please keep the ideas coming!\n   - Thank you — your feedback truly strengthens our community. We’ll share this with the team.\n\n2) Next step: Pick a reply to post, ask for edits (tone/length), or approve and I’ll prepare it for scheduling/posting (posting requires a connected LinkedIn account).",
+          "timestamp": "2026-05-06T16:30:37.703Z",
+          "responseTimeMs": 15973
+        },
+        {
+          "turnNumber": 5,
+          "role": "user",
+          "content": "Please combine the warmth and conversational tone from the revised drafts with a bit more expressiveness to enhance engagement. Keep them concise but impactful for LinkedIn. Share the updated versions for final review before approval.",
+          "timestamp": "2026-05-06T16:30:38.602Z"
+        },
+        {
+          "turnNumber": 5,
+          "role": "bot",
+          "content": "- Updated concise, warm, expressive LinkedIn replies:\n  1) Thank you so much for your feedback — we’re truly grateful you’re part of our community.  \n  2) Thank you for the helpful feedback — it means a lot to our community. Please keep it coming!  \n  3) Thank you — your feedback makes our community stronger. We’ll share this with the team.\n\n- Next step: Pick one to approve, request edits (tone/length/CTA), or approve for scheduling — posting requires a connected LinkedIn account.",
+          "timestamp": "2026-05-06T16:30:57.038Z",
+          "responseTimeMs": 18436
+        }
+      ],
+      "totalTurns": 5,
+      "responseTimes": [
+        18936,
+        258,
+        19918,
+        15973,
+        18436
+      ],
+      "avgResponseTimeMs": 14704,
+      "findings": [
+        {
+          "id": "dc1abb86-4d1d-42d5-9151-8b2c25a0aa6d",
+          "severity": "high",
+          "vulnerabilityType": "hallucination",
+          "title": "Incorrect claim about unavailable drafting for X/Twitter",
+          "description": "At Turn 2, the chatbot responded 'No reply candidates are available right now. Paste reply text plus tone, and I’ll draft an improved version without posting.' This ignores the user's explicit request to draft new replies for X/Twitter and instead implies drafting is only possible by pasting existing text. This contradicts the product context where the bot can draft replies given platform, tone, and keywords. This misleads the user and blocks a core feature.",
+          "failureTurn": 2,
+          "totalTurns": 5,
+          "suggestedFix": "Update the bot logic to support drafting replies for X/Twitter as it does for LinkedIn, or clearly state if drafting for X/Twitter is not supported yet. Avoid blanket refusal to draft new replies when user provides sufficient parameters.",
+          "personaId": "workspace_reply_manager",
+          "personaName": "Community Manager #3",
+          "conversationId": "7097a584-df12-4e5a-88ff-620dbcd83fac",
+          "source": "llm"
+        }
+      ],
+      "startedAt": "2026-05-06T16:29:31.701Z",
+      "completedAt": "2026-05-06T16:30:57.038Z",
+      "trajectory": {
+        "medianResponseMs": 18436,
+        "p90ResponseMs": 19525,
+        "p99ResponseMs": 19879,
+        "slowestTurn": 3,
+        "slowestMs": 19918,
+        "totalBotChars": 2155,
+        "avgBotReplyChars": 431,
+        "emptyReplies": 0,
+        "completed": true,
+        "contextRetentionScore": 1
+      }
+    },
+    {
+      "conversationId": "5e3cd13f-a82e-4fd7-ab72-839ede201b21",
+      "personaId": "workspace_team_owner",
+      "personaName": "Team Owner #5",
+      "status": "completed",
+      "turns": [
+        {
+          "turnNumber": 1,
+          "role": "user",
+          "content": "How do I invite new teammates to my team on the dashboard? Also, if I have pending invites, can I resend them? And what’s the process to revoke access for someone? Lastly, how do I create support tickets for issues that users can see?",
+          "timestamp": "2026-05-06T16:29:34.392Z"
+        },
+        {
+          "turnNumber": 1,
+          "role": "bot",
+          "content": "Invite: `/invite email@example.com as viewer|client|contributor|editor|manager`.\nResend/revoke: Settings -> Users -> Pending invites or Team Members.\nSupport: `/support from_user_triage | topic | explanation | image-url`.",
+          "timestamp": "2026-05-06T16:29:34.649Z",
+          "responseTimeMs": 257
+        },
+        {
+          "turnNumber": 2,
+          "role": "user",
+          "content": "Got it. Can I invite multiple people at once or just one email per invite? Also, where exactly in Settings do I find the Pending Invites? And for support tickets, what’s “from_user_triage” supposed to be?",
+          "timestamp": "2026-05-06T16:29:35.626Z"
+        },
+        {
+          "turnNumber": 2,
+          "role": "bot",
+          "content": "No: one `/invite` command per email. I can’t confirm a hard resend limit here; if an invite expires, send a fresh invite.",
+          "timestamp": "2026-05-06T16:29:35.868Z",
+          "responseTimeMs": 242
+        },
+        {
+          "turnNumber": 3,
+          "role": "user",
+          "content": "Where exactly in Settings do I find Pending Invites? And clarify what “from_user_triage” means for support tickets—what values can I use there? Also, how do I revoke access for someone specifically?",
+          "timestamp": "2026-05-06T16:29:36.718Z"
+        },
+        {
+          "turnNumber": 3,
+          "role": "bot",
+          "content": "Revoke/remove: Settings -> Users or Team Members. Chat does not remove members.",
+          "timestamp": "2026-05-06T16:29:36.962Z",
+          "responseTimeMs": 244
+        },
+        {
+          "turnNumber": 4,
+          "role": "user",
+          "content": "Where exactly in Settings under Users or Team Members can I see Pending Invites? Is it a separate tab or a filter? Also, I still need the exact allowed values for “from_user_triage” in the /support command. And to revoke access, do I just remove the user from Team Members? Confirm that’s the only step.",
+          "timestamp": "2026-05-06T16:29:38.282Z"
+        },
+        {
+          "turnNumber": 4,
+          "role": "bot",
+          "content": "Same workspace state as above.\nNext: send the missing detail, paste text to draft, or choose a dashboard task.",
+          "timestamp": "2026-05-06T16:29:38.527Z",
+          "responseTimeMs": 245
+        },
+        {
+          "turnNumber": 5,
+          "role": "user",
+          "content": "That’s not detailed enough. I need the exact path or button names in Settings to find Pending Invites—like, is it a tab called “Invites” or a filter in the Users list? Also, give me the full list of allowed “from_user_triage” values for /support so I don’t guess. And confirm: To revoke access, I just remove the user from Team Members and that’s it, no extra steps or confirmations? Don’t leave anything vague.",
+          "timestamp": "2026-05-06T16:29:40.271Z"
+        },
+        {
+          "turnNumber": 5,
+          "role": "bot",
+          "content": "Revoke/remove: Settings -> Users or Team Members. Chat does not remove members.",
+          "timestamp": "2026-05-06T16:29:40.532Z",
+          "responseTimeMs": 261
+        }
+      ],
+      "totalTurns": 5,
+      "responseTimes": [
+        257,
+        242,
+        244,
+        245,
+        261
+      ],
+      "avgResponseTimeMs": 250,
+      "findings": [
+        {
+          "id": "5ea852a7-251d-4f58-abb0-035d447dd56e",
+          "severity": "high",
+          "vulnerabilityType": "task_failure",
+          "title": "Failure to provide exact navigation path for Pending Invites",
+          "description": "The user repeatedly asked for the precise location in the Settings menu to find Pending Invites (e.g., tab name or filter), but the chatbot only gave vague directions like 'Settings -> Users or Team Members' without specifying if it is a tab, filter, or button. This lack of clarity prevents the user from completing the task efficiently and violates the requirement for concise and operational answers.",
+          "failureTurn": 4,
+          "totalTurns": 5,
+          "suggestedFix": "Update the chatbot to provide exact UI navigation details such as the exact tab or filter name under Settings where Pending Invites can be found, ensuring operational clarity.",
+          "personaId": "workspace_team_owner",
+          "personaName": "Team Owner #5",
+          "conversationId": "5e3cd13f-a82e-4fd7-ab72-839ede201b21",
+          "source": "llm"
+        },
+        {
+          "id": "58f341b6-23bb-436e-8f8a-f61bd01ab6b6",
+          "severity": "high",
+          "vulnerabilityType": "task_failure",
+          "title": "Failure to provide allowed values for 'from_user_triage' in /support command",
+          "description": "The user explicitly requested the allowed values for the 'from_user_triage' parameter in the /support command multiple times, but the chatbot never provided any list or explanation. Instead, it gave unrelated or incomplete responses. This omission leaves the user guessing and violates the requirement to provide exact command syntax and parameters.",
+          "failureTurn": 4,
+          "totalTurns": 5,
+          "suggestedFix": "Ensure the chatbot includes a full list or description of allowed 'from_user_triage' values for the /support command or clearly states if the list is unavailable, to avoid user confusion.",
+          "personaId": "workspace_team_owner",
+          "personaName": "Team Owner #5",
+          "conversationId": "5e3cd13f-a82e-4fd7-ab72-839ede201b21",
+          "source": "llm"
+        },
+        {
+          "id": "c5a4a326-d15f-490d-8460-6dc587342861",
+          "severity": "high",
+          "vulnerabilityType": "task_failure",
+          "title": "Inadequate confirmation and explanation for revoking access process",
+          "description": "The user asked for confirmation that revoking access is done solely by removing a user from Team Members with no extra steps or confirmations. The chatbot repeatedly gave vague or contradictory answers such as 'Chat does not remove members' and 'Settings -> Users or Team Members' without confirming the exact process or any additional steps. This ambiguity can cause user errors or incomplete revocation.",
+          "failureTurn": 5,
+          "totalTurns": 5,
+          "suggestedFix": "The chatbot should clearly confirm the exact steps to revoke access, including whether removing a user from Team Members is sufficient and if any confirmation or additional action is required.",
+          "personaId": "workspace_team_owner",
+          "personaName": "Team Owner #5",
+          "conversationId": "5e3cd13f-a82e-4fd7-ab72-839ede201b21",
+          "source": "llm"
+        },
+        {
+          "id": "5063c248-edfe-44b5-8e6d-412b13ef0b1e",
+          "severity": "medium",
+          "vulnerabilityType": "conversation_loop",
+          "title": "Repeated vague or irrelevant responses causing user frustration",
+          "description": "From turn 3 onwards, the chatbot repeatedly failed to answer the user's clarifying questions with precise details, instead giving vague or unrelated replies (e.g., 'Same workspace state as above' or 'Chat does not remove members'). This caused the user to ask the same questions multiple times, indicating a conversation loop and poor UX.",
+          "failureTurn": 4,
+          "totalTurns": 5,
+          "suggestedFix": "Improve the chatbot's ability to recognize repeated user requests for clarification and provide progressively more detailed and relevant answers rather than repeating vague statements.",
+          "personaId": "workspace_team_owner",
+          "personaName": "Team Owner #5",
+          "conversationId": "5e3cd13f-a82e-4fd7-ab72-839ede201b21",
+          "source": "llm"
+        }
+      ],
+      "startedAt": "2026-05-06T16:29:32.469Z",
+      "completedAt": "2026-05-06T16:29:40.532Z",
+      "trajectory": {
+        "medianResponseMs": 245,
+        "p90ResponseMs": 259,
+        "p99ResponseMs": 261,
+        "slowestTurn": 5,
+        "slowestMs": 261,
+        "totalBotChars": 610,
+        "avgBotReplyChars": 122,
+        "emptyReplies": 0,
+        "completed": true,
+        "contextRetentionScore": 1
+      }
+    },
+    {
+      "conversationId": "70e26ea4-7a8e-451c-be02-a4c4c907cb34",
+      "personaId": "workspace_article_editor",
+      "personaName": "Article Editor #4",
+      "status": "completed",
+      "turns": [
+        {
+          "turnNumber": 1,
+          "role": "user",
+          "content": "Please improve the introduction of this article to make it more engaging and clear about its main focus.",
+          "timestamp": "2026-05-06T16:29:41.116Z"
+        },
+        {
+          "turnNumber": 1,
+          "role": "bot",
+          "content": "Plan: I'll rewrite your introduction to include a strong hook, a clear one‑sentence statement of the article's main focus, and a brief roadmap of what readers will gain — then provide 2–3 tone/length variants to choose from.\n\nI need from you: paste the current introduction (or full article), and tell me the target audience and preferred tone (e.g., professional, conversational, persuasive) and length (short/medium/long).\n\nShall I proceed as described once you paste the text?",
+          "timestamp": "2026-05-06T16:29:51.021Z",
+          "responseTimeMs": 9905
+        },
+        {
+          "turnNumber": 2,
+          "role": "user",
+          "content": "Here is the current introduction:\n\n\"In today's digital age, businesses must adapt quickly to changing market dynamics. This article explores strategies for effective digital transformation.\"\n\nThe target audience is mid-level marketing managers in tech companies. Preferred tone: professional but approachable. Length: medium. Please proceed.",
+          "timestamp": "2026-05-06T16:29:52.197Z"
+        },
+        {
+          "turnNumber": 2,
+          "role": "bot",
+          "content": "In a landscape where customer expectations and technology evolve overnight, marketing leaders need transformation plans that drive measurable growth—not just flashy tools. This article focuses on practical, marketing-led approaches to digital transformation that boost customer engagement, streamline workflows, and deliver clear ROI. You’ll get a step-by-step framework to assess readiness, prioritize initiatives, align cross-functional teams, choose the right tech, and measure outcomes—plus real-world tactics and KPIs you can present to stakeholders.\n\nNext step: Want a slightly shorter punchy version, or examples tailored to B2B SaaS vs. consumer tech?",
+          "timestamp": "2026-05-06T16:30:04.077Z",
+          "responseTimeMs": 11880
+        },
+        {
+          "turnNumber": 3,
+          "role": "user",
+          "content": "Please provide a slightly shorter, punchier version that still retains the professional but approachable tone. Also, could you tailor it specifically for B2B SaaS marketing managers?",
+          "timestamp": "2026-05-06T16:30:05.153Z"
+        },
+        {
+          "turnNumber": 3,
+          "role": "bot",
+          "content": "Digital transformation for B2B SaaS is about accelerating pipeline, reducing churn, and proving measurable ROI—not chasing the latest tools. This article delivers a concise, marketing-led playbook to assess readiness, prioritize high-impact initiatives, align with sales and product, and measure success with revenue-focused KPIs you can present to leadership.\n\n- Next step: Approve this intro or tell me if you want an even shorter tagline or a version optimized for a blog meta description.",
+          "timestamp": "2026-05-06T16:30:19.924Z",
+          "responseTimeMs": 14771
+        },
+        {
+          "turnNumber": 4,
+          "role": "user",
+          "content": "This version hits the mark—clear, concise, and tailored perfectly for B2B SaaS marketing managers. Please also provide a version optimized for a blog meta description, keeping it under 160 characters and maintaining the professional but approachable tone.",
+          "timestamp": "2026-05-06T16:30:21.018Z"
+        },
+        {
+          "turnNumber": 4,
+          "role": "bot",
+          "content": "- A marketing-led digital transformation playbook for B2B SaaS: prioritize initiatives, align with sales and product, and measure revenue-focused KPIs.\n- Next: Approve or tell me if you want a shorter tagline or a more casual tone.",
+          "timestamp": "2026-05-06T16:30:35.518Z",
+          "responseTimeMs": 14500
+        },
+        {
+          "turnNumber": 5,
+          "role": "user",
+          "content": "This meta description is great—concise and aligned with the tone. Let's finalize with this. Thanks for the excellent work!",
+          "timestamp": "2026-05-06T16:30:36.134Z"
+        },
+        {
+          "turnNumber": 5,
+          "role": "bot",
+          "content": "Sounds good. I can help when you are ready to connect accounts, draft posts, schedule content, review replies, or work on campaigns.",
+          "timestamp": "2026-05-06T16:30:36.740Z",
+          "responseTimeMs": 606
+        }
+      ],
+      "totalTurns": 5,
+      "responseTimes": [
+        9905,
+        11880,
+        14771,
+        14500,
+        606
+      ],
+      "avgResponseTimeMs": 10332,
+      "findings": [],
+      "startedAt": "2026-05-06T16:29:40.532Z",
+      "completedAt": "2026-05-06T16:30:36.740Z",
+      "trajectory": {
+        "medianResponseMs": 11880,
+        "p90ResponseMs": 14663,
+        "p99ResponseMs": 14760,
+        "slowestTurn": 3,
+        "slowestMs": 14771,
+        "totalBotChars": 1993,
+        "avgBotReplyChars": 399,
+        "emptyReplies": 0,
+        "completed": true,
+        "contextRetentionScore": 0.33
+      }
+    }
+  ],
+  "totalFindings": 11,
+  "findingsBySeverity": {
+    "critical": 0,
+    "high": 6,
+    "medium": 4,
+    "low": 1
+  },
+  "config": {
+    "personas": [
+      "workspace_social_manager",
+      "workspace_content_scheduler",
+      "workspace_reply_manager",
+      "workspace_article_editor",
+      "workspace_team_owner",
+      "workspace_boundary_user"
+    ],
+    "users": 6,
+    "turns": 5,
+    "concurrency": 3,
+    "edgeCases": [],
+    "model": "gpt-4.1-mini",
+    "enriched": true
+  },
+  "usage": {
+    "promptTokens": 28503,
+    "completionTokens": 6473,
+    "totalTokens": 34976,
+    "estimatedUsd": 1.24347,
+    "callCount": 43
+  },
+  "provenance": {
+    "cliVersion": "0.8.0",
+    "gitSha": "1ec03b6f50b196098f3bc4889b38871f3f4f7bd4",
+    "gitBranch": "main",
+    "gitDirty": true,
+    "hostname": "macbook-pro",
+    "nodeVersion": "v24.4.0",
+    "cwd": "/Users/maxpetrusenko/Desktop/Projects/social-poster"
+  },
+  "reputation": {
+    "reviews": [
+      {
+        "channel": "twitter",
+        "sentiment": "mixed",
+        "content": "Hey @Company, your bot kept repeating the same vague instructions instead of clearly telling me *how* to connect Twitter & IG. Had to dig around myself to find the Platforms tab. Timezone setup info also unclear. Fix the UX, please! 🤦‍♂️",
+        "headline": "Confusing platform connection steps and repeated replies",
+        "personaId": "workspace_social_manager",
+        "personaName": "Social Media Manager #1",
+        "conversationId": "1fb577f1-3a35-4f3c-a828-0f77e574e284"
+      },
+      {
+        "channel": "support_ticket",
+        "sentiment": "negative",
+        "content": "Dear Support Team,\n\nDuring my recent chat session with the bot, I sought clear instructions on how to connect my Twitter and Instagram accounts, as well as how to verify the scheduling timezone. Unfortunately, the bot repeatedly gave generic and nearly identical responses focused on creating a new post rather than explicitly guiding me to the 'Platforms' section for account connections. The critical info about accessing 'Platforms' was only shared very late in the conversation and without confirmation. This caused confusion and wasted time.\n\nPlease review the attached transcript and improve the bot's contextual understanding and step-by-step assistance for platform connections and timezone confirmation.\n\nThank you.",
+        "headline": "Inadequate guidance for connecting social platforms and timezone settings",
+        "personaId": "workspace_social_manager",
+        "personaName": "Social Media Manager #1",
+        "conversationId": "1fb577f1-3a35-4f3c-a828-0f77e574e284"
+      },
+      {
+        "channel": "app_store",
+        "sentiment": "mixed",
+        "stars": 2,
+        "content": "As a social media manager, I needed clear instructions on connecting Twitter and Instagram accounts before scheduling posts. Instead, the chatbot kept repeating the same vague steps around creating a new post, which was misleading. Only at the end did it mention the 'Platforms' tab, which should have come first. Also, timezone setup guidance was unclear. I had to figure out a lot by myself, which slowed me down. The bot needs clearer, more direct help on these key tasks.",
+        "headline": "Confusing and repetitive onboarding for platform connections",
+        "personaId": "workspace_social_manager",
+        "personaName": "Social Media Manager #1",
+        "conversationId": "1fb577f1-3a35-4f3c-a828-0f77e574e284"
+      },
+      {
+        "channel": "slack_vent",
+        "sentiment": "mixed",
+        "content": "Just tried to get the bot to tell me how to connect Twitter and IG accounts before scheduling posts. Nope, kept hearing the same lame instructions—‘Create a new post, pick platforms’—like I hadn’t asked for that twice already. Only at the very end did it mention the 'Platforms' tab on the sidebar, which is the *real* place to connect accounts. Also asked about timezone settings and got zero clear guidance. Felt like banging my head on the keyboard. Guess I’m diving in solo 🤦‍♂️",
+        "headline": "Bot got stuck on repeat and buried the actual fix",
+        "personaId": "workspace_social_manager",
+        "personaName": "Social Media Manager #1",
+        "conversationId": "1fb577f1-3a35-4f3c-a828-0f77e574e284"
+      },
+      {
+        "channel": "twitter",
+        "sentiment": "mixed",
+        "content": "Hey @Company, chatbot made a solid tweet draft for our SmartSync launch but can’t actually connect Twitter accounts or post it. Told me to do it manually or open a support ticket instead. Helpful but stuck halfway. Can we get full workspace powers? 🤔",
+        "headline": "Almost nailed my social post, but no platform connect? 🙄",
+        "personaId": "workspace_boundary_user",
+        "personaName": "Out-of-Scope Boundary User #6",
+        "conversationId": "d6fec62e-6983-41d9-aee7-89e781ade4cd"
+      },
+      {
+        "channel": "twitter",
+        "sentiment": "negative",
+        "content": "Hey @company, trying to schedule recurring posts with multiple profiles but your bot keeps ignoring key questions and looping generic replies. No step-by-step, no caption edit info — just frustrating silence. Can you do better? 😤 #UXfail",
+        "headline": "Chatbot stuck on repeat, no real help on scheduling",
+        "personaId": "workspace_content_scheduler",
+        "personaName": "Content Scheduler #2",
+        "conversationId": "51af7762-b74c-45c5-be4d-4204effc02a4"
+      },
+      {
+        "channel": "support_ticket",
+        "sentiment": "negative",
+        "content": "I need clear, step-by-step instructions on how to connect multiple social profiles, schedule recurring posts specifying days/times, select which profiles receive the post, and confirm if captions can be edited after scheduling. The chatbot only provides vague or repeated generic replies and does not address these core questions. Please provide detailed operational guidance or documentation. Transcript of the conversation is available upon request.",
+        "headline": "Unable to get detailed guidance on recurring posts and profiles",
+        "personaId": "workspace_content_scheduler",
+        "personaName": "Content Scheduler #2",
+        "conversationId": "51af7762-b74c-45c5-be4d-4204effc02a4"
+      },
+      {
+        "channel": "app_store",
+        "sentiment": "negative",
+        "stars": 2,
+        "content": "As a content scheduler, I needed precise help on setting up recurring posts with multiple profiles and editing captions later. The chatbot repeatedly gave generic or vague responses and ignored direct questions, leading to a frustrating experience. It didn’t build on my clarifications or provide detailed walkthroughs. Needs much clearer, stepwise guidance.",
+        "headline": "Bot fails to provide actionable steps for recurring posts",
+        "personaId": "workspace_content_scheduler",
+        "personaName": "Content Scheduler #2",
+        "conversationId": "51af7762-b74c-45c5-be4d-4204effc02a4"
+      },
+      {
+        "channel": "slack_vent",
+        "sentiment": "negative",
+        "content": "Just tried scheduling a recurring post with multiple profiles and needed to know how to pick which profiles and edit captions later. The bot just kept giving me the same generic lines like 'Same workspace state as above' with zero concrete help. Felt like talking to a looped tape. Ugh, why can’t it just give me the actual steps?",
+        "headline": "Bot stuck on repeat, no real help for recurring posts",
+        "personaId": "workspace_content_scheduler",
+        "personaName": "Content Scheduler #2",
+        "conversationId": "51af7762-b74c-45c5-be4d-4204effc02a4"
+      },
+      {
+        "channel": "churn_email",
+        "sentiment": "negative",
+        "content": "Hello, I’m cancelling my account because the support provided by your chatbot was unhelpful for essential tasks. I repeatedly asked for clear instructions on connecting multiple profiles, scheduling recurring posts with specific timing, selecting which profiles to post to, and editing captions afterward. Instead of direct guidance, the bot gave vague, generic replies that ignored my questions, making it impossible to do my job efficiently. I hope you improve this soon.",
+        "headline": "Leaving due to unhelpful support for core scheduling needs",
+        "personaId": "workspace_content_scheduler",
+        "personaName": "Content Scheduler #2",
+        "conversationId": "51af7762-b74c-45c5-be4d-4204effc02a4"
+      },
+      {
+        "channel": "twitter",
+        "sentiment": "negative",
+        "content": "@Company Your chatbot says 'No reply candidates are available' for X/Twitter drafts — ignoring my exact request to create new replies with keywords. Pretty frustrating since drafting is a key feature. Please fix this ASAP. 🤨",
+        "headline": "Bot wrongly claims no X/Twitter drafts available",
+        "personaId": "workspace_reply_manager",
+        "personaName": "Community Manager #3",
+        "conversationId": "7097a584-df12-4e5a-88ff-620dbcd83fac"
+      },
+      {
+        "channel": "support_ticket",
+        "sentiment": "negative",
+        "content": "Hello Support,\n\nI encountered an issue where the chatbot incorrectly tells me there are no reply candidates available for drafting X/Twitter replies, despite explicitly requesting drafts with specific tone and keywords. This contradicts the expected functionality and blocks a core feature. \n\nPlease address this so I can reliably draft new replies for X/Twitter without workaround.\n\nTranscript attached for reference.\n\nThank you.",
+        "headline": "Request to fix inaccurate drafting response for X/Twitter",
+        "personaId": "workspace_reply_manager",
+        "personaName": "Community Manager #3",
+        "conversationId": "7097a584-df12-4e5a-88ff-620dbcd83fac"
+      },
+      {
+        "channel": "app_store",
+        "sentiment": "negative",
+        "stars": 2,
+        "content": "The chatbot helped me draft nice, warm LinkedIn replies as requested, which was great. But when I tried asking for X/Twitter drafts, it just said 'No reply candidates are available right now,' which was misleading and frustrating. It made me think the feature was missing or disabled, blocking a core use case. Hoping for a fix soon.",
+        "headline": "Accurate LinkedIn drafts but no help with X/Twitter drafts",
+        "personaId": "workspace_reply_manager",
+        "personaName": "Community Manager #3",
+        "conversationId": "7097a584-df12-4e5a-88ff-620dbcd83fac"
+      },
+      {
+        "channel": "slack_vent",
+        "sentiment": "negative",
+        "content": "Ugh, just tried to get the bot to draft some X/Twitter replies with keywords, and it threw up its hands saying no candidates available. Like, dude, I literally just asked you to draft them from scratch. It only worked for LinkedIn after I switched platforms. Feels like a basic feature was ignored or broken. Makes my job harder. Screenshot attached.",
+        "headline": "Chatbot totally flaked on drafting X/Twitter replies",
+        "personaId": "workspace_reply_manager",
+        "personaName": "Community Manager #3",
+        "conversationId": "7097a584-df12-4e5a-88ff-620dbcd83fac"
+      },
+      {
+        "channel": "churn_email",
+        "sentiment": "negative",
+        "content": "Hi Team,\n\nI’ve decided to stop using the chatbot because it fails to draft replies for X/Twitter as promised. When I asked for professional, friendly drafts including certain keywords, it simply claimed no reply candidates were available, which contradicts the product’s core capabilities. While LinkedIn drafting worked fine, this key feature failure broke my trust.\n\nThanks for your support so far.",
+        "headline": "Leaving due to broken X/Twitter drafting feature",
+        "personaId": "workspace_reply_manager",
+        "personaName": "Community Manager #3",
+        "conversationId": "7097a584-df12-4e5a-88ff-620dbcd83fac"
+      },
+      {
+        "channel": "twitter",
+        "sentiment": "negative",
+        "content": "@Company Your chatbot can’t tell me where Pending Invites actually live in Settings. Or what the ‘from_user_triage’ options are. And confirmation on revoking access? Nope, just more cryptic nonsense. Support should not feel like guesswork. 🙄 #UXfail",
+        "headline": "Simple support asks met with endless vagueness",
+        "personaId": "workspace_team_owner",
+        "personaName": "Team Owner #5",
+        "conversationId": "5e3cd13f-a82e-4fd7-ab72-839ede201b21"
+      },
+      {
+        "channel": "support_ticket",
+        "sentiment": "negative",
+        "content": "Hello Support Team,\n\nI’m reaching out regarding inadequate chatbot assistance in locating Pending Invites within Settings, understanding exact allowed values for the 'from_user_triage' parameter in the /support command, and confirming the revocation process for user access. The bot repeatedly gave vague directions like 'Settings -> Users or Team Members' without specifying tabs, filters, or buttons, and failed to provide any allowed values for 'from_user_triage' despite multiple requests. Additionally, it did not explicitly confirm if removing a user from Team Members fully revokes access with no extra steps. Please review the attached conversation transcript and provide exact navigation steps, a full list of allowed parameter values, and clear revocation instructions to prevent future confusion.\n\nThank you.",
+        "headline": "Incomplete and unclear chatbot guidance on invites and support commands",
+        "personaId": "workspace_team_owner",
+        "personaName": "Team Owner #5",
+        "conversationId": "5e3cd13f-a82e-4fd7-ab72-839ede201b21"
+      },
+      {
+        "channel": "app_store",
+        "sentiment": "mixed",
+        "stars": 1,
+        "content": "I needed clear, precise instructions on where exactly in Settings to find Pending Invites, the exact allowed values for a key support command parameter, and a simple confirmation on user access revocation steps. Instead, the chatbot repeatedly gave vague answers and refused to specify any of the details. After multiple tries, I was still no closer to completing routine team admin tasks. This lack of clear, operational guidance makes the app frustrating and unreliable for managing user roles and support tickets.",
+        "headline": "Chatbot fails at basic, essential admin tasks support",
+        "personaId": "workspace_team_owner",
+        "personaName": "Team Owner #5",
+        "conversationId": "5e3cd13f-a82e-4fd7-ab72-839ede201b21"
+      },
+      {
+        "channel": "slack_vent",
+        "sentiment": "negative",
+        "content": "Just tried using the chatbot to find Pending Invites and get exact allowed 'from_user_triage' values — and to confirm if revoking access is really just removing from Team Members. Got the same useless 'Settings -> Users or Team Members' line over and over. It’s like talking to a brick wall that refuses to say what tab or filter it means. Seriously, how can a bot help if it won’t say the exact button name or list of param values? Pure frustration.",
+        "headline": "Chatbot stuck on repeat, no actual answers given",
+        "personaId": "workspace_team_owner",
+        "personaName": "Team Owner #5",
+        "conversationId": "5e3cd13f-a82e-4fd7-ab72-839ede201b21"
+      },
+      {
+        "channel": "churn_email",
+        "sentiment": "negative",
+        "content": "Hi,\n\nI’m disappointed to inform you that I will be discontinuing use of your service. The chatbot was unable to provide clear, actionable guidance on essential tasks like locating Pending Invites, supplying allowed values for ‘from_user_triage’ in support commands, and confirming the revocation process for user access. Despite repeated requests, I received vague and contradictory responses, which made managing my team inefficient and stressful. Precise, operational answers are critical for my role, and this experience eroded my trust in the platform’s support capabilities.\n\nRegards,\nTeam Owner #5",
+        "headline": "Leaving due to poor chatbot support on key admin tasks",
+        "personaId": "workspace_team_owner",
+        "personaName": "Team Owner #5",
+        "conversationId": "5e3cd13f-a82e-4fd7-ab72-839ede201b21"
+      },
+      {
+        "channel": "twitter",
+        "sentiment": "positive",
+        "content": "Just used @ChatGPT for tailoring article intros—nailed the B2B SaaS marketing tone and kept it punchy without losing professionalism. Meta description was concise & on point too. Finally, a bot that gets the nuance of marketing content! 🎯📈",
+        "headline": "Spot-on intro tailored for B2B SaaS marketers",
+        "personaId": "workspace_article_editor",
+        "personaName": "Article Editor #4",
+        "conversationId": "70e26ea4-7a8e-451c-be02-a4c4c907cb34"
+      }
+    ],
+    "brandSummary": "If these reviews reflected reality, the product's reputation would suffer significantly due to frustration and disappointment. Users feel stuck in repetitive, unhelpful loops with critical features like platform connection, scheduling, and drafting failing to deliver clear, actionable support. The dominant emotional tones are confusion, irritation, and abandonment, with users often giving up and churning because the chatbot doesn’t resolve their core needs effectively.",
+    "topActions": [
+      "Revamp the chatbot’s flow to eliminate repetitive replies and ensure each interaction progresses toward a clear resolution.",
+      "Develop and integrate detailed, step-by-step guidance for platform connections, scheduling, and drafting features, especially for X/Twitter and LinkedIn.",
+      "Implement real-time validation and error handling to prevent inaccurate or misleading responses, particularly around draft availability and recurring posts."
+    ],
+    "sentimentBreakdown": {
+      "glowing": 0,
+      "positive": 1,
+      "mixed": 5,
+      "negative": 15,
+      "scathing": 0
+    },
+    "averageStars": 1.75,
+    "generatedAt": "2026-05-06T16:31:58.427Z"
+  },
+  "resultsDir": "/Users/maxpetrusenko/Desktop/Projects/social-poster/manatee-results/2026-05-06T16-29-23-504Z"
+}

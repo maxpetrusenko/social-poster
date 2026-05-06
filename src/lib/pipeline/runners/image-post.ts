@@ -12,8 +12,8 @@ import {
 } from "../feed-engine";
 import { resolveAgentPersonaScheduleContent } from "../agent-persona-updates";
 import { resolveFixedScheduleContent } from "../fixed-schedule-post";
-import { writePostCaption } from "../script-writer";
 import { publishPlatformTargets } from "../publish-service";
+import { draftHumanPostContent } from "../human-post-writer";
 import {
   resolvePostStatusFromTargetResults,
   resolvePublishResultsStatus,
@@ -23,6 +23,7 @@ import { enrichSummaryIfNeeded } from "../enrich-summary";
 import type { Story } from "../feed-engine";
 import { getWorkspaceRssSettings } from "@/lib/rss-config";
 import { probeScheduleMediaUrl } from "@/lib/schedule-media";
+import { isSafeRemoteHttpUrl } from "@/lib/safe-remote-fetch";
 import { selectFeedStoryForSchedule } from "./feed-story-selection";
 
 async function resolveStoryImages(
@@ -115,7 +116,9 @@ export async function runImagePostJob(
           const resolvedStories = await resolveStoryImages(stories, {
             requireImage: schedule.jobType === "image_post",
             imageSelectionMode:
-              rssSettings?.imageSelectionMode ?? "prefer_feed",
+              rssSettings?.imageSelectionMode === "feed_only"
+                ? "feed_only"
+                : "prefer_open_graph",
           });
           const selectedStory = selectFeedStoryForSchedule(resolvedStories, {
             requireImage: schedule.jobType === "image_post",
@@ -158,16 +161,35 @@ export async function runImagePostJob(
     // 2. Caption
     const s2: PipelineStep = { name: "caption:write", status: "running", startedAt: new Date().toISOString() };
     steps.push(s2);
+    const humanDrafts = scheduledContent
+      ? null
+      : await draftHumanPostContent(
+          {
+            title: enrichedStory.title,
+            summary: enrichedStory.summary,
+            link: enrichedStory.link,
+            sourceName: enrichedStory.sourceName,
+            sourceHost: resolveSourceHost(enrichedStory.link),
+            publishedAt: enrichedStory.publishedAt,
+          },
+          targets.map((platform) => platform.type),
+          {
+            workspaceId: schedule.workspaceId,
+            rssSettings,
+          }
+        );
     const publishTargets = targets.map((platform) => {
       const platformType = platform.type === "x" ? "twitter" : platform.type;
-      const mediaUrl =
+      const mediaUrl = (
         scheduledContent?.mediaUrlByPlatform[platformType] ??
         story.imageUrl ??
-        undefined;
+        undefined
+      ) ?? undefined;
 
       const rawContent = scheduledContent
         ? scheduledContent.contentByPlatform[platformType] || scheduledContent.title
-        : writePostCaption(enrichedStory, platform.type, rssSettings ?? undefined);
+        : resolveDraftForPlatform(humanDrafts?.contentByPlatform, platform.type) ??
+          enrichedStory.title;
 
       // Append source link for non-X platforms (X gets it as a first comment)
       const content = story.link
@@ -201,6 +223,7 @@ export async function runImagePostJob(
     if (scheduledContent) {
       await assertScheduledMediaAvailable(publishTargets);
     }
+    await assertPublicPublishMediaUrls(publishTargets);
 
     // 3. Publish (text only)
     const s3: PipelineStep = { name: "publish", status: "running", startedAt: new Date().toISOString() };
@@ -363,6 +386,47 @@ async function assertScheduledMediaAvailable(
         `Schedule media is stale and must be rehydrated before publish: ${probe.sourceUrl}`
       );
     }
+  }
+}
+
+async function assertPublicPublishMediaUrls(targets: Array<{ mediaUrl?: string }>) {
+  const uniqueMediaUrls = Array.from(
+    new Set(
+      targets
+        .map((target) => target.mediaUrl?.trim())
+        .filter((value): value is string => Boolean(value))
+    )
+  );
+
+  for (const mediaUrl of uniqueMediaUrls) {
+    if (!/^https?:\/\//i.test(mediaUrl) || !(await isSafeRemoteHttpUrl(mediaUrl))) {
+      throw new Error(
+        `Publish media URL must be public and platform-safe: ${mediaUrl}`
+      );
+    }
+  }
+}
+
+function resolveDraftForPlatform(
+  drafts: Record<string, string> | undefined,
+  platformType: string
+) {
+  if (!drafts) return undefined;
+  const normalized =
+    platformType === "x" || platformType === "twitter"
+      ? "twitter"
+      : platformType.toLowerCase().startsWith("linkedin")
+        ? "linkedin"
+      : platformType.toLowerCase();
+  return drafts[normalized] ?? drafts[platformType];
+}
+
+function resolveSourceHost(value: string | undefined) {
+  if (!value) return undefined;
+  try {
+    return new URL(value).hostname.replace(/^www\./, "");
+  } catch {
+    return undefined;
   }
 }
 

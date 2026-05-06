@@ -46,6 +46,7 @@ const iconMap = {
   pipeline: Activity,
   team: UsersRound,
   settings: Settings,
+  articles: FileText,
 } satisfies Record<ShellNavItem["icon"], ComponentType<{ className?: string }>>;
 
 function NavList({

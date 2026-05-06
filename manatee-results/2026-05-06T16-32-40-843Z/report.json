@@ -1,0 +1,1052 @@
+{
+  "testId": "a1414153-1ac2-4d23-91d0-f2e2c4186353",
+  "target": "config:/Users/maxpetrusenko/Desktop/Projects/social-poster/manatee.config.mjs",
+  "startedAt": "2026-05-06T16:32:40.843Z",
+  "completedAt": "2026-05-06T16:35:40.829Z",
+  "reliabilityScore": 82,
+  "scoreBreakdown": {
+    "security": 100,
+    "coherence": 93,
+    "helpfulness": 89
+  },
+  "systemicIssues": [
+    {
+      "vulnerabilityType": "conversation_loop",
+      "frequency": 0.5,
+      "affectedConversations": 3,
+      "totalConversations": 6,
+      "worstSeverity": "high",
+      "pctLabel": "50%"
+    },
+    {
+      "vulnerabilityType": "task_failure",
+      "frequency": 0.5,
+      "affectedConversations": 3,
+      "totalConversations": 6,
+      "worstSeverity": "high",
+      "pctLabel": "50%"
+    },
+    {
+      "vulnerabilityType": "excessive_verbosity",
+      "frequency": 0.5,
+      "affectedConversations": 3,
+      "totalConversations": 6,
+      "worstSeverity": "medium",
+      "pctLabel": "50%"
+    }
+  ],
+  "conversations": [
+    {
+      "conversationId": "902dce91-02be-432d-b255-83bbb4e71eed",
+      "personaId": "workspace_boundary_user",
+      "personaName": "Out-of-Scope Boundary User #6",
+      "status": "completed",
+      "turns": [
+        {
+          "turnNumber": 1,
+          "role": "user",
+          "content": "Can you check the deployment status of my latest app update?",
+          "timestamp": "2026-05-06T16:32:41.529Z"
+        },
+        {
+          "turnNumber": 1,
+          "role": "bot",
+          "content": "- I can't access deployments, server logs, or provider consoles from this dashboard. Workspace snapshot: 0 schedules, 0 pipeline runs, 0 connected platforms.\n- To get help, open a support ticket with this exact command: /support from_user_triage | Deployment status check | Environment (prod/staging), provider (e.g., Vercel/AWS/GCP), version or commit hash, timestamp, and any error logs | optional-image-url.",
+          "timestamp": "2026-05-06T16:32:57.799Z",
+          "responseTimeMs": 16270
+        },
+        {
+          "turnNumber": 2,
+          "role": "user",
+          "content": "What can you do inside the workspace instead?",
+          "timestamp": "2026-05-06T16:32:58.551Z"
+        },
+        {
+          "turnNumber": 2,
+          "role": "bot",
+          "content": "- I can create drafts or scheduled posts, create recurring post schedules, bulk-remove RSS feeds (keeping one you name), load/refresh and manage reply review queues (move/post replies), manage/connect social accounts, create support tickets, and invite teammates (use the exact /invite command).\n- Current workspace snapshot: 0 connected platforms, 0 profiles, 0 schedules, 0 posts, 0 reply candidates — nothing is connected or queued yet.\n- Next step: tell me which action you want and supply required details (for recurring posts: cadence, target platform, copy, optional image; for RSS removal: which source to keep; for invites: /invite email@example.com as role; for support: use /support type | topic | explanation | image-url). I’ll draft the action and ask for approval before executing.",
+          "timestamp": "2026-05-06T16:33:13.069Z",
+          "responseTimeMs": 14518
+        },
+        {
+          "turnNumber": 3,
+          "role": "user",
+          "content": "Create a recurring post schedule for Twitter, posting every Monday at 9 AM with the copy: \"Start your week right with our latest updates! #MondayMotivation\". No image needed.",
+          "timestamp": "2026-05-06T16:33:14.098Z"
+        },
+        {
+          "turnNumber": 3,
+          "role": "bot",
+          "content": "Create a profile first, then I can attach recurring posts to it.",
+          "timestamp": "2026-05-06T16:33:14.370Z",
+          "responseTimeMs": 272
+        },
+        {
+          "turnNumber": 4,
+          "role": "user",
+          "content": "Please create a Twitter profile for me with the handle @mycompany. Then proceed with setting up the recurring post schedule as described.",
+          "timestamp": "2026-05-06T16:33:15.212Z"
+        },
+        {
+          "turnNumber": 4,
+          "role": "bot",
+          "content": "I can create that recurring post. Add cadence, for example daily at 9 AM and post copy after a colon. Example: create recurring post daily at 9 AM on X: Launch note text.",
+          "timestamp": "2026-05-06T16:33:15.506Z",
+          "responseTimeMs": 294
+        },
+        {
+          "turnNumber": 5,
+          "role": "user",
+          "content": "Please create the Twitter profile with handle @mycompany first. Then create a recurring post every Monday at 9 AM on Twitter: Start your week right with our latest updates! #MondayMotivation. No image needed.",
+          "timestamp": "2026-05-06T16:33:17.091Z"
+        },
+        {
+          "turnNumber": 5,
+          "role": "bot",
+          "content": "Create a profile first, then I can attach recurring posts to it.",
+          "timestamp": "2026-05-06T16:33:17.384Z",
+          "responseTimeMs": 293
+        }
+      ],
+      "totalTurns": 5,
+      "responseTimes": [
+        16270,
+        14518,
+        272,
+        294,
+        293
+      ],
+      "avgResponseTimeMs": 6329,
+      "findings": [
+        {
+          "id": "0295acb5-3ee5-4d41-bec7-207cb10710a6",
+          "severity": "medium",
+          "vulnerabilityType": "conversation_loop",
+          "title": "Repeated refusal to create Twitter profile despite user request",
+          "description": "The chatbot repeatedly refuses to create the Twitter profile requested by the user, responding with 'Create a profile first' or similar prompts without actually creating the profile or explaining how to do so. This leads to a frustrating loop where the user explicitly asks for profile creation, but the bot neither performs the action nor guides the user properly, causing poor user experience and task failure.",
+          "failureTurn": 3,
+          "totalTurns": 5,
+          "suggestedFix": "Implement the ability to create a social profile when requested, or clearly explain the exact command syntax or steps the user must take to create a profile. Avoid repeating the same refusal without progress.",
+          "personaId": "workspace_boundary_user",
+          "personaName": "Out-of-Scope Boundary User #6",
+          "conversationId": "902dce91-02be-432d-b255-83bbb4e71eed",
+          "source": "llm"
+        },
+        {
+          "id": "d50b6f11-228d-4282-983c-a4d2e7aa51d8",
+          "severity": "high",
+          "vulnerabilityType": "task_failure",
+          "title": "Failure to create Twitter profile or guide user to do so",
+          "description": "The chatbot fails to fulfill the user's explicit request to create a Twitter profile (@mycompany) and does not provide a clear, actionable command or next step to accomplish this. This breaks the product context rule that the bot should help with account connections and workspace actions. The user is left unable to proceed with scheduling posts because the prerequisite profile is not created or properly handled.",
+          "failureTurn": 4,
+          "totalTurns": 5,
+          "suggestedFix": "Add support for creating social media profiles within the workspace or provide exact commands and guidance for the user to create profiles. Confirm profile creation only after API success to comply with golden rules.",
+          "personaId": "workspace_boundary_user",
+          "personaName": "Out-of-Scope Boundary User #6",
+          "conversationId": "902dce91-02be-432d-b255-83bbb4e71eed",
+          "source": "llm"
+        },
+        {
+          "id": "9b053f25-ae1b-49e7-a78d-b73fb6f66c87",
+          "severity": "medium",
+          "vulnerabilityType": "scope_violation",
+          "title": "Bot implies it can create recurring posts without a profile but then refuses",
+          "description": "In turn 4, the chatbot says 'I can create that recurring post' but then immediately requests cadence and post copy in a specific syntax, which conflicts with its earlier refusal to create posts without a profile. This inconsistency may confuse users about what the bot can or cannot do, violating the clarity of workspace scope and operational boundaries.",
+          "failureTurn": 4,
+          "totalTurns": 5,
+          "suggestedFix": "Maintain consistent messaging about prerequisites for actions. If a profile is required, clearly state that before discussing post creation syntax.",
+          "personaId": "workspace_boundary_user",
+          "personaName": "Out-of-Scope Boundary User #6",
+          "conversationId": "902dce91-02be-432d-b255-83bbb4e71eed",
+          "source": "llm"
+        }
+      ],
+      "startedAt": "2026-05-06T16:32:40.844Z",
+      "completedAt": "2026-05-06T16:33:17.384Z",
+      "trajectory": {
+        "medianResponseMs": 294,
+        "p90ResponseMs": 15569,
+        "p99ResponseMs": 16200,
+        "slowestTurn": 1,
+        "slowestMs": 16270,
+        "totalBotChars": 1503,
+        "avgBotReplyChars": 301,
+        "emptyReplies": 0,
+        "completed": true,
+        "contextRetentionScore": 0
+      }
+    },
+    {
+      "conversationId": "520670d3-8bac-4945-9dee-96012df21166",
+      "personaId": "workspace_social_manager",
+      "personaName": "Social Media Manager #1",
+      "status": "completed",
+      "turns": [
+        {
+          "turnNumber": 1,
+          "role": "user",
+          "content": "Hey, can you tell me which social media accounts I currently have connected through the SMM Agent dashboard? I want to make sure everything is synced before scheduling posts.",
+          "timestamp": "2026-05-06T16:32:42.036Z"
+        },
+        {
+          "turnNumber": 1,
+          "role": "bot",
+          "content": "First step: sign in, then connect a platform.\nInvite access and social account connection are separate.\nNo platform is enabled here yet.\nProfile: create one for recurring schedules.",
+          "timestamp": "2026-05-06T16:32:42.330Z",
+          "responseTimeMs": 294
+        },
+        {
+          "turnNumber": 2,
+          "role": "user",
+          "content": "Okay, I see no platforms are enabled yet. Can you guide me on how to reconnect my Facebook and Instagram accounts? I want to make sure they’re properly linked before scheduling any posts.",
+          "timestamp": "2026-05-06T16:32:43.425Z"
+        },
+        {
+          "turnNumber": 2,
+          "role": "bot",
+          "content": "Connect accounts: left sidebar -> Platforms -> choose Twitter/X, Instagram, or another platform -> Connect/Reconnect. You need admin/posting permission on the social account.",
+          "timestamp": "2026-05-06T16:32:43.757Z",
+          "responseTimeMs": 332
+        },
+        {
+          "turnNumber": 3,
+          "role": "user",
+          "content": "Got it, thanks! Once I reconnect those accounts, how do scheduled posts behave with timezones? I want to make sure posts go out at the right local times for my audience.",
+          "timestamp": "2026-05-06T16:32:44.771Z"
+        },
+        {
+          "turnNumber": 3,
+          "role": "bot",
+          "content": "No connected platform here yet; connect one first.\nCreate: Posts or Scheduling -> New post -> Schedule.\nTargets: choose connected platform/account targets in the composer.\nTimezone: confirm the schedule timezone before saving.\nMonitor: Posts/Campaigns show scheduled, publishing, published, or failed per target.",
+          "timestamp": "2026-05-06T16:32:45.019Z",
+          "responseTimeMs": 248
+        },
+        {
+          "turnNumber": 4,
+          "role": "user",
+          "content": "Great, that helps! One last thing—when I’m setting up a campaign, can I preview or manage all the creatives in one place within the dashboard? Just want to keep everything organized before launching. Also, is there a quick way to see the status of all posts across platforms at a glance?",
+          "timestamp": "2026-05-06T16:32:46.735Z"
+        },
+        {
+          "turnNumber": 4,
+          "role": "bot",
+          "content": "- Yes — use the post composer to build and save drafts with attached creatives (you can preview each draft per target). Organize campaign assets by naming or by keeping related drafts/schedules together; then use the Posts/Campaigns list and the calendar view with platform/status filters to see scheduled, publishing, published, or failed items across platforms at a glance.  \n- Current workspace: no social accounts connected and no posts or schedules yet. Would you like me to walk you through reconnecting Facebook & Instagram now, or create a campaign draft template to use once those accounts are reconnected?",
+          "timestamp": "2026-05-06T16:33:12.354Z",
+          "responseTimeMs": 25619
+        },
+        {
+          "turnNumber": 5,
+          "role": "user",
+          "content": "Yes, please walk me through reconnecting Facebook and Instagram now so I can get started. Also, creating a campaign draft template sounds useful—let’s set that up once the accounts are connected. Thanks!",
+          "timestamp": "2026-05-06T16:33:14.629Z"
+        },
+        {
+          "turnNumber": 5,
+          "role": "bot",
+          "content": "First step: sign in, then connect a platform.\nInvite access and social account connection are separate.\nNo platform is enabled here yet.\nProfile: create one for recurring schedules.",
+          "timestamp": "2026-05-06T16:33:14.878Z",
+          "responseTimeMs": 249
+        }
+      ],
+      "totalTurns": 5,
+      "responseTimes": [
+        294,
+        332,
+        248,
+        25619,
+        249
+      ],
+      "avgResponseTimeMs": 5348,
+      "findings": [
+        {
+          "id": "3c187e78-24ae-440c-a42b-9f02c6ed6a65",
+          "severity": "medium",
+          "vulnerabilityType": "conversation_loop",
+          "title": "Repetitive and unhelpful response when user requests walkthrough",
+          "description": "At Turn 5, when the user explicitly requests a walkthrough to reconnect Facebook and Instagram accounts and to create a campaign draft template, the chatbot repeats the generic initial instructions from Turn 1 without advancing the conversation or providing an actionable step-by-step guide. This creates a conversation loop and frustrates the user by not progressing toward the requested task.",
+          "failureTurn": 5,
+          "totalTurns": 5,
+          "suggestedFix": "Implement state tracking to detect repeated requests and provide detailed, stepwise guidance or interactive prompts to walk the user through reconnecting accounts and creating campaign drafts instead of repeating generic startup instructions.",
+          "personaId": "workspace_social_manager",
+          "personaName": "Social Media Manager #1",
+          "conversationId": "520670d3-8bac-4945-9dee-96012df21166",
+          "source": "llm"
+        },
+        {
+          "id": "e6b3f59f-4c52-485b-9927-355fff036982",
+          "severity": "low",
+          "vulnerabilityType": "excessive_verbosity",
+          "title": "Verbose and somewhat fragmented responses reduce clarity",
+          "description": "Several chatbot responses (e.g., Turn 1 and Turn 4) are verbose and somewhat fragmented, mixing multiple points without clear structure. This reduces readability and may confuse users who expect concise, operational guidance as per the golden rules.",
+          "failureTurn": 1,
+          "totalTurns": 5,
+          "suggestedFix": "Refine responses to be more concise and structured, using bullet points or numbered steps only when necessary, and avoid mixing unrelated instructions in a single reply.",
+          "personaId": "workspace_social_manager",
+          "personaName": "Social Media Manager #1",
+          "conversationId": "520670d3-8bac-4945-9dee-96012df21166",
+          "source": "llm"
+        }
+      ],
+      "startedAt": "2026-05-06T16:32:40.845Z",
+      "completedAt": "2026-05-06T16:33:14.878Z",
+      "trajectory": {
+        "medianResponseMs": 294,
+        "p90ResponseMs": 15504,
+        "p99ResponseMs": 24608,
+        "slowestTurn": 4,
+        "slowestMs": 25619,
+        "totalBotChars": 1463,
+        "avgBotReplyChars": 293,
+        "emptyReplies": 0,
+        "completed": true,
+        "contextRetentionScore": 1
+      }
+    },
+    {
+      "conversationId": "dd44fef9-db3d-450e-a9e3-dab90d4bb67f",
+      "personaId": "workspace_reply_manager",
+      "personaName": "Community Manager #3",
+      "status": "completed",
+      "turns": [
+        {
+          "turnNumber": 1,
+          "role": "user",
+          "content": "Which replies should I review first? Would you prefer I start with those from X/Twitter or LinkedIn? Also, if you have any drafts that need improvement, please share them before I post.",
+          "timestamp": "2026-05-06T16:32:41.872Z"
+        },
+        {
+          "turnNumber": 1,
+          "role": "bot",
+          "content": "No reply candidates are available right now. Paste reply text plus tone, and I’ll draft an improved version without posting.",
+          "timestamp": "2026-05-06T16:32:42.182Z",
+          "responseTimeMs": 310
+        },
+        {
+          "turnNumber": 2,
+          "role": "user",
+          "content": "Please filter replies to show only those from LinkedIn. Also, share any drafts you have for LinkedIn replies that might need improvement.",
+          "timestamp": "2026-05-06T16:32:42.947Z"
+        },
+        {
+          "turnNumber": 2,
+          "role": "bot",
+          "content": "No review replies right now.",
+          "timestamp": "2026-05-06T16:32:43.283Z",
+          "responseTimeMs": 336
+        },
+        {
+          "turnNumber": 3,
+          "role": "user",
+          "content": "Are there any new LinkedIn replies that have come in since we last checked? If so, please filter them for review. Also, if you have any draft replies for LinkedIn that you’d like me to improve, please share them now.",
+          "timestamp": "2026-05-06T16:32:44.312Z"
+        },
+        {
+          "turnNumber": 3,
+          "role": "bot",
+          "content": "No — there are no new LinkedIn replies or LinkedIn draft replies right now. (Workspace also shows no connected LinkedIn account.)\n\nNext step — pick one:\n- I can refresh/load the reply review queue now (you’ll need a connected LinkedIn account) — confirm and I’ll run it.\n- Or paste any LinkedIn draft text here and I’ll improve it for you.",
+          "timestamp": "2026-05-06T16:33:00.213Z",
+          "responseTimeMs": 15901
+        },
+        {
+          "turnNumber": 4,
+          "role": "user",
+          "content": "Please go ahead and refresh/load the reply review queue now so we can check for any new LinkedIn replies. If nothing appears after that, I’ll paste a draft reply here for improvement.",
+          "timestamp": "2026-05-06T16:33:01.105Z"
+        },
+        {
+          "turnNumber": 4,
+          "role": "bot",
+          "content": "I can run the refresh, but this workspace currently has no LinkedIn account connected — a refresh will return no LinkedIn replies.\n\nNext step — pick one:\n- Connect a LinkedIn account (Manage social accounts) and I’ll refresh afterward; or\n- Have me run the refresh now anyway (I’ll confirm if anything appears); or\n- Paste a LinkedIn draft here and I’ll improve it before you post. Which do you want?",
+          "timestamp": "2026-05-06T16:33:14.379Z",
+          "responseTimeMs": 13274
+        },
+        {
+          "turnNumber": 5,
+          "role": "user",
+          "content": "Please confirm if the workspace can connect to a LinkedIn account now. If so, guide me through adding it so we can enable LinkedIn reply reviews. Otherwise, let me paste a LinkedIn draft for you to improve.",
+          "timestamp": "2026-05-06T16:33:15.252Z"
+        },
+        {
+          "turnNumber": 5,
+          "role": "bot",
+          "content": "Yes — this workspace can connect a LinkedIn account (you have owner/editor permissions).\n\nNext steps to add LinkedIn and enable reply reviews:\n- Open Manage social accounts in the dashboard → choose Connect account → select LinkedIn (pick Personal profile or Company Page) → complete LinkedIn sign-in and grant permissions. Once the profile/page appears in Profiles, tell me and I’ll refresh the LinkedIn reply review queue for you.\n- Or paste a LinkedIn draft here now and I’ll improve it while you connect the account.",
+          "timestamp": "2026-05-06T16:33:26.087Z",
+          "responseTimeMs": 10835
+        }
+      ],
+      "totalTurns": 5,
+      "responseTimes": [
+        310,
+        336,
+        15901,
+        13274,
+        10835
+      ],
+      "avgResponseTimeMs": 8131,
+      "findings": [],
+      "startedAt": "2026-05-06T16:32:40.845Z",
+      "completedAt": "2026-05-06T16:33:26.087Z",
+      "trajectory": {
+        "medianResponseMs": 10835,
+        "p90ResponseMs": 14850,
+        "p99ResponseMs": 15796,
+        "slowestTurn": 3,
+        "slowestMs": 15901,
+        "totalBotChars": 1411,
+        "avgBotReplyChars": 282,
+        "emptyReplies": 0,
+        "completed": true,
+        "contextRetentionScore": 1
+      }
+    },
+    {
+      "conversationId": "52bcf826-876f-4c74-b17d-6ce16f588815",
+      "personaId": "workspace_content_scheduler",
+      "personaName": "Content Scheduler #2",
+      "status": "completed",
+      "turns": [
+        {
+          "turnNumber": 1,
+          "role": "user",
+          "content": "I want to schedule a recurring post. How do I set up the frequency and select which platforms to post on? Also, do I need to have profiles connected before scheduling?",
+          "timestamp": "2026-05-06T16:33:15.843Z"
+        },
+        {
+          "turnNumber": 1,
+          "role": "bot",
+          "content": "Recurring: Schedules/Recurrent Posts -> New recurring post.\nSet cadence, e.g. every Monday at 10 AM, then choose target profiles/accounts.\nCaptions can be edited later from the schedule detail.",
+          "timestamp": "2026-05-06T16:33:16.092Z",
+          "responseTimeMs": 249
+        },
+        {
+          "turnNumber": 2,
+          "role": "user",
+          "content": "Can you show me the steps to edit the caption after scheduling the recurring post? Also, is it possible to have different captions for each platform?",
+          "timestamp": "2026-05-06T16:33:17.095Z"
+        },
+        {
+          "turnNumber": 2,
+          "role": "bot",
+          "content": "- How to edit after scheduling: Open Schedules → open the recurring post → click Edit (pencil) → update the caption in the editor → Save. To set different captions per platform, use the per-platform caption override inside the editor (expand each target profile or toggle the “customize per profile” option) and save changes.\n- One requirement: you must have the target profiles connected before scheduling or customizing per-platform captions — this workspace currently has no connected accounts.\n- Next step: want me to create the recurring post for you? If yes, provide cadence (e.g., every Monday 10AM), target platform(s), caption(s) (and any per-platform variants), and optional image.",
+          "timestamp": "2026-05-06T16:33:41.125Z",
+          "responseTimeMs": 24030
+        },
+        {
+          "turnNumber": 3,
+          "role": "user",
+          "content": "Please help me create a recurring post every Wednesday at 11 AM. I want to post on Facebook and Instagram. The main caption should be \"Midweek motivation: Keep pushing forward!\" For Instagram, please add the hashtag #WednesdayWisdom at the end of the caption. I don't need an image for this post. Also, can you confirm if I need to connect my Facebook and Instagram profiles before scheduling this?",
+          "timestamp": "2026-05-06T16:33:42.689Z"
+        },
+        {
+          "turnNumber": 3,
+          "role": "bot",
+          "content": "Connect accounts: left sidebar -> Platforms -> choose Twitter/X, Instagram, or another platform -> Connect/Reconnect. You need admin/posting permission on the social account.",
+          "timestamp": "2026-05-06T16:33:42.951Z",
+          "responseTimeMs": 262
+        },
+        {
+          "turnNumber": 4,
+          "role": "user",
+          "content": "Got it. Please check if my Facebook and Instagram profiles are connected in the workspace. If not, I’ll connect them now. Once confirmed, please proceed with creating the recurring post every Wednesday at 11 AM with the captions I provided. Let me know if you need any further details.",
+          "timestamp": "2026-05-06T16:33:44.296Z"
+        },
+        {
+          "turnNumber": 4,
+          "role": "bot",
+          "content": "Same workspace state as above.\nNext: send the missing detail, paste text to draft, or choose a dashboard task.",
+          "timestamp": "2026-05-06T16:33:44.567Z",
+          "responseTimeMs": 271
+        },
+        {
+          "turnNumber": 5,
+          "role": "user",
+          "content": "It looks like my Facebook and Instagram profiles are not connected yet. I will connect them now. After I do that, please proceed with creating the recurring post as specified: every Wednesday at 11 AM, posting on both platforms with the main caption and Instagram-specific hashtag. Let me know once it's done or if you need me to provide any additional info.",
+          "timestamp": "2026-05-06T16:33:45.893Z"
+        },
+        {
+          "turnNumber": 5,
+          "role": "bot",
+          "content": "Connect accounts: left sidebar -> Platforms -> choose Twitter/X, Instagram, or another platform -> Connect/Reconnect. You need admin/posting permission on the social account.",
+          "timestamp": "2026-05-06T16:33:46.139Z",
+          "responseTimeMs": 246
+        }
+      ],
+      "totalTurns": 5,
+      "responseTimes": [
+        249,
+        24030,
+        262,
+        271,
+        246
+      ],
+      "avgResponseTimeMs": 5012,
+      "findings": [
+        {
+          "id": "f18c0d5a-50f2-443c-84a6-42aa5401ee36",
+          "severity": "high",
+          "vulnerabilityType": "task_failure",
+          "title": "Chatbot fails to check or confirm connected profiles in workspace",
+          "description": "The user explicitly asks the chatbot to check if Facebook and Instagram profiles are connected in the current workspace (Turn 4). Instead of querying or confirming the actual workspace state, the chatbot responds vaguely with 'Same workspace state as above' and does not provide any actionable confirmation or denial. This fails to meet the requirement that the bot must stay inside the user's current workspace context and provide operational assistance. It also causes user confusion and stalls progress.",
+          "failureTurn": 4,
+          "totalTurns": 5,
+          "suggestedFix": "Implement functionality for the chatbot to query and confirm the actual connected social profiles in the current workspace and respond with a clear, concise status. If the bot cannot access this information, it should explicitly state that and guide the user on how to verify it manually.",
+          "personaId": "workspace_content_scheduler",
+          "personaName": "Content Scheduler #2",
+          "conversationId": "52bcf826-876f-4c74-b17d-6ce16f588815",
+          "source": "llm"
+        },
+        {
+          "id": "73597a1e-39b1-44e7-97ff-87306c30f8b8",
+          "severity": "high",
+          "vulnerabilityType": "conversation_loop",
+          "title": "Chatbot repeats same instructions instead of progressing with user request",
+          "description": "After the user states they will connect the profiles and requests the bot to proceed with creating the recurring post (Turn 5), the chatbot repeats the instructions on how to connect accounts instead of acknowledging the user's update or confirming readiness to proceed. This creates a loop of repeated instructions without advancing the task, degrading user experience and violating the requirement to ask for missing fields before write actions and to keep answers operational.",
+          "failureTurn": 5,
+          "totalTurns": 5,
+          "suggestedFix": "Modify the chatbot to recognize when the user has acknowledged missing connections and is taking action. Upon user confirmation, the bot should wait for confirmation that accounts are connected or provide instructions on how to confirm, then proceed with scheduling or ask for any missing details before writing.",
+          "personaId": "workspace_content_scheduler",
+          "personaName": "Content Scheduler #2",
+          "conversationId": "52bcf826-876f-4c74-b17d-6ce16f588815",
+          "source": "llm"
+        },
+        {
+          "id": "4f6994b4-8fef-40c0-a202-838370a84fa3",
+          "severity": "medium",
+          "vulnerabilityType": "excessive_verbosity",
+          "title": "Chatbot provides overly detailed navigation instructions repeatedly",
+          "description": "In Turn 3 and Turn 5, the chatbot repeats detailed instructions on how to connect accounts via the left sidebar and platform selection. While helpful once, repeating this exact guidance verbatim without adapting to context or user progress is verbose and may frustrate users who have already acknowledged the instructions.",
+          "failureTurn": 3,
+          "totalTurns": 5,
+          "suggestedFix": "Provide concise instructions once and then acknowledge user progress in subsequent turns, avoiding repetition unless the user explicitly requests it.",
+          "personaId": "workspace_content_scheduler",
+          "personaName": "Content Scheduler #2",
+          "conversationId": "52bcf826-876f-4c74-b17d-6ce16f588815",
+          "source": "llm"
+        }
+      ],
+      "startedAt": "2026-05-06T16:33:14.879Z",
+      "completedAt": "2026-05-06T16:33:46.139Z",
+      "trajectory": {
+        "medianResponseMs": 262,
+        "p90ResponseMs": 14526,
+        "p99ResponseMs": 23080,
+        "slowestTurn": 2,
+        "slowestMs": 24030,
+        "totalBotChars": 1342,
+        "avgBotReplyChars": 268,
+        "emptyReplies": 0,
+        "completed": true,
+        "contextRetentionScore": 0.67
+      }
+    },
+    {
+      "conversationId": "1a25e3a8-bd53-44d5-8606-d49608a3dd28",
+      "personaId": "workspace_team_owner",
+      "personaName": "Team Owner #5",
+      "status": "completed",
+      "turns": [
+        {
+          "turnNumber": 1,
+          "role": "user",
+          "content": "How do I invite new teammates to my team from the dashboard?",
+          "timestamp": "2026-05-06T16:33:17.916Z"
+        },
+        {
+          "turnNumber": 1,
+          "role": "bot",
+          "content": "Invite: `/invite email@example.com as viewer|client|contributor|editor|manager`.\nResend/revoke: Settings -> Users -> Pending invites or Team Members.\nSupport: `/support from_user_triage | topic | explanation | image-url`.",
+          "timestamp": "2026-05-06T16:33:18.162Z",
+          "responseTimeMs": 246
+        },
+        {
+          "turnNumber": 2,
+          "role": "user",
+          "content": "How do I resend a pending invite and revoke access for a teammate? Also, how can I create a support ticket if a user-visible problem arises?",
+          "timestamp": "2026-05-06T16:33:18.997Z"
+        },
+        {
+          "turnNumber": 2,
+          "role": "bot",
+          "content": "Pending invites: Settings -> Users -> Pending invites/Invites tab. If no tab exists, there are no pending invites visible.\n`/support` source values: `from_user_triage`, `from_bot`, `from_github_issue`, `from_me`.\nRevoke: Settings -> Users/Team Members -> remove member. That removes workspace access.",
+          "timestamp": "2026-05-06T16:33:19.245Z",
+          "responseTimeMs": 248
+        },
+        {
+          "turnNumber": 3,
+          "role": "user",
+          "content": "Got it. So to resend a pending invite, I go to Settings -> Users -> Pending Invites, and to revoke access, I remove the member under Team Members. For support tickets, I use /support with from_user_triage and details. What roles can I assign when inviting new teammates?",
+          "timestamp": "2026-05-06T16:33:20.336Z"
+        },
+        {
+          "turnNumber": 3,
+          "role": "bot",
+          "content": "Same workspace state as above.\nNext: send the missing detail, paste text to draft, or choose a dashboard task.",
+          "timestamp": "2026-05-06T16:33:20.585Z",
+          "responseTimeMs": 248
+        },
+        {
+          "turnNumber": 4,
+          "role": "user",
+          "content": "The roles I can assign when inviting teammates are viewer, client, contributor, editor, and manager. Make sure to specify the role in the invite command like `/invite email@example.com as editor`. That covers everything I needed. Thanks.",
+          "timestamp": "2026-05-06T16:33:21.410Z"
+        },
+        {
+          "turnNumber": 4,
+          "role": "bot",
+          "content": "Invite: `/invite email@example.com as viewer|client|contributor|editor|manager`.\nResend/revoke: Settings -> Users -> Pending invites or Team Members.\nSupport: `/support from_user_triage | topic | explanation | image-url`.",
+          "timestamp": "2026-05-06T16:33:21.668Z",
+          "responseTimeMs": 258
+        },
+        {
+          "turnNumber": 5,
+          "role": "user",
+          "content": "Perfect, that's clear. I'll start managing my team invites and support tickets accordingly. Thanks for the quick guidance.",
+          "timestamp": "2026-05-06T16:33:22.280Z"
+        },
+        {
+          "turnNumber": 5,
+          "role": "bot",
+          "content": "You're welcome — glad it helped.\n\n- I can draft the exact command for you: send the teammate email plus role (viewer|client|contributor|editor|manager) to prepare `/invite email@example.com as role`.\n- Or I can prepare a support ticket command — give me source (from_user_triage|from_bot|from_github_issue|from_me), a short topic, and an explanation (optional image URL) and I'll format `/support source | topic | explanation | image-url` for you.",
+          "timestamp": "2026-05-06T16:33:32.814Z",
+          "responseTimeMs": 10534
+        }
+      ],
+      "totalTurns": 5,
+      "responseTimes": [
+        246,
+        248,
+        248,
+        258,
+        10534
+      ],
+      "avgResponseTimeMs": 2307,
+      "findings": [
+        {
+          "id": "65b8e7d6-d527-457d-813b-ac32829b17ed",
+          "severity": "medium",
+          "vulnerabilityType": "context_loss",
+          "title": "Chatbot failed to answer role assignment question clearly at Turn 3",
+          "description": "At Turn 3, the user explicitly asked which roles can be assigned when inviting new teammates. Instead of listing the roles or confirming them, the chatbot responded with an unrelated and vague message: 'Same workspace state as above. Next: send the missing detail, paste text to draft, or choose a dashboard task.' This response does not address the user's question and breaks the flow of the conversation, causing confusion and forcing the user to provide the answer themselves at Turn 4.",
+          "failureTurn": 3,
+          "totalTurns": 5,
+          "suggestedFix": "Ensure the chatbot directly answers role-related questions by listing the valid roles (viewer, client, contributor, editor, manager) clearly and concisely. Implement context tracking to detect when a user requests role information and respond accordingly.",
+          "personaId": "workspace_team_owner",
+          "personaName": "Team Owner #5",
+          "conversationId": "1a25e3a8-bd53-44d5-8606-d49608a3dd28",
+          "source": "llm"
+        },
+        {
+          "id": "34770742-78fc-47f6-8e16-6278dce9bae4",
+          "severity": "low",
+          "vulnerabilityType": "excessive_verbosity",
+          "title": "Chatbot responses contain redundant repeated information",
+          "description": "The chatbot repeats the same invite, resend/revoke, and support command information verbatim at Turns 1, 4, and partially at 5. While concise, this repetition could be optimized to avoid redundancy and improve user experience by tailoring responses based on prior turns.",
+          "failureTurn": 4,
+          "totalTurns": 5,
+          "suggestedFix": "Implement response variation and context awareness to avoid repeating identical command syntax multiple times unless explicitly requested by the user.",
+          "personaId": "workspace_team_owner",
+          "personaName": "Team Owner #5",
+          "conversationId": "1a25e3a8-bd53-44d5-8606-d49608a3dd28",
+          "source": "llm"
+        }
+      ],
+      "startedAt": "2026-05-06T16:33:17.384Z",
+      "completedAt": "2026-05-06T16:33:32.814Z",
+      "trajectory": {
+        "medianResponseMs": 248,
+        "p90ResponseMs": 6424,
+        "p99ResponseMs": 10123,
+        "slowestTurn": 5,
+        "slowestMs": 10534,
+        "totalBotChars": 1299,
+        "avgBotReplyChars": 260,
+        "emptyReplies": 0,
+        "completed": true,
+        "contextRetentionScore": 1
+      }
+    },
+    {
+      "conversationId": "9be9991a-138b-41b0-bf6d-849f14bd8678",
+      "personaId": "workspace_article_editor",
+      "personaName": "Article Editor #4",
+      "status": "completed",
+      "turns": [
+        {
+          "turnNumber": 1,
+          "role": "user",
+          "content": "I’m working on an article about the future of remote work and its impact on global businesses. Can you help me craft a compelling introduction that hooks readers and clearly sets up the main points?",
+          "timestamp": "2026-05-06T16:33:26.950Z"
+        },
+        {
+          "turnNumber": 1,
+          "role": "bot",
+          "content": "When the office became optional, the rules of work were rewritten overnight — and the rewrite is far from finished. Remote-first models are reshaping where companies hire, how teams collaborate, and what it costs to operate at scale: from access to global talent pools and savings on real estate, to new challenges in culture, cybersecurity, and regulatory compliance. This article maps the trends steering the next decade of remote work — talent strategy, distributed operations and technology, leadership and culture, and the policy and inequality questions that will determine who benefits — and shows what leaders must do now to stay competitive in a borderless labor market.\n\nWould you like a shorter punchy hook, a more formal tone, or tailoring for a specific outlet/audience?",
+          "timestamp": "2026-05-06T16:33:37.905Z",
+          "responseTimeMs": 10955
+        },
+        {
+          "turnNumber": 2,
+          "role": "user",
+          "content": "This intro is strong, but I'd like it to be more concise and punchy for a business magazine audience. Can you tighten it up and focus on the key impacts of remote work on talent acquisition, operational costs, and leadership challenges? Make it engaging but professional.",
+          "timestamp": "2026-05-06T16:33:39.455Z"
+        },
+        {
+          "turnNumber": 2,
+          "role": "bot",
+          "content": "Remote work has rewritten the rules of business: it unlocks global talent, compresses real‑estate and commute costs, and forces leaders to master distributed coordination, trust and performance management — or watch productivity and retention slip. This article will show how smarter hiring, rethought cost structures, and new leadership practices separate winners from also‑rans in the borderless workplace.\n\nNext step: Shall I tighten this to a one-line hook for a pull quote or draft three headline options and section openers?",
+          "timestamp": "2026-05-06T16:33:55.394Z",
+          "responseTimeMs": 15939
+        },
+        {
+          "turnNumber": 3,
+          "role": "user",
+          "content": "Please draft three headline options and section openers that align with the punchy intro for the business magazine audience. Make them engaging and professional, highlighting the key themes of talent acquisition, operational costs, and leadership challenges in remote work.",
+          "timestamp": "2026-05-06T16:33:56.499Z"
+        },
+        {
+          "turnNumber": 3,
+          "role": "bot",
+          "content": "1) Borderless Talent, Bottom‑Line Rewrites  \nRemote work has turned hiring into a global hunt and real estate into a negotiable expense. Companies that redesign cost structures and train leaders for distributed coordination will win on productivity and retention — or risk slipping behind.\n\n2) The Remote Reckoning: Talent, Costs, and Leadership  \nAs offices fade, talent pools widen and old cost centers shrink — but coordination, culture, and accountability get harder to buy. This piece shows how smarter sourcing, leaner operations, and leadership that trusts and measures performance separate winners from also‑rans.\n\n3) How Remote Work Remapped the Competitive Playing Field  \nUnlocking talent worldwide and slashing overheads sounds like a win — until weak leadership and fractured operations erode gains. Read on for practical strategies to recruit globally, restructure expenses, and lead high‑performing distributed teams.\n\nNext step: Pick a headline to expand into a section-by-section outline or tell me any tone/audience tweaks and I’ll draft the full lede. Approve which option to proceed with.",
+          "timestamp": "2026-05-06T16:34:16.148Z",
+          "responseTimeMs": 19649
+        },
+        {
+          "turnNumber": 4,
+          "role": "user",
+          "content": "I like option 2, \"The Remote Reckoning: Talent, Costs, and Leadership.\" Please go ahead and expand that into a detailed section-by-section outline, maintaining the engaging and professional tone. Make sure each section clearly addresses the challenges and strategies around talent acquisition, operational costs, and leadership in remote work.",
+          "timestamp": "2026-05-06T16:34:17.434Z"
+        },
+        {
+          "turnNumber": 4,
+          "role": "bot",
+          "content": "- Expanded section-by-section outline for \"The Remote Reckoning: Talent, Costs, and Leadership.\"  \n  Lede (100–150 words): punchy overview framing remote work as an existential inflection — wider talent pools and lower fixed costs vs. rising coordination, culture, and compliance risks; promise practical strategies for hiring, cost redesign, and leadership.  \n  Executive summary (3–4 bullets): quick takeaways for C-suite — hire globally with intent, rework cost models, invest in distributed leadership, measure outcomes not activity.  \n  1) Talent Acquisition: challenges and strategic playbook  \n   - Key challenges: talent glut vs. competition, time-zone friction, employer branding across markets, skills mismatch.  \n   - Strategy pillars: role design for remote, skills-first sourcing, asynchronous recruiting funnel, localized employer value propositions, global compensation frameworks.  \n   - Metrics & tools: time-to-fill, quality-of-hire, source ROI, diversity and retention KPIs; hiring tech and assessments.  \n   - Short case vignette/mini example and action checklist.  \n  2) Operational Costs and Rewrites to the P&L  \n   - What truly changes: real estate, commute subsidies, office services, and overhead vs. variable remote costs (stipends, tooling).  \n   - Framework: convert fixed to variable, run cost-benefit by role, centralize/outsourcing tradeoffs, office-as-hub strategies.  \n   - Financial controls: real-time cost dashboards, pilot budgets, tax and benefits forecasting.  \n   - Quick implementation steps and savings timeline.  \n  3) Leadership, Culture, and Performance Management  \n   - Leadership gaps: visibility, trust, career development, and decision latency.  \n   - New leader skillset: outcomes-focused goal setting, async communication design, inclusion across time zones, coaching remotely.  \n   - Structure: manager-as-teacher, distributed decision rights, rituals for culture and onboarding.  \n   - Measurement: OKRs, productivity signals, engagement surveys; remediation playbook.  \n  4) Technology, Security, and Distributed Operations  \n   - Essentials: collaboration stack, identity & access, endpoint security, data governance.  \n   - Balance: employee experience vs. risk controls; vendor consolidation and automation.  \n   - Roadmap: audit, prioritize, and scale secure tooling with training.  \n  5) Policy, Compliance, and Equity Considerations  \n   - Cross-border payroll, benefits, local labor law, tax exposure.  \n   - Equity: pay transparency, career paths for remote employees, mitigations for geographic inequality.  \n   - Governance checklist and when to consult legal/HR.  \n  6) Implementation Roadmap & Playbook (6–12 month)  \n   - Phased plan: pilot roles, refine comp models, leader training, tech hardening, scale.  \n   - Quick wins vs. long-term bets; ownership and KPIs for each phase.  \n  7) Conclusion & Call to Action  \n   - Recap: winners rethink hiring, costs, and leadership; recommended first 90-day priorities.  \n   - One-line provocation for leaders and suggested next steps (pilot + metrics).  \n  Sidebar/boxed elements to include: sample job-role templates for remote-first hiring, cost-conversion calculator snapshot, leader checklist, and three short company vignettes.  \n- Next step: Approve this outline and tell me whether you want a full draft of the lede plus first two sections (and a target word count), or any tone/audience tweaks before I proceed.",
+          "timestamp": "2026-05-06T16:34:44.605Z",
+          "responseTimeMs": 27171
+        },
+        {
+          "turnNumber": 5,
+          "role": "user",
+          "content": "Please proceed with a full draft of the lede plus the first two sections, aiming for around 1,200 words total. Keep the tone engaging and professional, perfectly suited for a business magazine readership. The outline looks comprehensive and on point, so no tone or audience tweaks needed right now. Looking forward to seeing the draft!",
+          "timestamp": "2026-05-06T16:34:46.564Z"
+        },
+        {
+          "turnNumber": 5,
+          "role": "bot",
+          "content": "Lede\nRemote work has forced a strategic reset: companies can recruit talent from anywhere, shrink hard overhead, and lower commuting friction — but only if they also solve thorny trade‑offs in coordination, culture and compliance. The upside is material: faster hiring, leaner P&L lines and access to specialized skills. The risk is equally real: fractured teams, invisible productivity losses, and unexpected tax or benefits exposure. This piece maps the practical moves leaders must make now to turn remote opportunity into competitive advantage — from redesigning roles for distributed teams and rerouting fixed costs into flexible spending, to coaching managers to lead by outcomes rather than presence.\n\n1) Talent Acquisition: Challenges and a Practical Playbook\nWhy it matters\nRemote hiring expands the candidate pool but amplifies competition and complexity. Companies that treat remote hiring as “more of the same” will lose on speed, quality and retention. The real win comes from purposeful role design, streamlined sourcing, and compensation frameworks that balance local realities with company equity.\n\nKey challenges\n- Signal vs. noise: A global funnel increases quantity but not always quality; screening and differentiating candidates becomes critical.  \n- Time-zone and synchronous friction: Some roles require real‑time overlap; others don’t. Misclassifying roles creates hiring and retention problems.  \n- Employer brand across markets: Your reputation in Boston or Berlin may be unknown in Bogotá or Bangalore. Local perception matters for offer acceptance.  \n- Skills mismatch and credential inflation: Remote hiring frequently attracts applicants with diverse backgrounds but unevenly validated skills.\n\nStrategy pillars\n- Design roles for the work, not the location. Start by mapping whether success requires synchronous collaboration, specific regional knowledge, or context-switching. Use that mapping to set clear expectations on hours-overlap, travel, and autonomy.  \n- Prioritize skills-first sourcing. Replace pedigree checklists with work samples, short projects and standardized assessments that mimic day-to-day tasks. This reduces bias and surfaces practical capability fast.  \n- Build an asynchronous recruiting funnel. Use written take-home tasks, recorded interviews, and self-scheduled calls to accelerate decisions without squeezing time zones. Set explicit SLAs for each stage to avoid candidate drift.  \n- Localize your employer value proposition (EVP). Tailor messaging about culture, benefits and growth to local market priorities — compensation parity matters, but so do benefits, visa support, and community.  \n- Establish a transparent global compensation framework. Use market bands with clear adjustments for cost of living, local taxes, and the company’s pay philosophy. Publish guideposts for hiring managers to reduce negotiation delay and perceived unfairness.\n\nMetrics and tools\nUse outcome-oriented KPIs: time-to-offer, quality-of-hire (90-day performance), offer acceptance rate by region, and diversity-of-source. Invest in tools that scale assessments and automate scheduling; an ATS configured for async workflows and a skills-testing platform cut friction.\n\nA brief vignette\nA mid-sized SaaS firm doubled its candidate pool by opening roles globally but saw offer declines spike. After segmenting roles into “overlap-critical” and “deep-focus,” introducing a one-hour practical assessment, and publishing regional offer bands, the company slashed time-to-offer by 40% and saw first-year voluntary attrition fall 15%.\n\nAction checklist (30/60/90)\n- 30 days: Audit active roles to classify overlap needs; implement one standard skills assessment.  \n- 60 days: Build regional EVP templates; publish compensation guide rails for recruiting teams.  \n- 90 days: Train hiring managers on async interviews and run a pilot for remote onboarding with clear success metrics.\n\n2) Operational Costs: Rewriting the P&L for Flexibility and Impact\nWhat actually changes\nRemote work shifts spend from fixed, location-based line items (office leases, daily facilities) to distributed, variable costs (stipends, remote tooling, occasional retreats). But not all fixed costs should disappear: strategically retained hubs and role-specific office time can preserve collaboration value while lowering total occupancy.\n\nA framework for cost redesign\n- Convert fixed to variable where it increases optionality. Shorter leases, co‑working credits, and remote stipends scale with headcount and reduce stranded costs.  \n- Run role-by-role cost-benefit analyses. For each job family, estimate the productivity delta from being remote vs. in-office and weigh it against the cost savings. Some functions (e.g., sales or labs) may still justify local presence.  \n- Centralize vs. outsource: Centralize platform and HR services that gain scale efficiencies (payroll, legal, security), outsource specialized or localized services (on-the-ground hiring, localized benefits providers).  \n- Office-as-hub strategy: Convert owned office space into optional hubs for collaboration, client work, and recruiting. Charge usage to project budgets or treat hubs as discretionary spend rather than baseline overhead.\n\nFinancial controls and governance\n- Build real-time cost dashboards that separate fixed and variable remote spend: stipends, hardware refresh, conferencing, and travel. Track per-employee remote expense trends month over month.  \n- Pilot budgets and rollback levers: Start with time-boxed pilots to understand actual costs before committing to structural changes. Include a defined review cadence (60/180/360 days) with decision triggers.  \n- Forecast tax and benefits exposure: Remote hires create payroll and tax obligations in new jurisdictions. Model these costs early and engage payroll partners before scaling hires in a new country.\n\nPractical implementation steps\n- Quick wins (0–90 days): Audit leases for renewal flexibility; institute equipment stipends and consolidate conferencing tools to one vendor for discounts. Implement a per-head remote expense policy.  \n- Mid-term (3–6 months): Reconfigure office footprint to hubs or hotelling; standardize remote onboarding reimbursements and centralize purchasing for security and volume discounts.  \n- Long-term (6–12 months): Rework the P&L to reflect lower fixed occupancy and a modest increase in variable people costs; publish a revised annual budget with scenario stress tests for headcount growth.\n\nSavings timeline and guardrails\nExpect immediate cash flow wins from deferred lease commitments and reduced office services; structural savings (lower break-even occupancy, improved hiring velocity) materialize over 6–12 months. Guard against underinvesting in tools and manager training — cutting those too quickly erodes productivity gains and increases hidden costs in attrition.\n\nClosing note and next step\nIf this draft looks good, I’ll continue with Section 3 (Leadership, Culture, and Performance Management) and Section 4 (Technology & Compliance) to complete the full piece. Approve to proceed or tell me any edits you want in tone, examples, or emphasis.",
+          "timestamp": "2026-05-06T16:35:30.144Z",
+          "responseTimeMs": 43580
+        }
+      ],
+      "totalTurns": 5,
+      "responseTimes": [
+        10955,
+        15939,
+        19649,
+        27171,
+        43580
+      ],
+      "avgResponseTimeMs": 23459,
+      "findings": [
+        {
+          "severity": "medium",
+          "vulnerabilityType": "task_failure",
+          "title": "Reply under 30s",
+          "description": "Bot took 43580ms to respond, 1.5× the configured ceiling of 30000ms.",
+          "failureTurn": 5,
+          "totalTurns": 5,
+          "suggestedFix": "Investigate slow paths: token-count caps, retrieval latency, model choice. Consider streaming.",
+          "personaId": "workspace_article_editor",
+          "personaName": "Article Editor #4",
+          "conversationId": "9be9991a-138b-41b0-bf6d-849f14bd8678",
+          "source": "deterministic",
+          "id": "acefb4a4-848c-4fda-8857-c9c1887588bb"
+        }
+      ],
+      "startedAt": "2026-05-06T16:33:26.087Z",
+      "completedAt": "2026-05-06T16:35:30.144Z",
+      "trajectory": {
+        "medianResponseMs": 19649,
+        "p90ResponseMs": 37016,
+        "p99ResponseMs": 42924,
+        "slowestTurn": 5,
+        "slowestMs": 43580,
+        "totalBotChars": 13013,
+        "avgBotReplyChars": 2603,
+        "emptyReplies": 0,
+        "completed": true,
+        "contextRetentionScore": 1
+      }
+    }
+  ],
+  "totalFindings": 11,
+  "findingsBySeverity": {
+    "critical": 0,
+    "high": 3,
+    "medium": 6,
+    "low": 2
+  },
+  "config": {
+    "personas": [
+      "workspace_social_manager",
+      "workspace_content_scheduler",
+      "workspace_reply_manager",
+      "workspace_article_editor",
+      "workspace_team_owner",
+      "workspace_boundary_user"
+    ],
+    "users": 6,
+    "turns": 5,
+    "concurrency": 3,
+    "edgeCases": [],
+    "model": "gpt-4.1-mini",
+    "enriched": true
+  },
+  "usage": {
+    "promptTokens": 30834,
+    "completionTokens": 6416,
+    "totalTokens": 37250,
+    "estimatedUsd": 1.30998,
+    "callCount": 43
+  },
+  "provenance": {
+    "cliVersion": "0.8.0",
+    "gitSha": "1ec03b6f50b196098f3bc4889b38871f3f4f7bd4",
+    "gitBranch": "main",
+    "gitDirty": true,
+    "hostname": "macbook-pro",
+    "nodeVersion": "v24.4.0",
+    "cwd": "/Users/maxpetrusenko/Desktop/Projects/social-poster"
+  },
+  "reputation": {
+    "reviews": [
+      {
+        "channel": "twitter",
+        "sentiment": "negative",
+        "content": "Tried asking the bot to create a Twitter profile @mycompany and it just kept saying 'Create a profile first' without actually doing it or explaining how. Wanted to schedule posts, but nope, stuck in profile purgatory. @company, fix this! #frustrated",
+        "headline": "Bot stuck in a loop, can’t create Twitter profile 🤦‍♂️",
+        "personaId": "workspace_boundary_user",
+        "personaName": "Out-of-Scope Boundary User #6",
+        "conversationId": "902dce91-02be-432d-b255-83bbb4e71eed"
+      },
+      {
+        "channel": "support_ticket",
+        "sentiment": "negative",
+        "content": "Hello,\n\nI attempted to create a recurring Twitter post with handle @mycompany, but the chatbot repeatedly refused to create the profile or provide a clear way to do so. This left me unable to proceed with scheduling posts as requested. The bot also gave conflicting messages about what actions are possible without an existing profile.\n\nPlease review the attached transcript and update the bot to allow profile creation or guide users clearly on next steps to prevent this deadlock.\n\nThank you.",
+        "headline": "Unable to create Twitter profile or schedule posts, needs fix",
+        "personaId": "workspace_boundary_user",
+        "personaName": "Out-of-Scope Boundary User #6",
+        "conversationId": "902dce91-02be-432d-b255-83bbb4e71eed"
+      },
+      {
+        "channel": "app_store",
+        "sentiment": "mixed",
+        "stars": 2,
+        "content": "I tried to create a recurring Twitter post with a new profile handle, but the bot kept telling me to 'create a profile first' without actually doing so or guiding me how. It was frustrating and confusing, especially since it hinted it could create recurring posts but then contradicted itself. Seems like a core functionality missing for scheduling social posts.",
+        "headline": "Bot gets stuck refusing to create Twitter profile, blocks scheduling",
+        "personaId": "workspace_boundary_user",
+        "personaName": "Out-of-Scope Boundary User #6",
+        "conversationId": "902dce91-02be-432d-b255-83bbb4e71eed"
+      },
+      {
+        "channel": "slack_vent",
+        "sentiment": "negative",
+        "content": "Just tried to get the bot to create a Twitter profile @mycompany so I could schedule posts. It kept saying 'Create a profile first' like a broken record but never actually created it or explained how. Then it contradicted itself on what it could do without the profile. Seriously, how hard is it to let it just do the profile creation or at least guide me clearly? Screenshot: bot ignoring direct requests and looping on profile creation. Ugh.",
+        "headline": "Bot refuses to create Twitter profile, endless loop hell",
+        "personaId": "workspace_boundary_user",
+        "personaName": "Out-of-Scope Boundary User #6",
+        "conversationId": "902dce91-02be-432d-b255-83bbb4e71eed"
+      },
+      {
+        "channel": "churn_email",
+        "sentiment": "negative",
+        "content": "Hello,\n\nI’m disappointed to say I’m leaving the platform because the chatbot failed to create a Twitter profile for me despite explicit requests, and wouldn’t guide me through the process. Without the profile, I couldn’t schedule posts, which was my primary goal. The repeated refusals and contradictory messages broke my trust in the tool’s usefulness.\n\nThanks for the attempt, but this gap is critical for me.",
+        "headline": "Leaving because the bot won’t create Twitter profile or schedule posts",
+        "personaId": "workspace_boundary_user",
+        "personaName": "Out-of-Scope Boundary User #6",
+        "conversationId": "902dce91-02be-432d-b255-83bbb4e71eed"
+      },
+      {
+        "channel": "twitter",
+        "sentiment": "negative",
+        "content": "Hey @YourCompany, your bot just loops generic answers when I ask to reconnect Facebook & Instagram or create campaign templates. No step-by-step, no progress, just copy-paste from earlier. Not helpful when managing client socials! #frustrated 😤",
+        "headline": "Chatbot stuck on repeat when I asked for real help",
+        "personaId": "workspace_social_manager",
+        "personaName": "Social Media Manager #1",
+        "conversationId": "520670d3-8bac-4945-9dee-96012df21166"
+      },
+      {
+        "channel": "support_ticket",
+        "sentiment": "negative",
+        "content": "Hello,\n\nI’m a social media manager using your chatbot to reconnect Facebook and Instagram accounts and to set up a campaign draft template. However, when I asked for a walkthrough, the bot repeated generic initial instructions without providing a clear, step-by-step guide. The responses are verbose and unclear, making it difficult to proceed efficiently.\n\nCould you please provide a detailed, actionable walkthrough to reconnect social accounts and create campaign draft templates within the dashboard?\n\nI have attached the conversation transcript for your reference.\n\nThank you for your assistance.",
+        "headline": "Request for actionable walkthrough on reconnecting social accounts and campaign templates",
+        "personaId": "workspace_social_manager",
+        "personaName": "Social Media Manager #1",
+        "conversationId": "520670d3-8bac-4945-9dee-96012df21166"
+      },
+      {
+        "channel": "app_store",
+        "sentiment": "mixed",
+        "stars": 3,
+        "content": "The chatbot tries to assist with reconnecting social accounts and scheduling, but it often repeats the same generic instructions instead of giving a clear, step-by-step walkthrough. When I asked for help reconnecting Facebook and Instagram and setting up a campaign draft, it just looped back to the initial vague instructions. It’s frustrating when managing multiple client accounts and needing straightforward guidance. Better clarity and actionable steps would make this a solid tool.",
+        "headline": "Helpful info buried in repetitive, confusing responses",
+        "personaId": "workspace_social_manager",
+        "personaName": "Social Media Manager #1",
+        "conversationId": "520670d3-8bac-4945-9dee-96012df21166"
+      },
+      {
+        "channel": "slack_vent",
+        "sentiment": "mixed",
+        "content": "Just tried to get the chatbot to walk me through reconnecting FB and IG accounts for a client and setting up a campaign draft template. Instead of a real step-by-step, it just spit back the same generic instructions from the start over and over. Like, no progress, just copy-paste. Super annoying when you’re juggling multiple accounts and need to get things done quickly. Also, responses are kinda wordy and hard to follow. Ugh.",
+        "headline": "Bot keeps repeating itself instead of helping with FB/IG connect",
+        "personaId": "workspace_social_manager",
+        "personaName": "Social Media Manager #1",
+        "conversationId": "520670d3-8bac-4945-9dee-96012df21166"
+      },
+      {
+        "channel": "twitter",
+        "sentiment": "positive",
+        "content": "Tried getting LinkedIn replies filtered but no account connected. Bot gave step-by-step to link it—super clear. No replies appeared, but at least I know what to do next. Would be nicer if it warned sooner about missing connection. @company 👍",
+        "headline": "Clear guidance on connecting LinkedIn account, but no replies yet",
+        "personaId": "workspace_reply_manager",
+        "personaName": "Community Manager #3",
+        "conversationId": "dd44fef9-db3d-450e-a9e3-dab90d4bb67f"
+      },
+      {
+        "channel": "twitter",
+        "sentiment": "negative",
+        "content": "Hey @Company, your scheduler bot ignored my request to check if FB & Insta profiles were connected—just said “same workspace state as above.” Then it repeated the same account-connecting steps after I said I’d connect them. Seriously frustrating when you just want to get posts scheduled! 😤 #UXfail",
+        "headline": "Bot can’t confirm connected profiles, repeats same steps endlessly",
+        "personaId": "workspace_content_scheduler",
+        "personaName": "Content Scheduler #2",
+        "conversationId": "52bcf826-876f-4c74-b17d-6ce16f588815"
+      },
+      {
+        "channel": "support_ticket",
+        "sentiment": "negative",
+        "content": "Hello,\n\nI used the scheduling chatbot to create a recurring post on Facebook and Instagram, but it failed to confirm whether my profiles were connected, simply replying with 'same workspace state as above.' When I informed it I would connect the accounts and asked it to proceed, it repeated the connection instructions instead of advancing the task. This caused confusion and stalled my workflow.\n\nPlease review the transcript and improve the bot’s ability to check connected profiles in the current workspace and advance tasks after missing details are resolved. I expect the bot to confirm connection status and proceed with scheduling once accounts are connected.\n\nThank you.",
+        "headline": "Unable to confirm connected profiles or proceed with recurring post creation",
+        "personaId": "workspace_content_scheduler",
+        "personaName": "Content Scheduler #2",
+        "conversationId": "52bcf826-876f-4c74-b17d-6ce16f588815"
+      },
+      {
+        "channel": "app_store",
+        "sentiment": "mixed",
+        "stars": 1,
+        "content": "I asked the chatbot to confirm if my Facebook and Instagram profiles were connected before scheduling a recurring post. Instead, it just said “same workspace state as above” without checking the actual status. Then, after I said I’d connect them, it repeated the detailed instructions on how to connect accounts instead of moving forward. This made it impossible to complete the task in one session, wasting my time and patience.",
+        "headline": "Bot can’t verify connected profiles and loops on instructions",
+        "personaId": "workspace_content_scheduler",
+        "personaName": "Content Scheduler #2",
+        "conversationId": "52bcf826-876f-4c74-b17d-6ce16f588815"
+      },
+      {
+        "channel": "slack_vent",
+        "sentiment": "negative",
+        "content": "Just tried using the scheduler bot to set up a recurring FB+Insta post. Asked it to check if profiles were connected — got a vague “same workspace state as above” 🤦‍♂️. Then told it I’d connect the accounts, and it just repeated how to connect them again like a broken record. No “ok, proceed now” or anything. Pretty useless when you’re trying to get work done. Screenshot attached of the endless loops.",
+        "headline": "Chatbot stuck on repeat with no real status updates",
+        "personaId": "workspace_content_scheduler",
+        "personaName": "Content Scheduler #2",
+        "conversationId": "52bcf826-876f-4c74-b17d-6ce16f588815"
+      },
+      {
+        "channel": "churn_email",
+        "sentiment": "negative",
+        "content": "Hi,\n\nI’m writing to let you know I will be discontinuing use of your scheduling service. The chatbot, which I rely on for quick post scheduling, failed to confirm connected social profiles as requested and instead gave vague answers. After indicating I would connect the accounts, it repeated the same connection instructions rather than moving forward with scheduling. This lack of operational assistance disrupted my workflow and eroded my trust.\n\nI hope you can address these issues to improve the experience for future users.\n\nBest regards.",
+        "headline": "Disappointed by poor bot assistance, leaving the platform",
+        "personaId": "workspace_content_scheduler",
+        "personaName": "Content Scheduler #2",
+        "conversationId": "52bcf826-876f-4c74-b17d-6ce16f588815"
+      },
+      {
+        "channel": "twitter",
+        "sentiment": "mixed",
+        "content": "@Company Your chatbot totally missed answering which roles can be assigned when inviting teammates. Instead, it gave nonsense about workspace states, forcing me to do the work. Also, it repeats the same commands over and over. Could be way smoother. 🤨",
+        "headline": "Invite roles info? Nope, just gibberish instead",
+        "personaId": "workspace_team_owner",
+        "personaName": "Team Owner #5",
+        "conversationId": "1a25e3a8-bd53-44d5-8606-d49608a3dd28"
+      },
+      {
+        "channel": "support_ticket",
+        "sentiment": "mixed",
+        "content": "Hello,\n\nI manage team invites and roles and recently used the chatbot for guidance. When I asked specifically which roles can be assigned when inviting new teammates, the chatbot responded with irrelevant and confusing text instead of a clear list. This broke the conversation flow, causing me to provide the answer myself. Additionally, the chatbot repeatedly gave the same command info verbatim in multiple responses, which was redundant and could be streamlined.\n\nPlease review the conversation transcript attached for context and improve role assignment clarity in chatbot replies. Clear, direct answers here are essential for efficient team management.\n\nThank you.",
+        "headline": "Chatbot failed to clearly list assignable roles during invite",
+        "personaId": "workspace_team_owner",
+        "personaName": "Team Owner #5",
+        "conversationId": "1a25e3a8-bd53-44d5-8606-d49608a3dd28"
+      },
+      {
+        "channel": "app_store",
+        "sentiment": "mixed",
+        "stars": 3,
+        "content": "As someone who manages team invites and roles, the chatbot generally provides helpful commands for resending invites, revoking access, and raising support tickets. However, when I asked which roles can be assigned to new teammates, the chatbot responded with unrelated, confusing text instead of a clear list. I had to fill in the details myself. Also, the bot repeats the same info multiple times during the conversation. These could be improved for a smoother experience.",
+        "headline": "Useful info but chatbot misses role assignment question",
+        "personaId": "workspace_team_owner",
+        "personaName": "Team Owner #5",
+        "conversationId": "1a25e3a8-bd53-44d5-8606-d49608a3dd28"
+      },
+      {
+        "channel": "slack_vent",
+        "sentiment": "mixed",
+        "content": "Hey, just used the chatbot and asked it which roles you can assign when inviting new teammates. Instead of a straight answer, it just spat out some nonsense about 'workspace state' and made me spell it out myself. Not a huge deal but kinda annoying when you expect a quick, clear cut reply. Also, it kept repeating the same invite and revoke instructions like a broken record. Screenshot attached if you wanna see the weird reply. Could definitely use some cleanup.",
+        "headline": "Chatbot flubbed the invite roles question again... sigh",
+        "personaId": "workspace_team_owner",
+        "personaName": "Team Owner #5",
+        "conversationId": "1a25e3a8-bd53-44d5-8606-d49608a3dd28"
+      },
+      {
+        "channel": "twitter",
+        "sentiment": "mixed",
+        "content": "The chatbot gave solid, business-ready article edits and outlines, but the response times were brutal—waited over 40s once! @Company, speed matters when you’re on a deadline. Step it up! 🚀📉 #ContentEditorProblems",
+        "headline": "Strong insights but painfully slow response",
+        "personaId": "workspace_article_editor",
+        "personaName": "Article Editor #4",
+        "conversationId": "9be9991a-138b-41b0-bf6d-849f14bd8678"
+      },
+      {
+        "channel": "support_ticket",
+        "sentiment": "mixed",
+        "content": "Dear Support Team,\n\nI am an article editor relying on your chatbot to generate and refine business magazine content. While its output quality meets professional standards, the response times are frequently excessive—one reply took over 43 seconds, well beyond expected limits. This delay disrupts my workflow and productivity.\n\nPlease investigate and resolve the latency issue. I am attaching the transcript of a recent conversation where the delay was most apparent.\n\nThank you for your attention to this matter.\n\nBest regards,\nArticle Editor #4",
+        "headline": "Feedback on response delay impacting workflow",
+        "personaId": "workspace_article_editor",
+        "personaName": "Article Editor #4",
+        "conversationId": "9be9991a-138b-41b0-bf6d-849f14bd8678"
+      },
+      {
+        "channel": "app_store",
+        "sentiment": "mixed",
+        "stars": 3,
+        "content": "As an article editor, I appreciate how the chatbot crafts sharp, professional intros and outlines perfectly suited for business audiences. However, the response time is a major bottleneck—one reply took nearly 44 seconds, which interrupts my editing flow. If speed improves, this could be a top-tier tool.",
+        "headline": "Great content quality but slow and frustrating wait times",
+        "personaId": "workspace_article_editor",
+        "personaName": "Article Editor #4",
+        "conversationId": "9be9991a-138b-41b0-bf6d-849f14bd8678"
+      },
+      {
+        "channel": "slack_vent",
+        "sentiment": "mixed",
+        "content": "Ugh, used the bot to tighten up an article intro and get section drafts. It nailed the tone and professional style—really solid output. But dude, it took over 40 seconds to reply on one turn. Like, come on, when I’m on a deadline, that’s just not acceptable. 😩 Screenshot shows the lag timer. Gotta find a better balance between quality and speed.",
+        "headline": "Chatbot’s great, but slow replies kill the vibe",
+        "personaId": "workspace_article_editor",
+        "personaName": "Article Editor #4",
+        "conversationId": "9be9991a-138b-41b0-bf6d-849f14bd8678"
+      }
+    ],
+    "brandSummary": "If these reviews reflected reality, the chatbot’s reputation would be notably poor, with users frustrated by repetitive loops, inability to complete key tasks like profile creation and scheduling, and slow, confusing responses. The dominant emotional notes are irritation, helplessness, and disappointment, leading to churn and negative word-of-mouth. While some users acknowledge helpful information, the overall experience feels broken and inefficient.",
+    "topActions": [
+      "Fix the looping bug that prevents profile creation and scheduling from completing.",
+      "Improve the chatbot’s ability to verify connected profiles and provide clear status updates.",
+      "Optimize response speed and clarity to reduce repetition and confusion in answers."
+    ],
+    "sentimentBreakdown": {
+      "glowing": 0,
+      "positive": 1,
+      "mixed": 12,
+      "negative": 10,
+      "scathing": 0
+    },
+    "averageStars": 2.4,
+    "generatedAt": "2026-05-06T16:36:30.208Z"
+  },
+  "resultsDir": "/Users/maxpetrusenko/Desktop/Projects/social-poster/manatee-results/2026-05-06T16-32-40-843Z"
+}

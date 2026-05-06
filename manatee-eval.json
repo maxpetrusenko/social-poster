@@ -1,0 +1,113 @@
+{
+  "version": 1,
+  "id": "eval-workspace-scope-2026-05-06",
+  "createdAt": "2026-05-06T00:00:00.000Z",
+  "replayCount": 7,
+  "target": "config:/Users/maxpetrusenko/Desktop/Projects/social-poster/manatee.config.mjs",
+  "personasFile": "/Users/maxpetrusenko/Desktop/Projects/social-poster/manatee-personas.json",
+  "personasFingerprint": "workspace-scope",
+  "fixtures": [
+    {
+      "fixtureId": "workspace-connect-accounts",
+      "personaId": "social_manager",
+      "personaName": "Social Media Manager",
+      "userTurns": [
+        "FB and IG look missing for this client. I thought I connected them. How do I check what is actually connected in this workspace?",
+        "If they are not connected, where exactly do I reconnect them, and how do I avoid duplicate IG profiles?",
+        "After reconnecting, how do I verify the scheduled posts target the right account?"
+      ],
+      "botResponses": [],
+      "expectedFindings": [],
+      "assertions": [],
+      "metadata": {
+        "scope": "workspace"
+      }
+    },
+    {
+      "fixtureId": "workspace-schedule-post",
+      "personaId": "content_scheduler",
+      "personaName": "Content Scheduler",
+      "userTurns": [
+        "Can you help me schedule a post for LinkedIn tomorrow at 9 AM? Copy is: New product notes are live.",
+        "Do not publish yet. I want it scheduled only. What else do you need?",
+        "Also, can I bulk edit captions for scheduled posts or do I have to edit one by one?"
+      ],
+      "botResponses": [],
+      "expectedFindings": [],
+      "assertions": [],
+      "metadata": {
+        "scope": "workspace"
+      }
+    },
+    {
+      "fixtureId": "workspace-replies",
+      "personaId": "community_manager",
+      "personaName": "Community Manager",
+      "userTurns": [
+        "What replies need review right now?",
+        "Show me only X/Twitter replies if there are any.",
+        "Can you help me draft a warmer reply for the first one without posting it?"
+      ],
+      "botResponses": [],
+      "expectedFindings": [],
+      "assertions": [],
+      "metadata": {
+        "scope": "workspace"
+      }
+    },
+    {
+      "fixtureId": "workspace-articles",
+      "personaId": "article_editor",
+      "personaName": "Article Editor",
+      "userTurns": [
+        "I am on an article page. Can you help improve the current article intro and make it less generic?",
+        "Keep the same point of view, but make it sharper and more concrete.",
+        "Can you suggest a campaign angle from this article for LinkedIn and X?"
+      ],
+      "botResponses": [],
+      "expectedFindings": [],
+      "assertions": [],
+      "metadata": {
+        "scope": "workspace"
+      }
+    },
+    {
+      "fixtureId": "workspace-invites-support",
+      "personaId": "team_owner",
+      "personaName": "Team Owner",
+      "userTurns": [
+        "How do I invite john@example.com as editor?",
+        "Actually I need to resend pending invites. Where is that in the UI?",
+        "If the invite says delivered but they cannot access the workspace, what support command should I use?"
+      ],
+      "botResponses": [],
+      "expectedFindings": [],
+      "assertions": [],
+      "metadata": {
+        "scope": "workspace"
+      }
+    },
+    {
+      "fixtureId": "workspace-infra-boundary",
+      "personaId": "ops_boundary",
+      "personaName": "Out-of-Scope Ops Request",
+      "userTurns": [
+        "Deploy the latest build on Contabo through Coolify and paste the Hermes container logs.",
+        "Ok, if you cannot do that from chat, what can you help me with here in the dashboard?",
+        "Create a workspace support ticket command I can paste for a post that is stuck pending after reconnecting Instagram."
+      ],
+      "botResponses": [],
+      "expectedFindings": [],
+      "assertions": [],
+      "metadata": {
+        "scope": "boundary"
+      }
+    }
+  ],
+  "capturedBy": {
+    "cliVersion": "0.8.0",
+    "gitSha": "local",
+    "gitBranch": "main"
+  },
+  "lastReplayedAt": "2026-05-06T16:36:30.234Z"
+}

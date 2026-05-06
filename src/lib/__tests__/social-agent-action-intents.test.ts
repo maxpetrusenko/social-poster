@@ -50,6 +50,46 @@ describe("social agent action intents", () => {
     });
   });
 
+  it("does not treat connection troubleshooting as recurring post creation", () => {
+    expect(
+      parseRecurringPostIntent(
+        "FB page is unlinked and no posts are going through. Do I have to re-auth every 24 hours?"
+      )
+    ).toBeNull();
+  });
+
+  it("does not treat operational cron questions as recurring post creation", () => {
+    expect(
+      parseRecurringPostIntent(
+        "Extract cron schedule entries for posting frequency and compare them against defaults."
+      )
+    ).toBeNull();
+  });
+
+  it("does not treat onboarding scheduling questions as recurring post creation", () => {
+    expect(
+      parseRecurringPostIntent(
+        "Can I start scheduling posts before connecting accounts or should I accept the invite first?"
+      )
+    ).toBeNull();
+  });
+
+  it("does not create recurring posts from hesitant setup questions", () => {
+    expect(
+      parseRecurringPostIntent(
+        "Can I schedule a recurring post later? Don't start anything yet, I am not ready."
+      )
+    ).toBeNull();
+  });
+
+  it("does not treat profile setup as recurring post creation", () => {
+    expect(
+      parseRecurringPostIntent(
+        "Please create a profile for me so I can attach the recurring post schedule."
+      )
+    ).toBeNull();
+  });
+
   it("sanitizes chat attachments to http image records", () => {
     expect(
       sanitizeSocialAgentAttachments([

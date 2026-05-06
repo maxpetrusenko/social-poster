@@ -1,5 +1,6 @@
 import "server-only";
 
+import { buildArticleAgentInstructionBlock } from "@/lib/article-agent/config";
 import { buildReviewFallbackDraft, extractFirstMarkdownImage, type BlogDraft } from "./framework";
 
 type MediumAutomationResponse = {
@@ -39,6 +40,7 @@ export async function generateBlogDraftWithMediumAutomation(input: {
   sourceUrls?: string[];
 }): Promise<{ draft: BlogDraft; provider: "medium-automation" | "fallback"; raw?: unknown }> {
   const config = getMediumAutomationConfig();
+  const articleAgentInstructions = await buildArticleAgentInstructionBlock();
 
   if (!config.configured) {
     return {
@@ -54,7 +56,7 @@ export async function generateBlogDraftWithMediumAutomation(input: {
       "x-api-key": config.apiKey,
     },
     body: JSON.stringify({
-      topic: buildSourceTruthPrompt(input.topic, input.sourceUrls),
+      topic: buildSourceTruthPrompt(input.topic, input.sourceUrls, articleAgentInstructions),
       length: input.targetWords,
       save: true,
     }),
@@ -105,7 +107,11 @@ export async function generateBlogDraftWithMediumAutomation(input: {
   };
 }
 
-function buildSourceTruthPrompt(topic: string, sourceUrls?: string[]) {
+function buildSourceTruthPrompt(
+  topic: string,
+  sourceUrls: string[] | undefined,
+  articleAgentInstructions: string
+) {
   const sourceBlock = sourceUrls?.length
     ? `\nUse these source URLs as required evidence candidates:\n${sourceUrls.join("\n")}`
     : "";
@@ -120,7 +126,10 @@ Create the single source-of-truth article for this topic. Include:
 - at least one mistake, limitation, rollback, or counterexample
 - one primary action and two or three secondary actions
 - one relevant image in Markdown
-- never use the forbidden phrase supplied by the editor${sourceBlock}`;
+- never use the forbidden phrase supplied by the editor${sourceBlock}
+
+Article agent rules:
+${articleAgentInstructions}`;
 }
 
 function extractTitle(markdown: string) {

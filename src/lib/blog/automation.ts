@@ -3,6 +3,7 @@ import "server-only";
 import { db } from "@/db";
 import { blogAutomationPosts, blogAutomationRuns } from "@/db/schema";
 import { and, desc, eq, gte, isNotNull } from "drizzle-orm";
+import { saveGeneratedArticleToWorkspace } from "@/lib/article-agent/generated-workspace";
 import {
   slugifyBlogTitle,
   validateSourceOfTruthArticle,
@@ -50,6 +51,17 @@ export async function generateBlogAutomationPost(input: GenerateInput) {
     const postId = crypto.randomUUID();
     const baseSlug = slugifyBlogTitle(draft.title || input.topic);
     const slug = await uniqueBlogSlug(baseSlug);
+    const workspaceArticle = await saveGeneratedArticleToWorkspace({
+      draft,
+      preferredSlug: slug,
+      provider,
+      validation,
+      postId,
+      sourceUrls: input.sourceUrls,
+      createdByEmail: input.createdByEmail,
+      generatedAt: now,
+      raw,
+    });
 
     await db.insert(blogAutomationPosts).values({
       id: postId,
@@ -76,7 +88,10 @@ export async function generateBlogAutomationPost(input: GenerateInput) {
       mediumUrl: draft.mediumUrl ?? null,
       externalDraftPath: draft.externalDraftPath ?? null,
       createdByEmail: input.createdByEmail,
-      metadata: draft.metadata,
+      metadata: {
+        ...(draft.metadata ?? {}),
+        articleWorkspace: workspaceArticle,
+      },
       createdAt: now,
       updatedAt: now,
     });
@@ -91,13 +106,14 @@ export async function generateBlogAutomationPost(input: GenerateInput) {
           validationStatus: validation.status,
           validationScore: validation.score,
           slug,
+          articleWorkspace: workspaceArticle,
         },
         completedAt: now,
         durationMs: now.getTime() - startedAt.getTime(),
       })
       .where(eq(blogAutomationRuns.id, runId));
 
-    return { postId, slug, validation, provider };
+    return { postId, slug, validation, provider, articleWorkspace: workspaceArticle };
   } catch (error) {
     const now = new Date();
     const message = error instanceof Error ? error.message : "Unknown blog generation error";

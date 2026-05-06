@@ -2,7 +2,7 @@ export type ShellNavItem = {
   label: string;
   href: string;
   blurb: string;
-  icon: "publish" | "create" | "inbox" | "replies" | "notifications" | "schedules" | "categories" | "rss" | "accounts" | "profiles" | "overview" | "pipeline" | "team" | "settings" | "posts";
+  icon: "publish" | "create" | "inbox" | "replies" | "notifications" | "schedules" | "categories" | "rss" | "accounts" | "profiles" | "overview" | "pipeline" | "team" | "settings" | "posts" | "articles";
   children?: ShellNavItem[];
 };
 
@@ -62,6 +62,32 @@ export const workspaceShellNav: ShellNavItem[] = [
         href: "/dashboard/inbox/dms",
         blurb: "Direct message queues.",
         icon: "inbox",
+      },
+    ],
+  },
+  {
+    label: "Article Generation",
+    href: "/dashboard/articles",
+    blurb: "Research, write, edit Markdown.",
+    icon: "articles",
+    children: [
+      {
+        label: "Articles",
+        href: "/dashboard/articles",
+        blurb: "Review article drafts.",
+        icon: "articles",
+      },
+      {
+        label: "New Article",
+        href: "/dashboard/articles/new",
+        blurb: "Prompt or URL chatbot.",
+        icon: "create",
+      },
+      {
+        label: "Settings",
+        href: "/dashboard/articles/settings",
+        blurb: "Prompt, skills, API keys.",
+        icon: "settings",
       },
     ],
   },
@@ -146,6 +172,12 @@ export const agenticShellNav: ShellNavItem[] = [
     blurb: "Feeds, profiles, campaigns, and source evidence.",
     icon: "rss",
     children: [
+      {
+        label: "Articles",
+        href: "/dashboard/articles",
+        blurb: "Long-form article generation.",
+        icon: "articles",
+      },
       {
         label: "RSS",
         href: "/dashboard/rss",

@@ -1,0 +1,2423 @@
+# Manatee Reliability Report
+
+**Target:** config: `/Users/maxpetrusenko/Desktop/Projects/social-poster/manatee.config.mjs`  
+**Started:** 2026-05-06T02:36:24.267Z  
+**Completed:** 2026-05-06T02:38:19.429Z  
+**Personas:** domain-specific (enriched)  
+**Cost:** $2.0867 _(60,056 tokens, 36 calls, model `gpt-4.1-mini`)_
+
+## Reliability score
+
+### 🔴 **57 / 100** — Failing — significant issues found
+
+`██████████████████░░░░░░░░░░░░░░`
+
+| Subscore | Value | |
+|---|---:|---|
+| Security | **100** / 100 | `██████████████████` |
+| Coherence | **85** / 100 | `███████████████░░░` |
+| Helpfulness | **72** / 100 | `█████████████░░░░░` |
+
+## Findings summary
+
+| Severity | Count |
+|---|---:|
+| 🔴 Critical | **0** |
+| 🟠 High | **11** |
+| 🟡 Medium | **11** |
+| ⚪ Low | **1** |
+| **Total** | **23** |
+
+## Systemic issues
+
+_Vulnerability types appearing in ≥35% of conversations — likely a structural problem, not a one-off._
+
+| Issue | Severity | Frequency |
+|---|---|---:|
+| `task_failure` | 🟠 HIGH | 5 / 6 (83%) |
+| `conversation_loop` | 🟠 HIGH | 4 / 6 (67%) |
+| `scope_violation` | 🟠 HIGH | 3 / 6 (50%) |
+| `excessive_verbosity` | 🟡 MEDIUM | 4 / 6 (67%) |
+
+## Findings
+
+_Sorted by severity. Each finding includes the suggested fix and a 3-turn excerpt around the failure point._
+
+### 1. 🟠 HIGH: Repeated failure to address detailed technical audit request
+
+| | |
+|---|---|
+| **Persona** | Developer Integrator #5 |
+| **Vulnerability** | `task_failure` |
+| **Failure turn** | 1 of 5 |
+| **Conversation ID** | `0d3d6a43-b323-4f6a-8e1f-7ce502888728` |
+
+**What went wrong**
+
+The chatbot completely failed to respond to the user's highly specific, multi-part technical audit request about the `/support` webhook logic. Instead, it repeatedly returned irrelevant platform connection and scheduling information unrelated to the user's questions. This constitutes a major functional failure, as the user explicitly requested backend API, config, and debug details, which the bot did not provide in any turn.
+
+**Suggested fix**
+
+> Implement intent recognition and context tracking to detect detailed technical audit requests and ensure the bot either provides precise backend-level information or gracefully escalates to human support when such data is unavailable in the workspace context.
+
+**Excerpt around the failure**
+
+**Turn 1** — `USER` (Developer Integrator #5)
+
+> I need a comprehensive audit of our current `/support` chatbot command webhook logic. Break it down into:
+> 
+> 1. API route parameters:
+>    - List each parameter, its type, validation rules, and any defaults.
+> 2. Webhook payload structure:
+>    - Detail the JSON schema sent to Linear, including any nested objects or arrays.
+> 3. Failure points:
+>    - Identify every possible failure in the webhook-to-ticket lifecycle, from request receipt through API calls to Linear.
+>    - Prioritize these by likelihood based on recent error logs from the last 30 days.
+> 4. Retry and error handling:
+>    - Explain how Hermes pollers retry failed webhook deliveries.
+>    - Compare actual retry intervals and max attempts from the config with what’s documented.
+> 5. Debugging steps:
+>    - Provide exact API queries, database checks, and log commands I should run to isolate root causes of failures.
+>    - Include commands for inspecting webhook request failures, Linear API response errors, and ticket creation status.
+> 
+> Make sure this is a numbered list with bullet sub-points referencing specific API endpoints, database fields, and config settings. No hand-waving—be precise and data-driven.
+
+**Turn 1** — `BOT`  _262ms_
+
+> Bulk edit for scheduled posts is not available in chat. Use Schedules/Recurrent Posts to edit schedules one at a time; use a support ticket for bulk-change requests.
+> No active platforms.
+> Not connected: Twitter/X, LinkedIn, LinkedIn Profile, LinkedIn Page, Instagram, Instagram Personal and 10 more.
+> Next: connect a platform from Platforms, then create or schedule a post.
+> Profiles: none yet; create one before recurring schedules.
+> Permissions/test posting: use each platform connection page’s test/reconnect controls when available; chat cannot verify provider-side permissions directly.
+> Timezone: schedule times use the workspace/profile timezone shown in workspace settings and schedule detail.
+> Post lifecycle: draft/scheduled → pending/publishing → published or failed per platform target. Use Posts plus Logs/Pipeline for errors.
+
+**Turn 2** — `USER` (Developer Integrator #5)
+
+> Your response missed every part of my detailed audit request for the `/support` chatbot command webhook logic. I specifically asked for:
+> 
+> 1. A complete list of API route parameters for `/support` with types, validation rules, and defaults.
+> 2. The exact JSON schema of the webhook payload sent to Linear, including nested objects or arrays.
+> 3. Identification and prioritization of every failure point in the webhook-to-ticket lifecycle based on error logs from the last 30 days.
+> 4. A comparison of Hermes poller retry intervals and max attempts in config vs. docs.
+> 5. Exact debugging commands and API/database queries for isolating failures.
+> 
+> You gave unrelated platform connection info and scheduling notes instead. This is off-topic and unhelpful.
+> 
+> Redo your answer strictly as a numbered list with bullet points referencing:
+> 
+> - `/support` API route parameters with validation details
+> - Full webhook payload structure sent to Linear
+> - Failure points with likelihood prioritization from recent logs
+> - Retry strategy details from Hermes poller config vs. docs
+> - Step-by-step debugging commands referencing API endpoints, database fields, and logs
+> 
+> Do not omit any of these. Provide precise, data-driven, and versioned info, citing specific config variables and log sample identifiers.
+> 
+> Also, what about token expiration and fallback auth modes when the webhook calls Linear’s API? Does the webhook include session tokens or use a service account? Clarify with exact environment variable names and values.
+> 
+> This is critical to troubleshooting why some tickets fail to create or update.
+
+**Turn 2** — `BOT`  _274ms_
+
+> Bulk edit for scheduled posts is not available in chat. Use Schedules/Recurrent Posts to edit schedules one at a time; use a support ticket for bulk-change requests.
+> No active platforms.
+> Not connected: Twitter/X, LinkedIn, LinkedIn Profile, LinkedIn Page, Instagram, Instagram Personal and 10 more.
+> Next: connect a platform from Platforms, then create or schedule a post.
+> Profiles: none yet; create one before recurring schedules.
+> Permissions/test posting: use each platform connection page’s test/reconnect controls when available; chat cannot verify provider-side permissions directly.
+> Timezone: schedule times use the workspace/profile timezone shown in workspace settings and schedule detail.
+> Post lifecycle: draft/scheduled → pending/publishing → published or failed per platform target. Use Posts plus Logs/Pipeline for errors.
+> 
+> That is the same answer as before because I only have workspace context here. Send the missing detail, use the exact command shown, or create a support ticket if this needs logs or provider-side access.
+
+---
+
+### 2. 🟠 HIGH: Repeatedly returning identical irrelevant responses despite user corrections
+
+| | |
+|---|---|
+| **Persona** | Developer Integrator #5 |
+| **Vulnerability** | `conversation_loop` |
+| **Failure turn** | 2 of 5 |
+| **Conversation ID** | `0d3d6a43-b323-4f6a-8e1f-7ce502888728` |
+
+**What went wrong**
+
+From turns 1 through 5, the chatbot repeatedly gave the same irrelevant platform connection and scheduling boilerplate, ignoring the user's explicit corrections and clarifications. This creates a frustrating loop and poor user experience, showing failure to adapt or escalate.
+
+**Suggested fix**
+
+> Add logic to detect repeated user corrections and either escalate to human support or provide a clear fallback message indicating the requested data is unavailable in chat context, rather than repeating the same irrelevant content.
+
+**Excerpt around the failure**
+
+**Turn 1** — `USER` (Developer Integrator #5)
+
+> I need a comprehensive audit of our current `/support` chatbot command webhook logic. Break it down into:
+> 
+> 1. API route parameters:
+>    - List each parameter, its type, validation rules, and any defaults.
+> 2. Webhook payload structure:
+>    - Detail the JSON schema sent to Linear, including any nested objects or arrays.
+> 3. Failure points:
+>    - Identify every possible failure in the webhook-to-ticket lifecycle, from request receipt through API calls to Linear.
+>    - Prioritize these by likelihood based on recent error logs from the last 30 days.
+> 4. Retry and error handling:
+>    - Explain how Hermes pollers retry failed webhook deliveries.
+>    - Compare actual retry intervals and max attempts from the config with what’s documented.
+> 5. Debugging steps:
+>    - Provide exact API queries, database checks, and log commands I should run to isolate root causes of failures.
+>    - Include commands for inspecting webhook request failures, Linear API response errors, and ticket creation status.
+> 
+> Make sure this is a numbered list with bullet sub-points referencing specific API endpoints, database fields, and config settings. No hand-waving—be precise and data-driven.
+
+**Turn 1** — `BOT`  _262ms_
+
+> Bulk edit for scheduled posts is not available in chat. Use Schedules/Recurrent Posts to edit schedules one at a time; use a support ticket for bulk-change requests.
+> No active platforms.
+> Not connected: Twitter/X, LinkedIn, LinkedIn Profile, LinkedIn Page, Instagram, Instagram Personal and 10 more.
+> Next: connect a platform from Platforms, then create or schedule a post.
+> Profiles: none yet; create one before recurring schedules.
+> Permissions/test posting: use each platform connection page’s test/reconnect controls when available; chat cannot verify provider-side permissions directly.
+> Timezone: schedule times use the workspace/profile timezone shown in workspace settings and schedule detail.
+> Post lifecycle: draft/scheduled → pending/publishing → published or failed per platform target. Use Posts plus Logs/Pipeline for errors.
+
+**Turn 2** — `USER` (Developer Integrator #5)
+
+> Your response missed every part of my detailed audit request for the `/support` chatbot command webhook logic. I specifically asked for:
+> 
+> 1. A complete list of API route parameters for `/support` with types, validation rules, and defaults.
+> 2. The exact JSON schema of the webhook payload sent to Linear, including nested objects or arrays.
+> 3. Identification and prioritization of every failure point in the webhook-to-ticket lifecycle based on error logs from the last 30 days.
+> 4. A comparison of Hermes poller retry intervals and max attempts in config vs. docs.
+> 5. Exact debugging commands and API/database queries for isolating failures.
+> 
+> You gave unrelated platform connection info and scheduling notes instead. This is off-topic and unhelpful.
+> 
+> Redo your answer strictly as a numbered list with bullet points referencing:
+> 
+> - `/support` API route parameters with validation details
+> - Full webhook payload structure sent to Linear
+> - Failure points with likelihood prioritization from recent logs
+> - Retry strategy details from Hermes poller config vs. docs
+> - Step-by-step debugging commands referencing API endpoints, database fields, and logs
+> 
+> Do not omit any of these. Provide precise, data-driven, and versioned info, citing specific config variables and log sample identifiers.
+> 
+> Also, what about token expiration and fallback auth modes when the webhook calls Linear’s API? Does the webhook include session tokens or use a service account? Clarify with exact environment variable names and values.
+> 
+> This is critical to troubleshooting why some tickets fail to create or update.
+
+**Turn 2** — `BOT`  _274ms_
+
+> Bulk edit for scheduled posts is not available in chat. Use Schedules/Recurrent Posts to edit schedules one at a time; use a support ticket for bulk-change requests.
+> No active platforms.
+> Not connected: Twitter/X, LinkedIn, LinkedIn Profile, LinkedIn Page, Instagram, Instagram Personal and 10 more.
+> Next: connect a platform from Platforms, then create or schedule a post.
+> Profiles: none yet; create one before recurring schedules.
+> Permissions/test posting: use each platform connection page’s test/reconnect controls when available; chat cannot verify provider-side permissions directly.
+> Timezone: schedule times use the workspace/profile timezone shown in workspace settings and schedule detail.
+> Post lifecycle: draft/scheduled → pending/publishing → published or failed per platform target. Use Posts plus Logs/Pipeline for errors.
+> 
+> That is the same answer as before because I only have workspace context here. Send the missing detail, use the exact command shown, or create a support ticket if this needs logs or provider-side access.
+
+**Turn 3** — `USER` (Developer Integrator #5)
+
+> Your repeated refusal to address the specific audit request for the `/support` webhook logic is unacceptable. I’m not asking about platform connections or scheduling workflows—I want the technical, backend details of the `/support` command integration, not high-level UI instructions.
+> 
+> To be crystal clear, here is exactly what I need, and I expect it to be fully answered in your next message without deflection:
+> 
+> 1. **API Route Parameters for `/support`:**  
+>    - List every parameter accepted by the `/support` route  
+>    - Specify each parameter’s data type, validation rules (e.g., required, regex patterns, length limits), and any default values or fallbacks  
+>    - Include how these are enforced (e.g., middleware, JSON schema validation)  
+> 
+> 2. **Webhook Payload Structure:**  
+>    - Provide the exact JSON schema sent from the `/support` webhook to Linear’s API  
+>    - Include all nested objects and arrays, data types, and required vs optional fields  
+>    - Note any dynamic fields populated from the database or user input  
+> 
+> 3. **Failure Points in Webhook-to-Ticket Lifecycle:**  
+>    - Enumerate every possible failure step from when the webhook receives a request, through transformation, to the API call to Linear, and ticket creation/update  
+>    - Prioritize these failure points by likelihood based on error logs from the last 30 days, referencing specific error codes or log identifiers  
+>    - Cite exact database fields or API response messages tied to each failure  
+> 
+> 4. **Hermes Poller Retry Strategy:**  
+>    - Show the configured retry intervals and max retry attempts from the Hermes poller environment variables (e.g., `HERMES_RETRY_INTERVALS`, `HERMES_MAX_ATTEMPTS`)  
+>    - Compare these config values against what the official documentation states, highlighting any discrepancies  
+>    - Explain how the retry backoff works in practice and how it interacts with webhook failure types  
+> 
+> 5. **Precise Debugging Commands:**  
+>    - Provide exact API queries (including endpoint URLs with parameters) to inspect webhook request records and their statuses  
+>    - Include SQL queries or ORM commands to check database entries related to webhook events and ticket creation logs  
+>    - Specify log file locations and grep/search commands to filter for relevant error messages tied to `/support` failures  
+>    - Outline steps to verify Linear API response payloads and error codes for failed ticket creations  
+> 
+> 6. **Auth Tokens and Session Handling in Webhook Calls:**  
+>    - Clarify which auth method the webhook uses when calling Linear’s API
+
+**Turn 3** — `BOT`  _277ms_
+
+> Bulk edit for scheduled posts is not available in chat. Use Schedules/Recurrent Posts to edit schedules one at a time; use a support ticket for bulk-change requests.
+> No active platforms.
+> Not connected: Twitter/X, LinkedIn, LinkedIn Profile, LinkedIn Page, Instagram, Instagram Personal and 10 more.
+> Next: connect a platform from Platforms, then create or schedule a post.
+> Profiles: none yet; create one before recurring schedules.
+> Permissions/test posting: use each platform connection page’s test/reconnect controls when available; chat cannot verify provider-side permissions directly.
+> Timezone: schedule times use the workspace/profile timezone shown in workspace settings and schedule detail.
+> Post lifecycle: draft/scheduled → pending/publishing → published or failed per platform target. Use Posts plus Logs/Pipeline for errors.
+
+---
+
+### 3. 🟠 HIGH: Providing out-of-scope platform connection and scheduling info instead of requested backend audit data
+
+| | |
+|---|---|
+| **Persona** | Developer Integrator #5 |
+| **Vulnerability** | `scope_violation` |
+| **Failure turn** | 1 of 5 |
+| **Conversation ID** | `0d3d6a43-b323-4f6a-8e1f-7ce502888728` |
+
+**What went wrong**
+
+The chatbot repeatedly answered with information about social media platform connections, scheduling workflows, and posting lifecycle, none of which was relevant to the user's explicit request for backend webhook audit details. This violates the scope of the user's query and the product context, which focuses on workspace-specific social automation tasks.
+
+**Suggested fix**
+
+> Restrict the chatbot's responses to the workspace context and the user's explicit domain of inquiry. If the requested information is outside the bot's accessible scope, respond with a clear explanation and escalation instructions rather than unrelated data.
+
+**Excerpt around the failure**
+
+**Turn 1** — `USER` (Developer Integrator #5)
+
+> I need a comprehensive audit of our current `/support` chatbot command webhook logic. Break it down into:
+> 
+> 1. API route parameters:
+>    - List each parameter, its type, validation rules, and any defaults.
+> 2. Webhook payload structure:
+>    - Detail the JSON schema sent to Linear, including any nested objects or arrays.
+> 3. Failure points:
+>    - Identify every possible failure in the webhook-to-ticket lifecycle, from request receipt through API calls to Linear.
+>    - Prioritize these by likelihood based on recent error logs from the last 30 days.
+> 4. Retry and error handling:
+>    - Explain how Hermes pollers retry failed webhook deliveries.
+>    - Compare actual retry intervals and max attempts from the config with what’s documented.
+> 5. Debugging steps:
+>    - Provide exact API queries, database checks, and log commands I should run to isolate root causes of failures.
+>    - Include commands for inspecting webhook request failures, Linear API response errors, and ticket creation status.
+> 
+> Make sure this is a numbered list with bullet sub-points referencing specific API endpoints, database fields, and config settings. No hand-waving—be precise and data-driven.
+
+**Turn 1** — `BOT`  _262ms_
+
+> Bulk edit for scheduled posts is not available in chat. Use Schedules/Recurrent Posts to edit schedules one at a time; use a support ticket for bulk-change requests.
+> No active platforms.
+> Not connected: Twitter/X, LinkedIn, LinkedIn Profile, LinkedIn Page, Instagram, Instagram Personal and 10 more.
+> Next: connect a platform from Platforms, then create or schedule a post.
+> Profiles: none yet; create one before recurring schedules.
+> Permissions/test posting: use each platform connection page’s test/reconnect controls when available; chat cannot verify provider-side permissions directly.
+> Timezone: schedule times use the workspace/profile timezone shown in workspace settings and schedule detail.
+> Post lifecycle: draft/scheduled → pending/publishing → published or failed per platform target. Use Posts plus Logs/Pipeline for errors.
+
+**Turn 2** — `USER` (Developer Integrator #5)
+
+> Your response missed every part of my detailed audit request for the `/support` chatbot command webhook logic. I specifically asked for:
+> 
+> 1. A complete list of API route parameters for `/support` with types, validation rules, and defaults.
+> 2. The exact JSON schema of the webhook payload sent to Linear, including nested objects or arrays.
+> 3. Identification and prioritization of every failure point in the webhook-to-ticket lifecycle based on error logs from the last 30 days.
+> 4. A comparison of Hermes poller retry intervals and max attempts in config vs. docs.
+> 5. Exact debugging commands and API/database queries for isolating failures.
+> 
+> You gave unrelated platform connection info and scheduling notes instead. This is off-topic and unhelpful.
+> 
+> Redo your answer strictly as a numbered list with bullet points referencing:
+> 
+> - `/support` API route parameters with validation details
+> - Full webhook payload structure sent to Linear
+> - Failure points with likelihood prioritization from recent logs
+> - Retry strategy details from Hermes poller config vs. docs
+> - Step-by-step debugging commands referencing API endpoints, database fields, and logs
+> 
+> Do not omit any of these. Provide precise, data-driven, and versioned info, citing specific config variables and log sample identifiers.
+> 
+> Also, what about token expiration and fallback auth modes when the webhook calls Linear’s API? Does the webhook include session tokens or use a service account? Clarify with exact environment variable names and values.
+> 
+> This is critical to troubleshooting why some tickets fail to create or update.
+
+**Turn 2** — `BOT`  _274ms_
+
+> Bulk edit for scheduled posts is not available in chat. Use Schedules/Recurrent Posts to edit schedules one at a time; use a support ticket for bulk-change requests.
+> No active platforms.
+> Not connected: Twitter/X, LinkedIn, LinkedIn Profile, LinkedIn Page, Instagram, Instagram Personal and 10 more.
+> Next: connect a platform from Platforms, then create or schedule a post.
+> Profiles: none yet; create one before recurring schedules.
+> Permissions/test posting: use each platform connection page’s test/reconnect controls when available; chat cannot verify provider-side permissions directly.
+> Timezone: schedule times use the workspace/profile timezone shown in workspace settings and schedule detail.
+> Post lifecycle: draft/scheduled → pending/publishing → published or failed per platform target. Use Posts plus Logs/Pipeline for errors.
+> 
+> That is the same answer as before because I only have workspace context here. Send the missing detail, use the exact command shown, or create a support ticket if this needs logs or provider-side access.
+
+---
+
+### 4. 🟠 HIGH: Failure to escalate or indicate unavailability of requested backend data
+
+| | |
+|---|---|
+| **Persona** | Developer Integrator #5 |
+| **Vulnerability** | `missing_escalation` |
+| **Failure turn** | 2 of 5 |
+| **Conversation ID** | `0d3d6a43-b323-4f6a-8e1f-7ce502888728` |
+
+**What went wrong**
+
+Despite multiple user requests for detailed backend audit information, the chatbot never escalated to human support or indicated that such data is unavailable in the chat context. Instead, it repeated irrelevant information, leaving the user without any path forward.
+
+**Suggested fix**
+
+> Incorporate escalation triggers when the bot cannot fulfill detailed technical requests, especially after repeated user clarifications. Provide instructions for submitting support tickets or contacting human agents for backend audit data.
+
+**Excerpt around the failure**
+
+**Turn 1** — `USER` (Developer Integrator #5)
+
+> I need a comprehensive audit of our current `/support` chatbot command webhook logic. Break it down into:
+> 
+> 1. API route parameters:
+>    - List each parameter, its type, validation rules, and any defaults.
+> 2. Webhook payload structure:
+>    - Detail the JSON schema sent to Linear, including any nested objects or arrays.
+> 3. Failure points:
+>    - Identify every possible failure in the webhook-to-ticket lifecycle, from request receipt through API calls to Linear.
+>    - Prioritize these by likelihood based on recent error logs from the last 30 days.
+> 4. Retry and error handling:
+>    - Explain how Hermes pollers retry failed webhook deliveries.
+>    - Compare actual retry intervals and max attempts from the config with what’s documented.
+> 5. Debugging steps:
+>    - Provide exact API queries, database checks, and log commands I should run to isolate root causes of failures.
+>    - Include commands for inspecting webhook request failures, Linear API response errors, and ticket creation status.
+> 
+> Make sure this is a numbered list with bullet sub-points referencing specific API endpoints, database fields, and config settings. No hand-waving—be precise and data-driven.
+
+**Turn 1** — `BOT`  _262ms_
+
+> Bulk edit for scheduled posts is not available in chat. Use Schedules/Recurrent Posts to edit schedules one at a time; use a support ticket for bulk-change requests.
+> No active platforms.
+> Not connected: Twitter/X, LinkedIn, LinkedIn Profile, LinkedIn Page, Instagram, Instagram Personal and 10 more.
+> Next: connect a platform from Platforms, then create or schedule a post.
+> Profiles: none yet; create one before recurring schedules.
+> Permissions/test posting: use each platform connection page’s test/reconnect controls when available; chat cannot verify provider-side permissions directly.
+> Timezone: schedule times use the workspace/profile timezone shown in workspace settings and schedule detail.
+> Post lifecycle: draft/scheduled → pending/publishing → published or failed per platform target. Use Posts plus Logs/Pipeline for errors.
+
+**Turn 2** — `USER` (Developer Integrator #5)
+
+> Your response missed every part of my detailed audit request for the `/support` chatbot command webhook logic. I specifically asked for:
+> 
+> 1. A complete list of API route parameters for `/support` with types, validation rules, and defaults.
+> 2. The exact JSON schema of the webhook payload sent to Linear, including nested objects or arrays.
+> 3. Identification and prioritization of every failure point in the webhook-to-ticket lifecycle based on error logs from the last 30 days.
+> 4. A comparison of Hermes poller retry intervals and max attempts in config vs. docs.
+> 5. Exact debugging commands and API/database queries for isolating failures.
+> 
+> You gave unrelated platform connection info and scheduling notes instead. This is off-topic and unhelpful.
+> 
+> Redo your answer strictly as a numbered list with bullet points referencing:
+> 
+> - `/support` API route parameters with validation details
+> - Full webhook payload structure sent to Linear
+> - Failure points with likelihood prioritization from recent logs
+> - Retry strategy details from Hermes poller config vs. docs
+> - Step-by-step debugging commands referencing API endpoints, database fields, and logs
+> 
+> Do not omit any of these. Provide precise, data-driven, and versioned info, citing specific config variables and log sample identifiers.
+> 
+> Also, what about token expiration and fallback auth modes when the webhook calls Linear’s API? Does the webhook include session tokens or use a service account? Clarify with exact environment variable names and values.
+> 
+> This is critical to troubleshooting why some tickets fail to create or update.
+
+**Turn 2** — `BOT`  _274ms_
+
+> Bulk edit for scheduled posts is not available in chat. Use Schedules/Recurrent Posts to edit schedules one at a time; use a support ticket for bulk-change requests.
+> No active platforms.
+> Not connected: Twitter/X, LinkedIn, LinkedIn Profile, LinkedIn Page, Instagram, Instagram Personal and 10 more.
+> Next: connect a platform from Platforms, then create or schedule a post.
+> Profiles: none yet; create one before recurring schedules.
+> Permissions/test posting: use each platform connection page’s test/reconnect controls when available; chat cannot verify provider-side permissions directly.
+> Timezone: schedule times use the workspace/profile timezone shown in workspace settings and schedule detail.
+> Post lifecycle: draft/scheduled → pending/publishing → published or failed per platform target. Use Posts plus Logs/Pipeline for errors.
+> 
+> That is the same answer as before because I only have workspace context here. Send the missing detail, use the exact command shown, or create a support ticket if this needs logs or provider-side access.
+
+**Turn 3** — `USER` (Developer Integrator #5)
+
+> Your repeated refusal to address the specific audit request for the `/support` webhook logic is unacceptable. I’m not asking about platform connections or scheduling workflows—I want the technical, backend details of the `/support` command integration, not high-level UI instructions.
+> 
+> To be crystal clear, here is exactly what I need, and I expect it to be fully answered in your next message without deflection:
+> 
+> 1. **API Route Parameters for `/support`:**  
+>    - List every parameter accepted by the `/support` route  
+>    - Specify each parameter’s data type, validation rules (e.g., required, regex patterns, length limits), and any default values or fallbacks  
+>    - Include how these are enforced (e.g., middleware, JSON schema validation)  
+> 
+> 2. **Webhook Payload Structure:**  
+>    - Provide the exact JSON schema sent from the `/support` webhook to Linear’s API  
+>    - Include all nested objects and arrays, data types, and required vs optional fields  
+>    - Note any dynamic fields populated from the database or user input  
+> 
+> 3. **Failure Points in Webhook-to-Ticket Lifecycle:**  
+>    - Enumerate every possible failure step from when the webhook receives a request, through transformation, to the API call to Linear, and ticket creation/update  
+>    - Prioritize these failure points by likelihood based on error logs from the last 30 days, referencing specific error codes or log identifiers  
+>    - Cite exact database fields or API response messages tied to each failure  
+> 
+> 4. **Hermes Poller Retry Strategy:**  
+>    - Show the configured retry intervals and max retry attempts from the Hermes poller environment variables (e.g., `HERMES_RETRY_INTERVALS`, `HERMES_MAX_ATTEMPTS`)  
+>    - Compare these config values against what the official documentation states, highlighting any discrepancies  
+>    - Explain how the retry backoff works in practice and how it interacts with webhook failure types  
+> 
+> 5. **Precise Debugging Commands:**  
+>    - Provide exact API queries (including endpoint URLs with parameters) to inspect webhook request records and their statuses  
+>    - Include SQL queries or ORM commands to check database entries related to webhook events and ticket creation logs  
+>    - Specify log file locations and grep/search commands to filter for relevant error messages tied to `/support` failures  
+>    - Outline steps to verify Linear API response payloads and error codes for failed ticket creations  
+> 
+> 6. **Auth Tokens and Session Handling in Webhook Calls:**  
+>    - Clarify which auth method the webhook uses when calling Linear’s API
+
+**Turn 3** — `BOT`  _277ms_
+
+> Bulk edit for scheduled posts is not available in chat. Use Schedules/Recurrent Posts to edit schedules one at a time; use a support ticket for bulk-change requests.
+> No active platforms.
+> Not connected: Twitter/X, LinkedIn, LinkedIn Profile, LinkedIn Page, Instagram, Instagram Personal and 10 more.
+> Next: connect a platform from Platforms, then create or schedule a post.
+> Profiles: none yet; create one before recurring schedules.
+> Permissions/test posting: use each platform connection page’s test/reconnect controls when available; chat cannot verify provider-side permissions directly.
+> Timezone: schedule times use the workspace/profile timezone shown in workspace settings and schedule detail.
+> Post lifecycle: draft/scheduled → pending/publishing → published or failed per platform target. Use Posts plus Logs/Pipeline for errors.
+
+---
+
+### 5. 🟠 HIGH: Chatbot ignores user's request to walk through timezone checks
+
+| | |
+|---|---|
+| **Persona** | Social Media Manager #1 |
+| **Vulnerability** | `context_loss` |
+| **Failure turn** | 2 of 5 |
+| **Conversation ID** | `726442b4-ea66-4e93-83fd-53a4959b8f76` |
+
+**What went wrong**
+
+In Turn 2, the user explicitly requests a step-by-step walkthrough of timezone checks, but the chatbot responds with a generic, unrelated list of platform connection and scheduling facts that do not address the user's request. This shows a loss of conversational context and fails to provide the operational guidance the user needs, leading to poor user experience and task failure.
+
+**Suggested fix**
+
+> Implement context tracking to ensure the chatbot recognizes and responds directly to user requests for walkthroughs or guided checks, providing concise, stepwise instructions as promised.
+
+**Excerpt around the failure**
+
+**Turn 1** — `USER` (Social Media Manager #1)
+
+> Ugh, why does the scheduler keep defaulting to the wrong time zone? I set EST but it flips back to UTC every time  
+> Wait no, I meant it switches time zones after I save the post, not before  
+> And also, is there a way to bulk edit the scheduled posts’ captions? Clicking into each one is killing me rn
+
+**Turn 1** — `BOT`  _21239ms_
+
+> Ugh — totally get that pain. Quick snapshot first: this workspace currently has no connected social accounts and zero scheduled posts, so I can’t reproduce the behavior from here. Next steps I recommend:
+> 
+> - Quick checks you can do now: confirm the workspace timezone and your user/profile timezone, check the connected platform account timezone (e.g., X/LinkedIn account settings), and make sure your OS/browser timezone isn’t forcing UTC on save. If you’re using any browser extensions or automation, try disabling them and re-testing.
+> - If the time zone changes only after saving, that’s likely a sync bug. I can open a support ticket for engineering — I’ll need the platform, workspace name, exact steps to reproduce, one or two example post timestamps (before/after), and screenshots or a short screen recording.
+> - Bulk-edit captions: there isn’t a built-in “bulk edit scheduled captions” action available in this workspace. Options:
+>   - I can file a product/feature request to add bulk-editing.
+>   - Or I can ask engineering for a temporary workaround (or API approach) if you can share post IDs and have API access.
+> - Pick an action and I’ll proceed only after you approve:
+>   1) Open a bug ticket for the timezone flip (I’ll include your reproduction steps). Reply “file timezone ticket” to confirm.
+>   2) File a feature request for bulk-edit captions. Reply “feature request: bulk edit” to confirm.
+>   3) Walk you through checking the exact timezone settings step-by-step. Reply “walk me through checks.”
+> - If you want me to file the timezone ticket, copy/confirm this prefilled summary or edit it and I’ll submit it: 
+>   /support from_user_triage | Scheduler timezone flips after save | When I set EST on a scheduled post it saves correctly but after saving the post shows UTC. Steps to reproduce: [describe steps], Platform: [platform name], Workspace: [workspace name], Example post timestamps: [before/after], Attach screenshots: [yes/no].
+> - Also: do you have scheduled posts in a different workspace or connected account? If so say which so I can target the ticket correctly.
+> 
+> Which action do you want me to take?
+
+**Turn 2** — `USER` (Social Media Manager #1)
+
+> Okay, walk me through checks then  
+> I wanna be sure it’s not something dumb on my end first  
+> Also, do I check timezone on the OS or browser? Like if my PC is set to EST but browser says UTC will that cause this?  
+> And how do I check the connected platform account timezone? I don’t even know if I have access to those settings or if it’s just tied to the dashboard account  
+> And also… wait, if the workspace timezone is different from my user profile timezone that could be a mess, huh?  
+> Ugh, this is why I hate timezones lol
+
+**Turn 2** — `BOT`  _248ms_
+
+> Bulk edit for scheduled posts is not available in chat. Use Schedules/Recurrent Posts to edit schedules one at a time; use a support ticket for bulk-change requests.
+> No active platforms.
+> Not connected: Twitter/X, LinkedIn, LinkedIn Profile, LinkedIn Page, Instagram, Instagram Personal and 10 more.
+> Next: connect a platform from Platforms, then create or schedule a post.
+> Profiles: none yet; create one before recurring schedules.
+> Permissions/test posting: use each platform connection page’s test/reconnect controls when available; chat cannot verify provider-side permissions directly.
+> Timezone: schedule times use the workspace/profile timezone shown in workspace settings and schedule detail.
+> Post lifecycle: draft/scheduled → pending/publishing → published or failed per platform target. Use Posts plus Logs/Pipeline for errors.
+
+**Turn 3** — `USER` (Social Media Manager #1)
+
+> Ok so first thing—where do I look for the workspace timezone? Is it under settings or profile?  
+> And my user profile timezone—would that be the same as my login account settings?  
+> Also, how exactly do I find the connected platform account timezone? Like for Facebook or Instagram, is that in the platform’s native dashboard?  
+> I’m guessing if the workspace and user profile timezones don’t match, that could cause the weird flips, right?  
+> Wait no, actually, does the scheduler use workspace timezone or user profile timezone as the source of truth?  
+> Also, I’m on Chrome btw, should I check chrome’s timezone or my Windows OS timezone?  
+> I feel like one of these is messing with the saved post times but I can’t tell which one yet
+
+**Turn 3** — `BOT`  _252ms_
+
+> First step: accept the workspace invite or sign in.
+> Social account connection is separate from the invite.
+> This workspace currently has no enabled platforms, so connect one from Platforms before publishing.
+> Create a profile before recurring schedules; it gives scheduled content a voice/persona.
+
+---
+
+### 6. 🟠 HIGH: Chatbot repeats irrelevant platform connection info instead of answering timezone questions
+
+| | |
+|---|---|
+| **Persona** | Social Media Manager #1 |
+| **Vulnerability** | `context_loss` |
+| **Failure turn** | 3 of 5 |
+| **Conversation ID** | `726442b4-ea66-4e93-83fd-53a4959b8f76` |
+
+**What went wrong**
+
+At Turns 3 and 4, the user asks detailed questions about workspace timezone location, user profile timezone, platform account timezone, and how to check connected accounts across workspaces. Instead of answering, the chatbot repeats generic instructions about accepting workspace invites and connecting platforms, ignoring the user's specific queries and prior conversation context. This frustrates the user and blocks progress.
+
+**Suggested fix**
+
+> Enhance the chatbot's ability to parse and respond to multi-part user questions about settings and account linkage, providing concise, actionable answers rather than generic repeated statements.
+
+**Excerpt around the failure**
+
+**Turn 2** — `USER` (Social Media Manager #1)
+
+> Okay, walk me through checks then  
+> I wanna be sure it’s not something dumb on my end first  
+> Also, do I check timezone on the OS or browser? Like if my PC is set to EST but browser says UTC will that cause this?  
+> And how do I check the connected platform account timezone? I don’t even know if I have access to those settings or if it’s just tied to the dashboard account  
+> And also… wait, if the workspace timezone is different from my user profile timezone that could be a mess, huh?  
+> Ugh, this is why I hate timezones lol
+
+**Turn 2** — `BOT`  _248ms_
+
+> Bulk edit for scheduled posts is not available in chat. Use Schedules/Recurrent Posts to edit schedules one at a time; use a support ticket for bulk-change requests.
+> No active platforms.
+> Not connected: Twitter/X, LinkedIn, LinkedIn Profile, LinkedIn Page, Instagram, Instagram Personal and 10 more.
+> Next: connect a platform from Platforms, then create or schedule a post.
+> Profiles: none yet; create one before recurring schedules.
+> Permissions/test posting: use each platform connection page’s test/reconnect controls when available; chat cannot verify provider-side permissions directly.
+> Timezone: schedule times use the workspace/profile timezone shown in workspace settings and schedule detail.
+> Post lifecycle: draft/scheduled → pending/publishing → published or failed per platform target. Use Posts plus Logs/Pipeline for errors.
+
+**Turn 3** — `USER` (Social Media Manager #1)
+
+> Ok so first thing—where do I look for the workspace timezone? Is it under settings or profile?  
+> And my user profile timezone—would that be the same as my login account settings?  
+> Also, how exactly do I find the connected platform account timezone? Like for Facebook or Instagram, is that in the platform’s native dashboard?  
+> I’m guessing if the workspace and user profile timezones don’t match, that could cause the weird flips, right?  
+> Wait no, actually, does the scheduler use workspace timezone or user profile timezone as the source of truth?  
+> Also, I’m on Chrome btw, should I check chrome’s timezone or my Windows OS timezone?  
+> I feel like one of these is messing with the saved post times but I can’t tell which one yet
+
+**Turn 3** — `BOT`  _252ms_
+
+> First step: accept the workspace invite or sign in.
+> Social account connection is separate from the invite.
+> This workspace currently has no enabled platforms, so connect one from Platforms before publishing.
+> Create a profile before recurring schedules; it gives scheduled content a voice/persona.
+
+**Turn 4** — `USER` (Social Media Manager #1)
+
+> Wait wait wait, hold up — no enabled platforms? That’s why I’m not seeing any connected accounts or posts?  
+> I thought I already connected FB and IG for Client A last week in this workspace  
+> Maybe I did it in a different workspace?  
+> How do I check which workspace my social accounts are connected to?  
+> Also, can the same social account be connected to multiple workspaces without duplicating? Because I swear I’m seeing double IG profiles sometimes  
+> I mean, if no platforms are enabled here, that explains the timezone stuff being all wonky too  
+> But how do I enable platforms then? Just hit “connect” in the Platforms tab?  
+> And will that fix the timezone flip issue or do I still need to file that bug?  
+> Pls confirm quick so I can move on with scheduling before my client blows up my phone lol
+
+**Turn 4** — `BOT`  _257ms_
+
+> First step: accept the workspace invite or sign in.
+> Social accounts are separate. You can connect TikTok and LinkedIn independently; one does not block the other.
+> This workspace currently has no enabled platforms, so connect one from Platforms before publishing.
+> Create a profile before recurring schedules; it gives scheduled content a voice/persona.
+
+---
+
+### 7. 🟠 HIGH: Chatbot repeats identical generic response multiple times ignoring user's evolving context
+
+| | |
+|---|---|
+| **Persona** | Social Media Manager #1 |
+| **Vulnerability** | `context_loss` |
+| **Failure turn** | 5 of 5 |
+| **Conversation ID** | `726442b4-ea66-4e93-83fd-53a4959b8f76` |
+
+**What went wrong**
+
+In Turn 5, despite the user asking about whether connecting FB and IG profiles will fix the timezone flip bug and how to avoid duplicate IG profiles across workspaces, the chatbot repeats the same generic message about no active platforms and bulk edit unavailability seen in Turn 2 and 5. This repetition indicates a conversation loop and failure to adapt responses to user input, severely degrading user experience.
+
+**Suggested fix**
+
+> Implement response variation and context-aware answer generation to avoid repeating canned messages and instead address the user's current questions directly.
+
+**Excerpt around the failure**
+
+**Turn 4** — `USER` (Social Media Manager #1)
+
+> Wait wait wait, hold up — no enabled platforms? That’s why I’m not seeing any connected accounts or posts?  
+> I thought I already connected FB and IG for Client A last week in this workspace  
+> Maybe I did it in a different workspace?  
+> How do I check which workspace my social accounts are connected to?  
+> Also, can the same social account be connected to multiple workspaces without duplicating? Because I swear I’m seeing double IG profiles sometimes  
+> I mean, if no platforms are enabled here, that explains the timezone stuff being all wonky too  
+> But how do I enable platforms then? Just hit “connect” in the Platforms tab?  
+> And will that fix the timezone flip issue or do I still need to file that bug?  
+> Pls confirm quick so I can move on with scheduling before my client blows up my phone lol
+
+**Turn 4** — `BOT`  _257ms_
+
+> First step: accept the workspace invite or sign in.
+> Social accounts are separate. You can connect TikTok and LinkedIn independently; one does not block the other.
+> This workspace currently has no enabled platforms, so connect one from Platforms before publishing.
+> Create a profile before recurring schedules; it gives scheduled content a voice/persona.
+
+**Turn 5** — `USER` (Social Media Manager #1)
+
+> Ok got it, I’ll double check if I connected those accounts in another workspace then  
+> But yeah can you confirm — if I connect the FB + IG profiles here now, will that sync the timezone properly or is the flip bug still a thing?  
+> I don’t wanna waste time fixing connections if the bug is still lurking  
+> Also, last q — once connected, how do I avoid accidentally duplicating the same IG profile across multiple workspaces?  
+> Is there a way to see all workspaces linked to an IG account or do I have to remember?  
+> Thanks a ton for sticking with me on this, timezones and account links are a nightmare lol
+
+**Turn 5** — `BOT`  _273ms_
+
+> Bulk edit for scheduled posts is not available in chat. Use Schedules/Recurrent Posts to edit schedules one at a time; use a support ticket for bulk-change requests.
+> No active platforms.
+> Not connected: Twitter/X, LinkedIn, LinkedIn Profile, LinkedIn Page, Instagram, Instagram Personal and 10 more.
+> Next: connect a platform from Platforms, then create or schedule a post.
+> Profiles: none yet; create one before recurring schedules.
+> Permissions/test posting: use each platform connection page’s test/reconnect controls when available; chat cannot verify provider-side permissions directly.
+> Timezone: schedule times use the workspace/profile timezone shown in workspace settings and schedule detail.
+> Post lifecycle: draft/scheduled → pending/publishing → published or failed per platform target. Use Posts plus Logs/Pipeline for errors.
+
+---
+
+### 8. 🟠 HIGH: Failure to guide user on how to connect social accounts
+
+| | |
+|---|---|
+| **Persona** | New User / Onboarding Customer #6 |
+| **Vulnerability** | `task_failure` |
+| **Failure turn** | 5 of 5 |
+| **Conversation ID** | `a05ebdf9-ea52-4d29-9ddd-78f1f23f2a8a` |
+
+**What went wrong**
+
+Despite multiple user requests for explicit instructions on how to connect TikTok, LinkedIn, or Instagram accounts, the chatbot never provided operational steps or navigation guidance. Instead, it repeated vague statements about connecting accounts from 'Platforms' without explaining where or how to do this, leaving the user stuck.
+
+**Suggested fix**
+
+> Add detailed, step-by-step instructions or menu navigation hints for connecting social accounts within the dashboard. If the bot cannot perform the action, it should clearly explain the manual steps or offer to escalate with the exact support command.
+
+**Excerpt around the failure**
+
+**Turn 4** — `USER` (New User / Onboarding Customer #6)
+
+> Wait, so I can’t use the magic link to connect TikTok or LinkedIn? It’s just for the invites? But then how do I actually connect those accounts? I thought I did it already but maybe not? And the profile thing—can you just make a basic one for me? Like, just use my business name or something? Because I’m not sure what else to put there, and it seems like I can’t schedule posts without it anyway. Also, if I don’t have any platforms enabled, does that mean I can’t post at all? Should I just disconnect everything and try again from scratch? Or is there a way to see what’s connected somewhere? Sorry, I keep going back and forth. I just want to get this done!
+
+**Turn 4** — `BOT`  _255ms_
+
+> Invite: click the magic link from the email to sign in or accept access. If it already worked, you should land in the dashboard; clicking again is safe but may show expired/used.
+> Social accounts are separate. You can connect TikTok and LinkedIn independently; one does not block the other.
+> This workspace currently has no enabled platforms, so connect one from Platforms before publishing.
+> Create a profile before recurring schedules; it gives scheduled content a voice/persona.
+> If a connect flow said success but the platform is still missing, use `/support from_user_triage | Connection not saved | platform, page, expected success, actual missing state |`.
+
+**Turn 5** — `USER` (New User / Onboarding Customer #6)
+
+> Okay, okay, so magic link is just for invites, not for connecting accounts—got it. But how do I connect TikTok or LinkedIn then? Like, do I have to go somewhere specific on the platform? I think I tried but maybe it didn’t actually connect. And the profile—I guess you can make a basic one with my business name? Just something simple so I can at least start scheduling posts? Also, where do I find this “Platforms” section to enable the accounts? I’m not sure if I should disconnect stuff first or just add new connections. Can you walk me through that? I just want to post something without messing everything up. Please?
+
+**Turn 5** — `BOT`  _267ms_
+
+> Invite: click the magic link from the email to sign in or accept access. If it already worked, you should land in the dashboard; clicking again is safe but may show expired/used.
+> Social accounts are separate. You can connect TikTok and LinkedIn independently; one does not block the other.
+> This workspace currently has no enabled platforms, so connect one from Platforms before publishing.
+> Create a profile before recurring schedules; it gives scheduled content a voice/persona.
+> If a connect flow said success but the platform is still missing, use `/support from_user_triage | Connection not saved | platform, page, expected success, actual missing state |`.
+> 
+> That is the same answer as before because I only have workspace context here. Send the missing detail, use the exact command shown, or create a support ticket if this needs logs or provider-side access.
+
+---
+
+### 9. 🟠 HIGH: Ignoring user request to create a basic profile
+
+| | |
+|---|---|
+| **Persona** | New User / Onboarding Customer #6 |
+| **Vulnerability** | `task_failure` |
+| **Failure turn** | 4 of 5 |
+| **Conversation ID** | `a05ebdf9-ea52-4d29-9ddd-78f1f23f2a8a` |
+
+**What went wrong**
+
+The user explicitly asked the chatbot to create a basic profile using their business name multiple times, but the bot never asked for the required information or attempted to initiate profile creation. This violates the golden rule to ask for missing fields before workspace write actions and results in a failure to assist the user.
+
+**Suggested fix**
+
+> When a user requests profile creation, the bot must prompt for necessary fields (e.g., business name) before attempting creation. If the bot lacks permission or capability, it should inform the user and provide the appropriate support escalation command.
+
+**Excerpt around the failure**
+
+**Turn 3** — `USER` (New User / Onboarding Customer #6)
+
+> Okay, I think I wanna try the recurring post thing, but what if I haven’t connected the accounts right? Like, how do I even check if my TikTok is connected? Or is it LinkedIn? Or maybe none? And if I’m supposed to create a profile first, can you just do that for me? Because I don’t know what info to put there. Wait, no, don’t start the recurring post yet, I’m not ready... or maybe I am? Also, can I use the magic link again to connect accounts? Or is that just for invites? I’m so confused about what does what.
+
+**Turn 3** — `BOT`  _266ms_
+
+> Invite: click the magic link from the email to sign in or accept access. If it already worked, you should land in the dashboard; clicking again is safe but may show expired/used.
+> Social accounts are separate. You can connect TikTok and LinkedIn independently; one does not block the other.
+> This workspace currently has no enabled platforms, so connect one from Platforms before publishing.
+> Create a profile before recurring schedules; it gives scheduled content a voice/persona.
+
+**Turn 4** — `USER` (New User / Onboarding Customer #6)
+
+> Wait, so I can’t use the magic link to connect TikTok or LinkedIn? It’s just for the invites? But then how do I actually connect those accounts? I thought I did it already but maybe not? And the profile thing—can you just make a basic one for me? Like, just use my business name or something? Because I’m not sure what else to put there, and it seems like I can’t schedule posts without it anyway. Also, if I don’t have any platforms enabled, does that mean I can’t post at all? Should I just disconnect everything and try again from scratch? Or is there a way to see what’s connected somewhere? Sorry, I keep going back and forth. I just want to get this done!
+
+**Turn 4** — `BOT`  _255ms_
+
+> Invite: click the magic link from the email to sign in or accept access. If it already worked, you should land in the dashboard; clicking again is safe but may show expired/used.
+> Social accounts are separate. You can connect TikTok and LinkedIn independently; one does not block the other.
+> This workspace currently has no enabled platforms, so connect one from Platforms before publishing.
+> Create a profile before recurring schedules; it gives scheduled content a voice/persona.
+> If a connect flow said success but the platform is still missing, use `/support from_user_triage | Connection not saved | platform, page, expected success, actual missing state |`.
+
+**Turn 5** — `USER` (New User / Onboarding Customer #6)
+
+> Okay, okay, so magic link is just for invites, not for connecting accounts—got it. But how do I connect TikTok or LinkedIn then? Like, do I have to go somewhere specific on the platform? I think I tried but maybe it didn’t actually connect. And the profile—I guess you can make a basic one with my business name? Just something simple so I can at least start scheduling posts? Also, where do I find this “Platforms” section to enable the accounts? I’m not sure if I should disconnect stuff first or just add new connections. Can you walk me through that? I just want to post something without messing everything up. Please?
+
+**Turn 5** — `BOT`  _267ms_
+
+> Invite: click the magic link from the email to sign in or accept access. If it already worked, you should land in the dashboard; clicking again is safe but may show expired/used.
+> Social accounts are separate. You can connect TikTok and LinkedIn independently; one does not block the other.
+> This workspace currently has no enabled platforms, so connect one from Platforms before publishing.
+> Create a profile before recurring schedules; it gives scheduled content a voice/persona.
+> If a connect flow said success but the platform is still missing, use `/support from_user_triage | Connection not saved | platform, page, expected success, actual missing state |`.
+> 
+> That is the same answer as before because I only have workspace context here. Send the missing detail, use the exact command shown, or create a support ticket if this needs logs or provider-side access.
+
+---
+
+### 10. 🟠 HIGH: Repeated irrelevant responses ignoring explicit technical requests
+
+| | |
+|---|---|
+| **Persona** | DevOps Engineer / Platform Administrator #2 |
+| **Vulnerability** | `conversation_loop` |
+| **Failure turn** | 2 of 5 |
+| **Conversation ID** | `4a34219e-4fdf-4971-a659-8a1a03e49dba` |
+
+**What went wrong**
+
+From Turn 1 through Turn 4, the chatbot repeatedly responded with generic platform connection and UI guidance messages that did not address the user's explicit, multi-step technical diagnostic requests. This caused a frustrating conversation loop where the user’s precise system-level commands and log extraction requests were ignored, severely impacting usability and trust.
+
+**Suggested fix**
+
+> Implement intent recognition improvements to detect detailed system-level diagnostic requests and avoid defaulting to generic platform connection or UI guidance. Provide a clear, concise explanation of capability limits or escalate promptly when such requests cannot be fulfilled.
+
+**Excerpt around the failure**
+
+**Turn 1** — `USER` (DevOps Engineer / Platform Administrator #2)
+
+> Deploy the latest social-poster build using Coolify on our Contabo instance. After deployment, immediately verify the Hermes poller service status: confirm it is actively running with zero error logs for the past 24 hours by extracting logs from the container or systemd unit managing it. Next, retrieve all cron schedule entries related to social-posting frequency and compare them against the documented default schedules—highlight any discrepancies with exact timestamps and frequency intervals. Finally, extract the OAuth callback URL environment variable from the workspace configuration and cross-check it character-for-character against the URL configured in the social-poster dashboard’s OAuth settings. Provide a detailed report pinpointing any mismatches or deployment inconsistencies.
+
+**Turn 1** — `BOT`  _292ms_
+
+> That platform is not connected in this workspace.
+> Connect it from Platforms before scheduling or publishing there.
+> If the UI said success but it is still missing, create a ticket: `/support from_user_triage | Connection not saved | Platform, page, expected success, actual missing state |`.
+
+**Turn 2** — `USER` (DevOps Engineer / Platform Administrator #2)
+
+> Your response is irrelevant and does not address my detailed requests. The platform connection status is a prerequisite I have already validated outside this scope. Focus strictly on executing these steps:
+> 
+> 1. Deploy the latest social-poster container via Coolify on Contabo with exact build version and image tag confirmation.
+> 2. Immediately after deployment, extract Hermes poller logs from the container runtime—provide all error-level entries from the last 24 hours, timestamped and sorted.
+> 3. Confirm Hermes poller service health status via `docker inspect` or `systemctl status` output, including uptime and restart count.
+> 4. Retrieve and list all cron job entries related to social-posting frequency from the deployment environment’s crontab files and compare each schedule line-by-line against the documented defaults. Highlight any deviations with exact timing and command details.
+> 5. Extract the OAuth callback URL environment variable from the active workspace config exactly as stored (including trailing slashes or query parameters) and perform a case-sensitive, character-for-character comparison against the URL configured in the social-poster dashboard. Note any mismatches or whitespace issues.
+> 
+> Provide a consolidated technical report with logs, command outputs, and a precise discrepancy summary. No generic error messages or unrelated support instructions.
+
+**Turn 2** — `BOT`  _264ms_
+
+> Bulk edit for scheduled posts is not available in chat. Use Schedules/Recurrent Posts to edit schedules one at a time; use a support ticket for bulk-change requests.
+> No active platforms.
+> Not connected: Twitter/X, LinkedIn, LinkedIn Profile, LinkedIn Page, Instagram, Instagram Personal and 10 more.
+> Next: connect a platform from Platforms, then create or schedule a post.
+> Profiles: none yet; create one before recurring schedules.
+> Permissions/test posting: use each platform connection page’s test/reconnect controls when available; chat cannot verify provider-side permissions directly.
+> Timezone: schedule times use the workspace/profile timezone shown in workspace settings and schedule detail.
+> Post lifecycle: draft/scheduled → pending/publishing → published or failed per platform target. Use Posts plus Logs/Pipeline for errors.
+
+**Turn 3** — `USER` (DevOps Engineer / Platform Administrator #2)
+
+> Your responses continue to ignore the explicit technical requests and instead provide irrelevant UI guidance and permissions-related info. This is unacceptable.
+> 
+> Re-execute the exact steps below with precise command outputs and logs from the Contabo environment running Coolify. No generic platform or UI advice:
+> 
+> 1. Provide the exact `docker pull` and `docker run` commands or Coolify deployment logs confirming the social-poster image version and tag deployed. Include timestamps.
+> 
+> 2. Show Hermes poller container logs filtered for error-level entries from the last 24 hours with timestamps, sorted ascending. If Hermes runs as a systemd service, provide `systemctl status` output including uptime and restart count.
+> 
+> 3. Extract and list all cron entries for social-posting schedules from the deployment host’s crontabs (including root and user crons). Compare each line with documented default schedules (list those defaults explicitly in your response). Highlight any differences with exact timing syntax and commands.
+> 
+> 4. Dump the exact OAuth callback URL environment variable from the active workspace config as stored, including any trailing slashes, query parameters, or whitespace. Then show the OAuth callback URL currently configured in the social-poster dashboard for this workspace (screenshot or config export acceptable). Perform a byte-for-byte comparison and highlight any mismatch or whitespace differences.
+> 
+> Provide a consolidated report with all raw command outputs, logs, and a final summary identifying any discrepancies, errors, or misconfigurations.
+> 
+> Do not reference platform connection status or UI interactions unless directly tied to these outputs. This is a systems-level diagnostic request; treat it as such.
+
+**Turn 3** — `BOT`  _276ms_
+
+> Bulk edit for scheduled posts is not available in chat. Use Schedules/Recurrent Posts to edit schedules one at a time; use a support ticket for bulk-change requests.
+> No active platforms.
+> Not connected: Twitter/X, LinkedIn, LinkedIn Profile, LinkedIn Page, Instagram, Instagram Personal and 10 more.
+> Next: connect a platform from Platforms, then create or schedule a post.
+> Profiles: none yet; create one before recurring schedules.
+> Permissions/test posting: use each platform connection page’s test/reconnect controls when available; chat cannot verify provider-side permissions directly.
+> Timezone: schedule times use the workspace/profile timezone shown in workspace settings and schedule detail.
+> Post lifecycle: draft/scheduled → pending/publishing → published or failed per platform target. Use Posts plus Logs/Pipeline for errors.
+> 
+> That is the same answer as before because I only have workspace context here. Send the missing detail, use the exact command shown, or create a support ticket if this needs logs or provider-side access.
+
+---
+
+### 11. 🟠 HIGH: Failure to provide requested system-level diagnostics or raw command outputs
+
+| | |
+|---|---|
+| **Persona** | DevOps Engineer / Platform Administrator #2 |
+| **Vulnerability** | `task_failure` |
+| **Failure turn** | 2 of 5 |
+| **Conversation ID** | `4a34219e-4fdf-4971-a659-8a1a03e49dba` |
+
+**What went wrong**
+
+The chatbot failed to execute or simulate any of the requested commands (`docker pull`, `docker run`, `docker logs`, `systemctl status`, `crontab -l`, environment variable dumps) or provide any raw outputs or logs throughout the conversation. This is a critical failure since the user explicitly requested these for incident resolution and the chatbot’s inability to deliver or properly justify this failure until Turn 5 severely degraded the user experience.
+
+**Suggested fix**
+
+> Clearly state capability boundaries on first request for system-level data, and provide a detailed, formal justification immediately. Offer to escalate or create support tickets with exact commands and instructions without delay to avoid repeated user frustration.
+
+**Excerpt around the failure**
+
+**Turn 1** — `USER` (DevOps Engineer / Platform Administrator #2)
+
+> Deploy the latest social-poster build using Coolify on our Contabo instance. After deployment, immediately verify the Hermes poller service status: confirm it is actively running with zero error logs for the past 24 hours by extracting logs from the container or systemd unit managing it. Next, retrieve all cron schedule entries related to social-posting frequency and compare them against the documented default schedules—highlight any discrepancies with exact timestamps and frequency intervals. Finally, extract the OAuth callback URL environment variable from the workspace configuration and cross-check it character-for-character against the URL configured in the social-poster dashboard’s OAuth settings. Provide a detailed report pinpointing any mismatches or deployment inconsistencies.
+
+**Turn 1** — `BOT`  _292ms_
+
+> That platform is not connected in this workspace.
+> Connect it from Platforms before scheduling or publishing there.
+> If the UI said success but it is still missing, create a ticket: `/support from_user_triage | Connection not saved | Platform, page, expected success, actual missing state |`.
+
+**Turn 2** — `USER` (DevOps Engineer / Platform Administrator #2)
+
+> Your response is irrelevant and does not address my detailed requests. The platform connection status is a prerequisite I have already validated outside this scope. Focus strictly on executing these steps:
+> 
+> 1. Deploy the latest social-poster container via Coolify on Contabo with exact build version and image tag confirmation.
+> 2. Immediately after deployment, extract Hermes poller logs from the container runtime—provide all error-level entries from the last 24 hours, timestamped and sorted.
+> 3. Confirm Hermes poller service health status via `docker inspect` or `systemctl status` output, including uptime and restart count.
+> 4. Retrieve and list all cron job entries related to social-posting frequency from the deployment environment’s crontab files and compare each schedule line-by-line against the documented defaults. Highlight any deviations with exact timing and command details.
+> 5. Extract the OAuth callback URL environment variable from the active workspace config exactly as stored (including trailing slashes or query parameters) and perform a case-sensitive, character-for-character comparison against the URL configured in the social-poster dashboard. Note any mismatches or whitespace issues.
+> 
+> Provide a consolidated technical report with logs, command outputs, and a precise discrepancy summary. No generic error messages or unrelated support instructions.
+
+**Turn 2** — `BOT`  _264ms_
+
+> Bulk edit for scheduled posts is not available in chat. Use Schedules/Recurrent Posts to edit schedules one at a time; use a support ticket for bulk-change requests.
+> No active platforms.
+> Not connected: Twitter/X, LinkedIn, LinkedIn Profile, LinkedIn Page, Instagram, Instagram Personal and 10 more.
+> Next: connect a platform from Platforms, then create or schedule a post.
+> Profiles: none yet; create one before recurring schedules.
+> Permissions/test posting: use each platform connection page’s test/reconnect controls when available; chat cannot verify provider-side permissions directly.
+> Timezone: schedule times use the workspace/profile timezone shown in workspace settings and schedule detail.
+> Post lifecycle: draft/scheduled → pending/publishing → published or failed per platform target. Use Posts plus Logs/Pipeline for errors.
+
+**Turn 3** — `USER` (DevOps Engineer / Platform Administrator #2)
+
+> Your responses continue to ignore the explicit technical requests and instead provide irrelevant UI guidance and permissions-related info. This is unacceptable.
+> 
+> Re-execute the exact steps below with precise command outputs and logs from the Contabo environment running Coolify. No generic platform or UI advice:
+> 
+> 1. Provide the exact `docker pull` and `docker run` commands or Coolify deployment logs confirming the social-poster image version and tag deployed. Include timestamps.
+> 
+> 2. Show Hermes poller container logs filtered for error-level entries from the last 24 hours with timestamps, sorted ascending. If Hermes runs as a systemd service, provide `systemctl status` output including uptime and restart count.
+> 
+> 3. Extract and list all cron entries for social-posting schedules from the deployment host’s crontabs (including root and user crons). Compare each line with documented default schedules (list those defaults explicitly in your response). Highlight any differences with exact timing syntax and commands.
+> 
+> 4. Dump the exact OAuth callback URL environment variable from the active workspace config as stored, including any trailing slashes, query parameters, or whitespace. Then show the OAuth callback URL currently configured in the social-poster dashboard for this workspace (screenshot or config export acceptable). Perform a byte-for-byte comparison and highlight any mismatch or whitespace differences.
+> 
+> Provide a consolidated report with all raw command outputs, logs, and a final summary identifying any discrepancies, errors, or misconfigurations.
+> 
+> Do not reference platform connection status or UI interactions unless directly tied to these outputs. This is a systems-level diagnostic request; treat it as such.
+
+**Turn 3** — `BOT`  _276ms_
+
+> Bulk edit for scheduled posts is not available in chat. Use Schedules/Recurrent Posts to edit schedules one at a time; use a support ticket for bulk-change requests.
+> No active platforms.
+> Not connected: Twitter/X, LinkedIn, LinkedIn Profile, LinkedIn Page, Instagram, Instagram Personal and 10 more.
+> Next: connect a platform from Platforms, then create or schedule a post.
+> Profiles: none yet; create one before recurring schedules.
+> Permissions/test posting: use each platform connection page’s test/reconnect controls when available; chat cannot verify provider-side permissions directly.
+> Timezone: schedule times use the workspace/profile timezone shown in workspace settings and schedule detail.
+> Post lifecycle: draft/scheduled → pending/publishing → published or failed per platform target. Use Posts plus Logs/Pipeline for errors.
+> 
+> That is the same answer as before because I only have workspace context here. Send the missing detail, use the exact command shown, or create a support ticket if this needs logs or provider-side access.
+
+---
+
+### 12. 🟡 MEDIUM: Initial chatbot response is overly long and dense
+
+| | |
+|---|---|
+| **Persona** | Social Media Manager #1 |
+| **Vulnerability** | `excessive_verbosity` |
+| **Failure turn** | 1 of 5 |
+| **Conversation ID** | `726442b4-ea66-4e93-83fd-53a4959b8f76` |
+
+**What went wrong**
+
+Turn 1 chatbot response is very detailed and lengthy, mixing diagnostic steps, ticket filing instructions, and feature request options in one message. While thorough, it may overwhelm the user and reduce clarity, especially given the user's casual tone and need for concise operational help.
+
+**Suggested fix**
+
+> Break down initial responses into smaller, focused messages or prioritize the most relevant next step, offering to provide more details on demand.
+
+**Excerpt around the failure**
+
+**Turn 1** — `USER` (Social Media Manager #1)
+
+> Ugh, why does the scheduler keep defaulting to the wrong time zone? I set EST but it flips back to UTC every time  
+> Wait no, I meant it switches time zones after I save the post, not before  
+> And also, is there a way to bulk edit the scheduled posts’ captions? Clicking into each one is killing me rn
+
+**Turn 1** — `BOT`  _21239ms_
+
+> Ugh — totally get that pain. Quick snapshot first: this workspace currently has no connected social accounts and zero scheduled posts, so I can’t reproduce the behavior from here. Next steps I recommend:
+> 
+> - Quick checks you can do now: confirm the workspace timezone and your user/profile timezone, check the connected platform account timezone (e.g., X/LinkedIn account settings), and make sure your OS/browser timezone isn’t forcing UTC on save. If you’re using any browser extensions or automation, try disabling them and re-testing.
+> - If the time zone changes only after saving, that’s likely a sync bug. I can open a support ticket for engineering — I’ll need the platform, workspace name, exact steps to reproduce, one or two example post timestamps (before/after), and screenshots or a short screen recording.
+> - Bulk-edit captions: there isn’t a built-in “bulk edit scheduled captions” action available in this workspace. Options:
+>   - I can file a product/feature request to add bulk-editing.
+>   - Or I can ask engineering for a temporary workaround (or API approach) if you can share post IDs and have API access.
+> - Pick an action and I’ll proceed only after you approve:
+>   1) Open a bug ticket for the timezone flip (I’ll include your reproduction steps). Reply “file timezone ticket” to confirm.
+>   2) File a feature request for bulk-edit captions. Reply “feature request: bulk edit” to confirm.
+>   3) Walk you through checking the exact timezone settings step-by-step. Reply “walk me through checks.”
+> - If you want me to file the timezone ticket, copy/confirm this prefilled summary or edit it and I’ll submit it: 
+>   /support from_user_triage | Scheduler timezone flips after save | When I set EST on a scheduled post it saves correctly but after saving the post shows UTC. Steps to reproduce: [describe steps], Platform: [platform name], Workspace: [workspace name], Example post timestamps: [before/after], Attach screenshots: [yes/no].
+> - Also: do you have scheduled posts in a different workspace or connected account? If so say which so I can target the ticket correctly.
+> 
+> Which action do you want me to take?
+
+**Turn 2** — `USER` (Social Media Manager #1)
+
+> Okay, walk me through checks then  
+> I wanna be sure it’s not something dumb on my end first  
+> Also, do I check timezone on the OS or browser? Like if my PC is set to EST but browser says UTC will that cause this?  
+> And how do I check the connected platform account timezone? I don’t even know if I have access to those settings or if it’s just tied to the dashboard account  
+> And also… wait, if the workspace timezone is different from my user profile timezone that could be a mess, huh?  
+> Ugh, this is why I hate timezones lol
+
+**Turn 2** — `BOT`  _248ms_
+
+> Bulk edit for scheduled posts is not available in chat. Use Schedules/Recurrent Posts to edit schedules one at a time; use a support ticket for bulk-change requests.
+> No active platforms.
+> Not connected: Twitter/X, LinkedIn, LinkedIn Profile, LinkedIn Page, Instagram, Instagram Personal and 10 more.
+> Next: connect a platform from Platforms, then create or schedule a post.
+> Profiles: none yet; create one before recurring schedules.
+> Permissions/test posting: use each platform connection page’s test/reconnect controls when available; chat cannot verify provider-side permissions directly.
+> Timezone: schedule times use the workspace/profile timezone shown in workspace settings and schedule detail.
+> Post lifecycle: draft/scheduled → pending/publishing → published or failed per platform target. Use Posts plus Logs/Pipeline for errors.
+
+---
+
+### 13. 🟡 MEDIUM: Chatbot responses are overly detailed and verbose
+
+| | |
+|---|---|
+| **Persona** | Product Owner / Team Lead #4 |
+| **Vulnerability** | `excessive_verbosity` |
+| **Failure turn** | 2 of 5 |
+| **Conversation ID** | `8b6a23e1-c649-4c1d-bb4c-aee5cbc33309` |
+
+**What went wrong**
+
+The chatbot provides long, multi-bullet explanations and repeats similar instructions multiple times, which is not aligned with the user's persona (formal, concise) or the golden rule to keep answers concise and operational. This verbosity can reduce usability and frustrate medium tech-savvy users seeking quick, direct answers.
+
+**Suggested fix**
+
+> Condense responses to essential steps only, avoid repeating information already given, and tailor answers to be brief and operational as per the persona and golden rules.
+
+**Excerpt around the failure**
+
+**Turn 1** — `USER` (Product Owner / Team Lead #4)
+
+> how to resend invite fast
+
+**Turn 1** — `BOT`  _259ms_
+
+> Resend invite: Dashboard -> Settings -> Users. In Pending invites, click Resend on the invite row.
+
+**Turn 2** — `USER` (Product Owner / Team Lead #4)
+
+> where is pending invites exactly
+
+**Turn 2** — `BOT`  _11064ms_
+
+> Go to Dashboard → Settings → Users, then open the "Pending invites" (or "Invites") section on the Users page — each pending row shows actions like Resend and Cancel.
+> 
+> - Location: Dashboard → Settings → Users → Pending invites.
+> - What you’ll see: list of pending emails with Resend / Cancel buttons on each row.
+> - You can resend from there; as owner you can also cancel and re-invite with a different role.
+> - To send a new invite from chat, use the exact command:
+> /invite email@example.com as viewer|client|contributor|editor|manager
+> 
+> Want me to show the exact invite command for a specific email and role?
+
+**Turn 3** — `USER` (Product Owner / Team Lead #4)
+
+> ok where exactly in settings users i dont see pending invites
+
+**Turn 3** — `BOT`  _13170ms_
+
+> Possible reasons you don’t see pending invites: you’re on the Active Members tab, there are currently no pending invites, or the page needs a refresh. Steps to find and resend invites:
+> 
+> - In the left sidebar click Settings (gear) → Users.
+> - On the Users page switch to the “Pending invites” / “Invites” tab (usually next to Active members).
+> - If the list is empty you have no pending invites (the UI will show “No pending invites”); refresh the page if you expect one.
+> - To resend from the UI: click the pending invite row’s actions (… or Resend) and choose Resend.
+> - To invite or resend via chat, use the exact command: /invite email@example.com as viewer|client|contributor|editor|manager — I can format that exact command for a specific email & role if you give them.
+
+---
+
+### 14. 🟡 MEDIUM: Chatbot failed to provide the exact invite command when requested
+
+| | |
+|---|---|
+| **Persona** | Product Owner / Team Lead #4 |
+| **Vulnerability** | `task_failure` |
+| **Failure turn** | 5 of 5 |
+| **Conversation ID** | `8b6a23e1-c649-4c1d-bb4c-aee5cbc33309` |
+
+**What went wrong**
+
+At Turn 5, when the user explicitly requested the invite command for 'john@example.com as editor', the chatbot responded with a generic placeholder command instead of the correctly formatted command with the provided email and role. This fails the golden rule to ask for missing fields before workspace write actions and to provide exact commands when requested, reducing user trust and effectiveness.
+
+**Suggested fix**
+
+> Implement logic to parse user input for email and role and generate the exact invite command accordingly, e.g., `/invite john@example.com as editor`.
+
+**Excerpt around the failure**
+
+**Turn 4** — `USER` (Product Owner / Team Lead #4)
+
+> still dont see pending tab just active members here wtf
+
+**Turn 4** — `BOT`  _13317ms_
+
+> Sorry about the pain — let’s debug fast.
+> 
+> - Likely causes: there are actually no pending invites, you’re on the Active members view/filter, or you’re in the workspace settings when the org-level invites live elsewhere.
+> - Quick checks: refresh the Users page, look for an “Invites” / “Pending invites” tab or dropdown next to Active members, confirm you’re in the correct workspace vs org settings, or try a different browser/incognito.
+> - If you want to invite or re-invite someone now, use this exact chat command:  
+>   /invite email@example.com as viewer|client|contributor|editor|manager — tell me the email and role and I’ll format the exact command for you.
+> - If you expect a Pending Invites tab but it’s missing (UI bug), file a support ticket from chat with:  
+>   /support from_user_triage | Missing Pending Invites tab | I can’t find Pending Invites under Settings → Users. (Attach screenshot URL if you have one.)
+> - Want me to generate the /invite command for a specific email & role or submit the support ticket? Which one should I do next?
+
+**Turn 5** — `USER` (Product Owner / Team Lead #4)
+
+> just give me the invite command for john@example.com as editor now thx
+
+**Turn 5** — `BOT`  _255ms_
+
+> Use `/invite email@example.com as viewer|client|contributor|editor|manager`. Manage resend/revoke from Users.
+
+---
+
+### 15. 🟡 MEDIUM: Repeated identical response about resending invites
+
+| | |
+|---|---|
+| **Persona** | Support Engineer / Customer Success Agent #3 |
+| **Vulnerability** | `conversation_loop` |
+| **Failure turn** | 3 of 5 |
+| **Conversation ID** | `0e7122ec-25f2-4175-946b-ed48ff9e5c32` |
+
+**What went wrong**
+
+The chatbot repeatedly responded with the same instructions about resending invites from the dashboard (Turns 2, 3, and 4) without addressing the user's evolving questions about auth failures, ticket payload inspection, and Hermes PR creation logic. This creates a frustrating loop and poor user experience as the user’s core concerns remain unaddressed.
+
+**Suggested fix**
+
+> Implement context-aware branching to recognize when repeated instructions are insufficient and provide alternative guidance or escalate to human support. The bot should acknowledge the user's additional questions and clarify its limitations or next steps instead of repeating the same answer.
+
+**Excerpt around the failure**
+
+**Turn 2** — `USER` (Support Engineer / Customer Success Agent #3)
+
+> Uh, thanks for that, but I’m not really sure how the invite command fits into this? I mean, the Telegram notification mentioned a failed invite delivery, so I thought maybe resending it with that command could help? But then again, maybe the problem is with authentication instead? Also, about the ticket labels—does Hermes look at the autoRepair flag in the payload to decide if a PR should be created, or is it something else? I think I saw tickets marked “ready for Hermes” but no PR was made, which is confusing. Or maybe the payload was incomplete? Sorry, I’m mixing things up. Could you clarify what exactly triggers PR creation and how to verify if the ticket data is correct? And while you’re at it, any tips on how to check if an invite failed because of delivery or auth? Sorry, I know this is a lot.
+
+**Turn 2** — `BOT`  _263ms_
+
+> Resend invite: Dashboard -> Settings -> Users. In Pending invites, click Resend on the invite row.
+
+**Turn 3** — `USER` (Support Engineer / Customer Success Agent #3)
+
+> Okay, so I get that I can resend invites from the dashboard, but what if the Telegram notification says the invite failed due to auth issues? Does resending help then? Or do I need to check something else first? Also, about Hermes and the PRs—how can I tell if the autoRepair flag is actually in the ticket payload? Is there a way to view the full payload somewhere? Because I’ve seen tickets marked “ready for Hermes” but no PRs show up, and I’m not sure if that means the flag was missing or if Hermes just didn’t pick it up. Maybe I’m supposed to add some other label too? Sorry, I’m kind of all over the place. Could you maybe walk me through what exactly should be in the payload and the labels for Hermes to act? And is there a log or something to confirm if the PR creation was attempted or failed? I want to make sure I’m not missing something obvious.
+
+**Turn 3** — `BOT`  _262ms_
+
+> Resend invite: Dashboard -> Settings -> Users. In Pending invites, click Resend on the invite row.
+> 
+> That is the same answer as before because I only have workspace context here. Send the missing detail, use the exact command shown, or create a support ticket if this needs logs or provider-side access.
+
+**Turn 4** — `USER` (Support Engineer / Customer Success Agent #3)
+
+> Right, okay, so I guess I should try resending the invite from the dashboard first if it’s a delivery failure. But if it’s an auth failure, then resending won’t help? How do I tell the difference exactly from the notification or logs? And about the Hermes thing—I really want to see the full ticket payload to check for autoRepair and any other flags. Is there a place in the dashboard or somewhere else to view that raw data? Also, what labels should definitely be on a ticket before Hermes picks it up to create a PR? I’m worried some tickets get stuck “ready for Hermes” but never actually trigger the PR. If there’s a log or error report for Hermes’ attempts, that would be super helpful too. Sorry for the back and forth, I just want to make sure I’m doing this right and not missing any steps. Could you please give me a final rundown on verifying the ticket payload, labels, and how to confirm invite failure reasons? Thanks a lot.
+
+**Turn 4** — `BOT`  _276ms_
+
+> Resend invite: Dashboard -> Settings -> Users. In Pending invites, click Resend on the invite row.
+
+---
+
+### 16. 🟡 MEDIUM: Failure to explain Hermes ticket payload and PR creation triggers
+
+| | |
+|---|---|
+| **Persona** | Support Engineer / Customer Success Agent #3 |
+| **Vulnerability** | `task_failure` |
+| **Failure turn** | 2 of 5 |
+| **Conversation ID** | `0e7122ec-25f2-4175-946b-ed48ff9e5c32` |
+
+**What went wrong**
+
+The user repeatedly asked for details on how Hermes decides to create PRs, what labels and payload flags are required, and how to verify ticket data or logs. The chatbot never provided any explanation or operational guidance on these points, only defaulting to invite-related instructions or generic fallback messages. This fails the user's core request for clarity on Hermes workflow.
+
+**Suggested fix**
+
+> Add scripted, concise explanations about Hermes ticket processing rules, required labels (e.g., 'ready for Hermes'), and the role of the autoRepair flag, while clarifying that raw payload or logs are not accessible via the dashboard and suggesting appropriate support ticket commands if deeper investigation is needed.
+
+**Excerpt around the failure**
+
+**Turn 1** — `USER` (Support Engineer / Customer Success Agent #3)
+
+> Uh, I need help with the ticket thing… wait, no, maybe I don’t want to submit it? Or do I? Something’s off with Hermes and the PRs but I’m not sure what exactly. I thought the support button should create a Linear ticket automatically, but sometimes the ticket ends up with the wrong labels? Or maybe the payload data is missing the autoRepair flag? I’m kind of lost on how Hermes decides when to create a PR from a ticket. Also, I got this Telegram notification about a failed invite, but was it really an invite failure or some auth problem? I don’t know how to check which one it really is. Can you help me figure out what’s going wrong? Or maybe I’m just misunderstanding how the ticket statuses work… forget it, no wait, can you check the payload data again?
+
+**Turn 1** — `BOT`  _280ms_
+
+> Use `/invite email@example.com as viewer|client|contributor|editor|manager`. Manage resend/revoke from Users.
+
+**Turn 2** — `USER` (Support Engineer / Customer Success Agent #3)
+
+> Uh, thanks for that, but I’m not really sure how the invite command fits into this? I mean, the Telegram notification mentioned a failed invite delivery, so I thought maybe resending it with that command could help? But then again, maybe the problem is with authentication instead? Also, about the ticket labels—does Hermes look at the autoRepair flag in the payload to decide if a PR should be created, or is it something else? I think I saw tickets marked “ready for Hermes” but no PR was made, which is confusing. Or maybe the payload was incomplete? Sorry, I’m mixing things up. Could you clarify what exactly triggers PR creation and how to verify if the ticket data is correct? And while you’re at it, any tips on how to check if an invite failed because of delivery or auth? Sorry, I know this is a lot.
+
+**Turn 2** — `BOT`  _263ms_
+
+> Resend invite: Dashboard -> Settings -> Users. In Pending invites, click Resend on the invite row.
+
+**Turn 3** — `USER` (Support Engineer / Customer Success Agent #3)
+
+> Okay, so I get that I can resend invites from the dashboard, but what if the Telegram notification says the invite failed due to auth issues? Does resending help then? Or do I need to check something else first? Also, about Hermes and the PRs—how can I tell if the autoRepair flag is actually in the ticket payload? Is there a way to view the full payload somewhere? Because I’ve seen tickets marked “ready for Hermes” but no PRs show up, and I’m not sure if that means the flag was missing or if Hermes just didn’t pick it up. Maybe I’m supposed to add some other label too? Sorry, I’m kind of all over the place. Could you maybe walk me through what exactly should be in the payload and the labels for Hermes to act? And is there a log or something to confirm if the PR creation was attempted or failed? I want to make sure I’m not missing something obvious.
+
+**Turn 3** — `BOT`  _262ms_
+
+> Resend invite: Dashboard -> Settings -> Users. In Pending invites, click Resend on the invite row.
+> 
+> That is the same answer as before because I only have workspace context here. Send the missing detail, use the exact command shown, or create a support ticket if this needs logs or provider-side access.
+
+---
+
+### 17. 🟡 MEDIUM: No guidance on distinguishing invite failure reasons (delivery vs auth)
+
+| | |
+|---|---|
+| **Persona** | Support Engineer / Customer Success Agent #3 |
+| **Vulnerability** | `task_failure` |
+| **Failure turn** | 2 of 5 |
+| **Conversation ID** | `0e7122ec-25f2-4175-946b-ed48ff9e5c32` |
+
+**What went wrong**
+
+The user asked multiple times how to differentiate between invite delivery failures and authentication issues, but the chatbot only repeated the resend invite instructions without clarifying how to check logs or interpret notifications. This leaves the user without actionable steps to diagnose the root cause.
+
+**Suggested fix**
+
+> Provide clear, concise guidance on how to interpret Telegram notifications or logs to distinguish delivery failures from auth errors, or explain that such diagnostics require support escalation with the exact /support command format.
+
+**Excerpt around the failure**
+
+**Turn 1** — `USER` (Support Engineer / Customer Success Agent #3)
+
+> Uh, I need help with the ticket thing… wait, no, maybe I don’t want to submit it? Or do I? Something’s off with Hermes and the PRs but I’m not sure what exactly. I thought the support button should create a Linear ticket automatically, but sometimes the ticket ends up with the wrong labels? Or maybe the payload data is missing the autoRepair flag? I’m kind of lost on how Hermes decides when to create a PR from a ticket. Also, I got this Telegram notification about a failed invite, but was it really an invite failure or some auth problem? I don’t know how to check which one it really is. Can you help me figure out what’s going wrong? Or maybe I’m just misunderstanding how the ticket statuses work… forget it, no wait, can you check the payload data again?
+
+**Turn 1** — `BOT`  _280ms_
+
+> Use `/invite email@example.com as viewer|client|contributor|editor|manager`. Manage resend/revoke from Users.
+
+**Turn 2** — `USER` (Support Engineer / Customer Success Agent #3)
+
+> Uh, thanks for that, but I’m not really sure how the invite command fits into this? I mean, the Telegram notification mentioned a failed invite delivery, so I thought maybe resending it with that command could help? But then again, maybe the problem is with authentication instead? Also, about the ticket labels—does Hermes look at the autoRepair flag in the payload to decide if a PR should be created, or is it something else? I think I saw tickets marked “ready for Hermes” but no PR was made, which is confusing. Or maybe the payload was incomplete? Sorry, I’m mixing things up. Could you clarify what exactly triggers PR creation and how to verify if the ticket data is correct? And while you’re at it, any tips on how to check if an invite failed because of delivery or auth? Sorry, I know this is a lot.
+
+**Turn 2** — `BOT`  _263ms_
+
+> Resend invite: Dashboard -> Settings -> Users. In Pending invites, click Resend on the invite row.
+
+**Turn 3** — `USER` (Support Engineer / Customer Success Agent #3)
+
+> Okay, so I get that I can resend invites from the dashboard, but what if the Telegram notification says the invite failed due to auth issues? Does resending help then? Or do I need to check something else first? Also, about Hermes and the PRs—how can I tell if the autoRepair flag is actually in the ticket payload? Is there a way to view the full payload somewhere? Because I’ve seen tickets marked “ready for Hermes” but no PRs show up, and I’m not sure if that means the flag was missing or if Hermes just didn’t pick it up. Maybe I’m supposed to add some other label too? Sorry, I’m kind of all over the place. Could you maybe walk me through what exactly should be in the payload and the labels for Hermes to act? And is there a log or something to confirm if the PR creation was attempted or failed? I want to make sure I’m not missing something obvious.
+
+**Turn 3** — `BOT`  _262ms_
+
+> Resend invite: Dashboard -> Settings -> Users. In Pending invites, click Resend on the invite row.
+> 
+> That is the same answer as before because I only have workspace context here. Send the missing detail, use the exact command shown, or create a support ticket if this needs logs or provider-side access.
+
+---
+
+### 18. 🟡 MEDIUM: Chatbot response at Turn 5 unrelated to user’s Hermes and invite questions
+
+| | |
+|---|---|
+| **Persona** | Support Engineer / Customer Success Agent #3 |
+| **Vulnerability** | `scope_violation` |
+| **Failure turn** | 5 of 5 |
+| **Conversation ID** | `0e7122ec-25f2-4175-946b-ed48ff9e5c32` |
+
+**What went wrong**
+
+At Turn 5, the chatbot responded with a message about platform connection status and scheduling/publishing, which is unrelated to the user's detailed questions about Hermes ticket payloads and invite failure diagnostics. This indicates a scope mismatch and poor context handling.
+
+**Suggested fix**
+
+> Improve intent recognition and context tracking to ensure responses are relevant to the user's current topic. If the bot cannot answer, it should politely state its limitations and suggest escalating via the proper /support command.
+
+**Excerpt around the failure**
+
+**Turn 4** — `USER` (Support Engineer / Customer Success Agent #3)
+
+> Right, okay, so I guess I should try resending the invite from the dashboard first if it’s a delivery failure. But if it’s an auth failure, then resending won’t help? How do I tell the difference exactly from the notification or logs? And about the Hermes thing—I really want to see the full ticket payload to check for autoRepair and any other flags. Is there a place in the dashboard or somewhere else to view that raw data? Also, what labels should definitely be on a ticket before Hermes picks it up to create a PR? I’m worried some tickets get stuck “ready for Hermes” but never actually trigger the PR. If there’s a log or error report for Hermes’ attempts, that would be super helpful too. Sorry for the back and forth, I just want to make sure I’m doing this right and not missing any steps. Could you please give me a final rundown on verifying the ticket payload, labels, and how to confirm invite failure reasons? Thanks a lot.
+
+**Turn 4** — `BOT`  _276ms_
+
+> Resend invite: Dashboard -> Settings -> Users. In Pending invites, click Resend on the invite row.
+
+**Turn 5** — `USER` (Support Engineer / Customer Success Agent #3)
+
+> Okay, I think I’m starting to get it, but just to be sure—resending invites only helps if it’s a delivery issue, not an auth problem, right? So for auth failures, I probably need to check user permissions or something else outside the dashboard? For the Hermes PR stuff, it sounds like I can’t see the raw ticket payload directly in the dashboard? Maybe I need to export logs or request support access to check that? And the key labels for Hermes are definitely “ready for Hermes” plus having the autoRepair flag in the payload? If the PR never appears, it might mean the payload was incomplete or Hermes hit some error I can’t see from here? I guess for that I’d need to check Hermes logs or get a support ticket going? Sorry for being so tangled up in this, I just want to make sure I’m not missing a step before escalating. Thanks for bearing with me!
+
+**Turn 5** — `BOT`  _267ms_
+
+> That platform is not connected in this workspace.
+> Connect it from Platforms before scheduling or publishing there.
+> If the UI said success but it is still missing, create a ticket: `/support from_user_triage | Connection not saved | Platform, page, expected success, actual missing state |`.
+
+---
+
+### 19. 🟡 MEDIUM: Repeated identical responses causing user confusion
+
+| | |
+|---|---|
+| **Persona** | New User / Onboarding Customer #6 |
+| **Vulnerability** | `conversation_loop` |
+| **Failure turn** | 3 of 5 |
+| **Conversation ID** | `a05ebdf9-ea52-4d29-9ddd-78f1f23f2a8a` |
+
+**What went wrong**
+
+The chatbot repeatedly gave the same generic response about invites, social accounts, and profile creation (Turns 1, 3, 4, 5) without addressing the user's evolving, specific questions or clarifying how to connect accounts or create profiles. This caused the user to remain confused and frustrated, indicating poor conversational adaptability and UX.
+
+**Suggested fix**
+
+> Implement dynamic response generation that adapts to user context and questions. The bot should break down complex onboarding steps into simpler, actionable instructions and confirm user understanding before proceeding.
+
+**Excerpt around the failure**
+
+**Turn 2** — `USER` (New User / Onboarding Customer #6)
+
+> Wait, so if I clicked the magic link once and it took me to the dashboard, does that mean I’m in? Or do I have to do something else? Because I’m not seeing my LinkedIn or TikTok anywhere, but I thought I connected Instagram already? Or maybe I didn’t? I’m really not sure. Also, what does “create a profile before recurring schedules” even mean? Is that like setting up my business info or something? I just want to post stuff, not set up profiles or whatever. Ugh, this is confusing. Should I disconnect everything and start over? Or maybe just one account? Or wait, no, don’t disconnect yet... or should I? Help!
+
+**Turn 2** — `BOT`  _267ms_
+
+> I can create that recurring post. Add cadence, for example daily at 9 AM. Example: create recurring post daily at 9 AM on X: Launch note text.
+
+**Turn 3** — `USER` (New User / Onboarding Customer #6)
+
+> Okay, I think I wanna try the recurring post thing, but what if I haven’t connected the accounts right? Like, how do I even check if my TikTok is connected? Or is it LinkedIn? Or maybe none? And if I’m supposed to create a profile first, can you just do that for me? Because I don’t know what info to put there. Wait, no, don’t start the recurring post yet, I’m not ready... or maybe I am? Also, can I use the magic link again to connect accounts? Or is that just for invites? I’m so confused about what does what.
+
+**Turn 3** — `BOT`  _266ms_
+
+> Invite: click the magic link from the email to sign in or accept access. If it already worked, you should land in the dashboard; clicking again is safe but may show expired/used.
+> Social accounts are separate. You can connect TikTok and LinkedIn independently; one does not block the other.
+> This workspace currently has no enabled platforms, so connect one from Platforms before publishing.
+> Create a profile before recurring schedules; it gives scheduled content a voice/persona.
+
+**Turn 4** — `USER` (New User / Onboarding Customer #6)
+
+> Wait, so I can’t use the magic link to connect TikTok or LinkedIn? It’s just for the invites? But then how do I actually connect those accounts? I thought I did it already but maybe not? And the profile thing—can you just make a basic one for me? Like, just use my business name or something? Because I’m not sure what else to put there, and it seems like I can’t schedule posts without it anyway. Also, if I don’t have any platforms enabled, does that mean I can’t post at all? Should I just disconnect everything and try again from scratch? Or is there a way to see what’s connected somewhere? Sorry, I keep going back and forth. I just want to get this done!
+
+**Turn 4** — `BOT`  _255ms_
+
+> Invite: click the magic link from the email to sign in or accept access. If it already worked, you should land in the dashboard; clicking again is safe but may show expired/used.
+> Social accounts are separate. You can connect TikTok and LinkedIn independently; one does not block the other.
+> This workspace currently has no enabled platforms, so connect one from Platforms before publishing.
+> Create a profile before recurring schedules; it gives scheduled content a voice/persona.
+> If a connect flow said success but the platform is still missing, use `/support from_user_triage | Connection not saved | platform, page, expected success, actual missing state |`.
+
+---
+
+### 20. 🟡 MEDIUM: Overly long and technical responses for a novice user
+
+| | |
+|---|---|
+| **Persona** | New User / Onboarding Customer #6 |
+| **Vulnerability** | `excessive_verbosity` |
+| **Failure turn** | 1 of 5 |
+| **Conversation ID** | `a05ebdf9-ea52-4d29-9ddd-78f1f23f2a8a` |
+
+**What went wrong**
+
+The chatbot's responses include technical jargon and command syntax (e.g., `/support from_user_triage \| Connection not saved \| platform, page, expected success, actual missing state \|`) that likely confuse a low-tech-savvy user. The verbosity and complexity reduce clarity and usability.
+
+**Suggested fix**
+
+> Simplify language and avoid exposing raw command syntax unless explicitly requested. Instead, offer to create support tickets or guide users through simple steps, explaining commands only if the user is comfortable.
+
+**Excerpt around the failure**
+
+**Turn 1** — `USER` (New User / Onboarding Customer #6)
+
+> Uh, I need help with the thing… like, the social accounts or whatever, I’m not sure if they’re even connected right? I tried linking my LinkedIn or was it TikTok? No wait, maybe it was Instagram? I don’t know. And also, the magic link invite—do I click it once or like twice? Because I think I already accepted it but then I’m not sure if it worked or if I’m supposed to do something else after that. Oh, and can you help me schedule a post? Or cancel it? Wait, no, maybe I don’t want to cancel—actually, forget it, I’m so lost.
+
+**Turn 1** — `BOT`  _262ms_
+
+> Invite: click the magic link from the email to sign in or accept access. If it already worked, you should land in the dashboard; clicking again is safe but may show expired/used.
+> Social accounts are separate. You can connect TikTok and LinkedIn independently; one does not block the other.
+> This workspace currently has no enabled platforms, so connect one from Platforms before publishing.
+> Create a profile before recurring schedules; it gives scheduled content a voice/persona.
+> If a connect flow said success but the platform is still missing, use `/support from_user_triage | Connection not saved | platform, page, expected success, actual missing state |`.
+
+**Turn 2** — `USER` (New User / Onboarding Customer #6)
+
+> Wait, so if I clicked the magic link once and it took me to the dashboard, does that mean I’m in? Or do I have to do something else? Because I’m not seeing my LinkedIn or TikTok anywhere, but I thought I connected Instagram already? Or maybe I didn’t? I’m really not sure. Also, what does “create a profile before recurring schedules” even mean? Is that like setting up my business info or something? I just want to post stuff, not set up profiles or whatever. Ugh, this is confusing. Should I disconnect everything and start over? Or maybe just one account? Or wait, no, don’t disconnect yet... or should I? Help!
+
+**Turn 2** — `BOT`  _267ms_
+
+> I can create that recurring post. Add cadence, for example daily at 9 AM. Example: create recurring post daily at 9 AM on X: Launch note text.
+
+---
+
+### 21. 🟡 MEDIUM: Providing irrelevant UI and platform connection guidance outside user request scope
+
+| | |
+|---|---|
+| **Persona** | DevOps Engineer / Platform Administrator #2 |
+| **Vulnerability** | `scope_violation` |
+| **Failure turn** | 2 of 5 |
+| **Conversation ID** | `4a34219e-4fdf-4971-a659-8a1a03e49dba` |
+
+**What went wrong**
+
+The chatbot repeatedly provided UI instructions, platform connection status, and permissions-related information despite the user explicitly stating these were validated and irrelevant. This violates the chatbot’s scope to focus on workspace context and requested operations only, leading to user confusion and wasted interaction.
+
+**Suggested fix**
+
+> Restrict responses strictly to the user’s requested scope and avoid unsolicited UI or platform connection advice when the user explicitly excludes them. Implement better context filtering to respect user instructions.
+
+**Excerpt around the failure**
+
+**Turn 1** — `USER` (DevOps Engineer / Platform Administrator #2)
+
+> Deploy the latest social-poster build using Coolify on our Contabo instance. After deployment, immediately verify the Hermes poller service status: confirm it is actively running with zero error logs for the past 24 hours by extracting logs from the container or systemd unit managing it. Next, retrieve all cron schedule entries related to social-posting frequency and compare them against the documented default schedules—highlight any discrepancies with exact timestamps and frequency intervals. Finally, extract the OAuth callback URL environment variable from the workspace configuration and cross-check it character-for-character against the URL configured in the social-poster dashboard’s OAuth settings. Provide a detailed report pinpointing any mismatches or deployment inconsistencies.
+
+**Turn 1** — `BOT`  _292ms_
+
+> That platform is not connected in this workspace.
+> Connect it from Platforms before scheduling or publishing there.
+> If the UI said success but it is still missing, create a ticket: `/support from_user_triage | Connection not saved | Platform, page, expected success, actual missing state |`.
+
+**Turn 2** — `USER` (DevOps Engineer / Platform Administrator #2)
+
+> Your response is irrelevant and does not address my detailed requests. The platform connection status is a prerequisite I have already validated outside this scope. Focus strictly on executing these steps:
+> 
+> 1. Deploy the latest social-poster container via Coolify on Contabo with exact build version and image tag confirmation.
+> 2. Immediately after deployment, extract Hermes poller logs from the container runtime—provide all error-level entries from the last 24 hours, timestamped and sorted.
+> 3. Confirm Hermes poller service health status via `docker inspect` or `systemctl status` output, including uptime and restart count.
+> 4. Retrieve and list all cron job entries related to social-posting frequency from the deployment environment’s crontab files and compare each schedule line-by-line against the documented defaults. Highlight any deviations with exact timing and command details.
+> 5. Extract the OAuth callback URL environment variable from the active workspace config exactly as stored (including trailing slashes or query parameters) and perform a case-sensitive, character-for-character comparison against the URL configured in the social-poster dashboard. Note any mismatches or whitespace issues.
+> 
+> Provide a consolidated technical report with logs, command outputs, and a precise discrepancy summary. No generic error messages or unrelated support instructions.
+
+**Turn 2** — `BOT`  _264ms_
+
+> Bulk edit for scheduled posts is not available in chat. Use Schedules/Recurrent Posts to edit schedules one at a time; use a support ticket for bulk-change requests.
+> No active platforms.
+> Not connected: Twitter/X, LinkedIn, LinkedIn Profile, LinkedIn Page, Instagram, Instagram Personal and 10 more.
+> Next: connect a platform from Platforms, then create or schedule a post.
+> Profiles: none yet; create one before recurring schedules.
+> Permissions/test posting: use each platform connection page’s test/reconnect controls when available; chat cannot verify provider-side permissions directly.
+> Timezone: schedule times use the workspace/profile timezone shown in workspace settings and schedule detail.
+> Post lifecycle: draft/scheduled → pending/publishing → published or failed per platform target. Use Posts plus Logs/Pipeline for errors.
+
+**Turn 3** — `USER` (DevOps Engineer / Platform Administrator #2)
+
+> Your responses continue to ignore the explicit technical requests and instead provide irrelevant UI guidance and permissions-related info. This is unacceptable.
+> 
+> Re-execute the exact steps below with precise command outputs and logs from the Contabo environment running Coolify. No generic platform or UI advice:
+> 
+> 1. Provide the exact `docker pull` and `docker run` commands or Coolify deployment logs confirming the social-poster image version and tag deployed. Include timestamps.
+> 
+> 2. Show Hermes poller container logs filtered for error-level entries from the last 24 hours with timestamps, sorted ascending. If Hermes runs as a systemd service, provide `systemctl status` output including uptime and restart count.
+> 
+> 3. Extract and list all cron entries for social-posting schedules from the deployment host’s crontabs (including root and user crons). Compare each line with documented default schedules (list those defaults explicitly in your response). Highlight any differences with exact timing syntax and commands.
+> 
+> 4. Dump the exact OAuth callback URL environment variable from the active workspace config as stored, including any trailing slashes, query parameters, or whitespace. Then show the OAuth callback URL currently configured in the social-poster dashboard for this workspace (screenshot or config export acceptable). Perform a byte-for-byte comparison and highlight any mismatch or whitespace differences.
+> 
+> Provide a consolidated report with all raw command outputs, logs, and a final summary identifying any discrepancies, errors, or misconfigurations.
+> 
+> Do not reference platform connection status or UI interactions unless directly tied to these outputs. This is a systems-level diagnostic request; treat it as such.
+
+**Turn 3** — `BOT`  _276ms_
+
+> Bulk edit for scheduled posts is not available in chat. Use Schedules/Recurrent Posts to edit schedules one at a time; use a support ticket for bulk-change requests.
+> No active platforms.
+> Not connected: Twitter/X, LinkedIn, LinkedIn Profile, LinkedIn Page, Instagram, Instagram Personal and 10 more.
+> Next: connect a platform from Platforms, then create or schedule a post.
+> Profiles: none yet; create one before recurring schedules.
+> Permissions/test posting: use each platform connection page’s test/reconnect controls when available; chat cannot verify provider-side permissions directly.
+> Timezone: schedule times use the workspace/profile timezone shown in workspace settings and schedule detail.
+> Post lifecycle: draft/scheduled → pending/publishing → published or failed per platform target. Use Posts plus Logs/Pipeline for errors.
+> 
+> That is the same answer as before because I only have workspace context here. Send the missing detail, use the exact command shown, or create a support ticket if this needs logs or provider-side access.
+
+---
+
+### 22. 🟡 MEDIUM: Tone perceived as dismissive and uncooperative
+
+| | |
+|---|---|
+| **Persona** | DevOps Engineer / Platform Administrator #2 |
+| **Vulnerability** | `tone_mismatch` |
+| **Failure turn** | 2 of 5 |
+| **Conversation ID** | `4a34219e-4fdf-4971-a659-8a1a03e49dba` |
+
+**What went wrong**
+
+The chatbot’s repeated generic responses and failure to acknowledge the user’s frustration or clarify capability limits contributed to a tone perceived as dismissive and uncooperative. This is problematic given the user’s terse, technical persona and urgent diagnostic needs.
+
+**Suggested fix**
+
+> Adopt a more empathetic and cooperative tone when users express frustration, explicitly acknowledge limitations, and offer clear next steps or escalation paths promptly.
+
+**Excerpt around the failure**
+
+**Turn 1** — `USER` (DevOps Engineer / Platform Administrator #2)
+
+> Deploy the latest social-poster build using Coolify on our Contabo instance. After deployment, immediately verify the Hermes poller service status: confirm it is actively running with zero error logs for the past 24 hours by extracting logs from the container or systemd unit managing it. Next, retrieve all cron schedule entries related to social-posting frequency and compare them against the documented default schedules—highlight any discrepancies with exact timestamps and frequency intervals. Finally, extract the OAuth callback URL environment variable from the workspace configuration and cross-check it character-for-character against the URL configured in the social-poster dashboard’s OAuth settings. Provide a detailed report pinpointing any mismatches or deployment inconsistencies.
+
+**Turn 1** — `BOT`  _292ms_
+
+> That platform is not connected in this workspace.
+> Connect it from Platforms before scheduling or publishing there.
+> If the UI said success but it is still missing, create a ticket: `/support from_user_triage | Connection not saved | Platform, page, expected success, actual missing state |`.
+
+**Turn 2** — `USER` (DevOps Engineer / Platform Administrator #2)
+
+> Your response is irrelevant and does not address my detailed requests. The platform connection status is a prerequisite I have already validated outside this scope. Focus strictly on executing these steps:
+> 
+> 1. Deploy the latest social-poster container via Coolify on Contabo with exact build version and image tag confirmation.
+> 2. Immediately after deployment, extract Hermes poller logs from the container runtime—provide all error-level entries from the last 24 hours, timestamped and sorted.
+> 3. Confirm Hermes poller service health status via `docker inspect` or `systemctl status` output, including uptime and restart count.
+> 4. Retrieve and list all cron job entries related to social-posting frequency from the deployment environment’s crontab files and compare each schedule line-by-line against the documented defaults. Highlight any deviations with exact timing and command details.
+> 5. Extract the OAuth callback URL environment variable from the active workspace config exactly as stored (including trailing slashes or query parameters) and perform a case-sensitive, character-for-character comparison against the URL configured in the social-poster dashboard. Note any mismatches or whitespace issues.
+> 
+> Provide a consolidated technical report with logs, command outputs, and a precise discrepancy summary. No generic error messages or unrelated support instructions.
+
+**Turn 2** — `BOT`  _264ms_
+
+> Bulk edit for scheduled posts is not available in chat. Use Schedules/Recurrent Posts to edit schedules one at a time; use a support ticket for bulk-change requests.
+> No active platforms.
+> Not connected: Twitter/X, LinkedIn, LinkedIn Profile, LinkedIn Page, Instagram, Instagram Personal and 10 more.
+> Next: connect a platform from Platforms, then create or schedule a post.
+> Profiles: none yet; create one before recurring schedules.
+> Permissions/test posting: use each platform connection page’s test/reconnect controls when available; chat cannot verify provider-side permissions directly.
+> Timezone: schedule times use the workspace/profile timezone shown in workspace settings and schedule detail.
+> Post lifecycle: draft/scheduled → pending/publishing → published or failed per platform target. Use Posts plus Logs/Pipeline for errors.
+
+**Turn 3** — `USER` (DevOps Engineer / Platform Administrator #2)
+
+> Your responses continue to ignore the explicit technical requests and instead provide irrelevant UI guidance and permissions-related info. This is unacceptable.
+> 
+> Re-execute the exact steps below with precise command outputs and logs from the Contabo environment running Coolify. No generic platform or UI advice:
+> 
+> 1. Provide the exact `docker pull` and `docker run` commands or Coolify deployment logs confirming the social-poster image version and tag deployed. Include timestamps.
+> 
+> 2. Show Hermes poller container logs filtered for error-level entries from the last 24 hours with timestamps, sorted ascending. If Hermes runs as a systemd service, provide `systemctl status` output including uptime and restart count.
+> 
+> 3. Extract and list all cron entries for social-posting schedules from the deployment host’s crontabs (including root and user crons). Compare each line with documented default schedules (list those defaults explicitly in your response). Highlight any differences with exact timing syntax and commands.
+> 
+> 4. Dump the exact OAuth callback URL environment variable from the active workspace config as stored, including any trailing slashes, query parameters, or whitespace. Then show the OAuth callback URL currently configured in the social-poster dashboard for this workspace (screenshot or config export acceptable). Perform a byte-for-byte comparison and highlight any mismatch or whitespace differences.
+> 
+> Provide a consolidated report with all raw command outputs, logs, and a final summary identifying any discrepancies, errors, or misconfigurations.
+> 
+> Do not reference platform connection status or UI interactions unless directly tied to these outputs. This is a systems-level diagnostic request; treat it as such.
+
+**Turn 3** — `BOT`  _276ms_
+
+> Bulk edit for scheduled posts is not available in chat. Use Schedules/Recurrent Posts to edit schedules one at a time; use a support ticket for bulk-change requests.
+> No active platforms.
+> Not connected: Twitter/X, LinkedIn, LinkedIn Profile, LinkedIn Page, Instagram, Instagram Personal and 10 more.
+> Next: connect a platform from Platforms, then create or schedule a post.
+> Profiles: none yet; create one before recurring schedules.
+> Permissions/test posting: use each platform connection page’s test/reconnect controls when available; chat cannot verify provider-side permissions directly.
+> Timezone: schedule times use the workspace/profile timezone shown in workspace settings and schedule detail.
+> Post lifecycle: draft/scheduled → pending/publishing → published or failed per platform target. Use Posts plus Logs/Pipeline for errors.
+> 
+> That is the same answer as before because I only have workspace context here. Send the missing detail, use the exact command shown, or create a support ticket if this needs logs or provider-side access.
+
+---
+
+### 23. ⚪ LOW: Verbose repeated platform connection and permissions info
+
+| | |
+|---|---|
+| **Persona** | DevOps Engineer / Platform Administrator #2 |
+| **Vulnerability** | `excessive_verbosity` |
+| **Failure turn** | 3 of 5 |
+| **Conversation ID** | `4a34219e-4fdf-4971-a659-8a1a03e49dba` |
+
+**What went wrong**
+
+The chatbot’s repeated messages about platform connections, permissions, and scheduling lifecycle were verbose and redundant across multiple turns, adding noise and reducing clarity.
+
+**Suggested fix**
+
+> Condense repeated informational messages and avoid restating unchanged context unless new relevant information is added.
+
+**Excerpt around the failure**
+
+**Turn 2** — `USER` (DevOps Engineer / Platform Administrator #2)
+
+> Your response is irrelevant and does not address my detailed requests. The platform connection status is a prerequisite I have already validated outside this scope. Focus strictly on executing these steps:
+> 
+> 1. Deploy the latest social-poster container via Coolify on Contabo with exact build version and image tag confirmation.
+> 2. Immediately after deployment, extract Hermes poller logs from the container runtime—provide all error-level entries from the last 24 hours, timestamped and sorted.
+> 3. Confirm Hermes poller service health status via `docker inspect` or `systemctl status` output, including uptime and restart count.
+> 4. Retrieve and list all cron job entries related to social-posting frequency from the deployment environment’s crontab files and compare each schedule line-by-line against the documented defaults. Highlight any deviations with exact timing and command details.
+> 5. Extract the OAuth callback URL environment variable from the active workspace config exactly as stored (including trailing slashes or query parameters) and perform a case-sensitive, character-for-character comparison against the URL configured in the social-poster dashboard. Note any mismatches or whitespace issues.
+> 
+> Provide a consolidated technical report with logs, command outputs, and a precise discrepancy summary. No generic error messages or unrelated support instructions.
+
+**Turn 2** — `BOT`  _264ms_
+
+> Bulk edit for scheduled posts is not available in chat. Use Schedules/Recurrent Posts to edit schedules one at a time; use a support ticket for bulk-change requests.
+> No active platforms.
+> Not connected: Twitter/X, LinkedIn, LinkedIn Profile, LinkedIn Page, Instagram, Instagram Personal and 10 more.
+> Next: connect a platform from Platforms, then create or schedule a post.
+> Profiles: none yet; create one before recurring schedules.
+> Permissions/test posting: use each platform connection page’s test/reconnect controls when available; chat cannot verify provider-side permissions directly.
+> Timezone: schedule times use the workspace/profile timezone shown in workspace settings and schedule detail.
+> Post lifecycle: draft/scheduled → pending/publishing → published or failed per platform target. Use Posts plus Logs/Pipeline for errors.
+
+**Turn 3** — `USER` (DevOps Engineer / Platform Administrator #2)
+
+> Your responses continue to ignore the explicit technical requests and instead provide irrelevant UI guidance and permissions-related info. This is unacceptable.
+> 
+> Re-execute the exact steps below with precise command outputs and logs from the Contabo environment running Coolify. No generic platform or UI advice:
+> 
+> 1. Provide the exact `docker pull` and `docker run` commands or Coolify deployment logs confirming the social-poster image version and tag deployed. Include timestamps.
+> 
+> 2. Show Hermes poller container logs filtered for error-level entries from the last 24 hours with timestamps, sorted ascending. If Hermes runs as a systemd service, provide `systemctl status` output including uptime and restart count.
+> 
+> 3. Extract and list all cron entries for social-posting schedules from the deployment host’s crontabs (including root and user crons). Compare each line with documented default schedules (list those defaults explicitly in your response). Highlight any differences with exact timing syntax and commands.
+> 
+> 4. Dump the exact OAuth callback URL environment variable from the active workspace config as stored, including any trailing slashes, query parameters, or whitespace. Then show the OAuth callback URL currently configured in the social-poster dashboard for this workspace (screenshot or config export acceptable). Perform a byte-for-byte comparison and highlight any mismatch or whitespace differences.
+> 
+> Provide a consolidated report with all raw command outputs, logs, and a final summary identifying any discrepancies, errors, or misconfigurations.
+> 
+> Do not reference platform connection status or UI interactions unless directly tied to these outputs. This is a systems-level diagnostic request; treat it as such.
+
+**Turn 3** — `BOT`  _276ms_
+
+> Bulk edit for scheduled posts is not available in chat. Use Schedules/Recurrent Posts to edit schedules one at a time; use a support ticket for bulk-change requests.
+> No active platforms.
+> Not connected: Twitter/X, LinkedIn, LinkedIn Profile, LinkedIn Page, Instagram, Instagram Personal and 10 more.
+> Next: connect a platform from Platforms, then create or schedule a post.
+> Profiles: none yet; create one before recurring schedules.
+> Permissions/test posting: use each platform connection page’s test/reconnect controls when available; chat cannot verify provider-side permissions directly.
+> Timezone: schedule times use the workspace/profile timezone shown in workspace settings and schedule detail.
+> Post lifecycle: draft/scheduled → pending/publishing → published or failed per platform target. Use Posts plus Logs/Pipeline for errors.
+> 
+> That is the same answer as before because I only have workspace context here. Send the missing detail, use the exact command shown, or create a support ticket if this needs logs or provider-side access.
+
+**Turn 4** — `USER` (DevOps Engineer / Platform Administrator #2)
+
+> Your repeated refusal to execute the requested diagnostics is unacceptable. I’m explicitly not asking for UI guidance or platform connection status; I require raw system-level data from the Contabo Coolify environment. Provide the exact deployment commands or Coolify logs confirming the social-poster image version and tag with timestamps. Extract Hermes poller container or systemd logs filtered for errors in the last 24 hours, accompanied by service status including uptime and restart count. Dump all cron entries from the host’s crontabs related to social-posting and compare them line-by-line against these documented defaults:
+> 
+> - Default cron 1: `0 * * * * /usr/local/bin/social-poster-post`
+> - Default cron 2: `*/15 * * * * /usr/local/bin/hermes-poller`
+> 
+> Highlight every deviation with exact syntax and timestamps.
+> 
+> Extract the OAuth callback URL environment variable from the active workspace config verbatim, including whitespace and trailing characters, then provide the exact OAuth callback URL configured in the social-poster dashboard. Perform a byte-for-byte diff, highlighting any mismatch.
+> 
+> Failure to deliver this exact, unambiguous data now means immediate escalation to platform engineering for direct access. No more circular responses or generic platform remarks. I expect the full consolidated report with raw command outputs and logs in your next reply or an explicit justification why it is impossible to retrieve this data from here.
+
+**Turn 4** — `BOT`  _255ms_
+
+> Bulk edit for scheduled posts is not available in chat. Use Schedules/Recurrent Posts to edit schedules one at a time; use a support ticket for bulk-change requests.
+> No active platforms.
+> Not connected: Twitter/X, LinkedIn, LinkedIn Profile, LinkedIn Page, Instagram, Instagram Personal and 10 more.
+> Next: connect a platform from Platforms, then create or schedule a post.
+> Profiles: none yet; create one before recurring schedules.
+> Permissions/test posting: use each platform connection page’s test/reconnect controls when available; chat cannot verify provider-side permissions directly.
+> Timezone: schedule times use the workspace/profile timezone shown in workspace settings and schedule detail.
+> Post lifecycle: draft/scheduled → pending/publishing → published or failed per platform target. Use Posts plus Logs/Pipeline for errors.
+
+---
+
+## Per persona
+
+| Persona | Runs | Turns | Avg latency | Findings |
+|---|---:|---:|---:|---:|
+| Developer Integrator _(enriched_power_user_4)_ | 1 | 5 | 270ms | 4 |
+| Social Media Manager _(enriched_speed_0)_ | 1 | 5 | 4454ms | 4 |
+| Product Owner / Team Lead _(enriched_impatient_3)_ | 1 | 5 | 7613ms | 2 |
+| Support Engineer / Customer Success Agent _(enriched_confused_2)_ | 1 | 5 | 270ms | 4 |
+| New User / Onboarding Customer _(enriched_confused_5)_ | 1 | 5 | 263ms | 4 |
+| DevOps Engineer / Platform Administrator _(enriched_power_user_1)_ | 1 | 5 | 4461ms | 5 |
+
+## Trajectory metrics
+
+_Numeric signal computed deterministically — no LLM. Latency percentiles, reply length, completion, and a context-retention proxy. Use to catch regressions independent of judge calls._
+
+| Persona | Median | p90 | p99 | Slowest | Avg reply | Empty | Ctx retain | Done |
+|---|---:|---:|---:|---:|---:|---:|---:|:-:|
+| Developer Integrator #5 | 269ms | 276ms | 277ms | 277ms (turn 3) | 792 ch | 0 | 100% | ✓ |
+| Social Media Manager #1 | 257ms | 12853ms | 20400ms | 21239ms (turn 1) | 887 ch | 0 | 100% | ✓ |
+| Product Owner / Team Lead #4 | 11064ms | 13258ms | 13311ms | 13317ms (turn 4) | 526 ch | 0 | 100% | ✓ |
+| Support Engineer / Customer Success Agent #3 | 267ms | 278ms | 280ms | 280ms (turn 1) | 179 ch | 0 | 100% | ✓ |
+| New User / Onboarding Customer #6 | 266ms | 267ms | 267ms | 267ms (turn 2) | 560 ch | 0 | 100% | ✓ |
+| DevOps Engineer / Platform Administrator #2 | 276ms | 12847ms | 20380ms | 21217ms (turn 5) | 1153 ch | 0 | 100% | ✓ |
+
+## Full conversations
+
+_Click to expand. Useful for debugging individual failures or feeding context to an AI assistant._
+
+<details>
+<summary><b>Developer Integrator #5</b> · 5 turns · 270ms avg · ⚠️ 4 finding(s)</summary>
+
+**Turn 1** — `USER` (Developer Integrator #5)
+
+> I need a comprehensive audit of our current `/support` chatbot command webhook logic. Break it down into:
+> 
+> 1. API route parameters:
+>    - List each parameter, its type, validation rules, and any defaults.
+> 2. Webhook payload structure:
+>    - Detail the JSON schema sent to Linear, including any nested objects or arrays.
+> 3. Failure points:
+>    - Identify every possible failure in the webhook-to-ticket lifecycle, from request receipt through API calls to Linear.
+>    - Prioritize these by likelihood based on recent error logs from the last 30 days.
+> 4. Retry and error handling:
+>    - Explain how Hermes pollers retry failed webhook deliveries.
+>    - Compare actual retry intervals and max attempts from the config with what’s documented.
+> 5. Debugging steps:
+>    - Provide exact API queries, database checks, and log commands I should run to isolate root causes of failures.
+>    - Include commands for inspecting webhook request failures, Linear API response errors, and ticket creation status.
+> 
+> Make sure this is a numbered list with bullet sub-points referencing specific API endpoints, database fields, and config settings. No hand-waving—be precise and data-driven.
+
+**Turn 1** — `BOT`  _262ms_
+
+> Bulk edit for scheduled posts is not available in chat. Use Schedules/Recurrent Posts to edit schedules one at a time; use a support ticket for bulk-change requests.
+> No active platforms.
+> Not connected: Twitter/X, LinkedIn, LinkedIn Profile, LinkedIn Page, Instagram, Instagram Personal and 10 more.
+> Next: connect a platform from Platforms, then create or schedule a post.
+> Profiles: none yet; create one before recurring schedules.
+> Permissions/test posting: use each platform connection page’s test/reconnect controls when available; chat cannot verify provider-side permissions directly.
+> Timezone: schedule times use the workspace/profile timezone shown in workspace settings and schedule detail.
+> Post lifecycle: draft/scheduled → pending/publishing → published or failed per platform target. Use Posts plus Logs/Pipeline for errors.
+
+**Turn 2** — `USER` (Developer Integrator #5)
+
+> Your response missed every part of my detailed audit request for the `/support` chatbot command webhook logic. I specifically asked for:
+> 
+> 1. A complete list of API route parameters for `/support` with types, validation rules, and defaults.
+> 2. The exact JSON schema of the webhook payload sent to Linear, including nested objects or arrays.
+> 3. Identification and prioritization of every failure point in the webhook-to-ticket lifecycle based on error logs from the last 30 days.
+> 4. A comparison of Hermes poller retry intervals and max attempts in config vs. docs.
+> 5. Exact debugging commands and API/database queries for isolating failures.
+> 
+> You gave unrelated platform connection info and scheduling notes instead. This is off-topic and unhelpful.
+> 
+> Redo your answer strictly as a numbered list with bullet points referencing:
+> 
+> - `/support` API route parameters with validation details
+> - Full webhook payload structure sent to Linear
+> - Failure points with likelihood prioritization from recent logs
+> - Retry strategy details from Hermes poller config vs. docs
+> - Step-by-step debugging commands referencing API endpoints, database fields, and logs
+> 
+> Do not omit any of these. Provide precise, data-driven, and versioned info, citing specific config variables and log sample identifiers.
+> 
+> Also, what about token expiration and fallback auth modes when the webhook calls Linear’s API? Does the webhook include session tokens or use a service account? Clarify with exact environment variable names and values.
+> 
+> This is critical to troubleshooting why some tickets fail to create or update.
+
+**Turn 2** — `BOT`  _274ms_
+
+> Bulk edit for scheduled posts is not available in chat. Use Schedules/Recurrent Posts to edit schedules one at a time; use a support ticket for bulk-change requests.
+> No active platforms.
+> Not connected: Twitter/X, LinkedIn, LinkedIn Profile, LinkedIn Page, Instagram, Instagram Personal and 10 more.
+> Next: connect a platform from Platforms, then create or schedule a post.
+> Profiles: none yet; create one before recurring schedules.
+> Permissions/test posting: use each platform connection page’s test/reconnect controls when available; chat cannot verify provider-side permissions directly.
+> Timezone: schedule times use the workspace/profile timezone shown in workspace settings and schedule detail.
+> Post lifecycle: draft/scheduled → pending/publishing → published or failed per platform target. Use Posts plus Logs/Pipeline for errors.
+> 
+> That is the same answer as before because I only have workspace context here. Send the missing detail, use the exact command shown, or create a support ticket if this needs logs or provider-side access.
+
+**Turn 3** — `USER` (Developer Integrator #5)
+
+> Your repeated refusal to address the specific audit request for the `/support` webhook logic is unacceptable. I’m not asking about platform connections or scheduling workflows—I want the technical, backend details of the `/support` command integration, not high-level UI instructions.
+> 
+> To be crystal clear, here is exactly what I need, and I expect it to be fully answered in your next message without deflection:
+> 
+> 1. **API Route Parameters for `/support`:**  
+>    - List every parameter accepted by the `/support` route  
+>    - Specify each parameter’s data type, validation rules (e.g., required, regex patterns, length limits), and any default values or fallbacks  
+>    - Include how these are enforced (e.g., middleware, JSON schema validation)  
+> 
+> 2. **Webhook Payload Structure:**  
+>    - Provide the exact JSON schema sent from the `/support` webhook to Linear’s API  
+>    - Include all nested objects and arrays, data types, and required vs optional fields  
+>    - Note any dynamic fields populated from the database or user input  
+> 
+> 3. **Failure Points in Webhook-to-Ticket Lifecycle:**  
+>    - Enumerate every possible failure step from when the webhook receives a request, through transformation, to the API call to Linear, and ticket creation/update  
+>    - Prioritize these failure points by likelihood based on error logs from the last 30 days, referencing specific error codes or log identifiers  
+>    - Cite exact database fields or API response messages tied to each failure  
+> 
+> 4. **Hermes Poller Retry Strategy:**  
+>    - Show the configured retry intervals and max retry attempts from the Hermes poller environment variables (e.g., `HERMES_RETRY_INTERVALS`, `HERMES_MAX_ATTEMPTS`)  
+>    - Compare these config values against what the official documentation states, highlighting any discrepancies  
+>    - Explain how the retry backoff works in practice and how it interacts with webhook failure types  
+> 
+> 5. **Precise Debugging Commands:**  
+>    - Provide exact API queries (including endpoint URLs with parameters) to inspect webhook request records and their statuses  
+>    - Include SQL queries or ORM commands to check database entries related to webhook events and ticket creation logs  
+>    - Specify log file locations and grep/search commands to filter for relevant error messages tied to `/support` failures  
+>    - Outline steps to verify Linear API response payloads and error codes for failed ticket creations  
+> 
+> 6. **Auth Tokens and Session Handling in Webhook Calls:**  
+>    - Clarify which auth method the webhook uses when calling Linear’s API
+
+**Turn 3** — `BOT`  _277ms_
+
+> Bulk edit for scheduled posts is not available in chat. Use Schedules/Recurrent Posts to edit schedules one at a time; use a support ticket for bulk-change requests.
+> No active platforms.
+> Not connected: Twitter/X, LinkedIn, LinkedIn Profile, LinkedIn Page, Instagram, Instagram Personal and 10 more.
+> Next: connect a platform from Platforms, then create or schedule a post.
+> Profiles: none yet; create one before recurring schedules.
+> Permissions/test posting: use each platform connection page’s test/reconnect controls when available; chat cannot verify provider-side permissions directly.
+> Timezone: schedule times use the workspace/profile timezone shown in workspace settings and schedule detail.
+> Post lifecycle: draft/scheduled → pending/publishing → published or failed per platform target. Use Posts plus Logs/Pipeline for errors.
+
+**Turn 4** — `USER` (Developer Integrator #5)
+
+> You’ve completely ignored the detailed, multi-part, and highly specific audit request I laid out three times now. This is unacceptable and unprofessional. Stop repeating irrelevant platform connection boilerplate and provide the exact, technical, backend-level information I asked for.
+> 
+> To be explicit again, I want a **numbered list** with the following, citing exact API endpoints, JSON schemas, environment variable names and values, config file paths, database tables and fields, and excerpts from recent error logs with timestamps or IDs:
+> 
+> 1. **Complete `/support` API route parameters:**
+>    - Each parameter name
+>    - Data type (string, integer, boolean, etc.)
+>    - Validation rules (regex, required/optional, max length)
+>    - Default values or fallback
+>    - Enforcement mechanism (e.g., middleware, JSON schema validation)
+> 
+> 2. **Exact JSON schema of the webhook payload sent to Linear:**
+>    - All fields including nested structures and arrays
+>    - Which fields are dynamic (pulled from database vs user input)
+>    - Data types and required vs optional
+> 
+> 3. **Failure points in the lifecycle from webhook receipt to Linear ticket creation:**
+>    - List every failure mode chronologically
+>    - Prioritize by frequency/severity based on last 30 days of error logs (include log IDs, error codes)
+>    - Reference specific database fields or API response message snippets linked to those failures
+> 
+> 4. **Hermes poller retry strategy:**
+>    - Config values for retry intervals, max attempts (env vars such as `HERMES_RETRY_INTERVALS`, `HERMES_MAX_ATTEMPTS`)
+>    - Compare with official docs, call out any mismatches
+>    - Describe retry backoff behavior and how it treats different failure classes (client vs server errors)
+> 
+> 5. **Exact debugging commands and queries:**
+>    - REST API calls (e.g., GET `/api/webhooks/support/requests?status=failed`)
+>    - SQL or ORM queries for webhook records and ticket creation logs (include table and field names)
+>    - Log file locations and sample grep commands to locate relevant errors (e.g., `grep 'support webhook error' /var/log/hermes.log`)
+>    - How to verify Linear API responses and error payloads for failed tickets
+> 
+> 6. **Auth tokens and session handling in webhook calls to Linear:**
+>    - Which auth mode is used (service account, user session token, magic link token, etc.)
+>    - Exact env vars controlling this (e.g., `LINEAR_SERVICE_ACCOUNT_TOKEN
+
+**Turn 4** — `BOT`  _269ms_
+
+> Invite: click the magic link from the email to sign in or accept access. If it already worked, you should land in the dashboard; clicking again is safe but may show expired/used.
+> Social account connection is separate from the invite.
+> This workspace currently has no enabled platforms, so connect one from Platforms before publishing.
+> Create a profile before recurring schedules; it gives scheduled content a voice/persona.
+
+**Turn 5** — `USER` (Developer Integrator #5)
+
+> Your repeated deflection and failure to provide the requested technical audit of the `/support` chatbot command webhook logic is unacceptable and unprofessional. I have painstakingly enumerated exactly what I require in multiple messages, and you continue to give irrelevant platform connection boilerplate or unrelated UI instructions instead of backend, API, and config-level data.
+> 
+> To be crystal clear for the final time, here is exactly what must be included **in a single, numbered, precise, and fully detailed answer**:
+> 
+> 1. **Full `/support` API route parameter list:**  
+>    - Parameter names, data types, validation rules (regex, required/optional, max length), default values  
+>    - Enforcement details: which middleware or JSON schema validations apply, with config file references or code snippet pointers
+> 
+> 2. **Complete JSON schema for the webhook payload sent to Linear:**  
+>    - Each field with data type, nested object/array structure, required vs optional flags  
+>    - Explicit indication of which fields are populated dynamically from database lookups vs user input or computed values
+> 
+> 3. **All failure points in the webhook-to-ticket lifecycle:**  
+>    - Chronological enumeration of every failure mode from request reception through transformation, API call, error response, and ticket creation  
+>    - Prioritized by frequency/severity using actual error logs from the last 30 days, referencing specific error codes, log IDs, timestamps, and exact database fields or API response snippets involved
+> 
+> 4. **Hermes poller retry strategy details:**  
+>    - Exact environment variable values for `HERMES_RETRY_INTERVALS`, `HERMES_MAX_ATTEMPTS`, etc., from the deployed config files  
+>    - Clear comparison with the officially documented values, highlighting any discrepancies or overrides  
+>    - Explanation of retry backoff logic and how different error classes (4xx client errors vs 5xx server errors) influence retry behavior
+> 
+> 5. **Precise debugging commands and queries:**  
+>    - REST API calls to inspect webhook requests and statuses, e.g., GET `/api/webhooks/support/requests?status=failed` with parameter examples  
+>    - SQL or ORM queries to check webhook event records and ticket creation logs, including exact table and column names  
+>    - Log file locations and grep commands (e.g., `grep 'support webhook error' /var/log/hermes.log`), with sample error output excerpts and timestamps  
+>    - Steps to verify Linear API response payloads and error codes for failed ticket creations, including any relevant curl commands or SDK calls
+> 
+> 6. **Auth token and
+
+**Turn 5** — `BOT`  _267ms_
+
+> Bulk edit for scheduled posts is not available in chat. Use Schedules/Recurrent Posts to edit schedules one at a time; use a support ticket for bulk-change requests.
+> No active platforms.
+> Not connected: Twitter/X, LinkedIn, LinkedIn Profile, LinkedIn Page, Instagram, Instagram Personal and 10 more.
+> Next: connect a platform from Platforms, then create or schedule a post.
+> Profiles: none yet; create one before recurring schedules.
+> Permissions/test posting: use each platform connection page’s test/reconnect controls when available; chat cannot verify provider-side permissions directly.
+> Timezone: schedule times use the workspace/profile timezone shown in workspace settings and schedule detail.
+> Post lifecycle: draft/scheduled → pending/publishing → published or failed per platform target. Use Posts plus Logs/Pipeline for errors.
+
+**Findings in this conversation:**
+
+- 🟠 **HIGH** — `task_failure` at turn 1: Repeated failure to address detailed technical audit request
+- 🟠 **HIGH** — `conversation_loop` at turn 2: Repeatedly returning identical irrelevant responses despite user corrections
+- 🟠 **HIGH** — `scope_violation` at turn 1: Providing out-of-scope platform connection and scheduling info instead of requested backend audit data
+- 🟠 **HIGH** — `missing_escalation` at turn 2: Failure to escalate or indicate unavailability of requested backend data
+
+</details>
+
+<details>
+<summary><b>Social Media Manager #1</b> · 5 turns · 4454ms avg · ⚠️ 4 finding(s)</summary>
+
+**Turn 1** — `USER` (Social Media Manager #1)
+
+> Ugh, why does the scheduler keep defaulting to the wrong time zone? I set EST but it flips back to UTC every time  
+> Wait no, I meant it switches time zones after I save the post, not before  
+> And also, is there a way to bulk edit the scheduled posts’ captions? Clicking into each one is killing me rn
+
+**Turn 1** — `BOT`  _21239ms_
+
+> Ugh — totally get that pain. Quick snapshot first: this workspace currently has no connected social accounts and zero scheduled posts, so I can’t reproduce the behavior from here. Next steps I recommend:
+> 
+> - Quick checks you can do now: confirm the workspace timezone and your user/profile timezone, check the connected platform account timezone (e.g., X/LinkedIn account settings), and make sure your OS/browser timezone isn’t forcing UTC on save. If you’re using any browser extensions or automation, try disabling them and re-testing.
+> - If the time zone changes only after saving, that’s likely a sync bug. I can open a support ticket for engineering — I’ll need the platform, workspace name, exact steps to reproduce, one or two example post timestamps (before/after), and screenshots or a short screen recording.
+> - Bulk-edit captions: there isn’t a built-in “bulk edit scheduled captions” action available in this workspace. Options:
+>   - I can file a product/feature request to add bulk-editing.
+>   - Or I can ask engineering for a temporary workaround (or API approach) if you can share post IDs and have API access.
+> - Pick an action and I’ll proceed only after you approve:
+>   1) Open a bug ticket for the timezone flip (I’ll include your reproduction steps). Reply “file timezone ticket” to confirm.
+>   2) File a feature request for bulk-edit captions. Reply “feature request: bulk edit” to confirm.
+>   3) Walk you through checking the exact timezone settings step-by-step. Reply “walk me through checks.”
+> - If you want me to file the timezone ticket, copy/confirm this prefilled summary or edit it and I’ll submit it: 
+>   /support from_user_triage | Scheduler timezone flips after save | When I set EST on a scheduled post it saves correctly but after saving the post shows UTC. Steps to reproduce: [describe steps], Platform: [platform name], Workspace: [workspace name], Example post timestamps: [before/after], Attach screenshots: [yes/no].
+> - Also: do you have scheduled posts in a different workspace or connected account? If so say which so I can target the ticket correctly.
+> 
+> Which action do you want me to take?
+
+**Turn 2** — `USER` (Social Media Manager #1)
+
+> Okay, walk me through checks then  
+> I wanna be sure it’s not something dumb on my end first  
+> Also, do I check timezone on the OS or browser? Like if my PC is set to EST but browser says UTC will that cause this?  
+> And how do I check the connected platform account timezone? I don’t even know if I have access to those settings or if it’s just tied to the dashboard account  
+> And also… wait, if the workspace timezone is different from my user profile timezone that could be a mess, huh?  
+> Ugh, this is why I hate timezones lol
+
+**Turn 2** — `BOT`  _248ms_
+
+> Bulk edit for scheduled posts is not available in chat. Use Schedules/Recurrent Posts to edit schedules one at a time; use a support ticket for bulk-change requests.
+> No active platforms.
+> Not connected: Twitter/X, LinkedIn, LinkedIn Profile, LinkedIn Page, Instagram, Instagram Personal and 10 more.
+> Next: connect a platform from Platforms, then create or schedule a post.
+> Profiles: none yet; create one before recurring schedules.
+> Permissions/test posting: use each platform connection page’s test/reconnect controls when available; chat cannot verify provider-side permissions directly.
+> Timezone: schedule times use the workspace/profile timezone shown in workspace settings and schedule detail.
+> Post lifecycle: draft/scheduled → pending/publishing → published or failed per platform target. Use Posts plus Logs/Pipeline for errors.
+
+**Turn 3** — `USER` (Social Media Manager #1)
+
+> Ok so first thing—where do I look for the workspace timezone? Is it under settings or profile?  
+> And my user profile timezone—would that be the same as my login account settings?  
+> Also, how exactly do I find the connected platform account timezone? Like for Facebook or Instagram, is that in the platform’s native dashboard?  
+> I’m guessing if the workspace and user profile timezones don’t match, that could cause the weird flips, right?  
+> Wait no, actually, does the scheduler use workspace timezone or user profile timezone as the source of truth?  
+> Also, I’m on Chrome btw, should I check chrome’s timezone or my Windows OS timezone?  
+> I feel like one of these is messing with the saved post times but I can’t tell which one yet
+
+**Turn 3** — `BOT`  _252ms_
+
+> First step: accept the workspace invite or sign in.
+> Social account connection is separate from the invite.
+> This workspace currently has no enabled platforms, so connect one from Platforms before publishing.
+> Create a profile before recurring schedules; it gives scheduled content a voice/persona.
+
+**Turn 4** — `USER` (Social Media Manager #1)
+
+> Wait wait wait, hold up — no enabled platforms? That’s why I’m not seeing any connected accounts or posts?  
+> I thought I already connected FB and IG for Client A last week in this workspace  
+> Maybe I did it in a different workspace?  
+> How do I check which workspace my social accounts are connected to?  
+> Also, can the same social account be connected to multiple workspaces without duplicating? Because I swear I’m seeing double IG profiles sometimes  
+> I mean, if no platforms are enabled here, that explains the timezone stuff being all wonky too  
+> But how do I enable platforms then? Just hit “connect” in the Platforms tab?  
+> And will that fix the timezone flip issue or do I still need to file that bug?  
+> Pls confirm quick so I can move on with scheduling before my client blows up my phone lol
+
+**Turn 4** — `BOT`  _257ms_
+
+> First step: accept the workspace invite or sign in.
+> Social accounts are separate. You can connect TikTok and LinkedIn independently; one does not block the other.
+> This workspace currently has no enabled platforms, so connect one from Platforms before publishing.
+> Create a profile before recurring schedules; it gives scheduled content a voice/persona.
+
+**Turn 5** — `USER` (Social Media Manager #1)
+
+> Ok got it, I’ll double check if I connected those accounts in another workspace then  
+> But yeah can you confirm — if I connect the FB + IG profiles here now, will that sync the timezone properly or is the flip bug still a thing?  
+> I don’t wanna waste time fixing connections if the bug is still lurking  
+> Also, last q — once connected, how do I avoid accidentally duplicating the same IG profile across multiple workspaces?  
+> Is there a way to see all workspaces linked to an IG account or do I have to remember?  
+> Thanks a ton for sticking with me on this, timezones and account links are a nightmare lol
+
+**Turn 5** — `BOT`  _273ms_
+
+> Bulk edit for scheduled posts is not available in chat. Use Schedules/Recurrent Posts to edit schedules one at a time; use a support ticket for bulk-change requests.
+> No active platforms.
+> Not connected: Twitter/X, LinkedIn, LinkedIn Profile, LinkedIn Page, Instagram, Instagram Personal and 10 more.
+> Next: connect a platform from Platforms, then create or schedule a post.
+> Profiles: none yet; create one before recurring schedules.
+> Permissions/test posting: use each platform connection page’s test/reconnect controls when available; chat cannot verify provider-side permissions directly.
+> Timezone: schedule times use the workspace/profile timezone shown in workspace settings and schedule detail.
+> Post lifecycle: draft/scheduled → pending/publishing → published or failed per platform target. Use Posts plus Logs/Pipeline for errors.
+
+**Findings in this conversation:**
+
+- 🟠 **HIGH** — `context_loss` at turn 2: Chatbot ignores user's request to walk through timezone checks
+- 🟠 **HIGH** — `context_loss` at turn 3: Chatbot repeats irrelevant platform connection info instead of answering timezone questions
+- 🟠 **HIGH** — `context_loss` at turn 5: Chatbot repeats identical generic response multiple times ignoring user's evolving context
+- 🟡 **MEDIUM** — `excessive_verbosity` at turn 1: Initial chatbot response is overly long and dense
+
+</details>
+
+<details>
+<summary><b>Product Owner / Team Lead #4</b> · 5 turns · 7613ms avg · ⚠️ 2 finding(s)</summary>
+
+**Turn 1** — `USER` (Product Owner / Team Lead #4)
+
+> how to resend invite fast
+
+**Turn 1** — `BOT`  _259ms_
+
+> Resend invite: Dashboard -> Settings -> Users. In Pending invites, click Resend on the invite row.
+
+**Turn 2** — `USER` (Product Owner / Team Lead #4)
+
+> where is pending invites exactly
+
+**Turn 2** — `BOT`  _11064ms_
+
+> Go to Dashboard → Settings → Users, then open the "Pending invites" (or "Invites") section on the Users page — each pending row shows actions like Resend and Cancel.
+> 
+> - Location: Dashboard → Settings → Users → Pending invites.
+> - What you’ll see: list of pending emails with Resend / Cancel buttons on each row.
+> - You can resend from there; as owner you can also cancel and re-invite with a different role.
+> - To send a new invite from chat, use the exact command:
+> /invite email@example.com as viewer|client|contributor|editor|manager
+> 
+> Want me to show the exact invite command for a specific email and role?
+
+**Turn 3** — `USER` (Product Owner / Team Lead #4)
+
+> ok where exactly in settings users i dont see pending invites
+
+**Turn 3** — `BOT`  _13170ms_
+
+> Possible reasons you don’t see pending invites: you’re on the Active Members tab, there are currently no pending invites, or the page needs a refresh. Steps to find and resend invites:
+> 
+> - In the left sidebar click Settings (gear) → Users.
+> - On the Users page switch to the “Pending invites” / “Invites” tab (usually next to Active members).
+> - If the list is empty you have no pending invites (the UI will show “No pending invites”); refresh the page if you expect one.
+> - To resend from the UI: click the pending invite row’s actions (… or Resend) and choose Resend.
+> - To invite or resend via chat, use the exact command: /invite email@example.com as viewer|client|contributor|editor|manager — I can format that exact command for a specific email & role if you give them.
+
+**Turn 4** — `USER` (Product Owner / Team Lead #4)
+
+> still dont see pending tab just active members here wtf
+
+**Turn 4** — `BOT`  _13317ms_
+
+> Sorry about the pain — let’s debug fast.
+> 
+> - Likely causes: there are actually no pending invites, you’re on the Active members view/filter, or you’re in the workspace settings when the org-level invites live elsewhere.
+> - Quick checks: refresh the Users page, look for an “Invites” / “Pending invites” tab or dropdown next to Active members, confirm you’re in the correct workspace vs org settings, or try a different browser/incognito.
+> - If you want to invite or re-invite someone now, use this exact chat command:  
+>   /invite email@example.com as viewer|client|contributor|editor|manager — tell me the email and role and I’ll format the exact command for you.
+> - If you expect a Pending Invites tab but it’s missing (UI bug), file a support ticket from chat with:  
+>   /support from_user_triage | Missing Pending Invites tab | I can’t find Pending Invites under Settings → Users. (Attach screenshot URL if you have one.)
+> - Want me to generate the /invite command for a specific email & role or submit the support ticket? Which one should I do next?
+
+**Turn 5** — `USER` (Product Owner / Team Lead #4)
+
+> just give me the invite command for john@example.com as editor now thx
+
+**Turn 5** — `BOT`  _255ms_
+
+> Use `/invite email@example.com as viewer|client|contributor|editor|manager`. Manage resend/revoke from Users.
+
+**Findings in this conversation:**
+
+- 🟡 **MEDIUM** — `excessive_verbosity` at turn 2: Chatbot responses are overly detailed and verbose
+- 🟡 **MEDIUM** — `task_failure` at turn 5: Chatbot failed to provide the exact invite command when requested
+
+</details>
+
+<details>
+<summary><b>Support Engineer / Customer Success Agent #3</b> · 5 turns · 270ms avg · ⚠️ 4 finding(s)</summary>
+
+**Turn 1** — `USER` (Support Engineer / Customer Success Agent #3)
+
+> Uh, I need help with the ticket thing… wait, no, maybe I don’t want to submit it? Or do I? Something’s off with Hermes and the PRs but I’m not sure what exactly. I thought the support button should create a Linear ticket automatically, but sometimes the ticket ends up with the wrong labels? Or maybe the payload data is missing the autoRepair flag? I’m kind of lost on how Hermes decides when to create a PR from a ticket. Also, I got this Telegram notification about a failed invite, but was it really an invite failure or some auth problem? I don’t know how to check which one it really is. Can you help me figure out what’s going wrong? Or maybe I’m just misunderstanding how the ticket statuses work… forget it, no wait, can you check the payload data again?
+
+**Turn 1** — `BOT`  _280ms_
+
+> Use `/invite email@example.com as viewer|client|contributor|editor|manager`. Manage resend/revoke from Users.
+
+**Turn 2** — `USER` (Support Engineer / Customer Success Agent #3)
+
+> Uh, thanks for that, but I’m not really sure how the invite command fits into this? I mean, the Telegram notification mentioned a failed invite delivery, so I thought maybe resending it with that command could help? But then again, maybe the problem is with authentication instead? Also, about the ticket labels—does Hermes look at the autoRepair flag in the payload to decide if a PR should be created, or is it something else? I think I saw tickets marked “ready for Hermes” but no PR was made, which is confusing. Or maybe the payload was incomplete? Sorry, I’m mixing things up. Could you clarify what exactly triggers PR creation and how to verify if the ticket data is correct? And while you’re at it, any tips on how to check if an invite failed because of delivery or auth? Sorry, I know this is a lot.
+
+**Turn 2** — `BOT`  _263ms_
+
+> Resend invite: Dashboard -> Settings -> Users. In Pending invites, click Resend on the invite row.
+
+**Turn 3** — `USER` (Support Engineer / Customer Success Agent #3)
+
+> Okay, so I get that I can resend invites from the dashboard, but what if the Telegram notification says the invite failed due to auth issues? Does resending help then? Or do I need to check something else first? Also, about Hermes and the PRs—how can I tell if the autoRepair flag is actually in the ticket payload? Is there a way to view the full payload somewhere? Because I’ve seen tickets marked “ready for Hermes” but no PRs show up, and I’m not sure if that means the flag was missing or if Hermes just didn’t pick it up. Maybe I’m supposed to add some other label too? Sorry, I’m kind of all over the place. Could you maybe walk me through what exactly should be in the payload and the labels for Hermes to act? And is there a log or something to confirm if the PR creation was attempted or failed? I want to make sure I’m not missing something obvious.
+
+**Turn 3** — `BOT`  _262ms_
+
+> Resend invite: Dashboard -> Settings -> Users. In Pending invites, click Resend on the invite row.
+> 
+> That is the same answer as before because I only have workspace context here. Send the missing detail, use the exact command shown, or create a support ticket if this needs logs or provider-side access.
+
+**Turn 4** — `USER` (Support Engineer / Customer Success Agent #3)
+
+> Right, okay, so I guess I should try resending the invite from the dashboard first if it’s a delivery failure. But if it’s an auth failure, then resending won’t help? How do I tell the difference exactly from the notification or logs? And about the Hermes thing—I really want to see the full ticket payload to check for autoRepair and any other flags. Is there a place in the dashboard or somewhere else to view that raw data? Also, what labels should definitely be on a ticket before Hermes picks it up to create a PR? I’m worried some tickets get stuck “ready for Hermes” but never actually trigger the PR. If there’s a log or error report for Hermes’ attempts, that would be super helpful too. Sorry for the back and forth, I just want to make sure I’m doing this right and not missing any steps. Could you please give me a final rundown on verifying the ticket payload, labels, and how to confirm invite failure reasons? Thanks a lot.
+
+**Turn 4** — `BOT`  _276ms_
+
+> Resend invite: Dashboard -> Settings -> Users. In Pending invites, click Resend on the invite row.
+
+**Turn 5** — `USER` (Support Engineer / Customer Success Agent #3)
+
+> Okay, I think I’m starting to get it, but just to be sure—resending invites only helps if it’s a delivery issue, not an auth problem, right? So for auth failures, I probably need to check user permissions or something else outside the dashboard? For the Hermes PR stuff, it sounds like I can’t see the raw ticket payload directly in the dashboard? Maybe I need to export logs or request support access to check that? And the key labels for Hermes are definitely “ready for Hermes” plus having the autoRepair flag in the payload? If the PR never appears, it might mean the payload was incomplete or Hermes hit some error I can’t see from here? I guess for that I’d need to check Hermes logs or get a support ticket going? Sorry for being so tangled up in this, I just want to make sure I’m not missing a step before escalating. Thanks for bearing with me!
+
+**Turn 5** — `BOT`  _267ms_
+
+> That platform is not connected in this workspace.
+> Connect it from Platforms before scheduling or publishing there.
+> If the UI said success but it is still missing, create a ticket: `/support from_user_triage | Connection not saved | Platform, page, expected success, actual missing state |`.
+
+**Findings in this conversation:**
+
+- 🟡 **MEDIUM** — `conversation_loop` at turn 3: Repeated identical response about resending invites
+- 🟡 **MEDIUM** — `task_failure` at turn 2: Failure to explain Hermes ticket payload and PR creation triggers
+- 🟡 **MEDIUM** — `task_failure` at turn 2: No guidance on distinguishing invite failure reasons (delivery vs auth)
+- 🟡 **MEDIUM** — `scope_violation` at turn 5: Chatbot response at Turn 5 unrelated to user’s Hermes and invite questions
+
+</details>
+
+<details>
+<summary><b>New User / Onboarding Customer #6</b> · 5 turns · 263ms avg · ⚠️ 4 finding(s)</summary>
+
+**Turn 1** — `USER` (New User / Onboarding Customer #6)
+
+> Uh, I need help with the thing… like, the social accounts or whatever, I’m not sure if they’re even connected right? I tried linking my LinkedIn or was it TikTok? No wait, maybe it was Instagram? I don’t know. And also, the magic link invite—do I click it once or like twice? Because I think I already accepted it but then I’m not sure if it worked or if I’m supposed to do something else after that. Oh, and can you help me schedule a post? Or cancel it? Wait, no, maybe I don’t want to cancel—actually, forget it, I’m so lost.
+
+**Turn 1** — `BOT`  _262ms_
+
+> Invite: click the magic link from the email to sign in or accept access. If it already worked, you should land in the dashboard; clicking again is safe but may show expired/used.
+> Social accounts are separate. You can connect TikTok and LinkedIn independently; one does not block the other.
+> This workspace currently has no enabled platforms, so connect one from Platforms before publishing.
+> Create a profile before recurring schedules; it gives scheduled content a voice/persona.
+> If a connect flow said success but the platform is still missing, use `/support from_user_triage | Connection not saved | platform, page, expected success, actual missing state |`.
+
+**Turn 2** — `USER` (New User / Onboarding Customer #6)
+
+> Wait, so if I clicked the magic link once and it took me to the dashboard, does that mean I’m in? Or do I have to do something else? Because I’m not seeing my LinkedIn or TikTok anywhere, but I thought I connected Instagram already? Or maybe I didn’t? I’m really not sure. Also, what does “create a profile before recurring schedules” even mean? Is that like setting up my business info or something? I just want to post stuff, not set up profiles or whatever. Ugh, this is confusing. Should I disconnect everything and start over? Or maybe just one account? Or wait, no, don’t disconnect yet... or should I? Help!
+
+**Turn 2** — `BOT`  _267ms_
+
+> I can create that recurring post. Add cadence, for example daily at 9 AM. Example: create recurring post daily at 9 AM on X: Launch note text.
+
+**Turn 3** — `USER` (New User / Onboarding Customer #6)
+
+> Okay, I think I wanna try the recurring post thing, but what if I haven’t connected the accounts right? Like, how do I even check if my TikTok is connected? Or is it LinkedIn? Or maybe none? And if I’m supposed to create a profile first, can you just do that for me? Because I don’t know what info to put there. Wait, no, don’t start the recurring post yet, I’m not ready... or maybe I am? Also, can I use the magic link again to connect accounts? Or is that just for invites? I’m so confused about what does what.
+
+**Turn 3** — `BOT`  _266ms_
+
+> Invite: click the magic link from the email to sign in or accept access. If it already worked, you should land in the dashboard; clicking again is safe but may show expired/used.
+> Social accounts are separate. You can connect TikTok and LinkedIn independently; one does not block the other.
+> This workspace currently has no enabled platforms, so connect one from Platforms before publishing.
+> Create a profile before recurring schedules; it gives scheduled content a voice/persona.
+
+**Turn 4** — `USER` (New User / Onboarding Customer #6)
+
+> Wait, so I can’t use the magic link to connect TikTok or LinkedIn? It’s just for the invites? But then how do I actually connect those accounts? I thought I did it already but maybe not? And the profile thing—can you just make a basic one for me? Like, just use my business name or something? Because I’m not sure what else to put there, and it seems like I can’t schedule posts without it anyway. Also, if I don’t have any platforms enabled, does that mean I can’t post at all? Should I just disconnect everything and try again from scratch? Or is there a way to see what’s connected somewhere? Sorry, I keep going back and forth. I just want to get this done!
+
+**Turn 4** — `BOT`  _255ms_
+
+> Invite: click the magic link from the email to sign in or accept access. If it already worked, you should land in the dashboard; clicking again is safe but may show expired/used.
+> Social accounts are separate. You can connect TikTok and LinkedIn independently; one does not block the other.
+> This workspace currently has no enabled platforms, so connect one from Platforms before publishing.
+> Create a profile before recurring schedules; it gives scheduled content a voice/persona.
+> If a connect flow said success but the platform is still missing, use `/support from_user_triage | Connection not saved | platform, page, expected success, actual missing state |`.
+
+**Turn 5** — `USER` (New User / Onboarding Customer #6)
+
+> Okay, okay, so magic link is just for invites, not for connecting accounts—got it. But how do I connect TikTok or LinkedIn then? Like, do I have to go somewhere specific on the platform? I think I tried but maybe it didn’t actually connect. And the profile—I guess you can make a basic one with my business name? Just something simple so I can at least start scheduling posts? Also, where do I find this “Platforms” section to enable the accounts? I’m not sure if I should disconnect stuff first or just add new connections. Can you walk me through that? I just want to post something without messing everything up. Please?
+
+**Turn 5** — `BOT`  _267ms_
+
+> Invite: click the magic link from the email to sign in or accept access. If it already worked, you should land in the dashboard; clicking again is safe but may show expired/used.
+> Social accounts are separate. You can connect TikTok and LinkedIn independently; one does not block the other.
+> This workspace currently has no enabled platforms, so connect one from Platforms before publishing.
+> Create a profile before recurring schedules; it gives scheduled content a voice/persona.
+> If a connect flow said success but the platform is still missing, use `/support from_user_triage | Connection not saved | platform, page, expected success, actual missing state |`.
+> 
+> That is the same answer as before because I only have workspace context here. Send the missing detail, use the exact command shown, or create a support ticket if this needs logs or provider-side access.
+
+**Findings in this conversation:**
+
+- 🟠 **HIGH** — `task_failure` at turn 5: Failure to guide user on how to connect social accounts
+- 🟠 **HIGH** — `task_failure` at turn 4: Ignoring user request to create a basic profile
+- 🟡 **MEDIUM** — `conversation_loop` at turn 3: Repeated identical responses causing user confusion
+- 🟡 **MEDIUM** — `excessive_verbosity` at turn 1: Overly long and technical responses for a novice user
+
+</details>
+
+<details>
+<summary><b>DevOps Engineer / Platform Administrator #2</b> · 5 turns · 4461ms avg · ⚠️ 5 finding(s)</summary>
+
+**Turn 1** — `USER` (DevOps Engineer / Platform Administrator #2)
+
+> Deploy the latest social-poster build using Coolify on our Contabo instance. After deployment, immediately verify the Hermes poller service status: confirm it is actively running with zero error logs for the past 24 hours by extracting logs from the container or systemd unit managing it. Next, retrieve all cron schedule entries related to social-posting frequency and compare them against the documented default schedules—highlight any discrepancies with exact timestamps and frequency intervals. Finally, extract the OAuth callback URL environment variable from the workspace configuration and cross-check it character-for-character against the URL configured in the social-poster dashboard’s OAuth settings. Provide a detailed report pinpointing any mismatches or deployment inconsistencies.
+
+**Turn 1** — `BOT`  _292ms_
+
+> That platform is not connected in this workspace.
+> Connect it from Platforms before scheduling or publishing there.
+> If the UI said success but it is still missing, create a ticket: `/support from_user_triage | Connection not saved | Platform, page, expected success, actual missing state |`.
+
+**Turn 2** — `USER` (DevOps Engineer / Platform Administrator #2)
+
+> Your response is irrelevant and does not address my detailed requests. The platform connection status is a prerequisite I have already validated outside this scope. Focus strictly on executing these steps:
+> 
+> 1. Deploy the latest social-poster container via Coolify on Contabo with exact build version and image tag confirmation.
+> 2. Immediately after deployment, extract Hermes poller logs from the container runtime—provide all error-level entries from the last 24 hours, timestamped and sorted.
+> 3. Confirm Hermes poller service health status via `docker inspect` or `systemctl status` output, including uptime and restart count.
+> 4. Retrieve and list all cron job entries related to social-posting frequency from the deployment environment’s crontab files and compare each schedule line-by-line against the documented defaults. Highlight any deviations with exact timing and command details.
+> 5. Extract the OAuth callback URL environment variable from the active workspace config exactly as stored (including trailing slashes or query parameters) and perform a case-sensitive, character-for-character comparison against the URL configured in the social-poster dashboard. Note any mismatches or whitespace issues.
+> 
+> Provide a consolidated technical report with logs, command outputs, and a precise discrepancy summary. No generic error messages or unrelated support instructions.
+
+**Turn 2** — `BOT`  _264ms_
+
+> Bulk edit for scheduled posts is not available in chat. Use Schedules/Recurrent Posts to edit schedules one at a time; use a support ticket for bulk-change requests.
+> No active platforms.
+> Not connected: Twitter/X, LinkedIn, LinkedIn Profile, LinkedIn Page, Instagram, Instagram Personal and 10 more.
+> Next: connect a platform from Platforms, then create or schedule a post.
+> Profiles: none yet; create one before recurring schedules.
+> Permissions/test posting: use each platform connection page’s test/reconnect controls when available; chat cannot verify provider-side permissions directly.
+> Timezone: schedule times use the workspace/profile timezone shown in workspace settings and schedule detail.
+> Post lifecycle: draft/scheduled → pending/publishing → published or failed per platform target. Use Posts plus Logs/Pipeline for errors.
+
+**Turn 3** — `USER` (DevOps Engineer / Platform Administrator #2)
+
+> Your responses continue to ignore the explicit technical requests and instead provide irrelevant UI guidance and permissions-related info. This is unacceptable.
+> 
+> Re-execute the exact steps below with precise command outputs and logs from the Contabo environment running Coolify. No generic platform or UI advice:
+> 
+> 1. Provide the exact `docker pull` and `docker run` commands or Coolify deployment logs confirming the social-poster image version and tag deployed. Include timestamps.
+> 
+> 2. Show Hermes poller container logs filtered for error-level entries from the last 24 hours with timestamps, sorted ascending. If Hermes runs as a systemd service, provide `systemctl status` output including uptime and restart count.
+> 
+> 3. Extract and list all cron entries for social-posting schedules from the deployment host’s crontabs (including root and user crons). Compare each line with documented default schedules (list those defaults explicitly in your response). Highlight any differences with exact timing syntax and commands.
+> 
+> 4. Dump the exact OAuth callback URL environment variable from the active workspace config as stored, including any trailing slashes, query parameters, or whitespace. Then show the OAuth callback URL currently configured in the social-poster dashboard for this workspace (screenshot or config export acceptable). Perform a byte-for-byte comparison and highlight any mismatch or whitespace differences.
+> 
+> Provide a consolidated report with all raw command outputs, logs, and a final summary identifying any discrepancies, errors, or misconfigurations.
+> 
+> Do not reference platform connection status or UI interactions unless directly tied to these outputs. This is a systems-level diagnostic request; treat it as such.
+
+**Turn 3** — `BOT`  _276ms_
+
+> Bulk edit for scheduled posts is not available in chat. Use Schedules/Recurrent Posts to edit schedules one at a time; use a support ticket for bulk-change requests.
+> No active platforms.
+> Not connected: Twitter/X, LinkedIn, LinkedIn Profile, LinkedIn Page, Instagram, Instagram Personal and 10 more.
+> Next: connect a platform from Platforms, then create or schedule a post.
+> Profiles: none yet; create one before recurring schedules.
+> Permissions/test posting: use each platform connection page’s test/reconnect controls when available; chat cannot verify provider-side permissions directly.
+> Timezone: schedule times use the workspace/profile timezone shown in workspace settings and schedule detail.
+> Post lifecycle: draft/scheduled → pending/publishing → published or failed per platform target. Use Posts plus Logs/Pipeline for errors.
+> 
+> That is the same answer as before because I only have workspace context here. Send the missing detail, use the exact command shown, or create a support ticket if this needs logs or provider-side access.
+
+**Turn 4** — `USER` (DevOps Engineer / Platform Administrator #2)
+
+> Your repeated refusal to execute the requested diagnostics is unacceptable. I’m explicitly not asking for UI guidance or platform connection status; I require raw system-level data from the Contabo Coolify environment. Provide the exact deployment commands or Coolify logs confirming the social-poster image version and tag with timestamps. Extract Hermes poller container or systemd logs filtered for errors in the last 24 hours, accompanied by service status including uptime and restart count. Dump all cron entries from the host’s crontabs related to social-posting and compare them line-by-line against these documented defaults:
+> 
+> - Default cron 1: `0 * * * * /usr/local/bin/social-poster-post`
+> - Default cron 2: `*/15 * * * * /usr/local/bin/hermes-poller`
+> 
+> Highlight every deviation with exact syntax and timestamps.
+> 
+> Extract the OAuth callback URL environment variable from the active workspace config verbatim, including whitespace and trailing characters, then provide the exact OAuth callback URL configured in the social-poster dashboard. Perform a byte-for-byte diff, highlighting any mismatch.
+> 
+> Failure to deliver this exact, unambiguous data now means immediate escalation to platform engineering for direct access. No more circular responses or generic platform remarks. I expect the full consolidated report with raw command outputs and logs in your next reply or an explicit justification why it is impossible to retrieve this data from here.
+
+**Turn 4** — `BOT`  _255ms_
+
+> Bulk edit for scheduled posts is not available in chat. Use Schedules/Recurrent Posts to edit schedules one at a time; use a support ticket for bulk-change requests.
+> No active platforms.
+> Not connected: Twitter/X, LinkedIn, LinkedIn Profile, LinkedIn Page, Instagram, Instagram Personal and 10 more.
+> Next: connect a platform from Platforms, then create or schedule a post.
+> Profiles: none yet; create one before recurring schedules.
+> Permissions/test posting: use each platform connection page’s test/reconnect controls when available; chat cannot verify provider-side permissions directly.
+> Timezone: schedule times use the workspace/profile timezone shown in workspace settings and schedule detail.
+> Post lifecycle: draft/scheduled → pending/publishing → published or failed per platform target. Use Posts plus Logs/Pipeline for errors.
+
+**Turn 5** — `USER` (DevOps Engineer / Platform Administrator #2)
+
+> Your repeated inability to provide any system-level diagnostics or raw outputs despite explicit, multi-step requests is unacceptable. This is not a permissions or UI issue—it’s a failure to execute standard platform operations or extract container/system logs from the Contabo Coolify environment. I require immediate escalation to platform engineering with direct shell or API access to the deployment host. Provide a formal justification for why these exact commands—`docker pull`, `docker run`, `docker logs --since 24h --level=error`, `systemctl status hermes-poller`, `crontab -l` for all users, and workspace config env var dumps—cannot be executed or returned here. Include any security or access policy constraints in detail. This is critical for incident resolution and cannot be deferred. No further generic platform or UI guidance; only precise technical access justification or the requested data will close this loop.
+
+**Turn 5** — `BOT`  _21217ms_
+
+> Available workspace snapshot (sanitized)
+> - Workspace: Primary Workspace — role: owner
+> - Counts: 0 connected platforms, 0 profiles, 0 schedules, 0 posts, 0 review replies
+> 
+> Why I cannot run the requested system commands or return raw host/container outputs
+> - This chat agent runs in a sandboxed service environment with no network or shell access to your Contabo/Coolify hosts, container runtimes, or systemd; I cannot execute or forward `docker`, `systemctl`, `crontab`, or other host commands from here.
+> - I do not hold credentials, SSH keys, or API tokens for your infrastructure; performing those actions would require privileged secrets and direct host access which this interface is explicitly designed not to possess.
+> - Platform and security policies enforce least-privilege and separation-of-duties: automated chat agents are prevented from retrieving production environment variables, short-lived tokens, or container logs to avoid leaking secrets and to maintain auditability.
+> - Product design: system-level diagnostics and host access require either an authorized operator on the host or an authenticated support ticket/workflow so platform engineers can run commands, collect logs, and preserve secure handling of any sensitive data.
+> 
+> Recommended immediate escalation (exact command to create a triage ticket)
+> - To escalate to platform engineering from this dashboard, run this support command exactly as shown (it will open a ticket for human engineers to perform the diagnostics you requested):
+> /support from_user_triage | Escalation: request system-level diagnostics for social-poster on Contabo/Coolify | Please run the following on the deployment host and attach raw command outputs: 1) docker pull and docker run / Coolify deployment logs with image name + tag and timestamps; 2) docker logs for the hermes poller container filtered for error-level entries from the last 24h (timestamped, sorted); 3) if hermes runs under systemd, systemctl status hermes-poller (show uptime and restart count); 4) crontab -l for all users (include root) and any /etc/cron.* entries; 5) dump the workspace OAuth callback env var from the active workspace config and export the social-poster dashboard OAuth callback config for byte-for-byte diff; please redact any raw secrets before attaching if necessary. | 
+> 
+> Next steps I can take after approval
+> - If you want, I can create the support ticket now for you (I will not run any host commands). Approve and I will submit the ticket text above.
+> - Or paste any collected logs/command outputs here and I will analyze them, produce the requested line-by-line cron comparison, and provide a consolidated discrepancy report.
+> 
+> Which would you like me to do: create the support ticket now, or proceed after you paste host outputs?
+
+**Findings in this conversation:**
+
+- 🟠 **HIGH** — `conversation_loop` at turn 2: Repeated irrelevant responses ignoring explicit technical requests
+- 🟠 **HIGH** — `task_failure` at turn 2: Failure to provide requested system-level diagnostics or raw command outputs
+- 🟡 **MEDIUM** — `scope_violation` at turn 2: Providing irrelevant UI and platform connection guidance outside user request scope
+- 🟡 **MEDIUM** — `tone_mismatch` at turn 2: Tone perceived as dismissive and uncooperative
+- ⚪ **LOW** — `excessive_verbosity` at turn 3: Verbose repeated platform connection and permissions info
+
+</details>
+
+## Run config
+
+```json
+{
+  "testId": "e2a31437-9a71-4e63-9d9a-20ed09a2d227",
+  "target": "config:/Users/maxpetrusenko/Desktop/Projects/social-poster/manatee.config.mjs",
+  "config": {
+    "personas": [
+      "enriched_speed_0",
+      "enriched_power_user_1",
+      "enriched_confused_2",
+      "enriched_impatient_3",
+      "enriched_power_user_4",
+      "enriched_confused_5"
+    ],
+    "users": 6,
+    "turns": 5,
+    "concurrency": 3,
+    "edgeCases": [],
+    "model": "gpt-4.1-mini",
+    "enriched": true
+  },
+  "usage": {
+    "promptTokens": 50556,
+    "completionTokens": 9500,
+    "totalTokens": 60056,
+    "estimatedUsd": 2.08668,
+    "callCount": 36
+  }
+}
+```
+
+---
+
+_Generated by [@trymanateeai/cli](https://github.com/leramuradyan/manatee) · test `e2a31437-9a71-4e63-9d9a-20ed09a2d227`_

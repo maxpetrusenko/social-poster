@@ -95,10 +95,16 @@ export function parseRecurringPostIntent(
   const normalized = message.replace(/\s+/g, " ").trim();
   const lowered = normalized.toLowerCase();
 
+  if (isRecurringPostDiagnostic(lowered)) return null;
+  if (isUncommittedRecurringQuestion(lowered)) return null;
+  if (/\b(create|make|set up|setup)\s+(?:a\s+)?profile\b/.test(lowered)) return null;
+
+  const wantsCreate =
+    /\b(create|make|add|start|set up|setup|schedule)\b/.test(lowered);
   const wantsRecurring =
-    /\b(recurring|recurrent|repeat|repeating|every|daily|weekday|weekly|cron)\b/.test(lowered);
-  const wantsPost = /\b(post|posts|schedule|scheduled)\b/.test(lowered);
-  if (!wantsRecurring || !wantsPost) return null;
+    /\b(recurring|recurrent|repeat|repeating|daily|weekly|weekday|weekdays|every day|each day|every weekday|every (?:sun|mon|tue|tues|wed|thu|thurs|fri|sat|sunday|monday|tuesday|wednesday|thursday|friday|saturday)|every \d{1,2} hours?|cron)\b/.test(lowered);
+  const wantsPost = /\b(post|posts|caption|content)\b/.test(lowered);
+  if (!wantsCreate || !wantsRecurring || !wantsPost) return null;
 
   const cronParts = inferCron(normalized);
   const content = extractPostContent(normalized);
@@ -115,6 +121,26 @@ export function parseRecurringPostIntent(
     name,
     mediaUrl,
   };
+}
+
+function isRecurringPostDiagnostic(lowered: string) {
+  if (/\b(post status|publish status|published status|failed vs queued|failed or queued|queued and delayed)\b/.test(lowered)) {
+    return true;
+  }
+  if (/\b(token|auth|oauth|session|connection|connect|linked|unlinked|logs?|error feed|health)\b/.test(lowered)) {
+    return true;
+  }
+  if (/\b(cron schedule entries|cron entries|posting frequency|post-history|schema|migration|coolify|contabo|hermes|linear)\b/.test(lowered)) {
+    return true;
+  }
+  return false;
+}
+
+function isUncommittedRecurringQuestion(lowered: string) {
+  return (
+    /\b(can i|can also|should i|do i need|what if|not ready|don't start|do not start|maybe|or no|or should|would you like|ready)\b/.test(lowered) &&
+    /\b(recurring|schedule|scheduling|post|posts)\b/.test(lowered)
+  );
 }
 
 function normalizeKeepQuery(value: string) {

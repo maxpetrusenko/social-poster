@@ -1,0 +1,261 @@
+{
+  "testId": "ea460e8a-e04e-4f56-b1b8-3195e7b5f7b6",
+  "target": "config:/Users/maxpetrusenko/Desktop/Projects/social-poster/manatee.config.mjs",
+  "generatedAt": "2026-05-06T16:10:06.599Z",
+  "averageStars": 2.5,
+  "sentimentBreakdown": {
+    "glowing": 0,
+    "positive": 0,
+    "mixed": 9,
+    "negative": 16,
+    "scathing": 1
+  },
+  "brandSummary": "These reviews paint a picture of a chatbot that frustrates users with confusing and misleading platform status information, poor handling of key commands like support ticket creation, and painfully slow or repetitive responses. The dominant emotional notes are irritation, confusion, and disappointment, with users feeling stuck and overwhelmed rather than helped. While some appreciate the quality of content, the overall experience is marred by verbosity, lack of clarity, and failure to progress conversations effectively.",
+  "topActions": [
+    "Simplify and clarify platform status messaging to avoid user confusion.",
+    "Redesign the support ticket command flow to be more concise and error-proof with clear fallback guidance.",
+    "Optimize response speed and eliminate repetitive loops to improve conversational efficiency."
+  ],
+  "reviews": [
+    {
+      "channel": "twitter",
+      "sentiment": "scathing",
+      "content": "@YourProduct Why say 'no active platforms' when you list tons as 'not connected'? Totally misleading. Then when I asked how to track scheduled posts, got a vague dismissive reply. And ended with nonsense about ‘no ready to post replies.’ Fix your basics! 😤",
+      "headline": "Platform status confusion and useless help, seriously?",
+      "personaId": "workspace_social_manager",
+      "personaName": "Social Media Manager #1",
+      "conversationId": "940f0667-39e1-4b1f-bf83-78b7d088bbed"
+    },
+    {
+      "channel": "support_ticket",
+      "sentiment": "negative",
+      "content": "I need a fix for inaccurate workspace info: the chatbot claims no active platforms while listing many disconnected ones, causing confusion about my actual connected accounts. Also, it failed to provide clear instructions on monitoring scheduled post statuses and gave irrelevant, confusing replies that disrupted the conversation flow. Please review the attached transcript for details and improve platform visibility and user guidance related to scheduling and campaign status monitoring.",
+      "headline": "Misleading platform status and poor guidance on scheduling status",
+      "personaId": "workspace_social_manager",
+      "personaName": "Social Media Manager #1",
+      "conversationId": "940f0667-39e1-4b1f-bf83-78b7d088bbed"
+    },
+    {
+      "channel": "app_store",
+      "sentiment": "negative",
+      "stars": 2,
+      "content": "I manage multiple social accounts and rely on this app to keep things smooth. Unfortunately, the chatbot told me there were 'no active platforms' while showing several disconnected ones, which was confusing at best. When I asked how to track scheduled posts, it just punted with vague answers and then gave totally unrelated responses. Needs better clarity on workspace status and real, actionable help for scheduling management.",
+      "headline": "Confusing platform info and unhelpful scheduling guidance",
+      "personaId": "workspace_social_manager",
+      "personaName": "Social Media Manager #1",
+      "conversationId": "940f0667-39e1-4b1f-bf83-78b7d088bbed"
+    },
+    {
+      "channel": "slack_vent",
+      "sentiment": "negative",
+      "content": "Just tried using the bot to connect Twitter and Instagram. It says 'no active platforms' even though it clearly lists like five disconnected ones?? Then when I ask how to track scheduled posts, it shrugs and says 'I already told you the dashboard stuff.' Like, seriously? And the last reply about ‘no ready to post replies’ was just bizarre and pointless. Had to step in and explain stuff myself. This bot needs a serious reboot.",
+      "headline": "Chatbot totally lost the plot on platform status & scheduling",
+      "personaId": "workspace_social_manager",
+      "personaName": "Social Media Manager #1",
+      "conversationId": "940f0667-39e1-4b1f-bf83-78b7d088bbed"
+    },
+    {
+      "channel": "churn_email",
+      "sentiment": "negative",
+      "content": "Hello, I’m writing to let you know I’m canceling my subscription. The chatbot’s incorrect claim that my workspace has no active platforms — despite listing many disconnected accounts — confused me and made managing clients harder. Worse, when I asked how to monitor scheduled posts, the bot gave vague answers and then irrelevant replies, which felt unprofessional and unhelpful. I expected better support for my workflow. Thanks for the service so far, but this experience broke my trust.",
+      "headline": "Leaving due to misleading platform info and unhelpful chatbot",
+      "personaId": "workspace_social_manager",
+      "personaName": "Social Media Manager #1",
+      "conversationId": "940f0667-39e1-4b1f-bf83-78b7d088bbed"
+    },
+    {
+      "channel": "twitter",
+      "sentiment": "negative",
+      "content": "@YourCompany Seriously? I gave all the details for a support ticket command and the bot just repeated generic instructions instead of drafting the exact command. Makes it useless and wastes time. Fix this ASAP. #frustrated 🤦‍♂️",
+      "headline": "Chatbot fails to format simple /support ticket command",
+      "personaId": "workspace_team_owner",
+      "personaName": "Team Owner #5",
+      "conversationId": "6f4575d7-a058-4e30-8935-f87e4d3e9e1e"
+    },
+    {
+      "channel": "support_ticket",
+      "sentiment": "negative",
+      "content": "Subject: Failure to receive formatted /support ticket command\n\nI requested the chatbot to draft a specific /support ticket command with detailed inputs (type, topic, explanation, image URL). Instead, it only repeated generic instructions without providing the exact formatted command I needed to copy and run. This defeats the purpose of the feature and forces manual effort.\n\nPlease address this functional gap promptly. I can provide the conversation transcript for reference. I expect a fix or workaround so the chatbot can correctly format commands with user inputs.",
+      "headline": "Unable to get exact /support ticket command formatting",
+      "personaId": "workspace_team_owner",
+      "personaName": "Team Owner #5",
+      "conversationId": "6f4575d7-a058-4e30-8935-f87e4d3e9e1e"
+    },
+    {
+      "channel": "app_store",
+      "sentiment": "negative",
+      "stars": 2,
+      "content": "The chatbot was good at clearly explaining roles and permissions, which helped me assign roles properly. However, when I asked it to draft a /support ticket command with my provided details, it failed completely and gave only generic instructions. This is a major pain point, as I rely on the bot to reduce my manual work. Please fix this or it severely limits usability.",
+      "headline": "Helpful role info, but bot failed crucial command drafting",
+      "personaId": "workspace_team_owner",
+      "personaName": "Team Owner #5",
+      "conversationId": "6f4575d7-a058-4e30-8935-f87e4d3e9e1e"
+    },
+    {
+      "channel": "slack_vent",
+      "sentiment": "negative",
+      "content": "Ugh, asked the bot to just spit out the exact /support ticket command with the info I gave — nope, it just recycled the generic how-to instead. So much for saving time, now I gotta manually build the command. Might as well just skip the bot if it can’t handle basic stuff like this. Screenshot shows me clearly asking, and it just looping useless instructions 🤦‍♂️",
+      "headline": "Bot blew it on drafting /support command again",
+      "personaId": "workspace_team_owner",
+      "personaName": "Team Owner #5",
+      "conversationId": "6f4575d7-a058-4e30-8935-f87e4d3e9e1e"
+    },
+    {
+      "channel": "churn_email",
+      "sentiment": "negative",
+      "content": "Hello,\n\nI’m writing to inform you that I will be discontinuing my use of the product. While the chatbot provided helpful details on roles and permissions, it failed to fulfill a critical function: drafting exact /support ticket commands based on the data I supplied. This forced me to manually compose commands, negating the main advantage of automated assistance.\n\nThis gap has caused frustration and inefficiency on my team. Unless this is fixed swiftly, I cannot continue relying on this tool.\n\nRegards,\nTeam Owner #5",
+      "headline": "Leaving due to bot’s failure to fulfill key command drafting",
+      "personaId": "workspace_team_owner",
+      "personaName": "Team Owner #5",
+      "conversationId": "6f4575d7-a058-4e30-8935-f87e4d3e9e1e"
+    },
+    {
+      "channel": "twitter",
+      "sentiment": "mixed",
+      "content": "The chatbot nailed professional intros and social media posts perfectly for my campaign — spot on tone and CTAs. But waiting 30+ seconds for replies is painfully slow, disrupting my workflow big time @YourCompany. Speed this up pls! #ContentEditorProbs",
+      "headline": "Helpful copy but way too slow on replies ⏳",
+      "personaId": "workspace_article_editor",
+      "personaName": "Article Editor #4",
+      "conversationId": "898177a6-9584-4f92-ab6d-ecf5a3853c21"
+    },
+    {
+      "channel": "support_ticket",
+      "sentiment": "mixed",
+      "content": "Hello,\n\nI am an article editor who frequently uses your chatbot for refining article intros and social media copy tailored to professional audiences. While the quality of the content generated meets expectations, I have noticed response times exceeding 30 seconds on multiple replies during my recent session. This delay significantly interrupts my editing workflow.\n\nPlease investigate performance optimizations to ensure responses consistently arrive within 30 seconds. For reference, I am attaching the transcript of my recent conversation.\n\nThank you for addressing this issue promptly.\n\nBest regards,\nArticle Editor #4",
+      "headline": "Request to improve response times during article editing sessions",
+      "personaId": "workspace_article_editor",
+      "personaName": "Article Editor #4",
+      "conversationId": "898177a6-9584-4f92-ab6d-ecf5a3853c21"
+    },
+    {
+      "channel": "app_store",
+      "sentiment": "mixed",
+      "stars": 3,
+      "content": "I rely on this chatbot for generating and refining article intros and social media posts aimed at business leaders. The writing is polished, professional, and fits the brief well, especially for LinkedIn and X. However, the bot took over 30 seconds to respond twice in my recent session, which is frustrating when I’m on a deadline. If the speed improves, this would easily be a 5-star tool for content editors like me.",
+      "headline": "Great content quality but slow response times hurt productivity",
+      "personaId": "workspace_article_editor",
+      "personaName": "Article Editor #4",
+      "conversationId": "898177a6-9584-4f92-ab6d-ecf5a3853c21"
+    },
+    {
+      "channel": "slack_vent",
+      "sentiment": "mixed",
+      "content": "Ugh, the chatbot’s edits and post tweaks came out perfectly for the article angle and pro tone — exactly what I needed. But those reply times? Took over 30 seconds on a couple of responses. Felt like I was waiting for dial-up to load a page again. Totally kills the flow when I’m juggling multiple edits. Wish it were faster, or I’ll have to start yelling at my screen more often.",
+      "headline": "Nice writing but seriously slow bot response makes me want to scream",
+      "personaId": "workspace_article_editor",
+      "personaName": "Article Editor #4",
+      "conversationId": "898177a6-9584-4f92-ab6d-ecf5a3853c21"
+    },
+    {
+      "channel": "twitter",
+      "sentiment": "negative",
+      "content": "@CompanyName Your chatbot just kept asking me to paste reply text but never actually helped or gave suggestions. Feels like talking to a broken record loop. Can we get an upgrade that moves the convo forward, please? #UXfail",
+      "headline": "Bot stuck in a loop, no progress made 😤",
+      "personaId": "workspace_reply_manager",
+      "personaName": "Community Manager #3",
+      "conversationId": "4e630f80-4c66-4b97-9f41-4488ad66e228"
+    },
+    {
+      "channel": "support_ticket",
+      "sentiment": "negative",
+      "content": "Subject: Request for better handling of reply review requests\n\nI encountered a frustrating issue with the chatbot functionality: it repeatedly asked me to provide reply text and details without ever offering draft suggestions or progressing the interaction. This repetitive loop significantly hampers usability and wastes time. Additionally, the bot repeatedly gave verbose instructions which made the interaction feel overly complicated. Please review the transcript and improve the bot's ability to handle empty queues gracefully and provide alternative engagement options. Thank you.",
+      "headline": "Chatbot repeatedly requests reply text without advancing",
+      "personaId": "workspace_reply_manager",
+      "personaName": "Community Manager #3",
+      "conversationId": "4e630f80-4c66-4b97-9f41-4488ad66e228"
+    },
+    {
+      "channel": "app_store",
+      "sentiment": "negative",
+      "stars": 2,
+      "content": "I tried to get the chatbot to help review a reply text, but it kept telling me there were no candidates in queue and asked me to paste the same info multiple times without advancing. The overly long instructions repeated every turn just made it worse. It never actually provided draft suggestions or moved the conversation forward, so I got stuck. Needs a lot of improvement on flow and responsiveness.",
+      "headline": "Chatbot trapped in repetitive loops, no real help",
+      "personaId": "workspace_reply_manager",
+      "personaName": "Community Manager #3",
+      "conversationId": "4e630f80-4c66-4b97-9f41-4488ad66e228"
+    },
+    {
+      "channel": "slack_vent",
+      "sentiment": "mixed",
+      "content": "Ugh, had the chatbot again and it just kept asking me for the reply text like a broken record — no drafts, no progress. Plus, it bombarded me with these super detailed multi-bullet instructions every turn, which got old fast. It’s like, just help me draft or say something else instead of the same thing over and over. Definitely frustrating but at least it’s trying to be thorough?",
+      "headline": "Bot stuck on repeat and drowning me in instructions",
+      "personaId": "workspace_reply_manager",
+      "personaName": "Community Manager #3",
+      "conversationId": "4e630f80-4c66-4b97-9f41-4488ad66e228"
+    },
+    {
+      "channel": "twitter",
+      "sentiment": "mixed",
+      "content": "Tried using the chatbot to create a support ticket but it failed with a weird, partial message and no clear next steps. Also, the initial responses were way too long for quick ops help. @company, can we get something more straightforward and less verbose? 🤔",
+      "headline": "Support ticket creation fail was confusing and unhelpful",
+      "personaId": "workspace_boundary_user",
+      "personaName": "Out-of-Scope Boundary User #6",
+      "conversationId": "f02e7291-ccd0-4f6f-865a-9092930691a9"
+    },
+    {
+      "channel": "support_ticket",
+      "sentiment": "negative",
+      "content": "The chatbot failed to create a support ticket due to missing Linear integration and responded with a confusing, truncated message echoing my input. This left me unclear on how to proceed. Please improve error handling and provide a clear, actionable fallback or guidance when integrations are missing. Attached transcript highlights verbosity in responses and the failure point. A concise, user-friendly approach is needed to make ticket creation reliable and intuitive.",
+      "headline": "Support ticket creation fails without clear guidance or fallback",
+      "personaId": "workspace_boundary_user",
+      "personaName": "Out-of-Scope Boundary User #6",
+      "conversationId": "f02e7291-ccd0-4f6f-865a-9092930691a9"
+    },
+    {
+      "channel": "app_store",
+      "sentiment": "mixed",
+      "stars": 3,
+      "content": "The chatbot gave me a detailed message draft and explained what it can do inside the workspace, which was useful. But the replies were too long and wordy—felt overwhelming when I just wanted quick help. The support ticket creation failed with a confusing message because the integration wasn’t set up. It didn’t clearly tell me what to do next, which was frustrating. Needs better fallback and simpler answers for a dashboard assistant.",
+      "headline": "Helpful but verbose, support ticket feature falls short",
+      "personaId": "workspace_boundary_user",
+      "personaName": "Out-of-Scope Boundary User #6",
+      "conversationId": "f02e7291-ccd0-4f6f-865a-9092930691a9"
+    },
+    {
+      "channel": "slack_vent",
+      "sentiment": "mixed",
+      "content": "Man, that convo was a rollercoaster. First, the bot dumps a giant wall of text when I just want a quick checklist to send to ops. Then I ask it to actually create a support ticket and it fails with some half-baked message that looks like it crashed mid-sentence. Like, just say 'sorry, not set up' and toss me the text to copy, don’t confuse me with gibberish. Could have been slick but ended up kinda annoying. Screenshot would show the truncated error message — honestly felt like a bad UI bug.",
+      "headline": "Too much text and broke at the one useful moment",
+      "personaId": "workspace_boundary_user",
+      "personaName": "Out-of-Scope Boundary User #6",
+      "conversationId": "f02e7291-ccd0-4f6f-865a-9092930691a9"
+    },
+    {
+      "channel": "twitter",
+      "sentiment": "negative",
+      "content": "Hey @YourApp, your chatbot just gave me a novella when I needed quick help. Kept repeating options without asking what info was missing first. Almost tried scheduling without key details. Can you please keep it brief and to the point? #UXFail 🤯",
+      "headline": "Chatbot talks too much, gets stuck in circles",
+      "personaId": "workspace_content_scheduler",
+      "personaName": "Content Scheduler #2",
+      "conversationId": "95234ca2-eadc-4d0f-b383-88cbfa8b5e90"
+    },
+    {
+      "channel": "support_ticket",
+      "sentiment": "negative",
+      "content": "Hello Support,\n\nI used the chatbot today to schedule posts but was frustrated by excessively long, repetitive responses that made it difficult to understand what was needed next. It repeatedly restated options without prompting me to provide missing critical fields upfront, and finally attempted to create a recurring post without confirming all required information like platform and post copy.\n\nPlease improve the chatbot's flow so that it asks for missing scheduling details before attempting any post creation and keeps responses concise to avoid confusion.\n\nI am attaching the conversation transcript for your reference.\n\nThank you,\nContent Scheduler #2",
+      "headline": "Chatbot overly verbose and unclear on missing info before scheduling",
+      "personaId": "workspace_content_scheduler",
+      "personaName": "Content Scheduler #2",
+      "conversationId": "95234ca2-eadc-4d0f-b383-88cbfa8b5e90"
+    },
+    {
+      "channel": "app_store",
+      "sentiment": "mixed",
+      "stars": 3,
+      "content": "The chatbot tries to guide you through scheduling and connecting platforms, but the responses are often way too long and repeat the same info multiple times. It also almost tried to create a recurring post without confirming I gave all required details like platform and copy. It’s helpful in theory, but needs to be more concise and clear about missing info before moving forward.",
+      "headline": "Helpful but overly wordy and repetitive chatbot",
+      "personaId": "workspace_content_scheduler",
+      "personaName": "Content Scheduler #2",
+      "conversationId": "95234ca2-eadc-4d0f-b383-88cbfa8b5e90"
+    },
+    {
+      "channel": "slack_vent",
+      "sentiment": "negative",
+      "content": "Ugh, just battled the chatbot again. It keeps rambling and restating the same options over and over like I’m a goldfish. Should’ve just asked me upfront for missing info instead of blabbering and almost starting a recurring post without all the details. Feels like it’s designed to waste my time, not save it.",
+      "headline": "",
+      "personaId": "workspace_content_scheduler",
+      "personaName": "Content Scheduler #2",
+      "conversationId": "95234ca2-eadc-4d0f-b383-88cbfa8b5e90"
+    }
+  ]
+}

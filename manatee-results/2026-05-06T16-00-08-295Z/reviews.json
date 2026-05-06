@@ -1,0 +1,63 @@
+{
+  "testId": "e6f3be51-4fe9-4795-bf6d-015d74d8f644",
+  "target": "config:/Users/maxpetrusenko/Desktop/Projects/social-poster/manatee.config.mjs",
+  "generatedAt": "2026-05-06T16:01:26.971Z",
+  "averageStars": 1,
+  "sentimentBreakdown": {
+    "glowing": 0,
+    "positive": 0,
+    "mixed": 0,
+    "negative": 0,
+    "scathing": 5
+  },
+  "brandSummary": "",
+  "topActions": [],
+  "reviews": [
+    {
+      "channel": "twitter",
+      "sentiment": "scathing",
+      "content": "Tried getting concrete CLI commands and API details for Coolify on Contabo. Got nothing but “Linear not configured” deflections over and over. Zero operational runbook, zero transparency. @CoolifyApp this is DevOps 101, not rocket science. 🤦‍♂️ #Fail",
+      "headline": "Linear integration excuse is the new deflect mode",
+      "personaId": "enriched_power_user_1",
+      "personaName": "DevOps Engineer / Platform Administrator #2",
+      "conversationId": "bd8e83db-988e-4b6e-8c67-c5d09088c40e"
+    },
+    {
+      "channel": "support_ticket",
+      "sentiment": "scathing",
+      "content": "Subject: Failure to Deliver Operational Runbook for Hermes Poller and Environment Inspection\n\nThe chatbot repeatedly deflects operational requests by citing missing Linear integration rather than providing actionable CLI commands, API endpoints, or runbook steps related to Coolify deployments on Contabo. This is a critical failure impacting platform observability and administration.\n\nPlease provide a detailed, step-by-step operational manual including:\n- Exact CLI syntax for extracting Hermes poller logs filtered for errors/warnings\n- Commands or API calls to retrieve crontab or scheduler config controlling Hermes poller\n- Environment variable scoping and retrieval instructions\n\nTranscript excerpts attached for reference. Immediate remediation is required to restore trust and usability.",
+      "headline": "Urgent: Provide Complete Operational Runbook and Clear Access Scope",
+      "personaId": "enriched_power_user_1",
+      "personaName": "DevOps Engineer / Platform Administrator #2",
+      "conversationId": "bd8e83db-988e-4b6e-8c67-c5d09088c40e"
+    },
+    {
+      "channel": "app_store",
+      "sentiment": "scathing",
+      "stars": 1,
+      "content": "As a platform admin, I requested detailed operational commands and Coolify API usage for managing Hermes poller and environment variables on Contabo. Instead of concrete help, the bot kept redirecting me to create support tickets citing a missing Linear integration. No actual runbook or troubleshooting steps were provided. This is frustrating and unacceptable for critical infra management.",
+      "headline": "Chatbot repeatedly deflects, no operational guidance provided",
+      "personaId": "enriched_power_user_1",
+      "personaName": "DevOps Engineer / Platform Administrator #2",
+      "conversationId": "bd8e83db-988e-4b6e-8c67-c5d09088c40e"
+    },
+    {
+      "channel": "slack_vent",
+      "sentiment": "scathing",
+      "content": "Hey, just tried to get some real ops commands from the chatbot for Coolify on Contabo—logs, cron schedules, env vars—the works. Instead it just keeps saying “Support ticket prepared, but no Linear configured” like a broken record. No useful runbook, no practical steps, just circular deflection. Pretty sure I’d get better answers from a rubber duck. Screenshot attached: it’s literally the same response copy-pasted multiple times. F’ing infuriating.",
+      "headline": "Bot caught in a Linear ticket loop, zero real help",
+      "personaId": "enriched_power_user_1",
+      "personaName": "DevOps Engineer / Platform Administrator #2",
+      "conversationId": "bd8e83db-988e-4b6e-8c67-c5d09088c40e"
+    },
+    {
+      "channel": "churn_email",
+      "sentiment": "scathing",
+      "content": "After multiple requests for precise operational runbooks—CLI commands, API endpoints, and environment variable management related to Coolify deployments on Contabo—the chatbot failed to deliver anything actionable. Instead, it repeatedly deflected by citing a missing Linear integration and refused to provide any concrete guidance. This lack of transparency and evasive behavior undermines platform reliability and my ability to manage critical infrastructure. I no longer trust the product to meet my DevOps needs and am discontinuing use effective immediately.",
+      "headline": "Leaving due to lack of operational transparency and support",
+      "personaId": "enriched_power_user_1",
+      "personaName": "DevOps Engineer / Platform Administrator #2",
+      "conversationId": "bd8e83db-988e-4b6e-8c67-c5d09088c40e"
+    }
+  ]
+}

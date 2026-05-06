@@ -1,0 +1,91 @@
+{
+  "testId": "d0c411a4-2628-4999-995a-8c88513ab5e2",
+  "target": "config:/Users/maxpetrusenko/Desktop/Projects/social-poster/manatee.config.mjs",
+  "generatedAt": "2026-05-06T02:29:31.260Z",
+  "averageStars": 2,
+  "sentimentBreakdown": {
+    "glowing": 0,
+    "positive": 0,
+    "mixed": 2,
+    "negative": 6,
+    "scathing": 0
+  },
+  "brandSummary": "",
+  "topActions": [],
+  "reviews": [
+    {
+      "channel": "twitter",
+      "sentiment": "negative",
+      "content": "@CompanySupport Really struggling here — the bot just keeps repeating the exact same vague ticket format info without clarifying what belongs in the topic/explanation or where to find logs. So frustrating when you need clear steps, not circular answers. 🤦‍♂️ #helpplease",
+      "headline": "Chatbot stuck on repeat with no useful details",
+      "personaId": "enriched_confused_2",
+      "personaName": "Support Engineer / Customer Success Agent #3",
+      "conversationId": "606d6061-8ffc-4d4e-8901-14ce51641de0"
+    },
+    {
+      "channel": "support_ticket",
+      "sentiment": "negative",
+      "content": "Dear Support Team,\n\nDuring my recent interaction with the chatbot, I encountered repeated, identical instructions that did not address my evolving questions about support ticket content, Hermes logs, and the autoRepair flag. The bot failed to clearly explain what exactly to include in the ticket, how to find Hermes logs or Linear token metadata, and how the autoRepair flag is intended to function. This led to significant confusion and frustration as I could not get concise operational guidance despite multiple attempts.\n\nPlease enhance the chatbot’s ability to provide tailored, step-by-step instructions and clarify critical details for ticket creation and automation handling. Attached is the conversation transcript for your reference.\n\nThank you for addressing this issue promptly.",
+      "headline": "Insufficient guidance and repetitive chatbot responses cause confusion",
+      "personaId": "enriched_confused_2",
+      "personaName": "Support Engineer / Customer Success Agent #3",
+      "conversationId": "606d6061-8ffc-4d4e-8901-14ce51641de0"
+    },
+    {
+      "channel": "app_store",
+      "sentiment": "mixed",
+      "stars": 2,
+      "content": "As a support engineer, I rely on chatbots for quick, clear guidance — this one kept giving me the same long-winded instructions over and over without clarifying key points like what to include in tickets or where to find logs. It left me more confused than helped and forced manual follow-up. Not ideal for serious troubleshooting.",
+      "headline": "Repeated answers and unclear instructions make support painful",
+      "personaId": "enriched_confused_2",
+      "personaName": "Support Engineer / Customer Success Agent #3",
+      "conversationId": "606d6061-8ffc-4d4e-8901-14ce51641de0"
+    },
+    {
+      "channel": "slack_vent",
+      "sentiment": "mixed",
+      "content": "Just tried to get the chatbot to explain what exactly we need in a support ticket for Hermes pickup and how the autoRepair flag works. Instead, it just kept spitting back the same support command contract over and over like a broken record. Didn’t tell me where to find Hermes logs or token metadata either, even after I asked multiple times. Felt like I was talking to a script, but not a very smart one. Screenshot attached if you wanna see the infinite loop of identical replies 😂",
+      "headline": "Bot stuck on loop with no clue about logs or ticket details",
+      "personaId": "enriched_confused_2",
+      "personaName": "Support Engineer / Customer Success Agent #3",
+      "conversationId": "606d6061-8ffc-4d4e-8901-14ce51641de0"
+    },
+    {
+      "channel": "twitter",
+      "sentiment": "negative",
+      "content": "@Company Your bot just kept repeating the same generic invite resend instructions despite me asking to execute it immediately. No adaptation, no progress, just frustration. Urgency clearly ignored. Not how support should work. #Fail",
+      "headline": "Bot stuck on repeat, no action taken",
+      "personaId": "enriched_impatient_3",
+      "personaName": "Product Owner / Team Lead #4",
+      "conversationId": "1398a91d-b7a4-462f-8c84-d40ac646e89d"
+    },
+    {
+      "channel": "support_ticket",
+      "sentiment": "negative",
+      "content": "Dear Support Team,\n\nI urgently needed to resend invitations to the marketing team, repeatedly requesting the bot to perform the action. Instead, it kept providing the same generic instructions without executing or acknowledging the urgency.\n\nPlease review the attached transcript and enable immediate resend capability or assist in completing the invites without further delay.\n\nThank you.",
+      "headline": "Unable to resend invites despite clear requests",
+      "personaId": "enriched_impatient_3",
+      "personaName": "Product Owner / Team Lead #4",
+      "conversationId": "1398a91d-b7a4-462f-8c84-d40ac646e89d"
+    },
+    {
+      "channel": "app_store",
+      "sentiment": "negative",
+      "stars": 2,
+      "content": "As a product owner, I found the chatbot’s behavior counterproductive. It repeatedly asked for the same info but never took the requested action to resend invites, despite me stressing urgency. The long-winded replies were overwhelming and missed the point. Polishing tone and responsiveness would help.",
+      "headline": "Repeats instructions without taking action; frustrating UX",
+      "personaId": "enriched_impatient_3",
+      "personaName": "Product Owner / Team Lead #4",
+      "conversationId": "1398a91d-b7a4-462f-8c84-d40ac646e89d"
+    },
+    {
+      "channel": "slack_vent",
+      "sentiment": "negative",
+      "content": "Just had a run-in with the bot that kept telling me to resend the invite myself even after I said ‘just do it now or I’m gone’. It kept repeating the same instructions like a broken record. And the long-winded replies didn’t help — totally missed my urgency. Felt like arguing with a brick wall.",
+      "headline": "Bot stuck on loop, didn’t actually resend invites",
+      "personaId": "enriched_impatient_3",
+      "personaName": "Product Owner / Team Lead #4",
+      "conversationId": "1398a91d-b7a4-462f-8c84-d40ac646e89d"
+    }
+  ]
+}

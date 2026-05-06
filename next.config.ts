@@ -6,6 +6,13 @@ const nextConfig: NextConfig = {
   outputFileTracingRoot: process.cwd(),
   serverExternalPackages: ["better-sqlite3", "node-cron"],
   images: {
+    localPatterns: [
+      {
+        // Preserve Next's existing "all local images are allowed" behavior while
+        // explicitly permitting query-string backed internal artifact previews.
+        pathname: "/**",
+      },
+    ],
     remotePatterns: [
       {
         protocol: "https",
