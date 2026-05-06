@@ -156,7 +156,9 @@ export function ConnectionsDrawer({
                     method.provider === "direct" && method.authType === "oauth"
                 );
                 const useOneClickOAuth =
-                  selectedMethodMode === "native" && Boolean(nativeOauthMethod);
+                  selectedMethodMode === "native" &&
+                  Boolean(nativeOauthMethod) &&
+                  !isProfessionalEligibilityBlocked(definition.type);
                 const visibleMethods = definition.methods.filter((method) =>
                   selectedMethodMode === "native"
                     ? method.provider === "direct" && !useOneClickOAuth
@@ -325,6 +327,10 @@ export function ConnectionsDrawer({
       </div>
     </div>
   );
+}
+
+function isProfessionalEligibilityBlocked(platformType: PlatformType) {
+  return platformType === "instagram" || platformType === "instagram_personal";
 }
 
 function hasDeactivatedOAuthMethod(

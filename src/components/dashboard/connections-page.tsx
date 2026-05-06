@@ -392,9 +392,15 @@ export function ConnectionsPage({
       });
 
       if (!response.ok) {
-        throw new Error("Failed to disconnect connection.");
+        const body = (await response.json().catch(() => ({}))) as {
+          error?: string;
+        };
+        throw new Error(body.error ?? "Failed to disconnect connection.");
       }
 
+      setLocalPlatforms((currentPlatforms) =>
+        currentPlatforms.filter((platform) => platform.id !== platformId)
+      );
       router.refresh();
     } catch (disconnectError) {
       alert(

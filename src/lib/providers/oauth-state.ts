@@ -14,6 +14,7 @@ export const NATIVE_OAUTH_COOKIE = "sp_native_oauth";
 export type NativeOAuthCookie = {
   nonce: string;
   codeVerifier?: string | null;
+  redirectUri?: string | null;
   credentials?: {
     clientId?: string;
     clientSecret?: string;
@@ -67,6 +68,8 @@ export function decodeNativeOAuthCookie(value: string | null): NativeOAuthCookie
       nonce: parsed.nonce,
       codeVerifier:
         typeof parsed.codeVerifier === "string" ? parsed.codeVerifier : null,
+      redirectUri:
+        typeof parsed.redirectUri === "string" ? parsed.redirectUri : null,
       credentials: readCookieCredentials(parsed.credentials),
     };
   } catch {
@@ -155,7 +158,7 @@ export function verifyOAuthState(
  * This keeps portal whitelists simple (one URI per domain).
  */
 export function oauthCallbackUrl(
-  _platform: string,
+  platform: string,
   request: { headers: Headers; url?: string }
 ): string {
   const proto =
@@ -165,7 +168,47 @@ export function oauthCallbackUrl(
     request.headers.get("x-forwarded-host") ??
     request.headers.get("host") ??
     "localhost:3000";
-  return `${proto}://${host}/api/auth/callback`;
+  const requestOrigin = `${proto}://${host}`;
+  const platformOverride = resolvePlatformOAuthCallbackOverride(
+    platform,
+    requestOrigin
+  );
+  if (platformOverride) return platformOverride;
+
+  const override = resolveOAuthCallbackOverride(
+    process.env.SOCIAL_POSTER_OAUTH_CALLBACK_URL,
+    requestOrigin
+  );
+
+  return override ?? `${requestOrigin}/api/auth/callback`;
+}
+
+function resolvePlatformOAuthCallbackOverride(
+  platform: string,
+  requestOrigin: string
+) {
+  const normalized = platform.trim().toLowerCase();
+  const explicit =
+    normalized === "twitter" || normalized === "x"
+      ? process.env.SOCIAL_POSTER_TWITTER_CALLBACK_URL ||
+        process.env.TWITTER_CALLBACK_URL ||
+        process.env.X_CALLBACK_URL
+      : null;
+  const explicitValue = resolveOAuthCallbackOverride(explicit, requestOrigin);
+  if (explicitValue) return explicitValue;
+
+  if (normalized !== "twitter" && normalized !== "x") return null;
+
+  try {
+    const appUrl = new URL(requestOrigin);
+    if (appUrl.protocol === "https:" && isLoopbackHost(appUrl.hostname)) {
+      return "http://127.0.0.1:3001/api/auth/callback";
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
 }
 
 export function resolveOAuthCallbackOverride(

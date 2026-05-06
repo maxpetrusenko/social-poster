@@ -216,12 +216,14 @@ function buildSetupGuide(
         "Open User authentication settings.",
         "Set app permissions to Read and write.",
         "Set app type to Web App, Automated App or Bot.",
+        "Keep DM permissions off unless the app has already been approved for DM access.",
         redirectUris.length > 1
-          ? "Add both local Redirect URIs below exactly so localhost and 127.0.0.1 both work."
-          : "Add the Redirect URI below exactly.",
+          ? "Add the local Redirect URI below exactly. For HTTPS local development, Social Poster uses an X-only HTTP bridge because X expects local callbacks on 127.0.0.1."
+          : "Add the Redirect URI below exactly. For HTTPS local development, Social Poster uses an X-only HTTP bridge because X expects local callbacks on 127.0.0.1.",
+        "Keep the HTTPS Social Poster tab open at https://127.0.0.1:3000; the bridge only receives X's callback and forwards it back to the HTTPS app.",
         "Save changes, then connect X again.",
       ],
-      permissions: ["Read and Write tweets", "Read users"],
+      permissions: ["tweet.read", "tweet.write", "users.read", "offline.access"],
       useCaseText: X_USE_CASE_TEXT,
       missing: availability?.configured === false ? availability.missing : [],
     };
@@ -231,7 +233,7 @@ function buildSetupGuide(
     return {
       title: "Facebook app configuration",
       subtitle:
-        "Meta blocks OAuth until the exact redirect URI is whitelisted.",
+        "Meta blocks OAuth when the redirect URI is not whitelisted or the app is not cleared for the requested permissions.",
       stepsTitle: "How to get credentials",
       links: method.docs.length
         ? method.docs
@@ -243,6 +245,11 @@ function buildSetupGuide(
           ],
       steps: [
         "Open Meta Developers and select the app used by Social Poster.",
+        "In Settings > Basic, set App Domains to social.maxpetrusenko.com and maxpetrusenko.com.",
+        "In Settings > Basic, set Website URL to https://social.maxpetrusenko.com/.",
+        "In Settings > Basic, set Privacy Policy URL to https://social.maxpetrusenko.com/privacy.",
+        "In Settings > Basic, set Terms of Service URL to https://social.maxpetrusenko.com/terms.",
+        "Confirm App Purpose, category, contact email, and app icon are filled in, then save Basic settings.",
         "Open Facebook Login, then Settings.",
         "Turn Client OAuth Login on.",
         "Turn Web OAuth Login on.",
@@ -250,13 +257,55 @@ function buildSetupGuide(
           ? "Paste the Redirect URI below into Valid OAuth Redirect URIs exactly as shown."
           : "Paste this app's callback URL into Valid OAuth Redirect URIs exactly as shown.",
         "Also add the app domain, for example social.maxpetrusenko.com, in the app's domain settings.",
+        "In App Review > Permissions and Features, make sure public_profile has Advanced Access and there is no pending Data Use Checkup.",
+        "Request only the Page permissions listed below until comments or inbox features are app-reviewed.",
         "Save changes, then return here and connect Facebook again.",
       ],
       permissions: [
-        "business_management",
+        "public_profile",
         "pages_show_list",
         "pages_manage_posts",
         "pages_read_engagement",
+      ],
+      useCaseText: null,
+      missing: availability?.configured === false ? availability.missing : [],
+    };
+  }
+
+  if (
+    (definition.type === "instagram" ||
+      definition.type === "instagram_personal") &&
+    method.authType === "oauth"
+  ) {
+    return {
+      title: `${definition.label} app configuration`,
+      subtitle:
+        "Instagram direct OAuth uses the Instagram Platform app credentials and only works for Business or Creator accounts.",
+      stepsTitle: "How to configure Instagram OAuth",
+      links: method.docs.length
+        ? method.docs
+        : [
+            {
+              label: "Meta app dashboard",
+              url: "https://developers.facebook.com/apps/",
+            },
+          ],
+      steps: [
+        "Open Meta Developers and select the Instagram Platform app matching PLATFORM_INSTAGRAM_APP_ID.",
+        "Enable the Instagram Platform product and confirm the OAuth redirect URI is allowed.",
+        callbackUrl
+          ? "Paste the Redirect URI below into the Instagram app OAuth redirect settings exactly as shown."
+          : "Paste this app's callback URL into the Instagram app OAuth redirect settings exactly as shown.",
+        "Use a Business or Creator Instagram account. Default personal accounts cannot grant these permissions.",
+        "For default personal accounts, use the Managed relay method instead of direct OAuth.",
+        "Save changes, restart the dev server if env changed, then connect Instagram again.",
+      ],
+      permissions: [
+        "instagram_business_basic",
+        "instagram_business_content_publish",
+        "instagram_business_manage_comments",
+        "instagram_business_manage_messages",
+        "instagram_business_manage_insights",
       ],
       useCaseText: null,
       missing: availability?.configured === false ? availability.missing : [],
@@ -301,8 +350,70 @@ function buildSetupGuide(
               "w_member_social",
               "w_organization_social",
               "r_organization_social",
-              "r_organization_admin",
+              "rw_organization_admin",
             ],
+      useCaseText: null,
+      missing: availability?.configured === false ? availability.missing : [],
+    };
+  }
+
+  if (
+    (definition.type === "youtube" || definition.type === "google_business") &&
+    method.authType === "oauth"
+  ) {
+    return {
+      title: `${definition.label} Google OAuth configuration`,
+      subtitle:
+        "Google rejects OAuth when the authorized redirect URI does not exactly match the URI this app sends.",
+      stepsTitle: "How to fix redirect_uri_mismatch",
+      links: method.docs.length
+        ? method.docs
+        : [
+            {
+              label: "Google credentials console",
+              url: "https://console.cloud.google.com/apis/credentials",
+            },
+          ],
+      steps: [
+        "Open Google Cloud Console and select the project that owns this OAuth client.",
+        "Open APIs & Services, then Credentials.",
+        "Open the OAuth 2.0 Client ID used by this app.",
+        "Under Authorized redirect URIs, add the Redirect URI shown below exactly.",
+        redirectUris.length > 1
+          ? "For local dev, add both local Redirect URI variants below so localhost and 127.0.0.1 both work."
+          : "For local dev, make sure the host, port, protocol, and path all match exactly.",
+        "Save changes, wait a minute for Google to apply them, then connect again.",
+      ],
+      permissions: inferGenericPermissions(definition.type),
+      useCaseText: null,
+      missing: availability?.configured === false ? availability.missing : [],
+    };
+  }
+
+  if (definition.type === "pinterest" && method.authType === "oauth") {
+    return {
+      title: "Pinterest app configuration",
+      subtitle:
+        "Pinterest OAuth stays deactivated until the app has a Pinterest client ID and secret in env.",
+      stepsTitle: "How to enable Pinterest OAuth",
+      links: method.docs.length
+        ? method.docs
+        : [
+            {
+              label: "Pinterest app dashboard",
+              url: "https://developers.pinterest.com/apps/",
+            },
+          ],
+      steps: [
+        "Create or open the Pinterest app used by Social Poster.",
+        "Copy the app Client ID and Client Secret into .env.local.",
+        "Use either PINTEREST_CLIENT_ID / PINTEREST_CLIENT_SECRET or PLATFORM_PINTEREST_APP_ID / PLATFORM_PINTEREST_APP_SECRET.",
+        callbackUrl
+          ? "Add the Redirect URI shown below exactly in Pinterest app settings."
+          : "Add the callback URL shown by this app into the Pinterest app settings.",
+        "Save changes, restart the dev server, then connect Pinterest again.",
+      ],
+      permissions: inferGenericPermissions(definition.type),
       useCaseText: null,
       missing: availability?.configured === false ? availability.missing : [],
     };

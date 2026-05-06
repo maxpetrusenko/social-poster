@@ -4,6 +4,7 @@ import { and, eq } from "drizzle-orm";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
+import { DashboardPageContent } from "@/components/dashboard/ui";
 import EditPlatformForm from "./edit-form";
 import { getTenantContext } from "@/lib/tenancy";
 
@@ -24,8 +25,8 @@ export default async function PlatformDetailPage({
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-2xl mx-auto">
+    <DashboardPageContent className="max-w-2xl">
+      <div>
         {/* Header */}
         <Link
           href="/dashboard/platforms"
@@ -41,6 +42,6 @@ export default async function PlatformDetailPage({
 
         <EditPlatformForm platform={platform} />
       </div>
-    </div>
+    </DashboardPageContent>
   );
 }

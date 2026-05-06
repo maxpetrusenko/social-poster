@@ -19,7 +19,7 @@ const CONTAINER_POLL_INTERVAL_MS = 2000;
 const CONTAINER_POLL_MAX_ATTEMPTS = 60;
 
 export class InstagramPersonalProvider extends OAuthProvider {
-  platformName = "Instagram (Personal)";
+  platformName = "Instagram (Professional)";
   authType = "oauth2" as const;
   maxCaptionLength = 2200;
   supportedPostTypes: PostType[] = ["image", "carousel", "reel", "story"];
@@ -327,6 +327,10 @@ function numberOrUndefined(value: unknown) {
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+export class InstagramLoginProvider extends InstagramPersonalProvider {
+  platformName = "Instagram";
 }
 
 export default InstagramPersonalProvider;

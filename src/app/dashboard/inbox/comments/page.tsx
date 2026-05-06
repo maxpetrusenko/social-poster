@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
-import { SocialInboxSurface } from "@/components/dashboard/social-inbox-surface";
-import { getSocialInboxSurfaceData, markInboxSurfaceSeen } from "@/lib/inbox/data";
+import { MessageCircle } from "lucide-react";
+import { SocialInboxPaused } from "@/components/dashboard/social-inbox-paused";
 import { getTenantContext } from "@/lib/tenancy";
 
 export const dynamic = "force-dynamic";
@@ -8,17 +8,13 @@ export const dynamic = "force-dynamic";
 export default async function InboxCommentsPage() {
   const tenant = await getTenantContext();
   if (!tenant) redirect("/login");
-  await markInboxSurfaceSeen(tenant.currentWorkspace.id, "comments");
-  const data = await getSocialInboxSurfaceData(
-    tenant.currentWorkspace.id,
-    "comments"
-  );
 
   return (
-    <SocialInboxSurface
-      surface="comments"
-      platforms={data.platforms}
-      rows={data.rows}
+    <SocialInboxPaused
+      icon={MessageCircle}
+      label="Comments"
+      title="Comments are getting a careful tune-up."
+      description="This page is temporarily blocked while we finish the comment workflow, platform permission checks, and response controls. Nothing is broken on your side; we are keeping this area quiet until it is dependable enough for client-facing conversations."
     />
   );
 }

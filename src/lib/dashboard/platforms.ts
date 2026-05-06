@@ -21,7 +21,7 @@ export const PLATFORM_META: Record<string, PlatformMeta> = {
   bluesky: { label: "Bluesky", shortLabel: "BS", accent: "#1185fe", glow: "rgba(17,133,254,0.18)" },
   google_business: { label: "Google Business", shortLabel: "GB", accent: "#0f9d58", glow: "rgba(15,157,88,0.16)" },
   mastodon: { label: "Mastodon", shortLabel: "MA", accent: "#6364ff", glow: "rgba(99,100,255,0.16)" },
-  instagram_personal: { label: "Instagram Personal", shortLabel: "IP", accent: "#c13584", glow: "rgba(193,53,132,0.16)" },
+  instagram_personal: { label: "Instagram Personal / Relay", shortLabel: "IP", accent: "#c13584", glow: "rgba(193,53,132,0.16)" },
   whatsapp: { label: "WhatsApp", shortLabel: "WA", accent: "#25d366", glow: "rgba(37,211,102,0.16)" },
 };
 

@@ -1,4 +1,4 @@
-node_modules/
+starnode_modules/
 .next/
 .next-dev/
 dist/
@@ -26,3 +26,4 @@ scripts/oauth-portals/*.png
 certs/
 .gstack/
 .playwright-mcp/
+node_modules

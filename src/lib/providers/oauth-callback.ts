@@ -7,6 +7,7 @@ import { getRequestAppUrl } from "@/lib/app-url";
 import { PLATFORM_TYPES, type PlatformType } from "@/lib/platforms";
 import { upsertPlatformConnection } from "@/lib/platform-connections";
 import { mergeProviderCredentials } from "@/lib/providers/credentials";
+import { FacebookProvider } from "@/lib/providers/facebook";
 import { getProvider } from "@/lib/providers/registry";
 import {
   type NativeOAuthState,
@@ -62,7 +63,7 @@ export async function handleNativeOAuthCallback(
     return NextResponse.redirect(fallback);
   }
 
-  const redirectUri = oauthCallbackUrl(platform, request);
+  const redirectUri = oauthCookie.redirectUri ?? oauthCallbackUrl(platform, request);
 
   try {
     const provider = getProvider(
@@ -77,7 +78,18 @@ export async function handleNativeOAuthCallback(
       redirectUri,
       oauthCookie.codeVerifier ?? undefined
     );
-    const profile = await provider.getProfile(tokens.accessToken).catch(() => null);
+    if (platform === "facebook" && provider instanceof FacebookProvider) {
+      return saveFacebookPageConnections({
+        request,
+        provider,
+        tokens,
+        state,
+        tenant,
+        fallback,
+      });
+    }
+
+    const profile = await getCallbackProfile(provider, platform, tokens.accessToken);
     const now = new Date();
     const expiresAt = tokens.expiresIn
       ? now.getTime() + tokens.expiresIn * 1000
@@ -130,6 +142,117 @@ export async function handleNativeOAuthCallback(
         : "Native OAuth callback failed."
     );
     return NextResponse.redirect(fallback);
+  }
+}
+
+async function saveFacebookPageConnections({
+  provider,
+  tokens,
+  state,
+  tenant,
+  fallback,
+}: {
+  request: NextRequest;
+  provider: FacebookProvider;
+  tokens: Awaited<ReturnType<FacebookProvider["exchangeCode"]>>;
+  state: NativeOAuthState;
+  tenant: Exclude<Awaited<ReturnType<typeof requireApiWorkspaceManager>>, NextResponse>;
+  fallback: URL;
+}) {
+  const pages = await provider.getUserPages(tokens.accessToken);
+  if (pages.length === 0) {
+    fallback.searchParams.set(
+      "error",
+      "Facebook connected, but no manageable Pages were returned. Make sure the signed-in Facebook user has Page access and grants the requested Page permissions."
+    );
+    return NextResponse.redirect(fallback);
+  }
+
+  const now = new Date();
+  const userTokenExpiresAt = tokens.expiresIn
+    ? now.getTime() + tokens.expiresIn * 1000
+    : null;
+
+  let created = 0;
+  let updated = 0;
+
+  for (const page of pages) {
+    const result = await upsertPlatformConnection({
+      workspaceId: tenant.currentWorkspace.id,
+      name: page.name || "Facebook Page",
+      type: "facebook",
+      handle: page.name || null,
+      accountId: page.id,
+      provider: "direct",
+      enabled: true,
+      config: {
+        profileId: state.profileId ?? null,
+        authMethod: state.methodId ?? "facebook_native",
+        credentials: {
+          accessToken: page.accessToken,
+          pageAccessToken: page.accessToken,
+          userAccessToken: tokens.accessToken,
+          refreshToken: tokens.refreshToken ?? null,
+          userTokenExpiresAt,
+          tokenType: tokens.tokenType ?? "Bearer",
+          scope: tokens.scope ?? null,
+        },
+        providerProfile: {
+          platformId: page.id,
+          name: page.name,
+          handle: page.name,
+          avatarUrl: page.picture,
+          extra: {
+            category: page.category,
+          },
+        },
+        facebookPage: {
+          id: page.id,
+          name: page.name,
+          category: page.category,
+          picture: page.picture,
+        },
+        profileRefresh: {
+          checkedAt: now.toISOString(),
+          avatarChangedAt: page.picture ? now.toISOString() : null,
+        },
+        notes: "Connected through native Facebook OAuth callback.",
+      },
+      now,
+    });
+
+    if (result.created) created += 1;
+    else updated += 1;
+  }
+
+  fallback.searchParams.set("connected", "facebook");
+  fallback.searchParams.set("pages", String(pages.length));
+  console.log(
+    `[oauth-callback] ✅ Saved Facebook Page connections for workspace ${tenant.currentWorkspace.id}: created=${created}, updated=${updated}`
+  );
+
+  try {
+    const { cancelDripIfDone } = await import("@/lib/marketing/drip");
+    cancelDripIfDone(tenant.user.id, "welcome_2_connect");
+  } catch {
+    /* non-critical */
+  }
+
+  return NextResponse.redirect(fallback);
+}
+
+async function getCallbackProfile(
+  provider: ReturnType<typeof getProvider>,
+  platform: string,
+  accessToken: string
+) {
+  try {
+    return await provider.getProfile(accessToken);
+  } catch (error) {
+    if (platform === "linkedin_company") {
+      throw error;
+    }
+    return null;
   }
 }
 

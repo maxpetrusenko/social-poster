@@ -1,6 +1,7 @@
 import { db } from "@/db";
 import { platforms } from "@/db/schema";
 import { requireApiWorkspaceManager } from "@/lib/api-authorization";
+import { DISCONNECTED_CONNECTION_FLAG } from "@/lib/platform-connection-state";
 import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -26,7 +27,22 @@ export async function POST(
       );
     }
 
-    await db.delete(platforms).where(eq(platforms.id, id));
+    const now = new Date();
+    const { credentials: _credentials, ...safeConfig } = platform.config ?? {};
+    void _credentials;
+
+    await db
+      .update(platforms)
+      .set({
+        enabled: false,
+        config: {
+          ...safeConfig,
+          [DISCONNECTED_CONNECTION_FLAG]: now.toISOString(),
+          disconnectedProvider: platform.provider,
+        },
+        updatedAt: now,
+      })
+      .where(eq(platforms.id, id));
 
     return NextResponse.json({ success: true });
   } catch (error) {

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Plus } from "lucide-react";
-import { DashboardHero, HeroButton, MetricCard, PlatformChip, SectionCard, StatusBadge } from "@/components/dashboard/ui";
+import { DashboardHero, DashboardPageContent, HeroButton, MetricCard, PlatformChip, SectionCard, StatusBadge } from "@/components/dashboard/ui";
 import { ScheduleEnabledToggle } from "@/components/schedule-enabled-toggle";
 import { getDashboardInsights } from "@/lib/dashboard/insights";
 import { relativeTime } from "@/lib/utils";
@@ -26,7 +26,7 @@ export default async function SchedulesPage() {
     .sort((a, b) => a.getTime() - b.getTime())[0] ?? null;
 
   return (
-    <div className="space-y-6">
+    <DashboardPageContent>
       <DashboardHero
         eyebrow="Schedules"
         title="Automation cadence"
@@ -165,6 +165,6 @@ export default async function SchedulesPage() {
           ))}
         </div>
       </SectionCard>
-    </div>
+    </DashboardPageContent>
   );
 }

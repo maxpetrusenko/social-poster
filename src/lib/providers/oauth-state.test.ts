@@ -11,6 +11,7 @@ import {
 // --- oauthCallbackUrl (request-derived) ---
 
 test("oauthCallbackUrl derives URL from request headers", () => {
+  delete process.env.SOCIAL_POSTER_OAUTH_CALLBACK_URL;
   const request = {
     headers: new Headers({
       "x-forwarded-proto": "https",
@@ -19,30 +20,91 @@ test("oauthCallbackUrl derives URL from request headers", () => {
   };
   assert.equal(
     oauthCallbackUrl("linkedin_personal", request),
-    "https://social.maxpetrusenko.com/api/auth/callback/linkedin-personal"
+    "https://social.maxpetrusenko.com/api/auth/callback"
   );
 });
 
 test("oauthCallbackUrl falls back to host header", () => {
+  delete process.env.SOCIAL_POSTER_OAUTH_CALLBACK_URL;
   const request = {
     headers: new Headers({ host: "localhost:3000" }),
     url: "http://localhost:3000/api/auth/linkedin",
   };
   assert.equal(
     oauthCallbackUrl("twitter", request),
-    "http://localhost:3000/api/auth/callback/twitter"
+    "http://localhost:3000/api/auth/callback"
   );
 });
 
-test("oauthCallbackUrl replaces underscores with dashes", () => {
+test("oauthCallbackUrl uses same-origin callback override", () => {
+  process.env.SOCIAL_POSTER_OAUTH_CALLBACK_URL =
+    "https://social.maxpetrusenko.com/api/auth/callback";
   const request = {
-    headers: new Headers({ host: "localhost:3000" }),
-    url: "http://localhost:3000/test",
+    headers: new Headers({
+      "x-forwarded-proto": "https",
+      "x-forwarded-host": "social.maxpetrusenko.com",
+    }),
   };
   assert.equal(
-    oauthCallbackUrl("linkedin_company", request),
-    "http://localhost:3000/api/auth/callback/linkedin-company"
+    oauthCallbackUrl("youtube", request),
+    "https://social.maxpetrusenko.com/api/auth/callback"
   );
+  delete process.env.SOCIAL_POSTER_OAUTH_CALLBACK_URL;
+});
+
+test("oauthCallbackUrl ignores production callback override on localhost", () => {
+  process.env.SOCIAL_POSTER_OAUTH_CALLBACK_URL =
+    "https://social.maxpetrusenko.com/api/auth/callback";
+  const request = {
+    headers: new Headers({ host: "localhost:3000" }),
+    url: "http://localhost:3000/api/auth/youtube",
+  };
+  assert.equal(
+    oauthCallbackUrl("youtube", request),
+    "http://localhost:3000/api/auth/callback"
+  );
+  delete process.env.SOCIAL_POSTER_OAUTH_CALLBACK_URL;
+});
+
+test("oauthCallbackUrl uses 127.0.0.1 override for localhost requests", () => {
+  process.env.SOCIAL_POSTER_OAUTH_CALLBACK_URL =
+    "http://127.0.0.1:3000/api/auth/callback";
+  const request = {
+    headers: new Headers({ host: "localhost:3000" }),
+    url: "http://localhost:3000/api/auth/youtube",
+  };
+  assert.equal(
+    oauthCallbackUrl("youtube", request),
+    "http://127.0.0.1:3000/api/auth/callback"
+  );
+  delete process.env.SOCIAL_POSTER_OAUTH_CALLBACK_URL;
+});
+
+test("oauthCallbackUrl uses X local bridge for HTTPS loopback requests", () => {
+  delete process.env.SOCIAL_POSTER_OAUTH_CALLBACK_URL;
+  delete process.env.SOCIAL_POSTER_TWITTER_CALLBACK_URL;
+  const request = {
+    headers: new Headers({ host: "127.0.0.1:3000" }),
+    url: "https://127.0.0.1:3000/api/auth/twitter",
+  };
+  assert.equal(
+    oauthCallbackUrl("twitter", request),
+    "http://127.0.0.1:3001/api/auth/callback"
+  );
+});
+
+test("oauthCallbackUrl lets X-specific callback override the local bridge", () => {
+  process.env.SOCIAL_POSTER_TWITTER_CALLBACK_URL =
+    "http://127.0.0.1:3999/api/auth/callback";
+  const request = {
+    headers: new Headers({ host: "127.0.0.1:3000" }),
+    url: "https://127.0.0.1:3000/api/auth/twitter",
+  };
+  assert.equal(
+    oauthCallbackUrl("twitter", request),
+    "http://127.0.0.1:3999/api/auth/callback"
+  );
+  delete process.env.SOCIAL_POSTER_TWITTER_CALLBACK_URL;
 });
 
 // --- signOAuthState / verifyOAuthState ---

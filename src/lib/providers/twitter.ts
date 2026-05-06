@@ -44,10 +44,8 @@ export class TwitterProvider extends OAuthProvider {
     "tweet.read",
     "tweet.write",
     "users.read",
-    "media.write",
-    "dm.read",
-    "dm.write",
     "offline.access",
+    ...extraTwitterScopes(),
   ];
 
   get rateLimits(): RateLimitConfig {
@@ -289,6 +287,29 @@ function pkceChallenge(verifier: string) {
     .createHash("sha256")
     .update(verifier)
     .digest("base64url");
+}
+
+function extraTwitterScopes() {
+  const raw =
+    process.env.X_EXTRA_SCOPES ||
+    process.env.TWITTER_EXTRA_SCOPES ||
+    process.env.SOCIAL_POSTER_TWITTER_EXTRA_SCOPES ||
+    "";
+  const baseScopes = [
+    "tweet.read",
+    "tweet.write",
+    "users.read",
+    "offline.access",
+  ];
+  const scopes = raw
+    .split(",")
+    .map((scope) => scope.trim())
+    .filter(Boolean);
+
+  return scopes.filter(
+    (scope, index) =>
+      !baseScopes.includes(scope) && !scopes.slice(0, index).includes(scope)
+  );
 }
 
 type MediaItem = {

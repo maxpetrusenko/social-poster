@@ -1,4 +1,5 @@
 import { RepliesMockShowcase } from "@/components/dashboard/replies-mock-showcase";
+import { DashboardPageContent } from "@/components/dashboard/ui";
 import { getRepliesPageData } from "@/lib/dashboard/replies-data";
 import { getTenantContext } from "@/lib/tenancy";
 import { redirect } from "next/navigation";
@@ -11,13 +12,13 @@ export default async function InboxRepliesPage() {
   const data = await getRepliesPageData(tenant.currentWorkspace.id);
 
   return (
-    <div className="space-y-6">
+    <DashboardPageContent>
       <RepliesMockShowcase
         connections={data.connections}
         profiles={data.profiles}
         initialCards={data.candidates}
         initialLanguage={data.defaultLanguage}
       />
-    </div>
+    </DashboardPageContent>
   );
 }

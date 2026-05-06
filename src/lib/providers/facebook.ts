@@ -30,13 +30,10 @@ export class FacebookProvider extends OAuthProvider {
   supportedPostTypes: PostType[] = ["text", "image", "video", "link"];
   supportedMediaTypes: MediaType[] = ["jpeg", "png", "gif", "mp4", "mov"];
   requiredScopes = [
-    "business_management",
     "pages_show_list",
-    "pages_manage_posts",
     "pages_read_engagement",
-    "pages_read_user_content",
-    "pages_manage_metadata",
-    "pages_messaging",
+    "pages_manage_posts",
+    ...extraFacebookScopes(),
   ];
 
   get rateLimits(): RateLimitConfig {
@@ -218,6 +215,13 @@ export class FacebookProvider extends OAuthProvider {
       extra: body,
     };
   }
+}
+
+function extraFacebookScopes() {
+  return (process.env.FACEBOOK_EXTRA_SCOPES ?? "")
+    .split(",")
+    .map((scope) => scope.trim())
+    .filter(Boolean);
 }
 
 function extraString(content: PublishContent, ...keys: string[]) {

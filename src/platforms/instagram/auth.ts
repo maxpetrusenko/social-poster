@@ -1,5 +1,7 @@
-import { InstagramProvider } from "../../lib/providers/instagram";
-import { InstagramPersonalProvider } from "../../lib/providers/instagram-personal";
+import {
+  InstagramLoginProvider,
+  InstagramPersonalProvider,
+} from "../../lib/providers/instagram-personal";
 import type { ProviderCredentials } from "../_shared/base-platform";
 import type { PlatformAuth } from "../_shared/types";
 
@@ -10,7 +12,7 @@ export function createAuth(
   const provider =
     variant === "personal"
       ? new InstagramPersonalProvider(credentials)
-      : new InstagramProvider(credentials);
+      : new InstagramLoginProvider(credentials);
 
   return {
     authType: "oauth2",

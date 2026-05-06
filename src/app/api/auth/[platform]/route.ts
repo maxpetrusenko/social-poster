@@ -56,7 +56,7 @@ async function startNativeOAuth(
     ? null
     : transientCredentials;
 
-  if (!sameOrigin(appUrl, redirectUri)) {
+  if (!sameOrigin(appUrl, redirectUri, platform)) {
     return oauthStartError(
       request,
       appUrl,
@@ -74,6 +74,7 @@ async function startNativeOAuth(
     cookieStore.set(NATIVE_OAUTH_COOKIE, encodeNativeOAuthCookie({
       nonce,
       codeVerifier,
+      redirectUri,
       credentials: oauthCredentials ?? null,
     }), {
       httpOnly: true,
@@ -98,6 +99,8 @@ async function startNativeOAuth(
 function isAppManagedOAuth(platform: string) {
   return (
     platform === "facebook" ||
+    platform === "instagram" ||
+    platform === "instagram_personal" ||
     platform === "twitter" ||
     platform === "x" ||
     platform === "linkedin" ||
@@ -118,13 +121,20 @@ function oauthStartError(request: NextRequest, appUrl: string, message: string) 
   return NextResponse.redirect(fallback);
 }
 
-function sameOrigin(left: string, right: string) {
+function sameOrigin(left: string, right: string, platform?: string) {
   try {
     const l = new URL(left);
     const r = new URL(right);
     if (l.origin === r.origin) return true;
     // Treat localhost ↔ 127.0.0.1 as equivalent (same machine, different names)
     if (isLoopback(l.hostname) && isLoopback(r.hostname) && l.port === r.port) {
+      return true;
+    }
+    if (
+      (platform === "twitter" || platform === "x") &&
+      isLoopback(l.hostname) &&
+      isLoopback(r.hostname)
+    ) {
       return true;
     }
     return false;

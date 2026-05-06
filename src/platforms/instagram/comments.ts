@@ -1,12 +1,9 @@
 import type { PaginatedResult, PlatformComment, PlatformComments } from "../_shared/types";
 
-const FACEBOOK_GRAPH = "https://graph.facebook.com/v21.0";
 const INSTAGRAM_GRAPH = "https://graph.instagram.com/v25.0";
 
-export function createComments(
-  variant: "business" | "personal" = "business"
-): PlatformComments {
-  const base = variant === "personal" ? INSTAGRAM_GRAPH : FACEBOOK_GRAPH;
+export function createComments(): PlatformComments {
+  const base = INSTAGRAM_GRAPH;
 
   return {
     async getComments(accessToken, postId, cursor, limit = 50) {

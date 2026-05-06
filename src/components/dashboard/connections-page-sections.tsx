@@ -112,7 +112,7 @@ export function ConnectionsWorkspaceHeader({
               <option value="linkedin_personal">LinkedIn Personal</option>
               <option value="linkedin_company">LinkedIn Company</option>
               <option value="instagram">Instagram</option>
-              <option value="instagram_personal">Instagram Personal</option>
+              <option value="instagram_personal">Instagram Personal / Relay</option>
               <option value="facebook">Facebook</option>
               <option value="threads">Threads</option>
               <option value="bluesky">Bluesky</option>
@@ -180,6 +180,26 @@ export function ConnectionsWorkspaceHeader({
           );
         })}
       </div>
+
+      {selectedViewMode === "proxy" ? (
+        <div
+          role="status"
+          className="mt-4 flex gap-3 rounded-[16px] border border-[#ead2a8] bg-[#fff7e8] px-4 py-3 text-sm text-[#6d5530]"
+        >
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[#b3761c]" />
+          <div>
+            <p className="font-semibold text-[#3b2b16]">
+              Proxy connections are still in progress.
+            </p>
+            <p className="mt-1 leading-6">
+              This area is open so existing relay accounts stay visible, but new
+              proxy setup and sync can still be limited while we finish the
+              reliable managed-connection flow. Native connections are the best
+              option for now, and proxy support is being tightened up next.
+            </p>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }

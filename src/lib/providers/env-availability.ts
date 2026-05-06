@@ -12,15 +12,12 @@ export type NativeConnectionAvailability = {
 
 type EnvSource = Record<string, string | undefined>;
 
-const META_APP_ID_KEYS = [
-  "META_APP_ID",
-  "PLATFORM_FACEBOOK_APP_ID",
-  "PLATFORM_INSTAGRAM_APP_ID",
-];
-const META_APP_SECRET_KEYS = [
-  "META_APP_SECRET",
-  "PLATFORM_FACEBOOK_APP_SECRET",
+const META_APP_ID_KEYS = ["META_APP_ID", "PLATFORM_FACEBOOK_APP_ID"];
+const META_APP_SECRET_KEYS = ["META_APP_SECRET", "PLATFORM_FACEBOOK_APP_SECRET"];
+const INSTAGRAM_APP_ID_KEYS = ["PLATFORM_INSTAGRAM_APP_ID", "INSTAGRAM_APP_ID"];
+const INSTAGRAM_APP_SECRET_KEYS = [
   "PLATFORM_INSTAGRAM_APP_SECRET",
+  "INSTAGRAM_APP_SECRET",
 ];
 
 const OAUTH_ENV_GROUPS: Partial<Record<PlatformType, ProviderEnvGroup[]>> = {
@@ -51,12 +48,12 @@ const OAUTH_ENV_GROUPS: Partial<Record<PlatformType, ProviderEnvGroup[]>> = {
     { label: "Meta app secret", keys: META_APP_SECRET_KEYS },
   ],
   instagram: [
-    { label: "Meta app ID", keys: META_APP_ID_KEYS },
-    { label: "Meta app secret", keys: META_APP_SECRET_KEYS },
+    { label: "Instagram app ID", keys: INSTAGRAM_APP_ID_KEYS },
+    { label: "Instagram app secret", keys: INSTAGRAM_APP_SECRET_KEYS },
   ],
   instagram_personal: [
-    { label: "Meta app ID", keys: META_APP_ID_KEYS },
-    { label: "Meta app secret", keys: META_APP_SECRET_KEYS },
+    { label: "Instagram app ID", keys: INSTAGRAM_APP_ID_KEYS },
+    { label: "Instagram app secret", keys: INSTAGRAM_APP_SECRET_KEYS },
   ],
   threads: [
     {
