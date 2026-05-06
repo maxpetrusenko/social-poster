@@ -78,7 +78,7 @@ export async function generateBlogDraftWithMediumAutomation(input: {
         youtubeTranscript,
       }),
       length: input.targetWords,
-      save: true,
+      save: false,
     }),
     signal: AbortSignal.timeout(240_000),
   });

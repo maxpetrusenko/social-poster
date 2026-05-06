@@ -10,7 +10,11 @@ vi.mock("server-only", () => ({}));
 const originalRapidApiKey = process.env.RAPIDAPI_KEY;
 
 afterEach(() => {
-  process.env.RAPIDAPI_KEY = originalRapidApiKey;
+  if (originalRapidApiKey === undefined) {
+    delete process.env.RAPIDAPI_KEY;
+  } else {
+    process.env.RAPIDAPI_KEY = originalRapidApiKey;
+  }
   vi.restoreAllMocks();
 });
 
@@ -33,7 +37,8 @@ describe("YouTube transcript extraction", () => {
           {
             transcription: [
               { subtitle: "First segment." },
-              { subtitle: "Second segment." },
+              { subtitle: { text: "Second segment." } },
+              { text: ["Third", "segment."] },
             ],
           },
         ],
@@ -43,8 +48,8 @@ describe("YouTube transcript extraction", () => {
     const result = await extractYouTubeTranscript("https://www.youtube.com/watch?v=SVTPv4sI_Jc");
 
     expect(result.videoId).toBe("SVTPv4sI_Jc");
-    expect(result.transcript).toBe("First segment. Second segment.");
-    expect(result.wordCount).toBe(4);
+    expect(result.transcript).toBe("First segment. Second segment. Third segment.");
+    expect(result.wordCount).toBe(6);
     expect(fetch).toHaveBeenCalledWith(
       "https://youtube-transcriptor.p.rapidapi.com/transcript?video_id=SVTPv4sI_Jc",
       expect.objectContaining({

@@ -62,7 +62,16 @@ Phase 1 can reuse the existing `medium-automation` service if configured:
 ```env
 MEDIUM_AUTOMATION_API_URL=
 MEDIUM_AUTOMATION_API_KEY=
+RAPIDAPI_KEY=
+# Optional rotation keys for YouTube transcript extraction.
+RAPIDAPI_KEY_1=
+RAPIDAPI_KEY_2=
+RAPIDAPI_KEY_3=
 ```
+
+Manual article generation should fail loudly when the Medium automation bridge is not configured. It should not create a fallback article package that looks successful.
+When a YouTube URL is supplied, extract the transcript before generation and store it under the filesystem article package at `sources/youtube/transcript.md`.
+For local Medium automation API-key auth, the Medium automation API process must also have `ENABLE_LOCAL_API_AUTH=true` and a matching `LOCAL_API_KEYS` value.
 
 Phase 2 should add native research adapters:
 
@@ -411,6 +420,10 @@ Optional bridge to the existing local Medium automation service:
 ```env
 MEDIUM_AUTOMATION_API_URL=
 MEDIUM_AUTOMATION_API_KEY=
+RAPIDAPI_KEY=
+RAPIDAPI_KEY_1=
+RAPIDAPI_KEY_2=
+RAPIDAPI_KEY_3=
 ```
 
 ## Safety And Cost Controls

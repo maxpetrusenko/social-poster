@@ -79,12 +79,23 @@ function getRapidApiKeys() {
 
 function parseRapidApiTranscript(data: unknown) {
   if (!Array.isArray(data) || !data.length) return "";
-  const first = data[0] as { transcription?: Array<{ subtitle?: string }> };
+  const first = data[0] as { transcription?: Array<{ subtitle?: unknown; text?: unknown }> };
   if (!Array.isArray(first.transcription)) return "";
   return first.transcription
-    .map((segment) => segment.subtitle?.trim())
+    .map((segment) => stringifyTranscriptSegment(segment.subtitle ?? segment.text))
     .filter(Boolean)
     .join(" ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function stringifyTranscriptSegment(value: unknown): string {
+  if (typeof value === "string") return value.trim();
+  if (typeof value === "number") return String(value);
+  if (Array.isArray(value)) return value.map(stringifyTranscriptSegment).filter(Boolean).join(" ").trim();
+  if (value && typeof value === "object") {
+    const object = value as { text?: unknown; value?: unknown; subtitle?: unknown };
+    return stringifyTranscriptSegment(object.text ?? object.value ?? object.subtitle);
+  }
+  return "";
 }
