@@ -43,16 +43,24 @@ export async function POST(request: Request) {
   );
   const generationOptions = getActiveArticleGenerationOptions(generationSettings);
   const generationPrefix = buildArticleGenerationPromptPrefix(generationOptions);
-  const generationPrompt = `${generationPrefix}\n\nUSER REQUEST:\n${prompt}`;
   const sourceUrls = normalizeSourceUrls(prompt, parsed.data.url, parsed.data.sourceUrls);
+  const heroImageProvider = generationOptions.imageModel === "openai" ? "openai" : "gemini";
+  const shouldGenerateHeroImage =
+    generationOptions.heroImageMode !== "none" &&
+    generationOptions.imageModel !== "none" &&
+    generationOptions.imageModel !== "existing";
 
   try {
     const result = await generateBlogAutomationPost({
-      topic: generationPrompt,
+      topic: prompt,
       targetWords: parsed.data.targetWords ?? generationOptions.targetWords ?? settings.defaults.targetWords,
       sourceUrls,
+      generationDirectives: generationPrefix,
       createdByEmail: tenant.user.email,
       trigger: "manual",
+      workspaceId: tenant.currentWorkspace.id,
+      generateHeroImage: shouldGenerateHeroImage,
+      heroImageProvider,
     });
 
     return NextResponse.json(
@@ -69,6 +77,7 @@ export async function POST(request: Request) {
           api: `/api/article/${result.postId}`,
         },
         articleWorkspace: result.articleWorkspace ?? null,
+        heroImageError: result.heroImageError ?? null,
       },
       { status: 201 }
     );

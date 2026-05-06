@@ -1,7 +1,12 @@
 import "server-only";
 
 import { buildArticleAgentInstructionBlock } from "@/lib/article-agent/config";
-import { buildReviewFallbackDraft, extractFirstMarkdownImage, type BlogDraft } from "./framework";
+import {
+  extractYouTubeTranscript,
+  isYouTubeUrl,
+  type YouTubeTranscriptArtifact,
+} from "@/lib/article-agent/youtube-transcript";
+import { extractFirstMarkdownImage, type BlogDraft } from "./framework";
 
 type MediumAutomationResponse = {
   success?: boolean;
@@ -38,16 +43,25 @@ export async function generateBlogDraftWithMediumAutomation(input: {
   topic: string;
   targetWords: number;
   sourceUrls?: string[];
-}): Promise<{ draft: BlogDraft; provider: "medium-automation" | "fallback"; raw?: unknown }> {
+  generationDirectives?: string;
+}): Promise<{
+  draft: BlogDraft;
+  provider: "medium-automation";
+  raw?: unknown;
+  sourceArtifacts?: { youtubeTranscript?: YouTubeTranscriptArtifact };
+}> {
   const config = getMediumAutomationConfig();
   const articleAgentInstructions = await buildArticleAgentInstructionBlock();
 
   if (!config.configured) {
-    return {
-      draft: buildReviewFallbackDraft(input),
-      provider: "fallback",
-    };
+    throw new Error(
+      "Medium automation is not configured. Set MEDIUM_AUTOMATION_API_URL and MEDIUM_AUTOMATION_API_KEY in the social-poster runtime env."
+    );
   }
+
+  const youtubeUrl = input.sourceUrls?.find(isYouTubeUrl);
+  const youtubeTranscript = youtubeUrl ? await extractYouTubeTranscript(youtubeUrl) : null;
+  const sourceArtifacts = youtubeTranscript ? { youtubeTranscript } : undefined;
 
   const response = await fetch(`${config.apiUrl}/api/articles/streamlined`, {
     method: "POST",
@@ -56,7 +70,13 @@ export async function generateBlogDraftWithMediumAutomation(input: {
       "x-api-key": config.apiKey,
     },
     body: JSON.stringify({
-      topic: buildSourceTruthPrompt(input.topic, input.sourceUrls, articleAgentInstructions),
+      topic: buildSourceTruthPrompt({
+        topic: input.topic,
+        sourceUrls: input.sourceUrls,
+        articleAgentInstructions,
+        generationDirectives: input.generationDirectives,
+        youtubeTranscript,
+      }),
       length: input.targetWords,
       save: true,
     }),
@@ -82,6 +102,7 @@ export async function generateBlogDraftWithMediumAutomation(input: {
   return {
     provider: "medium-automation",
     raw: result,
+    sourceArtifacts,
     draft: {
       topic: input.topic,
       title,
@@ -107,16 +128,33 @@ export async function generateBlogDraftWithMediumAutomation(input: {
   };
 }
 
-function buildSourceTruthPrompt(
-  topic: string,
-  sourceUrls: string[] | undefined,
-  articleAgentInstructions: string
-) {
-  const sourceBlock = sourceUrls?.length
-    ? `\nUse these source URLs as required evidence candidates:\n${sourceUrls.join("\n")}`
+function buildSourceTruthPrompt(input: {
+  topic: string;
+  sourceUrls: string[] | undefined;
+  articleAgentInstructions: string;
+  generationDirectives?: string;
+  youtubeTranscript?: YouTubeTranscriptArtifact | null;
+}) {
+  const sourceBlock = input.sourceUrls?.length
+    ? `\nUse these source URLs as required evidence candidates:\n${input.sourceUrls.join("\n")}`
+    : "";
+  const directivesBlock = input.generationDirectives
+    ? `\nGeneration directives from the dashboard controls:\n${input.generationDirectives}\n`
+    : "";
+  const transcriptBlock = input.youtubeTranscript
+    ? `\nRequired YouTube transcript source:
+URL: ${input.youtubeTranscript.url}
+Video ID: ${input.youtubeTranscript.videoId}
+Transcript word count: ${input.youtubeTranscript.wordCount}
+
+TRANSCRIPT:
+${input.youtubeTranscript.transcript}
+`
     : "";
 
-  return `${topic}
+  return `USER REQUEST:
+${input.topic}
+${directivesBlock}
 
 Create the single source-of-truth article for this topic. Include:
 - a 40-60 word direct answer blockquote immediately after the title
@@ -125,11 +163,12 @@ Create the single source-of-truth article for this topic. Include:
 - narrative insight, structured steps, definitions, examples, comparison, checklist, FAQ, and conclusion loop
 - at least one mistake, limitation, rollback, or counterexample
 - one primary action and two or three secondary actions
-- one relevant image in Markdown
+- one relevant hero image placeholder in Markdown if the writing system supports it; the dashboard will generate the final hero image separately
 - never use the forbidden phrase supplied by the editor${sourceBlock}
+${transcriptBlock}
 
 Article agent rules:
-${articleAgentInstructions}`;
+${input.articleAgentInstructions}`;
 }
 
 function extractTitle(markdown: string) {

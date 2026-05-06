@@ -5,6 +5,10 @@ import { blogAutomationPosts, blogAutomationRuns } from "@/db/schema";
 import { and, desc, eq, gte, isNotNull } from "drizzle-orm";
 import { saveGeneratedArticleToWorkspace } from "@/lib/article-agent/generated-workspace";
 import {
+  generateAndInsertArticleHeroImage,
+  type ArticleImageProvider,
+} from "@/lib/article-agent/hero-image";
+import {
   slugifyBlogTitle,
   validateSourceOfTruthArticle,
   type BlogDraft,
@@ -13,12 +17,26 @@ import { generateBlogDraftWithMediumAutomation } from "./medium-automation";
 
 export type BlogAutomationTrigger = "manual" | "daily";
 
+type GeneratedArticleWorkspace = Awaited<ReturnType<typeof saveGeneratedArticleToWorkspace>> & {
+  heroImage?: {
+    provider: ArticleImageProvider;
+    model: string;
+    imageOpenRef: string;
+    imageRelativePath: string;
+    publicImageUrl: string | null;
+  };
+};
+
 type GenerateInput = {
   topic: string;
   targetWords?: number;
   sourceUrls?: string[];
+  generationDirectives?: string;
   createdByEmail?: string;
   trigger?: BlogAutomationTrigger;
+  workspaceId?: string;
+  generateHeroImage?: boolean;
+  heroImageProvider?: ArticleImageProvider;
 };
 
 export async function generateBlogAutomationPost(input: GenerateInput) {
@@ -41,10 +59,11 @@ export async function generateBlogAutomationPost(input: GenerateInput) {
   });
 
   try {
-    const { draft, provider, raw } = await generateBlogDraftWithMediumAutomation({
+    const { draft, provider, raw, sourceArtifacts } = await generateBlogDraftWithMediumAutomation({
       topic: input.topic,
       targetWords,
       sourceUrls: input.sourceUrls,
+      generationDirectives: input.generationDirectives,
     });
     const validation = validateSourceOfTruthArticle(draft);
     const now = new Date();
@@ -58,10 +77,34 @@ export async function generateBlogAutomationPost(input: GenerateInput) {
       validation,
       postId,
       sourceUrls: input.sourceUrls,
+      transcript: sourceArtifacts?.youtubeTranscript,
       createdByEmail: input.createdByEmail,
       generatedAt: now,
       raw,
     });
+    let articleWorkspace: GeneratedArticleWorkspace = { ...workspaceArticle };
+    let heroImageError: string | null = null;
+    if (input.generateHeroImage && input.workspaceId) {
+      try {
+        const heroImage = await generateAndInsertArticleHeroImage({
+          workspaceId: input.workspaceId,
+          openRef: workspaceArticle.openRef,
+          provider: input.heroImageProvider,
+        });
+        articleWorkspace = {
+          ...workspaceArticle,
+          heroImage: {
+            provider: heroImage.provider,
+            model: heroImage.model,
+            imageOpenRef: heroImage.imageOpenRef,
+            imageRelativePath: heroImage.imageRelativePath,
+            publicImageUrl: heroImage.publicImageUrl,
+          },
+        };
+      } catch (error) {
+        heroImageError = error instanceof Error ? error.message : "Hero image generation failed.";
+      }
+    }
 
     await db.insert(blogAutomationPosts).values({
       id: postId,
@@ -76,7 +119,7 @@ export async function generateBlogAutomationPost(input: GenerateInput) {
       directAnswer: draft.directAnswer,
       thesis: draft.thesis,
       contentMarkdown: draft.contentMarkdown,
-      heroImageUrl: draft.heroImageUrl,
+      heroImageUrl: articleWorkspace.heroImage?.publicImageUrl ?? draft.heroImageUrl,
       heroImageAlt: draft.heroImageAlt,
       sources: draft.sources,
       frameworkChecks: { provider, checks: validation.checks, raw },
@@ -90,7 +133,20 @@ export async function generateBlogAutomationPost(input: GenerateInput) {
       createdByEmail: input.createdByEmail,
       metadata: {
         ...(draft.metadata ?? {}),
-        articleWorkspace: workspaceArticle,
+        articleWorkspace,
+        heroImageError,
+        sourceArtifacts: sourceArtifacts
+          ? {
+              youtubeTranscript: sourceArtifacts.youtubeTranscript
+                ? {
+                    url: sourceArtifacts.youtubeTranscript.url,
+                    videoId: sourceArtifacts.youtubeTranscript.videoId,
+                    provider: sourceArtifacts.youtubeTranscript.provider,
+                    wordCount: sourceArtifacts.youtubeTranscript.wordCount,
+                  }
+                : null,
+            }
+          : null,
       },
       createdAt: now,
       updatedAt: now,
@@ -106,14 +162,15 @@ export async function generateBlogAutomationPost(input: GenerateInput) {
           validationStatus: validation.status,
           validationScore: validation.score,
           slug,
-          articleWorkspace: workspaceArticle,
+          articleWorkspace,
+          heroImageError,
         },
         completedAt: now,
         durationMs: now.getTime() - startedAt.getTime(),
       })
       .where(eq(blogAutomationRuns.id, runId));
 
-    return { postId, slug, validation, provider, articleWorkspace: workspaceArticle };
+    return { postId, slug, validation, provider, articleWorkspace, heroImageError };
   } catch (error) {
     const now = new Date();
     const message = error instanceof Error ? error.message : "Unknown blog generation error";

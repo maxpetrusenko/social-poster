@@ -23,6 +23,7 @@ type CreateResponse = {
   provider: string;
   validation?: { status: string; score: number };
   links?: { dashboard?: string };
+  heroImageError?: string | null;
   error?: string;
 };
 
@@ -87,11 +88,12 @@ export function ArticleAgentChat({ initialGenerationSettings }: Props) {
       }
 
       const score = body.validation ? `${body.validation.status} ${body.validation.score}/110` : "validation pending";
+      const imageNote = body.heroImageError ? ` Hero image failed: ${body.heroImageError}` : "";
       setMessages((current) => [
         ...current,
         {
           role: "assistant",
-          content: `Article created with ${body.provider}. Validation: ${score}. Saved to the article workspace.`,
+          content: `Article created with ${body.provider}. Validation: ${score}. Saved to the article workspace.${imageNote}`,
           articleId: body.articleId,
           dashboardUrl: body.links?.dashboard,
         },

@@ -35,7 +35,7 @@ type OpenAIImageResponse = {
   }>;
 };
 
-type ArticleImageProvider = "openai" | "gemini";
+export type ArticleImageProvider = "openai" | "gemini";
 
 type ArticleImageRuntime = {
   provider: ArticleImageProvider;

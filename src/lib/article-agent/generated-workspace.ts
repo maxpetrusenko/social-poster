@@ -3,6 +3,7 @@ import "server-only";
 import { mkdir, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { makeArticleWorkspaceOpenRef } from "@/lib/article-agent/workspace";
+import type { YouTubeTranscriptArtifact } from "@/lib/article-agent/youtube-transcript";
 import type { FrameworkValidation, BlogDraft } from "@/lib/blog/framework";
 
 type SaveGeneratedArticleWorkspaceInput = {
@@ -12,6 +13,7 @@ type SaveGeneratedArticleWorkspaceInput = {
   validation: FrameworkValidation;
   postId: string;
   sourceUrls?: string[];
+  transcript?: YouTubeTranscriptArtifact | null;
   createdByEmail?: string;
   generatedAt: Date;
   raw?: unknown;
@@ -25,10 +27,12 @@ export async function saveGeneratedArticleToWorkspace(input: SaveGeneratedArticl
   const articleDir = path.join(articlesRoot, slug);
   const evalsDir = path.join(articleDir, "evals");
   const sourcesDir = path.join(articleDir, "sources");
+  const youtubeSourcesDir = path.join(sourcesDir, "youtube");
   const artifactsDir = path.join(articleDir, "artifacts");
   await Promise.all([
     mkdir(evalsDir, { recursive: true }),
     mkdir(sourcesDir, { recursive: true }),
+    input.transcript ? mkdir(youtubeSourcesDir, { recursive: true }) : Promise.resolve(),
     mkdir(artifactsDir, { recursive: true }),
   ]);
 
@@ -46,6 +50,7 @@ export async function saveGeneratedArticleToWorkspace(input: SaveGeneratedArticl
     sourceUrl: input.sourceUrls?.[0] ?? null,
     sourceUrls: input.sourceUrls ?? [],
     articleFile,
+    transcriptFile: input.transcript ? "sources/youtube/transcript.md" : null,
     iterationCount: 1,
     frameworkScore: input.validation.score,
     frameworkMaxScore: 110,
@@ -76,7 +81,7 @@ export async function saveGeneratedArticleToWorkspace(input: SaveGeneratedArticl
     sourcePath: input.sourceUrls?.[0] ?? "manual prompt",
     status: input.validation.status === "fail" ? "needs_review" : "draft",
     versions: [{ version: "v1", sourceFile: articleFile }],
-    artifactCount: 4,
+    artifactCount: input.transcript ? 6 : 4,
     importedAt: generatedAt,
     databasePostId: input.postId,
   });
@@ -96,7 +101,30 @@ export async function saveGeneratedArticleToWorkspace(input: SaveGeneratedArticl
     generatedAt,
     sourceUrls: input.sourceUrls ?? [],
     extractedSources: input.draft.sources,
+    youtubeTranscript: input.transcript
+      ? {
+          url: input.transcript.url,
+          videoId: input.transcript.videoId,
+          provider: input.transcript.provider,
+          wordCount: input.transcript.wordCount,
+          transcriptFile: "sources/youtube/transcript.md",
+        }
+      : null,
   });
+  if (input.transcript) {
+    await writeFile(
+      path.join(youtubeSourcesDir, "transcript.md"),
+      buildYouTubeTranscriptMarkdown(input.transcript),
+      "utf8"
+    );
+    await writeJson(path.join(youtubeSourcesDir, "metadata.json"), {
+      url: input.transcript.url,
+      videoId: input.transcript.videoId,
+      provider: input.transcript.provider,
+      wordCount: input.transcript.wordCount,
+      extractedAt: generatedAt,
+    });
+  }
   await writeJson(path.join(artifactsDir, "generation-raw.json"), {
     generatedAt,
     provider: input.provider,
@@ -128,7 +156,9 @@ export async function saveGeneratedArticleToWorkspace(input: SaveGeneratedArticl
         name: "1_generate_article_button",
         status: "completed",
         model: input.provider,
-        notes: "Canonical New Article button generated the article and wrote the filesystem workspace package.",
+        notes: input.transcript
+          ? `Canonical New Article button generated the article from ${input.transcript.wordCount} YouTube transcript words.`
+          : "Canonical New Article button generated the article and wrote the filesystem workspace package.",
       },
       {
         name: "2_framework_validation",
@@ -145,6 +175,18 @@ export async function saveGeneratedArticleToWorkspace(input: SaveGeneratedArticl
     openRef: makeArticleWorkspaceOpenRef("articles", `${slug}/${articleFile}`),
     folderOpenRef: makeArticleWorkspaceOpenRef("articles", slug),
   };
+}
+
+function buildYouTubeTranscriptMarkdown(input: YouTubeTranscriptArtifact) {
+  return ensureTrailingNewline(`# YouTube Transcript
+
+Source: ${input.url}
+Video ID: ${input.videoId}
+Provider: ${input.provider}
+Word count: ${input.wordCount}
+
+${input.transcript}
+`);
 }
 
 function getArticleWorkspaceArticlesRoot() {

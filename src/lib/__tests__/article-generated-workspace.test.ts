@@ -25,6 +25,13 @@ describe("generated article workspace package", () => {
       provider: "medium-automation",
       postId: "post-1",
       sourceUrls: ["https://example.com/source"],
+      transcript: {
+        url: "https://www.youtube.com/watch?v=SVTPv4sI_Jc",
+        videoId: "SVTPv4sI_Jc",
+        provider: "rapidapi-youtube-transcriptor",
+        transcript: "This is a real transcript artifact.",
+        wordCount: 6,
+      },
       createdByEmail: "max@example.com",
       generatedAt: new Date("2026-05-06T20:00:00.000Z"),
       validation: {
@@ -53,10 +60,17 @@ describe("generated article workspace package", () => {
     const article = await readFile(path.join(workspaceDir, "articles", "webb-test", "article-v1.md"), "utf8");
     const version = JSON.parse(await readFile(path.join(workspaceDir, "articles", "webb-test", "version.json"), "utf8"));
     const workflow = JSON.parse(await readFile(path.join(workspaceDir, "articles", "webb-test", "workflow.json"), "utf8"));
+    const transcript = await readFile(
+      path.join(workspaceDir, "articles", "webb-test", "sources", "youtube", "transcript.md"),
+      "utf8"
+    );
 
     expect(article).toContain("# Webb Test");
     expect(version.databasePostId).toBe("post-1");
     expect(version.frameworkScore).toBe(99);
+    expect(version.transcriptFile).toBe("sources/youtube/transcript.md");
+    expect(transcript).toContain("SVTPv4sI_Jc");
+    expect(transcript).toContain("This is a real transcript artifact.");
     expect(workflow.phases.map((phase: { name: string }) => phase.name)).toContain("1_generate_article_button");
   });
 });
