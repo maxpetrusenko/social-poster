@@ -16,6 +16,7 @@
     "test:browser": "node scripts/browser-auth-smoke.mjs",
     "test:watch": "vitest",
     "test:api": "npx tsx scripts/test-api.ts",
+    "test:e2e:ci": "vitest run src/app/api/__tests__/auth-callback.e2e.test.ts src/lib/__tests__/tenancy.test.ts",
     "manatee:personas": "manatee personas generate --from-docs docs/tasks.md,docs/hermes/coolify-ticket-automation.md --max 6 --provider openai --model gpt-4.1-mini --budget-usd 1.00",
     "manatee:discover": "manatee test --discover --users 6 --turns 3 --concurrency 2 --provider openai --model gpt-4.1-mini --budget-usd 2.00 --json result.json --html manatee-report.html --md manatee-report.md",
     "manatee:test": "manatee test --provider openai --model gpt-4.1-mini --budget-usd 2.00 --json result.json --html manatee-report.html --md manatee-report.md",

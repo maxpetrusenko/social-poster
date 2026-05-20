@@ -48,7 +48,7 @@ jobs:
         run: npm run lint
 
       - name: E2E tests
-        run: npm run test:e2e
+        run: npm run test:e2e:ci
 
       - name: Browser tests
         run: npm run test:browser
@@ -83,7 +83,7 @@ jobs:
             ${{ env.IMAGE_NAME }}:main
             ${{ env.IMAGE_NAME }}:latest
           cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-to: type=gha,mode=min
 
   deploy:
     name: Trigger Coolify Deploy
