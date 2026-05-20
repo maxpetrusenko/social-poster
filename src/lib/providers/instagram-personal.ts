@@ -48,6 +48,7 @@ export class InstagramPersonalProvider extends OAuthProvider {
       scope: this.requiredScopes.join(","),
       response_type: "code",
       enable_fb_login: "0",
+      force_reauth: "true",
     });
   }
 

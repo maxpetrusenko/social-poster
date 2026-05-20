@@ -25,6 +25,7 @@ describe("InstagramPersonalProvider", () => {
     expect(url.pathname).toBe("/oauth/authorize");
     expect(url.searchParams.get("client_id")).toBe("ig-app-id");
     expect(url.searchParams.get("enable_fb_login")).toBe("0");
+    expect(url.searchParams.get("force_reauth")).toBe("true");
     expect(url.searchParams.has("force_authentication")).toBe(false);
     expect(url.searchParams.get("scope")).toBe(provider.requiredScopes.join(","));
   });

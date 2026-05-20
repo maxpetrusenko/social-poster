@@ -10,12 +10,12 @@ export function extractExplicitToolCall(input: SocialAgentToolCommandEnvelope): 
   return (
     normalizeToolCallValue(input.toolCall) ??
     normalizeCommandValue(input.command) ??
-    parseStructuredToolCommand(input.message ?? null)
+    parseMessageToolCommand(input.message ?? null)
   );
 }
 
 function normalizeCommandValue(value: unknown): AgentToolCall | null {
-  if (typeof value === "string") return parseStructuredToolCommand(value);
+  if (typeof value === "string") return parseCommandString(value);
   if (!isRecord(value)) return null;
   if ("toolCall" in value) return normalizeToolCallValue(value.toolCall);
   if ("name" in value && "input" in value) return normalizeToolCallValue(value);
@@ -38,30 +38,34 @@ function normalizeToolCallValue(value: unknown): AgentToolCall | null {
   };
 }
 
-function parseStructuredToolCommand(message: string | null): AgentToolCall | null {
+function parseMessageToolCommand(message: string | null): AgentToolCall | null {
   if (!message) return null;
 
   const normalized = message.trim();
   if (!normalized) return null;
 
-  const structured = parseToolCallObject(normalized);
-  if (structured) return structured;
-
   const match = normalized.match(/^\/(?:tool|agent-tool|internal-tool)\s+(.+)$/i);
   if (!match) return null;
 
-  return parseToolCallObject(match[1]?.trim() ?? "");
+  return parsePrefixedToolCall(match[1]?.trim() ?? "");
 }
 
-function parseToolCallObject(raw: string): AgentToolCall | null {
+function parseCommandString(value: string): AgentToolCall | null {
+  const normalized = value.trim();
+  if (!normalized) return null;
+
+  if (normalized.startsWith("{")) {
+    return parseJsonToolCall(normalized);
+  }
+
+  return parseMessageToolCommand(normalized);
+}
+
+function parsePrefixedToolCall(raw: string): AgentToolCall | null {
   if (!raw) return null;
 
   if (raw.startsWith("{")) {
-    try {
-      return normalizeCommandValue(JSON.parse(raw));
-    } catch {
-      return null;
-    }
+    return parseJsonToolCall(raw);
   }
 
   const [command, ...rest] = raw.split(/\s+/);
@@ -101,6 +105,14 @@ function parseToolCallObject(raw: string): AgentToolCall | null {
   }
 
   return null;
+}
+
+function parseJsonToolCall(raw: string): AgentToolCall | null {
+  try {
+    return normalizeCommandValue(JSON.parse(raw));
+  } catch {
+    return null;
+  }
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
