@@ -108,15 +108,6 @@ jobs:
             exit 1
           fi
 
-          api_base="${COOLIFY_BASE_URL%/}"
-          api_base="${api_base%/api/v1}/api/v1"
-
-          curl --fail-with-body --silent --show-error \
-            --request GET \
-            --url "${api_base}/applications/${COOLIFY_UUID}" \
-            --header "Authorization: Bearer ${COOLIFY_API_TOKEN}" \
-            --output /dev/null
-
       - name: Deploy Coolify application
         shell: bash
         run: |
@@ -124,8 +115,32 @@ jobs:
 
           api_base="${COOLIFY_BASE_URL%/}"
           api_base="${api_base%/api/v1}/api/v1"
+          deploy_url="${api_base}/deploy?uuid=${COOLIFY_UUID}&force=false"
 
-          curl --fail-with-body --silent --show-error \
-            --request GET \
-            --url "${api_base}/deploy?uuid=${COOLIFY_UUID}&force=false" \
-            --header "Authorization: Bearer ${COOLIFY_API_TOKEN}"
+          response_file="$(mktemp)"
+          status="$(
+            curl --silent --show-error \
+              --request POST \
+              --url "${deploy_url}" \
+              --header "Authorization: Bearer ${COOLIFY_API_TOKEN}" \
+              --output "${response_file}" \
+              --write-out "%{http_code}"
+          )"
+
+          if [ "${status}" = "404" ] || [ "${status}" = "405" ]; then
+            status="$(
+              curl --silent --show-error \
+                --request GET \
+                --url "${deploy_url}" \
+                --header "Authorization: Bearer ${COOLIFY_API_TOKEN}" \
+                --output "${response_file}" \
+                --write-out "%{http_code}"
+            )"
+          fi
+
+          cat "${response_file}"
+
+          if [ "${status}" -lt 200 ] || [ "${status}" -ge 300 ]; then
+            echo "::error::Coolify deploy failed with HTTP ${status}"
+            exit 1
+          fi
