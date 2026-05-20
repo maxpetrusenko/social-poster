@@ -6,6 +6,7 @@ const RAPIDAPI_BASE = `https://${RAPIDAPI_HOST}`;
 export type YouTubeTranscriptArtifact = {
   url: string;
   videoId: string;
+  title?: string | null;
   provider: "rapidapi-youtube-transcriptor";
   transcript: string;
   wordCount: number;
@@ -54,6 +55,7 @@ export async function extractYouTubeTranscript(youtubeUrl: string): Promise<YouT
       return {
         url: youtubeUrl,
         videoId,
+        title: parseRapidApiTitle(data) ?? inferTitleFromTranscript(transcript),
         provider: "rapidapi-youtube-transcriptor",
         transcript,
         wordCount: transcript.split(/\s+/).filter(Boolean).length,
@@ -87,6 +89,19 @@ function parseRapidApiTranscript(data: unknown) {
     .join(" ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function parseRapidApiTitle(data: unknown) {
+  if (!Array.isArray(data) || !data.length || !data[0] || typeof data[0] !== "object") return null;
+  const first = data[0] as { title?: unknown; name?: unknown; videoTitle?: unknown };
+  const value = first.title ?? first.videoTitle ?? first.name;
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function inferTitleFromTranscript(transcript: string) {
+  const firstSentence = transcript.match(/^(.{20,160}?[?!\.])(?:\s|$)/)?.[1]?.trim();
+  if (!firstSentence) return null;
+  return firstSentence.replace(/[.]+$/, "");
 }
 
 function stringifyTranscriptSegment(value: unknown): string {

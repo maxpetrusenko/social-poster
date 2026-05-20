@@ -127,11 +127,13 @@ export function validateSourceOfTruthArticle(draft: BlogDraft): FrameworkValidat
 
   const faqMatches = content.match(/^>\s+\*\*(What is|Why does|How does|What are|How do)/gim);
   const faqCount = faqMatches?.length ?? 0;
+  const rememberSection = content.match(/(?:^|\n)##[ \t]+What to Remember[ \t]*\n+([\s\S]*?)(?:\n##[ \t]+|$)/i)?.[1] ?? "";
+  const rememberCount = rememberSection.match(/^\s*[-*]\s+/gm)?.length ?? 0;
   checks.push({
     key: "faq_graph",
     label: "FAQ answer graph is covered",
-    status: faqCount >= 5 ? "pass" : faqCount >= 3 ? "warn" : "fail",
-    detail: `${faqCount}/5 required FAQ blocks`,
+    status: faqCount >= 5 || rememberCount >= 4 ? "pass" : faqCount >= 3 || rememberCount >= 3 ? "warn" : "fail",
+    detail: faqCount ? `${faqCount}/5 required FAQ blocks` : `${rememberCount}/4 What to Remember bullets`,
   });
 
   const actionSignals = [
@@ -139,12 +141,17 @@ export function validateSourceOfTruthArticle(draft: BlogDraft): FrameworkValidat
     "Secondary action:",
     "Implementation checklist",
   ];
-  const actionCount = actionSignals.filter((signal) => content.includes(signal)).length;
+  const actionContent = content.toLowerCase();
+  const actionCount = actionSignals.filter((signal) => actionContent.includes(signal.toLowerCase())).length;
+  const hasActionSection = /^##\s+Actions to Take/im.test(content);
+  const hasPrimaryAction = /\*\*Primary Action\*\*|Primary action:/i.test(content);
+  const hasSecondaryActions = /\*\*Secondary Actions\*\*|Secondary action:/i.test(content);
+  const normalizedActionCount = actionCount + (hasActionSection ? 1 : 0) + (hasPrimaryAction ? 1 : 0) + (hasSecondaryActions ? 1 : 0);
   checks.push({
     key: "actionability",
     label: "Primary and secondary actions are explicit",
-    status: actionCount >= 2 ? "pass" : "fail",
-    detail: `${actionCount}/3 action signals`,
+    status: normalizedActionCount >= 2 ? "pass" : "fail",
+    detail: `${normalizedActionCount}/3 action signals`,
   });
 
   const hasImage = Boolean(draft.heroImageUrl || extractFirstMarkdownImage(content));

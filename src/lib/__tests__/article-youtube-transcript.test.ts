@@ -35,6 +35,7 @@ describe("YouTube transcript extraction", () => {
         ok: true,
         json: async () => [
           {
+            title: "Could the CIA really track your heartbeat from kilometers away?",
             transcription: [
               { subtitle: "First segment." },
               { subtitle: { text: "Second segment." } },
@@ -48,6 +49,7 @@ describe("YouTube transcript extraction", () => {
     const result = await extractYouTubeTranscript("https://www.youtube.com/watch?v=SVTPv4sI_Jc");
 
     expect(result.videoId).toBe("SVTPv4sI_Jc");
+    expect(result.title).toBe("Could the CIA really track your heartbeat from kilometers away?");
     expect(result.transcript).toBe("First segment. Second segment. Third segment.");
     expect(result.wordCount).toBe(6);
     expect(fetch).toHaveBeenCalledWith(

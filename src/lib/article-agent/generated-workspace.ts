@@ -105,6 +105,7 @@ export async function saveGeneratedArticleToWorkspace(input: SaveGeneratedArticl
       ? {
           url: input.transcript.url,
           videoId: input.transcript.videoId,
+          title: input.transcript.title ?? null,
           provider: input.transcript.provider,
           wordCount: input.transcript.wordCount,
           transcriptFile: "sources/youtube/transcript.md",
@@ -120,6 +121,7 @@ export async function saveGeneratedArticleToWorkspace(input: SaveGeneratedArticl
     await writeJson(path.join(youtubeSourcesDir, "metadata.json"), {
       url: input.transcript.url,
       videoId: input.transcript.videoId,
+      title: input.transcript.title ?? null,
       provider: input.transcript.provider,
       wordCount: input.transcript.wordCount,
       extractedAt: generatedAt,
@@ -182,6 +184,7 @@ function buildYouTubeTranscriptMarkdown(input: YouTubeTranscriptArtifact) {
 
 Source: ${input.url}
 Video ID: ${input.videoId}
+Title: ${input.title ?? "Unknown"}
 Provider: ${input.provider}
 Word count: ${input.wordCount}
 

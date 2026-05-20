@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Parker Rex Thread Sketch — Program Control Room</title>
+  <style>
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body { font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color:#1f2933; background:#f4f7f2; min-height:100vh; }
+    button { font:inherit; }
+    .wrap { max-width:1440px; margin:0 auto; padding:24px; }
+    .header { display:grid; grid-template-columns:1fr auto; gap:20px; align-items:center; margin-bottom:18px; }
+    .titlebox { background:#fff; border:1px solid #d8e1d2; border-radius:28px; padding:22px; box-shadow:0 20px 50px rgba(59,80,49,.08); }
+    .kicker { color:#62804d; font-weight:900; letter-spacing:.12em; text-transform:uppercase; font-size:12px; }
+    h1 { margin-top:7px; font-size:32px; letter-spacing:-.04em; }
+    .intro { color:#65736a; margin-top:8px; line-height:1.6; max-width:780px; }
+    .score { background:#fff; border:1px solid #d8e1d2; border-radius:24px; padding:18px; text-align:center; min-width:190px; box-shadow:0 20px 50px rgba(59,80,49,.08); }
+    .score strong { font-size:36px; display:block; }
+    .score span { color:#69776d; font-size:13px; }
+    .grid { display:grid; grid-template-columns: 310px 1fr 360px; gap:18px; }
+    .card { background:#fff; border:1px solid #dce5d7; border-radius:24px; overflow:hidden; box-shadow:0 14px 42px rgba(59,80,49,.07); }
+    .card h2 { padding:16px 18px; border-bottom:1px solid #e7eee3; font-size:15px; display:flex; align-items:center; justify-content:space-between; }
+    .body { padding:16px; }
+    .program { border:1px solid #e0e8dc; border-radius:18px; padding:14px; margin-bottom:12px; cursor:pointer; transition:150ms ease; }
+    .program:hover, .program.active { border-color:#8db96f; background:#fbfff8; transform:translateY(-1px); }
+    .program strong { display:block; font-size:14px; }
+    .program p { color:#6d7a70; font-size:13px; line-height:1.45; margin-top:5px; }
+    .tagrow { display:flex; gap:7px; flex-wrap:wrap; margin-top:10px; }
+    .tag { font-size:11px; font-weight:800; border-radius:999px; padding:5px 8px; background:#eef7e9; color:#557841; }
+    .lane { display:grid; grid-template-columns:repeat(4, minmax(130px, 1fr)); gap:12px; margin-bottom:16px; }
+    .phase { border:1px solid #dfe8db; border-radius:18px; padding:14px; min-height:120px; background:#fbfdf9; position:relative; }
+    .phase:after { content:""; position:absolute; top:38px; right:-12px; width:12px; height:2px; background:#9caf91; }
+    .phase:last-child:after { display:none; }
+    .phase small { color:#6e7d70; font-weight:800; text-transform:uppercase; letter-spacing:.08em; }
+    .phase h3 { margin-top:8px; font-size:16px; }
+    .phase p { color:#69766b; font-size:13px; line-height:1.45; margin-top:8px; }
+    .matrix { display:grid; grid-template-columns: 1.15fr .85fr; gap:14px; }
+    .wire { border:2px dashed #9cad91; border-radius:22px; min-height:350px; padding:16px; background:#fffef9; }
+    .wire-top { display:flex; justify-content:space-between; align-items:center; padding-bottom:12px; border-bottom:2px dashed #c6d2be; }
+    .sketch-line { height:14px; border-radius:99px; background:#dde6d6; margin:12px 0; }
+    .sketch-line.short { width:56%; }
+    .sketch-line.med { width:74%; }
+    .boxrow { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:14px; }
+    .box { min-height:86px; border:2px solid #b8c8ae; border-radius:16px; background:#fff; padding:12px; }
+    .box strong { font-size:13px; }
+    .box p { color:#6c796d; font-size:12px; margin-top:6px; line-height:1.4; }
+    .checks { display:grid; gap:10px; }
+    .check { display:flex; gap:10px; align-items:flex-start; padding:11px; border:1px solid #e0e8dc; border-radius:16px; background:#fbfdf9; font-size:13px; line-height:1.45; }
+    .checkbox { width:18px; height:18px; border-radius:5px; border:2px solid #789464; flex:0 0 auto; margin-top:1px; }
+    .checkbox.done { background:#9fd082; position:relative; }
+    .checkbox.done:after { content:"✓"; position:absolute; left:2px; top:-5px; font-weight:900; color:#21351b; }
+    .btns { display:flex; gap:10px; flex-wrap:wrap; margin-top:15px; }
+    .btn { border:0; border-radius:14px; background:#426b2f; color:white; padding:11px 14px; font-weight:900; cursor:pointer; }
+    .btn:hover { background:#315421; }
+    .btn.secondary { color:#314129; background:#eef7e9; border:1px solid #c8d9be; }
+    .event { border-left:4px solid #9fd082; padding:10px 12px; background:#fbfdf9; border-radius:0 14px 14px 0; margin-bottom:11px; }
+    .event strong { display:block; font-size:13px; }
+    .event span { color:#6b786d; font-size:12px; }
+    .output { display:none; margin-top:12px; border-radius:16px; padding:12px; background:#fff9dc; color:#685710; font-size:13px; line-height:1.45; }
+    .output.show { display:block; }
+    @media (max-width:1160px){ .header,.grid,.matrix { grid-template-columns:1fr; } .lane { grid-template-columns:1fr 1fr; } .phase:after { display:none; } }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <header class="header">
+      <div class="titlebox">
+        <div class="kicker">Program loop mockup</div>
+        <h1>Parent control room for Exec Plans</h1>
+        <p class="intro">Responds to the thread’s “what are Programs?” question by showing the lightweight runtime Parker described: checks/balances, cross-repo analysis, dependency graph updates, and tripwire reviews before patches land.</p>
+      </div>
+      <div class="score"><strong id="coverage">82%</strong><span>state coverage before implementation</span></div>
+    </header>
+
+    <section class="grid">
+      <aside class="card">
+        <h2>Programs <span>3 active</span></h2>
+        <div class="body">
+          <div class="program active" data-score="82%"><strong>Social Poster reply queue redesign</strong><p>Wireframes, state map, exec plan, then Codex patch review.</p><div class="tagrow"><span class="tag">mocked</span><span class="tag">tripwire</span></div></div>
+          <div class="program" data-score="64%"><strong>Calendar campaign scheduler</strong><p>Needs empty-state wire and dependency graph refresh.</p><div class="tagrow"><span class="tag">needs wire</span><span class="tag">multi-view</span></div></div>
+          <div class="program" data-score="91%"><strong>LinkedIn publishing hardening</strong><p>States and fallback verifications already mapped.</p><div class="tagrow"><span class="tag">ready</span><span class="tag">reviewed</span></div></div>
+        </div>
+      </aside>
+
+      <section class="card">
+        <h2>Runtime lane <span id="laneStatus">ready for visual pass</span></h2>
+        <div class="body">
+          <div class="lane">
+            <div class="phase"><small>01</small><h3>Wireframes</h3><p>Map views, affordances, annotations, disabled states.</p></div>
+            <div class="phase"><small>02</small><h3>State graph</h3><p>Happy path plus empty, loading, error, duplicate, auth.</p></div>
+            <div class="phase"><small>03</small><h3>Exec Plans</h3><p>Bite-size implementation tasks tied to specific wire regions.</p></div>
+            <div class="phase"><small>04</small><h3>Tripwire review</h3><p>Headless Codex reviews patch against mock and state graph.</p></div>
+          </div>
+          <div class="matrix">
+            <div class="wire">
+              <div class="wire-top"><strong>Reference wire: reply queue redesign</strong><span>v1.2</span></div>
+              <div class="sketch-line med"></div>
+              <div class="sketch-line short"></div>
+              <div class="boxrow">
+                <div class="box"><strong>View A: Queue</strong><p>Reviewer sees candidate, rationale, duplicate guard, and approve/post controls.</p></div>
+                <div class="box"><strong>View B: Auth error</strong><p>Disabled actions explain what connection is missing.</p></div>
+                <div class="box"><strong>View C: Empty</strong><p>Show next run time and scout button, not a blank table.</p></div>
+                <div class="box"><strong>View D: Posted</strong><p>Readback URL and final text visible for audit.</p></div>
+              </div>
+              <div class="btns"><button class="btn" id="runReview">Run tripwire review</button><button class="btn secondary" id="markGap">Mark missing state</button></div>
+              <div class="output" id="output">Tripwire passed: all exec tasks reference at least one wire region and one state.</div>
+            </div>
+            <div class="checks">
+              <div class="check"><span class="checkbox done"></span><span>Each implementation task links to a wireframe region.</span></div>
+              <div class="check"><span class="checkbox done"></span><span>Dependency graph updated before patching cross-repo surfaces.</span></div>
+              <div class="check"><span class="checkbox done"></span><span>Headless review compares patch against annotations.</span></div>
+              <div class="check" id="gapCheck"><span class="checkbox"></span><span>Missing state: duplicate guard warning copy still unsketched.</span></div>
+              <div class="check"><span class="checkbox done"></span><span>Visual pass is deliberately deferred until the wire + state model stabilizes.</span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <aside class="card">
+        <h2>Program log <span>live</span></h2>
+        <div class="body">
+          <div class="event"><strong>Parker root tweet</strong><span>Generate Balsamiq-style mockups before long-horizon tasks.</span></div>
+          <div class="event"><strong>Program definition captured</strong><span>Parent loop for execplans with checks/balances and tripwires.</span></div>
+          <div class="event"><strong>Visual pass held</strong><span>Wireframes and state graph must pass first.</span></div>
+          <div class="event"><strong>Codex brief ready</strong><span>Use this screen as reference while executing plan tasks.</span></div>
+        </div>
+      </aside>
+    </section>
+  </main>
+  <script>
+    const programs = document.querySelectorAll('.program');
+    programs.forEach(p => p.addEventListener('click', () => {
+      programs.forEach(x => x.classList.remove('active'));
+      p.classList.add('active');
+      document.getElementById('coverage').textContent = p.dataset.score;
+      document.getElementById('laneStatus').textContent = p.textContent.includes('scheduler') ? 'needs another wire pass' : 'ready for visual pass';
+    }));
+    document.getElementById('runReview').addEventListener('click', () => {
+      document.getElementById('output').classList.add('show');
+      document.getElementById('laneStatus').textContent = 'tripwire review passed';
+    });
+    document.getElementById('markGap').addEventListener('click', () => {
+      const gap = document.getElementById('gapCheck');
+      const box = gap.querySelector('.checkbox');
+      box.classList.toggle('done');
+      gap.querySelector('span:last-child').textContent = box.classList.contains('done') ? 'Duplicate guard warning copy now sketched and linked.' : 'Missing state: duplicate guard warning copy still unsketched.';
+    });
+  </script>
+</body>
+</html>

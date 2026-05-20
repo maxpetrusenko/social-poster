@@ -11,6 +11,7 @@ const config = [
     ignores: [
       ".next/**",
       ".next-dev/**",
+      "coverage/**",
       "next-env.d.ts",
       "node_modules/**",
       "data/**",

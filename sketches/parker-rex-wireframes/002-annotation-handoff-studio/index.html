@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Parker Rex Thread Sketch — Annotation Handoff Studio</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #17212b; background: #fbfbf7; min-height: 100vh; }
+    button, textarea { font: inherit; }
+    .shell { max-width: 1420px; margin: 0 auto; padding: 24px; }
+    .hero { display:flex; justify-content:space-between; align-items:flex-start; gap:20px; padding:22px; background:#ffffff; border:1px solid #dfe3e6; border-radius:24px; box-shadow:0 20px 60px rgba(40, 45, 55, .08); }
+    .eyebrow { font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:#627084; font-weight:800; }
+    h1 { font-size:30px; letter-spacing:-.04em; margin-top:6px; }
+    .hero p { color:#64707d; max-width:680px; margin-top:8px; line-height:1.6; }
+    .status { display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end; }
+    .chip { padding:9px 12px; border-radius:999px; background:#f0f6ff; border:1px solid #cfe3ff; color:#27547e; font-size:13px; font-weight:700; }
+    .workspace { display:grid; grid-template-columns: 250px minmax(520px, 1fr) 360px; gap:18px; margin-top:18px; }
+    .card { background:#fff; border:1px solid #dde3e8; border-radius:22px; box-shadow:0 16px 38px rgba(30,40,52,.07); overflow:hidden; }
+    .card h2 { font-size:15px; padding:15px 16px; border-bottom:1px solid #e8ecef; display:flex; justify-content:space-between; align-items:center; }
+    .body { padding:16px; }
+    .step { display:flex; gap:11px; padding:12px; border-radius:16px; margin-bottom:10px; cursor:pointer; border:1px solid transparent; }
+    .step:hover, .step.active { background:#fff9e7; border-color:#efd073; }
+    .num { width:26px; height:26px; border-radius:50%; background:#17212b; color:#fff; display:grid; place-items:center; font-size:12px; font-weight:800; flex:0 0 auto; }
+    .step strong { display:block; font-size:14px; }
+    .step span { color:#64707d; font-size:12px; line-height:1.35; }
+    .canvas { padding:20px; background:linear-gradient(135deg,#fff 0%,#fff 70%,#f7fbff 100%); min-height:690px; position:relative; }
+    .browser { border:1px solid #cfd7de; border-radius:22px; overflow:hidden; background:#fff; box-shadow:0 12px 30px rgba(27,38,49,.09); }
+    .browserbar { height:42px; background:#f3f5f7; display:flex; align-items:center; gap:7px; padding:0 14px; border-bottom:1px solid #dfe5ea; }
+    .dot { width:10px; height:10px; border-radius:50%; background:#d7dde4; }
+    .url { margin-left:10px; padding:7px 12px; border-radius:999px; background:white; color:#7b8793; font-size:12px; flex:1; }
+    .app { display:grid; grid-template-columns: 190px 1fr; min-height:480px; }
+    .nav { background:#f7f8fa; border-right:1px solid #e2e7eb; padding:14px; }
+    .navitem { padding:10px 11px; border-radius:12px; margin-bottom:7px; color:#5f6f7e; font-size:13px; }
+    .navitem.active { background:#17212b; color:#fff; }
+    .main { padding:18px; position:relative; }
+    .screen-title { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; }
+    .screen-title h3 { font-size:18px; }
+    .primary { border:none; border-radius:12px; padding:10px 13px; background:#2f6fed; color:white; font-weight:800; cursor:pointer; }
+    .primary:hover { background:#245bc7; }
+    .postbox { border:1px solid #dce3ea; border-radius:18px; padding:14px; margin-bottom:12px; background:#fff; }
+    .muted { color:#6d7a86; font-size:13px; }
+    .row { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:12px 0; border-top:1px solid #edf0f2; }
+    .badge { padding:6px 9px; background:#edf7ef; color:#2f6b3f; border-radius:999px; font-size:12px; font-weight:800; }
+    .pin { position:absolute; width:34px; height:34px; border-radius:50%; display:grid; place-items:center; background:#ff6b58; color:#fff; font-weight:900; box-shadow:0 8px 20px rgba(255,107,88,.35); border:3px solid white; cursor:pointer; }
+    .pin[data-note="1"] { right:82px; top:70px; }
+    .pin[data-note="2"] { left:180px; top:175px; }
+    .pin[data-note="3"] { right:76px; bottom:62px; }
+    .note { margin-bottom:11px; border:1px solid #e0e6ec; border-radius:16px; padding:12px; cursor:pointer; }
+    .note.active { border-color:#ff806f; background:#fff3f0; }
+    .note strong { display:block; font-size:13px; margin-bottom:4px; }
+    .note p { color:#687582; font-size:13px; line-height:1.45; }
+    textarea { width:100%; min-height:205px; border:1px solid #cfd8e2; border-radius:16px; padding:12px; background:#fbfcfd; color:#17212b; line-height:1.45; }
+    .tools { display:grid; grid-template-columns:1fr 1fr; gap:9px; margin-top:10px; }
+    .secondary { border:1px solid #cfd8e2; background:white; color:#233142; border-radius:12px; padding:10px; cursor:pointer; }
+    .secondary:hover { background:#f5f8fb; }
+    pre { white-space:pre-wrap; word-break:break-word; border-radius:16px; background:#f7f9fb; border:1px solid #e0e6ec; padding:12px; color:#42505d; font-size:12px; line-height:1.45; margin-top:13px; }
+    .notice { margin-top:12px; padding:11px 12px; border-radius:14px; background:#fff9e7; color:#725a13; font-size:13px; display:none; }
+    .notice.show { display:block; }
+    @media (max-width:1120px) { .workspace { grid-template-columns:1fr; } .app { grid-template-columns:1fr; } .nav { display:flex; gap:8px; overflow:auto; border-right:0; border-bottom:1px solid #e2e7eb; } }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <div>
+        <div class="eyebrow">Annotation-first mockup workflow</div>
+        <h1>From rough wireframe to Codex-ready change list</h1>
+        <p>Turns the thread’s questions into a practical handoff: numbered pins on the mock, scratchpad notes, a Mermaid-style state model, and a one-click brief for the next iteration.</p>
+      </div>
+      <div class="status">
+        <span class="chip">Answers: annotation loop</span>
+        <span class="chip">Optional visual pass later</span>
+        <span class="chip">Light UI only</span>
+      </div>
+    </section>
+
+    <section class="workspace">
+      <aside class="card">
+        <h2>Handoff steps <span>4</span></h2>
+        <div class="body">
+          <div class="step active"><div class="num">1</div><div><strong>Wire rough screen</strong><span>Sketch the Social Poster page before a long implementation run.</span></div></div>
+          <div class="step"><div class="num">2</div><div><strong>Annotate pins</strong><span>Each pin becomes a concrete bullet for Codex.</span></div></div>
+          <div class="step"><div class="num">3</div><div><strong>Map states</strong><span>Mermaid-ish state model sits next to the mock.</span></div></div>
+          <div class="step"><div class="num">4</div><div><strong>Iterate wire</strong><span>Do another round of wires before visual design.</span></div></div>
+        </div>
+      </aside>
+
+      <section class="card">
+        <div class="canvas">
+          <div class="browser">
+            <div class="browserbar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="url">social-poster.local/dashboard/replies/design-prep</span></div>
+            <div class="app">
+              <nav class="nav">
+                <div class="navitem">Dashboard</div>
+                <div class="navitem active">Reply Queue</div>
+                <div class="navitem">Composer</div>
+                <div class="navitem">Calendar</div>
+                <div class="navitem">Connections</div>
+              </nav>
+              <div class="main">
+                <div class="screen-title"><h3>X reply queue prep</h3><button class="primary" id="primaryBtn">Approve 3 drafts</button></div>
+                <div class="postbox">
+                  <strong>@founder_dana asks about launch timing</strong>
+                  <p class="muted">Draft reply: “The tiny checklist I use: narrow audience, visible waitlist, one proof screenshot...”</p>
+                  <div class="row"><span>State coverage</span><span class="badge">Ready + empty + auth error</span></div>
+                  <div class="row"><span>Next action</span><span>Reviewer approval</span></div>
+                </div>
+                <div class="postbox">
+                  <strong>Empty state when no X account connected</strong>
+                  <p class="muted">Disabled actions must explain the missing connection and link to setup.</p>
+                </div>
+                <span class="pin" data-note="1">1</span>
+                <span class="pin" data-note="2">2</span>
+                <span class="pin" data-note="3">3</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <aside class="card">
+        <h2>Annotation notes <span id="noteCount">3 pins</span></h2>
+        <div class="body">
+          <div class="note active" data-pin="1"><strong>1 · Primary action hierarchy</strong><p>Move approve/run controls above passive metadata so the core action is unmistakable.</p></div>
+          <div class="note" data-pin="2"><strong>2 · Missing-auth affordance</strong><p>Disabled buttons need copy: “Connect X to approve replies” plus a direct setup link.</p></div>
+          <div class="note" data-pin="3"><strong>3 · State model</strong><p>Capture ready, empty, loading, duplicate, and auth-error before implementation.</p></div>
+          <textarea id="scratch">Voice/scratchpad notes:
+- Use pins as anchors, not generic comments.
+- Ask Codex for another wire round with just the bullets.
+- Keep the state diagram next to the mock so implementation can test against it.</textarea>
+          <div class="tools">
+            <button class="secondary" id="copyBrief">Build Codex brief</button>
+            <button class="secondary" id="toggleMermaid">Toggle diagram</button>
+          </div>
+          <div class="notice" id="notice">Brief generated from 3 pins and scratchpad notes.</div>
+          <pre id="diagram">stateDiagram-v2
+  Empty --> Loading: import source
+  Loading --> Ready: drafts generated
+  Loading --> Error: provider/auth fails
+  Ready --> Approved: reviewer accepts
+  Ready --> Duplicate: duplicate guard trips</pre>
+        </div>
+      </aside>
+    </section>
+  </main>
+  <script>
+    const notes = document.querySelectorAll('.note');
+    const pins = document.querySelectorAll('.pin');
+    function activate(n) {
+      notes.forEach(x => x.classList.toggle('active', x.dataset.pin === n));
+      pins.forEach(x => x.style.transform = x.dataset.note === n ? 'scale(1.15)' : 'scale(1)');
+    }
+    notes.forEach(n => n.addEventListener('click', () => activate(n.dataset.pin)));
+    pins.forEach(p => p.addEventListener('click', () => activate(p.dataset.note)));
+    document.getElementById('copyBrief').addEventListener('click', () => {
+      document.getElementById('notice').classList.add('show');
+      document.getElementById('scratch').value = '- Move approve controls above metadata.\n- Add missing-auth disabled affordance and setup link.\n- Implement five states from diagram.\n- Return a second wireframe pass, not final CSS.';
+    });
+    document.getElementById('toggleMermaid').addEventListener('click', () => {
+      const d = document.getElementById('diagram');
+      d.style.display = d.style.display === 'none' ? 'block' : 'none';
+    });
+    document.getElementById('primaryBtn').addEventListener('click', () => {
+      const btn = document.getElementById('primaryBtn');
+      btn.textContent = btn.textContent.includes('Approved') ? 'Approve 3 drafts' : 'Approved — queued';
+    });
+  </script>
+</body>
+</html>

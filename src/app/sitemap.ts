@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next";
 import { BLOG_POSTS } from "@/lib/blog/posts";
 import { getPublishedDynamicBlogPosts } from "@/lib/blog/automation";
-import { getProductCanonicalUrl } from "@/lib/site-domains";
+import { getAppCanonicalUrl, getProductCanonicalUrl } from "@/lib/site-domains";
 
 function categorySlug(category: string) {
   return category.toLowerCase().replace(/\s+/g, "-");
@@ -48,6 +48,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       url: getProductCanonicalUrl("/social-media-bot"),
       changeFrequency: "weekly",
       priority: 0.85,
+    },
+    {
+      url: getAppCanonicalUrl("/docs"),
+      changeFrequency: "weekly",
+      priority: 0.7,
     },
     ...blogCategories,
     ...blogPosts,

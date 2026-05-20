@@ -89,7 +89,9 @@ export async function generateBlogDraftWithMediumAutomation(input: {
   }
 
   const result = (await response.json()) as MediumAutomationResponse;
-  const article = result.article?.trim();
+  const article = normalizeMediumAutomationArticle(result.article ?? "", {
+    preferredTitle: isUrlOnlyPrompt(input.topic) ? youtubeTranscript?.title : undefined,
+  });
   if (!article) {
     throw new Error("Medium automation returned no article content.");
   }
@@ -155,6 +157,7 @@ ${input.youtubeTranscript.transcript}
   return `USER REQUEST:
 ${input.topic}
 ${directivesBlock}
+${input.youtubeTranscript?.title ? `Source title: ${input.youtubeTranscript.title}\n` : ""}
 
 Create the single source-of-truth article for this topic. Include:
 - a 40-60 word direct answer blockquote immediately after the title
@@ -167,8 +170,70 @@ Create the single source-of-truth article for this topic. Include:
 - never use the forbidden phrase supplied by the editor${sourceBlock}
 ${transcriptBlock}
 
+If the user request is only a pasted URL, keep the article title close to the source title or transcript's opening question. Do not invent a broader metaphor title.
+Return only the final Medium-ready Markdown article. Do not prepend numbered summaries, key facts, source lists, or analysis sections outside the article.
+
 Article agent rules:
 ${input.articleAgentInstructions}`;
+}
+
+export function normalizeMediumAutomationArticle(
+  markdown: string,
+  options: { preferredTitle?: string | null } = {}
+) {
+  let article = markdown.trim();
+  if (!article) return "";
+
+  article = article.replace(/^1\.\s+(?:A\s+)?detailed summary of the topic\s*\n+/i, "");
+  article = article.replace(/\n+\*{3,}\s*\n+\s*2\.\s+Key facts and statistics[\s\S]*$/i, "");
+  article = article.replace(/\n+\s*2\.\s+Key facts and statistics[\s\S]*$/i, "");
+  article = article.replace(/\n+\s*3\.\s+List of sources \(URLs\)[\s\S]*$/i, "");
+  article = article.replace(/\n*!\[[^\]]*]\(https?:\/\/image\.placeholder\.com\/[^)]+\)\n*/gi, "\n\n");
+
+  const firstTitleIndex = article.search(/^#\s+/m);
+  if (firstTitleIndex > 0) {
+    article = article.slice(firstTitleIndex).trimStart();
+  }
+
+  if (options.preferredTitle?.trim()) {
+    article = replaceFirstTitle(article, options.preferredTitle.trim());
+  }
+
+  article = moveFirstBlockquoteAfterTitle(article);
+  return article.replace(/\n{3,}/g, "\n\n").trim();
+}
+
+function replaceFirstTitle(markdown: string, title: string) {
+  if (/^#\s+/m.test(markdown)) {
+    return markdown.replace(/^#\s+.+$/m, `# ${title}`);
+  }
+  return `# ${title}\n\n${markdown}`;
+}
+
+function moveFirstBlockquoteAfterTitle(markdown: string) {
+  const titleMatch = markdown.match(/^#\s+.+$/m);
+  if (!titleMatch || titleMatch.index === undefined) return markdown;
+
+  const titleEnd = titleMatch.index + titleMatch[0].length;
+  const afterTitle = markdown.slice(titleEnd).trimStart();
+  if (afterTitle.startsWith(">")) return markdown;
+
+  const quoteMatch = markdown.match(/^>\s+.+(?:\n>\s+.+)*/m);
+  if (!quoteMatch || quoteMatch.index === undefined) return markdown;
+
+  const quote = quoteMatch[0].trim();
+  const withoutQuote = `${markdown.slice(0, quoteMatch.index)}${markdown.slice(quoteMatch.index + quoteMatch[0].length)}`
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+  const titleLine = withoutQuote.match(/^#\s+.+$/m)?.[0];
+  if (!titleLine) return markdown;
+
+  return withoutQuote.replace(titleLine, `${titleLine}\n\n${quote}`);
+}
+
+function isUrlOnlyPrompt(value: string) {
+  const trimmed = value.trim();
+  return /^https?:\/\/\S+$/.test(trimmed);
 }
 
 function extractTitle(markdown: string) {

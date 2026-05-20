@@ -57,4 +57,52 @@ describe("source-of-truth article framework", () => {
     expect(validation.status).toBe("fail");
     expect(validation.checks.find((check) => check.key === "forbidden_phrases")?.status).toBe("fail");
   });
+
+  it("accepts anti-slop takeaway and action sections as framework coverage", () => {
+    const directAnswer =
+      "Ghost Murmur is a sensor claim that sounds plausible because quantum magnetometry is real, but long-range heartbeat tracking fails under magnetic-field physics. The useful lesson is narrower: diamond magnetometers may help navigation, while biometric detection at kilometer range remains unsupported by public evidence.";
+    const validation = validateSourceOfTruthArticle({
+      topic: "Ghost Murmur",
+      title: "Could the CIA Really Track Your Heartbeat From Kilometers Away?",
+      excerpt: "A physics check.",
+      category: "Science",
+      directAnswer,
+      thesis: "Physics narrows the claim.",
+      heroImageUrl: "https://example.com/hero.jpg",
+      heroImageAlt: "Hero",
+      targetWords: 1200,
+      sources: [
+        { title: "A", url: "https://example.com/a" },
+        { title: "B", url: "https://example.com/b" },
+        { title: "C", url: "https://example.com/c" },
+      ],
+      contentMarkdown: `# Could the CIA Really Track Your Heartbeat From Kilometers Away?
+
+> ${directAnswer}
+
+## Reality Contact
+
+The limitation is distance.
+
+## What to Remember
+
+- One
+- Two
+- Three
+- Four
+
+## Actions to Take
+
+**Primary Action**
+Check the propagation law.
+
+**Secondary Actions**
+- Check noise.
+- Check source evidence.
+`,
+    });
+
+    expect(validation.checks.find((check) => check.key === "faq_graph")?.status).toBe("pass");
+    expect(validation.checks.find((check) => check.key === "actionability")?.status).toBe("pass");
+  });
 });
