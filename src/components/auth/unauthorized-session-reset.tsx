@@ -1,13 +1,20 @@
 "use client";
 
 import { useEffect } from "react";
-import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
+import {
+  createSupabaseBrowserClient,
+  type SupabaseBrowserConfig,
+} from "@/lib/supabase/browser";
 
-export function UnauthorizedSessionReset() {
+export function UnauthorizedSessionReset({
+  supabase,
+}: {
+  supabase: SupabaseBrowserConfig;
+}) {
   useEffect(() => {
-    const supabase = createSupabaseBrowserClient();
-    void supabase.auth.signOut();
-  }, []);
+    const client = createSupabaseBrowserClient(supabase);
+    void client.auth.signOut();
+  }, [supabase]);
 
   return null;
 }

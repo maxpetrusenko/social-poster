@@ -1,19 +1,27 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
+import {
+  createSupabaseBrowserClient,
+  type SupabaseBrowserConfig,
+} from "@/lib/supabase/browser";
 import { getWorkspaceAuthErrorMessage } from "@/lib/supabase/config";
 
 interface GoogleSignInButtonProps {
   initialErrorCode?: string | null;
   nextPath?: string;
+  supabase: SupabaseBrowserConfig;
 }
 
 export function GoogleSignInButton({
   initialErrorCode = null,
   nextPath = "/dashboard",
+  supabase: supabaseConfig,
 }: GoogleSignInButtonProps) {
-  const supabase = useMemo(() => createSupabaseBrowserClient(), []);
+  const supabase = useMemo(
+    () => createSupabaseBrowserClient(supabaseConfig),
+    [supabaseConfig]
+  );
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [accessDenied, setAccessDenied] = useState(

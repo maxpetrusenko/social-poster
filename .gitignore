@@ -3,6 +3,7 @@ node_modules/
 .next-dev/
 dist/
 out/
+coverage/
 data/
 .env
 .env.local

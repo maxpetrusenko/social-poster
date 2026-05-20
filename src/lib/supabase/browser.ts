@@ -3,7 +3,12 @@
 import { createBrowserClient } from "@supabase/ssr";
 import { getSupabasePublicEnv } from "./config";
 
-export function createSupabaseBrowserClient() {
-  const { url, anonKey } = getSupabasePublicEnv();
+export interface SupabaseBrowserConfig {
+  url: string;
+  anonKey: string;
+}
+
+export function createSupabaseBrowserClient(config?: SupabaseBrowserConfig) {
+  const { url, anonKey } = config ?? getSupabasePublicEnv();
   return createBrowserClient(url, anonKey);
 }

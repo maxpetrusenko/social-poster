@@ -11,6 +11,7 @@ import { UnauthorizedSessionReset } from "@/components/auth/unauthorized-session
 import { LoginForm } from "@/components/login-form";
 import {
   getWorkspaceAuthErrorMessage,
+  getSupabasePublicEnv,
   isSupabaseConfigured,
 } from "@/lib/supabase/config";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -58,10 +59,14 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   const params = searchParams ? await searchParams : undefined;
   const nextPath = sanitizeNextPath(params?.next);
   const authErrorCode = params?.error ?? null;
+  const supabasePublicEnv =
+    AUTH_MODE === "supabase" && isSupabaseConfigured()
+      ? getSupabasePublicEnv()
+      : null;
 
   let shouldResetSession = false;
 
-  if (AUTH_MODE === "supabase" && isSupabaseConfigured()) {
+  if (supabasePublicEnv) {
     const supabase = await createSupabaseServerClient();
     let user: { email?: string | null } | null = null;
 
@@ -93,7 +98,9 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 
       <div className="relative mx-auto flex min-h-screen w-full max-w-6xl flex-col items-center justify-center px-4 py-8 md:px-6 md:py-12">
         <section className="w-full max-w-md rounded-[32px] bg-[#221a16] p-6 text-[#f6ecdc] shadow-[0_16px_40px_rgba(34,26,22,0.18)] md:p-7">
-          {shouldResetSession ? <UnauthorizedSessionReset /> : null}
+          {shouldResetSession && supabasePublicEnv ? (
+            <UnauthorizedSessionReset supabase={supabasePublicEnv} />
+          ) : null}
           <p className="section-eyebrow text-[#d2a35d]">Private App</p>
           <h1 className="mt-3 font-serif text-[2rem] leading-none text-[#f6ecdc]">
             SMM Agent
@@ -104,10 +111,11 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
           </p>
 
           <div className="mt-6">
-            {AUTH_MODE === "supabase" && isSupabaseConfigured() ? (
+            {supabasePublicEnv ? (
               <GoogleSignInButton
                 initialErrorCode={authErrorCode}
                 nextPath={nextPath}
+                supabase={supabasePublicEnv}
               />
             ) : AUTH_MODE === "magic_link" ? (
               <LoginForm
