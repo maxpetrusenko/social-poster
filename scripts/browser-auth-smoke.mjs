@@ -141,6 +141,38 @@ function clearMalformedComposerPlatformConfig(dbPath) {
   }
 }
 
+async function waitForDraftTargets(dbPath, content, timeoutMs = 30_000) {
+  const deadline = Date.now() + timeoutMs;
+  let lastResult;
+
+  while (Date.now() < deadline) {
+    const db = new Database(dbPath, { readonly: true });
+    try {
+      lastResult = db
+        .prepare(
+          `SELECT p.status, COUNT(pt.id) AS targets
+           FROM posts p
+           LEFT JOIN post_targets pt ON pt.post_id = p.id
+           WHERE p.content = ?
+           GROUP BY p.status`
+        )
+        .get(content);
+    } finally {
+      db.close();
+    }
+
+    if (lastResult?.status === "draft" && lastResult?.targets === 4) {
+      return lastResult;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+
+  throw new Error(
+    `Draft targets were not persisted. Last result: ${JSON.stringify(lastResult)}`
+  );
+}
+
 function encodeSupabaseSessionCookie(session) {
   return `base64-${Buffer.from(JSON.stringify(session), "utf8").toString("base64url")}`;
 }
@@ -540,9 +572,9 @@ async function main() {
       );
       if (submit instanceof HTMLButtonElement) submit.click();
     });
-    await createPostPage.waitForFunction(
-      () => /^\/dashboard\/posts\/[^/]+$/.test(window.location.pathname),
-      { timeout: 30_000 }
+    await waitForDraftTargets(
+      dbPath,
+      "Browser smoke draft across connected platforms."
     );
 
     const rssPage = pages[1];
