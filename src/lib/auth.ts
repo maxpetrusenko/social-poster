@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 import { unstable_rethrow } from "next/navigation";
 import { NextResponse } from "next/server";
 import crypto from "node:crypto";
+import { cache } from "react";
 import {
   AUTH_MODE,
   ALLOWED_EMAIL,
@@ -148,7 +149,7 @@ export async function verifyMagicLink(t: string): Promise<string | null> {
   return link.email;
 }
 
-export async function getSession() {
+export const getSession = cache(async function getSession() {
   if (AUTH_MODE === "bypass") {
     const cookieStore = await cookies();
     if (
@@ -191,7 +192,7 @@ export async function getSession() {
     .get();
 
   return session ?? null;
-}
+});
 
 export async function logout() {
   if (AUTH_MODE === "bypass") {

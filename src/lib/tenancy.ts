@@ -1,6 +1,7 @@
 import "server-only";
 
 import crypto from "node:crypto";
+import { cache } from "react";
 import { cookies } from "next/headers";
 import { and, eq, gt, inArray, isNull } from "drizzle-orm";
 import { db } from "@/db";
@@ -456,7 +457,7 @@ async function createDefaultTenantForUser(
   };
 }
 
-export async function getTenantContext(): Promise<TenantContext | null> {
+export const getTenantContext = cache(async function getTenantContext(): Promise<TenantContext | null> {
   const session = await getSession();
   if (!session?.email) {
     return null;
@@ -535,7 +536,7 @@ export async function getTenantContext(): Promise<TenantContext | null> {
         membership: entry.membership,
       })),
   };
-}
+});
 
 export async function requireTenantContext() {
   const context = await getTenantContext();

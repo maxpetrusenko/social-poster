@@ -124,11 +124,15 @@ describe("auth client components", () => {
     expect(await screen.findByText("OAuth provider unavailable")).toBeTruthy();
   });
 
-  it("signs out once with injected Supabase config for unauthorized sessions", async () => {
+  it("does not sign out unauthorized sessions until the user explicitly resets", async () => {
     createSupabaseBrowserClient.mockReturnValue(supabaseClient);
     supabaseClient.auth.signOut.mockResolvedValue({ error: null });
 
     render(createElement(UnauthorizedSessionReset, { supabase: supabaseConfig }));
+
+    expect(supabaseClient.auth.signOut).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: /use a different google account/i }));
 
     await waitFor(() => {
       expect(createSupabaseBrowserClient).toHaveBeenCalledWith(supabaseConfig);
