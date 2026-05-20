@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { buildLatePostBody } from "@/lib/pipeline/publisher";
+import { buildLatePostBody, getLatePlatformFailure } from "@/lib/pipeline/publisher";
 
 describe("Late publisher body", () => {
   it("omits Instagram contentType for feed image posts", () => {
@@ -126,5 +126,36 @@ describe("Late publisher body", () => {
         platformSpecificData: { contentType: "carousel" },
       },
     ]);
+  });
+
+  it("accepts Late async processing statuses without marking the publish failed", () => {
+    const failure = getLatePlatformFailure(
+      "instagram",
+      {},
+      { platform: "instagram", status: "processing" }
+    );
+
+    expect(failure).toBeNull();
+  });
+
+  it("still surfaces Late async platform errors", () => {
+    const failure = getLatePlatformFailure(
+      "instagram",
+      {
+        platformResults: [
+          {
+            platform: "instagram",
+            status: "pending",
+            error: "credits depleted",
+          },
+        ],
+      },
+      { platform: "instagram", status: "pending", errorMessage: "credits depleted" }
+    );
+
+    expect(failure).toEqual({
+      classification: "provider_error",
+      error: "credits depleted",
+    });
   });
 });

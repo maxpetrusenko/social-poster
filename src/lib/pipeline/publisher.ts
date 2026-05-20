@@ -115,6 +115,10 @@ export function getLatePlatformFailure(
     return null;
   }
 
+  if (isLateAcceptedStatus(platformStatus) && !error) {
+    return null;
+  }
+
   if (!platformStatus && !error) {
     return null;
   }
@@ -128,6 +132,15 @@ export function getLatePlatformFailure(
       error ||
       `Late returned platform status "${platformStatus || "unknown"}" for ${platform}.`,
   };
+}
+
+function isLateAcceptedStatus(status: string) {
+  return (
+    status === "pending" ||
+    status === "processing" ||
+    status === "queued" ||
+    status === "scheduled"
+  );
 }
 
 export function buildLatePostBody(target: PublishTarget): Record<string, unknown> {
