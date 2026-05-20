@@ -14,7 +14,22 @@ describe("Late publisher body", () => {
     });
 
     expect(body.platforms).toEqual([
-      { platform: "instagram", accountId: "69024a779d65616f16a5c5c1" },
+      { platform: "instagram", accountId: "ig-account" },
+    ]);
+  });
+
+  it("uses the connected account id instead of legacy platform defaults", () => {
+    const body = buildLatePostBody({
+      platform: "instagram",
+      accountId: "connected-instagram-account",
+      content: "Connected account caption",
+      mediaUrl: "https://cdn.example.com/feed.jpg",
+      mediaType: "image",
+      instagramContentType: "feed",
+    });
+
+    expect(body.platforms).toEqual([
+      { platform: "instagram", accountId: "connected-instagram-account" },
     ]);
   });
 
@@ -39,14 +54,14 @@ describe("Late publisher body", () => {
     expect(storyBody.platforms).toEqual([
       {
         platform: "instagram",
-        accountId: "69024a779d65616f16a5c5c1",
+        accountId: "ig-account",
         platformSpecificData: { contentType: "story" },
       },
     ]);
     expect(reelBody.platforms).toEqual([
       {
         platform: "instagram",
-        accountId: "69024a779d65616f16a5c5c1",
+        accountId: "ig-account",
         platformSpecificData: { contentType: "reels", shareToFeed: true },
       },
     ]);
@@ -75,14 +90,14 @@ describe("Late publisher body", () => {
     expect(storyBody.platforms).toEqual([
       {
         platform: "facebook",
-        accountId: "69024a999d65616f16a5c5c2",
+        accountId: "fb-account",
         platformSpecificData: { contentType: "story" },
       },
     ]);
     expect(reelBody.platforms).toEqual([
       {
         platform: "facebook",
-        accountId: "69024a999d65616f16a5c5c2",
+        accountId: "fb-account",
         platformSpecificData: { contentType: "reel", firstComment: "link" },
       },
     ]);
@@ -107,7 +122,7 @@ describe("Late publisher body", () => {
     expect(body.platforms).toEqual([
       {
         platform: "instagram",
-        accountId: "69024a779d65616f16a5c5c1",
+        accountId: "ig-account",
         platformSpecificData: { contentType: "carousel" },
       },
     ]);

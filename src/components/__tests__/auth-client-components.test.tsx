@@ -93,10 +93,6 @@ describe("auth client components", () => {
         provider: "google",
         options: {
           redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}`,
-          queryParams: {
-            access_type: "offline",
-            prompt: "consent",
-          },
         },
       });
     });

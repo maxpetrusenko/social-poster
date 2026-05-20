@@ -54,6 +54,25 @@ export function mapComposerPlatforms(platformRows: PlatformRow[]): ComposerPlatf
   }));
 }
 
+export function parseComposerPlatformConfig(
+  value: unknown
+): Record<string, unknown> | null {
+  if (!value) return null;
+  if (typeof value === "object" && !Array.isArray(value)) {
+    return value as Record<string, unknown>;
+  }
+  if (typeof value !== "string") return null;
+
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : null;
+  } catch {
+    return null;
+  }
+}
+
 function dedupeComposerPlatformRows(platformRows: PlatformRow[]): PlatformRow[] {
   const enabledRows = platformRows.filter((platform) => platform.enabled);
   const accountDedupedRows = dedupePlatformRows(enabledRows);

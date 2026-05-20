@@ -58,7 +58,7 @@ function normalizePlatform(platform: string): string {
 }
 
 export function resolvePublishAccountId(platform: string, providedAccountId?: string | null): string | null {
-  return ACCOUNT_IDS[platform] || providedAccountId || null;
+  return providedAccountId || ACCOUNT_IDS[platform] || null;
 }
 
 function classifyLateError(status: number, message: string): PublishClassification {

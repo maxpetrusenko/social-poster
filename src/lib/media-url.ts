@@ -15,7 +15,11 @@ export function mediaTypeFromUrl(url: string): ResolvedMediaType | null {
   try {
     parsed = new URL(url);
   } catch {
-    return null;
+    try {
+      parsed = new URL(url, "https://social-poster.local");
+    } catch {
+      return null;
+    }
   }
 
   const pathname = parsed.pathname.toLowerCase();

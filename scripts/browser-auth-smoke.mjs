@@ -82,6 +82,65 @@ async function assertAsset(page, pathname, expectedType, expectedBytes) {
   assert.deepEqual(result.bytes, expectedBytes);
 }
 
+function seedComposerPlatforms(dbPath, email) {
+  const db = new Database(dbPath);
+  const now = Date.now();
+
+  try {
+    const workspace = db
+      .prepare(
+        `SELECT w.id
+         FROM workspace_memberships wm
+         JOIN users u ON u.id = wm.user_id
+         JOIN workspaces w ON w.id = wm.workspace_id
+         WHERE u.email = ?`
+      )
+      .get(email);
+
+    if (!workspace?.id) {
+      throw new Error(`No workspace found for ${email}.`);
+    }
+
+    const insert = db.prepare(
+      `INSERT INTO platforms (
+        id, workspace_id, name, type, handle, account_id, provider, config, enabled, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    );
+
+    for (const platform of [
+      ["smoke-x", "X Smoke", "x", "@smoke", "x-smoke", "direct", "{\"capabilities\":[\"text\",\"image\",\"video\",\"schedule\"]}"],
+      ["smoke-ig", "Instagram Smoke", "instagram_personal", "@smoke", "ig-smoke", "direct", "{malformed-json"],
+      ["smoke-fb", "Facebook Smoke", "facebook", "smoke", "fb-smoke", "direct", null],
+      ["smoke-li", "LinkedIn Smoke", "linkedin", "smoke", "li-smoke", "direct", null],
+    ]) {
+      insert.run(
+        platform[0],
+        workspace.id,
+        platform[1],
+        platform[2],
+        platform[3],
+        platform[4],
+        platform[5],
+        platform[6],
+        1,
+        now,
+        now
+      );
+    }
+  } finally {
+    db.close();
+  }
+}
+
+function clearMalformedComposerPlatformConfig(dbPath) {
+  const db = new Database(dbPath);
+  try {
+    db.prepare("UPDATE platforms SET config = NULL WHERE id = ?").run("smoke-ig");
+  } finally {
+    db.close();
+  }
+}
+
 function encodeSupabaseSessionCookie(session) {
   return `base64-${Buffer.from(JSON.stringify(session), "utf8").toString("base64url")}`;
 }
@@ -293,6 +352,7 @@ async function main() {
     browser = await puppeteer.launch({
       executablePath: chrome,
       headless: true,
+      protocolTimeout: 120_000,
       args: ["--no-sandbox", "--disable-setuid-sandbox"],
     });
 
@@ -419,6 +479,8 @@ async function main() {
       }
     });
 
+    seedComposerPlatforms(dbPath, "browser-race@example.com");
+
     const createPostPage = pages[0];
     const createPostResponse = await createPostPage.goto(
       `${baseUrl}/dashboard/posts/create`,
@@ -442,6 +504,46 @@ async function main() {
     assert.equal(rssButtonState.found, true);
     assert.equal(rssButtonState.disabled, true);
     assert.doesNotMatch(rssButtonState.body, /Application error/);
+    assert.match(rssButtonState.body, /Create Post/);
+    assert.match(rssButtonState.body, /Instagram Personal \/ Relay/);
+    assert.match(rssButtonState.body, /Facebook/);
+    assert.match(rssButtonState.body, /LinkedIn/);
+    clearMalformedComposerPlatformConfig(dbPath);
+
+    for (const label of [
+      "Select X",
+      "Select Instagram Personal / Relay",
+      "Select Facebook",
+      "Select LinkedIn",
+    ]) {
+      await createPostPage.evaluate((buttonLabel) => {
+        const button = document.querySelector(
+          `button[aria-label="${buttonLabel}"]`
+        );
+        if (!(button instanceof HTMLButtonElement)) {
+          throw new Error(`Missing platform button: ${buttonLabel}`);
+        }
+        button.click();
+      }, label);
+    }
+
+    await createPostPage.type("textarea", "Browser smoke draft across connected platforms.");
+    await createPostPage.evaluate(() => {
+      const draftButton = Array.from(document.querySelectorAll("button")).find(
+        (candidate) => candidate.textContent?.trim() === "Draft"
+      );
+      if (draftButton instanceof HTMLButtonElement) draftButton.click();
+    });
+    await createPostPage.evaluate(() => {
+      const submit = Array.from(document.querySelectorAll("button")).find(
+        (candidate) => candidate.textContent?.trim() === "save draft"
+      );
+      if (submit instanceof HTMLButtonElement) submit.click();
+    });
+    await createPostPage.waitForFunction(
+      () => window.location.pathname.startsWith("/dashboard/posts/"),
+      { timeout: 30_000 }
+    );
 
     const rssPage = pages[1];
     const rssResponse = await rssPage.goto(`${baseUrl}/dashboard/rss`, {
@@ -511,6 +613,17 @@ async function main() {
         )
         .get();
       assert.deepEqual(rssCounts, { sources: 0, settings: 0, drip: 0 });
+
+      const draftTargets = db
+        .prepare(
+          `SELECT p.status, COUNT(pt.id) AS targets
+           FROM posts p
+           LEFT JOIN post_targets pt ON pt.post_id = p.id
+           WHERE p.content = ?
+           GROUP BY p.status`
+        )
+        .get("Browser smoke draft across connected platforms.");
+      assert.deepEqual(draftTargets, { status: "draft", targets: 4 });
     } finally {
       db.close();
     }

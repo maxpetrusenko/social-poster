@@ -41,10 +41,6 @@ export function GoogleSignInButton({
       provider: "google",
       options: {
         redirectTo: callbackUrl(),
-        queryParams: {
-          access_type: "offline",
-          prompt: "consent",
-        },
       },
     });
 

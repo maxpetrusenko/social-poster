@@ -29,3 +29,20 @@ test("LinkedIn native add starts with the profile OAuth option", () => {
     "linkedin"
   );
 });
+
+test("Instagram filter includes personal legacy connections and opens Instagram methods", () => {
+  assert.equal(platformMatchesConnectionFilter("instagram", "instagram"), true);
+  assert.equal(
+    platformMatchesConnectionFilter("instagram_personal", "instagram"),
+    true
+  );
+  assert.equal(platformMatchesConnectionFilter("facebook", "instagram"), false);
+  assert.equal(
+    getDrawerPlatformForConnectionFilter("instagram", "native"),
+    "instagram"
+  );
+  assert.equal(
+    getDrawerPlatformForConnectionFilter("instagram", "proxy"),
+    "instagram"
+  );
+});

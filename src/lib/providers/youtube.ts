@@ -47,7 +47,7 @@ export class YouTubeProvider extends OAuthProvider {
       scope: this.requiredScopes.join(" "),
       response_type: "code",
       access_type: "offline",
-      prompt: "consent",
+      include_granted_scopes: "true",
     });
   }
 

@@ -877,6 +877,15 @@ function ensureSchema(sqlite: Database.Database) {
   `);
 
   collapseDuplicatePlatformConnections(sqlite);
+  try {
+    sqlite
+      .prepare(
+        "UPDATE platforms SET config = NULL WHERE config IS NOT NULL AND json_valid(config) = 0"
+      )
+      .run();
+  } catch (error) {
+    console.warn("[db] could not repair malformed platform config:", error);
+  }
   sqlite.exec(`
     CREATE UNIQUE INDEX IF NOT EXISTS platforms_account_identity_unique
     ON platforms(workspace_id, provider, type, account_id)

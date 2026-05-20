@@ -7,29 +7,16 @@ import {
 } from "@/components/dashboard/calendar-event-surface";
 import { DashboardPageContent, SectionCard } from "@/components/dashboard/ui";
 import { getCalendarInsights } from "@/lib/dashboard/calendar";
+import {
+  formatCalendarMonth,
+  getCalendarDays,
+  getCurrentCalendarMonth,
+} from "@/lib/dashboard/calendar-month";
 import { getZonedDateParts } from "@/lib/timezone";
 import { getTenantContext } from "@/lib/tenancy";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
-
-function getCalendarDays(year: number, monthIndex: number) {
-  const firstDay = new Date(year, monthIndex, 1);
-  const lastDay = new Date(year, monthIndex + 1, 0);
-  const daysInMonth = lastDay.getDate();
-  const startingDayOfWeek = firstDay.getDay();
-
-  const days: Array<string | null> = [];
-  for (let index = 0; index < startingDayOfWeek; index += 1) days.push(null);
-  for (let day = 1; day <= daysInMonth; day += 1) {
-    const value = new Date(year, monthIndex, day);
-    const parts = getZonedDateParts(value);
-    days.push(
-      `${parts.year}-${String(parts.month).padStart(2, "0")}-${String(parts.day).padStart(2, "0")}`
-    );
-  }
-  return days;
-}
 
 function dayKey(date: Date) {
   const parts = getZonedDateParts(date);
@@ -116,7 +103,7 @@ export default async function CalendarPage({
   if (!tenant) redirect("/login");
 
   const params = await searchParams;
-  const monthParam = params.month || new Date().toISOString().slice(0, 7);
+  const monthParam = params.month || getCurrentCalendarMonth();
   const view = params.view === "list" ? "list" : "calendar";
   const filters = {
     status: params.status || "all",
@@ -128,35 +115,11 @@ export default async function CalendarPage({
   const [yearStr, monthStr] = monthParam.split("-");
   const year = Number.parseInt(yearStr, 10);
   const monthIndex = Number.parseInt(monthStr, 10) - 1;
-  const prevMonthStr = new Date(year, monthIndex - 1, 1).toISOString().slice(0, 7);
-  const nextMonthStr = new Date(year, monthIndex + 1, 1).toISOString().slice(0, 7);
-  const todayMonth = new Date().toISOString().slice(0, 7);
+  const prevMonthStr = formatCalendarMonth(year, monthIndex - 1);
+  const nextMonthStr = formatCalendarMonth(year, monthIndex + 1);
+  const todayMonth = getCurrentCalendarMonth();
 
-  let calendar: Awaited<ReturnType<typeof getCalendarInsights>>;
-  try {
-    calendar = await getCalendarInsights(monthParam, tenant.currentWorkspace.id);
-  } catch (calError) {
-    const { writeFileSync } = await import("node:fs");
-    writeFileSync("/tmp/calendar-debug.json", JSON.stringify({
-      error: calError instanceof Error ? calError.message : String(calError),
-      stack: calError instanceof Error ? calError.stack : null,
-      workspace: tenant.currentWorkspace.id,
-      month: monthParam,
-    }, null, 2));
-    throw calError;
-  }
-  {
-    const { writeFileSync } = await import("node:fs");
-    const dayKeys = Object.keys(calendar.eventsByDay);
-    const total = Object.values(calendar.eventsByDay).flat().length;
-    const sample = Object.values(calendar.eventsByDay).flat().slice(0, 3).map(e => ({
-      id: e.id, dayKey: e.dayKey, tone: e.tone, kind: e.kind, label: e.label,
-    }));
-    writeFileSync("/tmp/calendar-debug.json", JSON.stringify({
-      workspace: tenant.currentWorkspace.id, month: monthParam,
-      dayKeys, total, sample, filters,
-    }, null, 2));
-  }
+  const calendar = await getCalendarInsights(monthParam, tenant.currentWorkspace.id);
   const rawEvents = Object.values(calendar.eventsByDay)
     .flat()
     .map(serializeEvent);

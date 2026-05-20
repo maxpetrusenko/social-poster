@@ -51,7 +51,7 @@ export class GoogleBusinessProvider extends OAuthProvider {
       scope: this.requiredScopes.join(" "),
       state,
       access_type: "offline",
-      prompt: "consent",
+      include_granted_scopes: "true",
     });
   }
 

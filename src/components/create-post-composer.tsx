@@ -7,6 +7,7 @@ import { PlatformBrandBadge } from "@/components/dashboard/platform-brand-icon";
 import { MediaAdjustmentDialog } from "@/components/media-adjustment-dialog";
 import { PlatformPostPreview } from "@/components/platform-post-preview";
 import { getPlatformMeta } from "@/lib/dashboard/platforms";
+import { getMissingImageDimensionUrls } from "@/lib/dashboard/composer-media";
 import { computeCanvasPlacement } from "@/lib/media-adjustment";
 import { mediaTypeFromUrl } from "@/lib/media-url";
 import type { SourceEvidenceSnapshot } from "@/lib/sources";
@@ -214,7 +215,11 @@ export function CreatePostComposer({ profiles, rssSourceCount, platforms }: Prop
       threadEnabled,
     };
 
-    window.localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draft));
+    try {
+      window.localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draft));
+    } catch {
+      // Storage can be blocked or full; composer should still remain usable.
+    }
   }, [
     content,
     draftUrl,
@@ -281,10 +286,32 @@ export function CreatePostComposer({ profiles, rssSourceCount, platforms }: Prop
   }
 
   useEffect(() => {
-    for (const url of mediaUrls) {
-      loadMediaDimensions(url);
+    const missingImageUrls = getMissingImageDimensionUrls(mediaUrls, mediaDimensions);
+    if (missingImageUrls.length === 0) return;
+
+    for (const url of missingImageUrls) {
+      const image = new Image();
+      image.onload = () => {
+        const width = image.naturalWidth;
+        const height = image.naturalHeight;
+        if (!width || !height) return;
+
+        setMediaDimensions((prev) => {
+          if (prev[url]) return prev;
+          return {
+            ...prev,
+            [url]: {
+              label: "Original",
+              width,
+              height,
+              aspect: ratioLabel(width, height),
+            },
+          };
+        });
+      };
+      image.src = proxiedImageUrl(url);
     }
-  });
+  }, [mediaDimensions, mediaUrls]);
 
   async function resolveRemoteMediaUrl(url: string) {
     if (!url) return;
@@ -1000,6 +1027,7 @@ export function CreatePostComposer({ profiles, rssSourceCount, platforms }: Prop
                   const needsMedia = selected && mediaUrls.length === 0 && (pType === "instagram" || pType === "pinterest" || pType === "tiktok");
                   return (
                     <button key={p.id} onClick={() => togglePlatform(p.id)}
+                      aria-label={`Select ${meta.label}`}
                       className={`relative rounded-lg border p-3 text-left transition ${selected ? "border-green-400 bg-green-50/50" : "border-gray-200 hover:border-gray-300"}`}>
                       {selected && <span className="absolute top-1.5 right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-green-500 text-[8px] text-white">✓</span>}
                       {needsMedia && <span className="absolute top-1.5 left-1.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-orange-400" title="Missing media content" />}

@@ -1,6 +1,6 @@
 # Social Agent — Tasks & Status
 
-Last updated: 2026-05-06 (Article FS, RSS publishing, and X OAuth bridge)
+Last updated: 2026-05-20 (mobile OAuth/session reuse, composer stability, calendar month)
 
 ## Current State
 
@@ -11,6 +11,8 @@ Deploys to `social.maxpetrusenko.com` on Contabo/Coolify.
 Operational note 2026-05-06: production had all schedules disabled (`dbEnabledCount: 0`, `runtimeRegisteredCount: 0`). After Max approved a limited restart, exactly one production schedule was re-enabled: `post-x-linkedin-11am` (`11 AM post — X + LinkedIn with image`). `/api/health` verified `dbEnabledCount: 1`, `runtimeRegisteredCount: 1`, `runtimeRegisteredScheduleIds: ["post-x-linkedin-11am"]`, `drift: 0`. Backups exist on the VPS at `/var/lib/docker/volumes/ch6cjsgcqn6afd5052etgvwn-data/_data/backups/social-poster-before-schedule-reenable-20260506T161114Z.db` and `/data/backups/social-poster-before-enable-one-schedule-20260506T182456Z.db`. A local manual run of `post-x-linkedin-11am` completed successfully: pipeline run `36b0d970-4f8b-4033-9d7d-6974fc632fda`, post `5a2cd7d2-0a5e-41e2-8a66-5c5e689af632`, X `https://x.com/i/status/2052061686702428645`, LinkedIn `https://www.linkedin.com/feed/update/urn:li:share:7457827383212093440/`. Do not enable additional public post schedules without approval.
 
 RSS post quality note 2026-05-06: scheduled image posts had a broken partial patch (`draftHumanPostContent` imported while `writePostCaption` was still called) and could produce generic `title. summary/title` captions from noisy RSS/reddit metadata. Scheduled posts and manual RSS generation now use the human-perspective writer with summary hygiene, one strict retry, and a deterministic fallback that frames a concrete source signal plus an operator takeaway. The quality gate rejects title regurgitation, duplicated headlines, `submitted by` / `[link] [comments]`, hashtags, emoji, `BREAKING`, and known generic filler. Dashboard candidates and scheduled posts now resolve verified source images by preferring source-page OG images, falling back to verified feed images, and rejecting localhost/private URLs, tiny/tracking/placeholder URLs, reddit external-preview thumbnails, and non-image content types. Remaining risk: the LLM can still be conservative on very thin title-only sources, but the fallback prevents embarrassing metadata/title-regurgitation posts.
+
+Regression note 2026-05-20: mobile OAuth was forcing fresh login/consent in a few paths. Supabase Google login no longer requests offline access or forced consent, Google Business and YouTube use incremental OAuth with `include_granted_scopes=true`, and Instagram professional OAuth no longer sends `force_authentication=1`. The Create Post composer now guards media-dimension loading so saved media cannot trigger repeated render/image-load work, malformed legacy platform config is ignored/cleaned instead of blanking `/dashboard/posts/create`, publisher account resolution prefers the connected account ID over legacy platform defaults, and the calendar month uses app-local civil dates instead of UTC-shifted dates.
 
 ## What's Done
 
