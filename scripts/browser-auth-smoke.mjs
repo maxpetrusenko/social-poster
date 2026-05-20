@@ -541,7 +541,7 @@ async function main() {
       if (submit instanceof HTMLButtonElement) submit.click();
     });
     await createPostPage.waitForFunction(
-      () => window.location.pathname.startsWith("/dashboard/posts/"),
+      () => /^\/dashboard\/posts\/[^/]+$/.test(window.location.pathname),
       { timeout: 30_000 }
     );
 
