@@ -107,7 +107,52 @@ GET https://www.instagram.com/oauth/authorize
 
 **Note:** Scopes are comma-separated (not space-separated like most OAuth).
 
-### 2C. Token Exchange (Short-Lived)
+### 2C. Local Redirect URI Setup
+
+Meta validates `redirect_uri` by exact string match. Scheme, host, port, path,
+and trailing slash all matter. `localhost` and `127.0.0.1` are different hosts.
+`http` and `https` are different schemes.
+
+Social Poster uses one shared callback path for Instagram Login:
+
+```text
+/api/auth/callback
+```
+
+Use this matrix when testing locally:
+
+| Where the app is opened | Command | Generated redirect URI | Register in Meta? | Use when |
+|---|---|---|---|---|
+| `https://127.0.0.1:3000` | `npm run dev:https` | `https://127.0.0.1:3000/api/auth/callback` | Yes | Preferred local Meta OAuth test |
+| `https://localhost:3000` | `npm run dev:https` | `https://localhost:3000/api/auth/callback` | Only if you open localhost | Avoid mixing with 127 |
+| `http://localhost:3000` | `npm run dev` | `http://localhost:3000/api/auth/callback` | Only if Meta accepts HTTP loopback | Usually not preferred |
+| `http://127.0.0.1:3000` | `npm run dev` | `http://127.0.0.1:3000/api/auth/callback` | Only if Meta accepts HTTP loopback | Usually not preferred |
+| `https://*.ngrok-free.app` | `ngrok http 3000` | `https://<ngrok-host>/api/auth/callback` | Yes, exact current ngrok host | Mobile/external HTTPS tunnel to local code |
+| `https://social.maxpetrusenko.com` | production | `https://social.maxpetrusenko.com/api/auth/callback` | Yes | Production |
+
+`https://d87e-2600-1700-512b-8200-1c63-72d2-58c7-86f2.ngrok-free.app/api/auth/callback`
+is an example ngrok callback. It is not production. It is a temporary public
+HTTPS tunnel to a local dev server. Ngrok hostnames change unless a reserved
+domain is configured, so add the current exact ngrok callback during a local
+test and remove stale ones later.
+
+For the current Meta app, keep at least:
+
+```text
+https://social.maxpetrusenko.com/api/auth/callback
+https://127.0.0.1:3000/api/auth/callback
+```
+
+Debug the exact app-generated URI without leaving the app:
+
+```text
+http://localhost:3000/api/auth/instagram?debug=oauth
+https://127.0.0.1:3000/api/auth/instagram?debug=oauth
+```
+
+The debug endpoint is local-only and non-production.
+
+### 2D. Token Exchange (Short-Lived)
 
 ```
 POST https://api.instagram.com/oauth/access_token
@@ -120,7 +165,7 @@ client_id={APP_ID}
 &code={AUTH_CODE}
 ```
 
-### 2D. Exchange for Long-Lived Token
+### 2E. Exchange for Long-Lived Token
 
 ```
 GET https://graph.instagram.com/access_token
@@ -129,7 +174,7 @@ GET https://graph.instagram.com/access_token
   &access_token={SHORT_LIVED_TOKEN}
 ```
 
-### 2E. Refresh Long-Lived Token
+### 2F. Refresh Long-Lived Token
 
 ```
 GET https://graph.instagram.com/refresh_access_token

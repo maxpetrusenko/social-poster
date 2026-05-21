@@ -84,6 +84,7 @@ Regression note 2026-05-20: mobile OAuth was forcing fresh login/consent in a fe
 - [x] Regular Instagram direct OAuth now uses Instagram Login + Instagram app credentials instead of the Facebook Login product that was returning Meta's "Feature unavailable" screen
 - [x] Instagram connection UI now treats direct Instagram OAuth as professional-account only, disables one-click redirect for Instagram, and routes default personal accounts toward relay/manual handling instead of promising unsupported Meta OAuth
 - [x] Duplicate Instagram Personal connection entry removed from the connection catalog; Instagram now has one entry with professional OAuth and relay methods
+- [x] Instagram local OAuth redirect setup is documented with exact localhost, 127.0.0.1, ngrok, and production callback URI rules
 - [x] Connection catalog now lives in per-platform configs, with method info tooltips and live/planned capability badges in the connection drawer
 - [x] X proxy/Bird setup now only asks for `X_AUTH_TOKEN` and `X_CT0`, includes cookie-copy guidance, and exposes a read-only connection test
 - [x] X and other platform disconnects now soft-disable rows, clear stored credentials, avoid foreign-key delete failures, and allow explicit reconnects to reactivate hidden rows
