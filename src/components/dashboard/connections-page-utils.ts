@@ -64,6 +64,10 @@ export function getDrawerPlatformForConnectionFilter(
 ): PlatformType | undefined {
   if (selectedPlatform === "all") return undefined;
 
+  if (selectedPlatform === "instagram_personal") {
+    return "instagram";
+  }
+
   if (selectedPlatform === "linkedin" && selectedMode === "native") {
     return "linkedin_personal";
   }

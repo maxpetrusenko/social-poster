@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireApiWorkspaceManager } from "@/lib/api-authorization";
 import { getRequestAppUrl } from "@/lib/app-url";
 import { mergeProviderCredentials } from "@/lib/providers/credentials";
+import { getDisabledNativeOAuthMessage } from "@/lib/providers/disabled-native-oauth";
 import { getProvider } from "@/lib/providers/registry";
 import {
   signOAuthState,
@@ -38,6 +39,11 @@ async function startNativeOAuth(
   const { platform: routePlatform } = await params;
   const platform = normalizeRoutePlatform(routePlatform);
   const appUrl = getRequestAppUrl(request);
+
+  const disabledOAuthMessage = getDisabledNativeOAuthMessage(platform);
+  if (disabledOAuthMessage) {
+    return oauthStartError(request, appUrl, disabledOAuthMessage);
+  }
 
   const nonce = crypto.randomBytes(24).toString("base64url");
   const codeVerifier = crypto.randomBytes(48).toString("base64url");
@@ -100,7 +106,6 @@ function isAppManagedOAuth(platform: string) {
   return (
     platform === "facebook" ||
     platform === "instagram" ||
-    platform === "instagram_personal" ||
     platform === "twitter" ||
     platform === "x" ||
     platform === "linkedin" ||

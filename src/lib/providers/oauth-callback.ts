@@ -7,6 +7,7 @@ import { getRequestAppUrl } from "@/lib/app-url";
 import { PLATFORM_TYPES, type PlatformType } from "@/lib/platforms";
 import { upsertPlatformConnection } from "@/lib/platform-connections";
 import { mergeProviderCredentials } from "@/lib/providers/credentials";
+import { getDisabledNativeOAuthMessage } from "@/lib/providers/disabled-native-oauth";
 import { FacebookProvider } from "@/lib/providers/facebook";
 import { getProvider } from "@/lib/providers/registry";
 import {
@@ -38,6 +39,12 @@ export async function handleNativeOAuthCallback(
     state?.next || "/dashboard/workspace-settings/social-accounts",
     appUrl
   );
+  const disabledOAuthMessage = getDisabledNativeOAuthMessage(platform);
+  if (disabledOAuthMessage) {
+    fallback.searchParams.set("error", disabledOAuthMessage);
+    return NextResponse.redirect(fallback);
+  }
+
   const error = request.nextUrl.searchParams.get("error");
   const code = request.nextUrl.searchParams.get("code");
 

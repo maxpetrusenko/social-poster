@@ -45,4 +45,12 @@ test("Instagram filter includes personal legacy connections and opens Instagram 
     getDrawerPlatformForConnectionFilter("instagram", "proxy"),
     "instagram"
   );
+  assert.equal(
+    getDrawerPlatformForConnectionFilter("instagram_personal", "native"),
+    "instagram"
+  );
+  assert.equal(
+    getDrawerPlatformForConnectionFilter("instagram_personal", "proxy"),
+    "instagram"
+  );
 });

@@ -17,7 +17,7 @@ export const config = {
   supportedPostTypes: ["image", "carousel", "reel", "story"] as PostType[],
   supportedMediaTypes: ["jpeg", "png", "gif", "mp4", "mov"] as MediaType[],
   maxCaptionLength: 2200,
-  variants: ["instagram", "instagram_personal"] as const,
+  variants: ["instagram"] as const,
   info: {
     description: "Publish images, carousels, reels, and stories to Instagram professional accounts.",
     authTooltip: "OAuth 2.0 via Instagram Login and the Instagram Platform app credentials.",

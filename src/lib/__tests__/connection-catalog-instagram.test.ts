@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { getConnectionPlatformDefinition } from "@/lib/connection-catalog";
+import { config } from "@/platforms/instagram/config";
 
 describe("Instagram connection catalog", () => {
   it("keeps native Instagram as OAuth and not app-password auth", () => {
@@ -26,5 +27,10 @@ describe("Instagram connection catalog", () => {
     });
     expect(method?.fields.map((field) => field.id)).toContain("providerAccountId");
     expect(method?.fields.map((field) => field.label)).not.toContain("App password");
+  });
+
+  it("does not expose Instagram Personal as a direct OAuth variant", () => {
+    expect(config.variants).toEqual(["instagram"]);
+    expect(getConnectionPlatformDefinition("instagram_personal")).toBeUndefined();
   });
 });
