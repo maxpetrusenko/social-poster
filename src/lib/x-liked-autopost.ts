@@ -311,7 +311,6 @@ export async function runXLikedAutopost(options: RunOptions): Promise<XLikedAuto
     await db.insert(pipelineRuns).values({
       id: runId,
       workspaceId: options.workspaceId,
-      postId,
       trigger: "api",
       status: "running",
       steps: [
@@ -386,6 +385,7 @@ export async function runXLikedAutopost(options: RunOptions): Promise<XLikedAuto
 
     await db.update(pipelineRuns).set({
       status: resolvePublishResultsStatus(summary.outcomes),
+      postId,
       steps: [
         {
           name: "x-like:ingest",
