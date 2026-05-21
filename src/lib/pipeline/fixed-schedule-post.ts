@@ -1,7 +1,12 @@
 import { getPublicAppUrlFromEnv } from "@/lib/app-url";
 
 function normalizePlatform(platform: string) {
-  return platform === "x" ? "twitter" : platform.toLowerCase();
+  const value = platform.toLowerCase();
+  if (value === "x") return "twitter";
+  if (value === "linkedin_personal" || value === "linkedin_company") {
+    return "linkedin";
+  }
+  return value;
 }
 
 function platformKeys(platform: string) {

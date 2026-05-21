@@ -1,6 +1,6 @@
 # Social Agent — Tasks & Status
 
-Last updated: 2026-05-20 (mobile OAuth/session reuse, composer stability, calendar month)
+Last updated: 2026-05-21 (Instagram connection, Gauntlet weekly schedule targets)
 
 ## Current State
 
@@ -13,6 +13,8 @@ Operational note 2026-05-06: production had all schedules disabled (`dbEnabledCo
 RSS post quality note 2026-05-06: scheduled image posts had a broken partial patch (`draftHumanPostContent` imported while `writePostCaption` was still called) and could produce generic `title. summary/title` captions from noisy RSS/reddit metadata. Scheduled posts and manual RSS generation now use the human-perspective writer with summary hygiene, one strict retry, and a deterministic fallback that frames a concrete source signal plus an operator takeaway. The quality gate rejects title regurgitation, duplicated headlines, `submitted by` / `[link] [comments]`, hashtags, emoji, `BREAKING`, and known generic filler. Dashboard candidates and scheduled posts now resolve verified source images by preferring source-page OG images, falling back to verified feed images, and rejecting localhost/private URLs, tiny/tracking/placeholder URLs, reddit external-preview thumbnails, and non-image content types. Remaining risk: the LLM can still be conservative on very thin title-only sources, but the fallback prevents embarrassing metadata/title-regurgitation posts.
 
 Regression note 2026-05-20: mobile OAuth was forcing fresh login/consent in a few paths. Supabase Google login no longer requests offline access or forced consent, Google Business and YouTube use incremental OAuth with `include_granted_scopes=true`, and Instagram professional OAuth no longer sends forced reauthentication params so repeated connection attempts can reuse the Instagram browser session. The Create Post composer now guards media-dimension loading so saved media cannot trigger repeated render/image-load work, malformed legacy platform config is ignored/cleaned instead of blanking `/dashboard/posts/create`, publisher account resolution prefers the connected account ID over legacy platform defaults, and the calendar month uses app-local civil dates instead of UTC-shifted dates.
+
+Operational note 2026-05-21: local Gauntlet referral schedule `baec8c15-4ba3-426a-971e-43a7a6662d71` is enabled weekly (`30 14 * * 4`, Thursday 2:30 PM ET) and targets X via Bird, LinkedIn Personal via native OAuth, and Instagram via native OAuth `max.petrusenko`. Fixed schedules now canonicalize LinkedIn Personal/Company to `linkedin` content keys so personal accounts do not fall back to stale shared media.
 
 ## What's Done
 

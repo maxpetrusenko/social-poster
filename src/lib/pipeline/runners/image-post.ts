@@ -179,7 +179,7 @@ export async function runImagePostJob(
           }
         );
     const publishTargets = targets.map((platform) => {
-      const platformType = platform.type === "x" ? "twitter" : platform.type;
+      const platformType = scheduleContentPlatformKey(platform.type);
       const mediaUrl = (
         scheduledContent?.mediaUrlByPlatform[platformType] ??
         story.imageUrl ??
@@ -417,8 +417,17 @@ function resolveDraftForPlatform(
       ? "twitter"
       : platformType.toLowerCase().startsWith("linkedin")
         ? "linkedin"
-      : platformType.toLowerCase();
+        : platformType.toLowerCase();
   return drafts[normalized] ?? drafts[platformType];
+}
+
+function scheduleContentPlatformKey(platformType: string) {
+  const normalized = platformType.toLowerCase();
+  if (normalized === "x") return "twitter";
+  if (normalized === "linkedin_personal" || normalized === "linkedin_company") {
+    return "linkedin";
+  }
+  return normalized;
 }
 
 function resolveSourceHost(value: string | undefined) {
