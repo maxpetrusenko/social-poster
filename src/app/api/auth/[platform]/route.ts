@@ -89,6 +89,9 @@ async function startNativeOAuth(
       maxAge: 10 * 60,
       path: "/",
     });
+    if (isLocalOAuthDebugRequest(request, appUrl, platform)) {
+      return NextResponse.json({ authUrl, redirectUri });
+    }
     if (request.method === "POST") {
       return NextResponse.json({ authUrl });
     }
@@ -124,6 +127,22 @@ function oauthStartError(request: NextRequest, appUrl: string, message: string) 
   );
   fallback.searchParams.set("error", message);
   return NextResponse.redirect(fallback);
+}
+
+function isLocalOAuthDebugRequest(
+  request: NextRequest,
+  appUrl: string,
+  platform: string
+) {
+  if (platform !== "instagram") return false;
+  if (process.env.NODE_ENV === "production") return false;
+  if (request.nextUrl.searchParams.get("debug") !== "oauth") return false;
+
+  try {
+    return isLoopback(new URL(appUrl).hostname);
+  } catch {
+    return false;
+  }
 }
 
 function sameOrigin(left: string, right: string, platform?: string) {
