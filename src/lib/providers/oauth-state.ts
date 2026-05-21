@@ -163,12 +163,14 @@ export function oauthCallbackUrl(
 ): string {
   const proto =
     request.headers.get("x-forwarded-proto") ??
-    (request.url?.startsWith("https") ? "https" : "http");
+    (request.url?.startsWith("https") ? "https" : null);
   const host =
     request.headers.get("x-forwarded-host") ??
     request.headers.get("host") ??
     "localhost:3000";
-  const requestOrigin = `${proto}://${host}`;
+  const callbackProto =
+    proto ?? (isLoopbackHost(stripPort(host)) ? "http" : "https");
+  const requestOrigin = `${callbackProto}://${host}`;
   const platformOverride = resolvePlatformOAuthCallbackOverride(
     platform,
     requestOrigin
@@ -245,4 +247,8 @@ function isLoopbackHost(hostname: string) {
     normalized === "::1" ||
     normalized === "[::1]"
   );
+}
+
+function stripPort(host: string) {
+  return host.toLowerCase().replace(/:\d+$/, "");
 }

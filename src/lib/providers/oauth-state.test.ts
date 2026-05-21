@@ -36,6 +36,18 @@ test("oauthCallbackUrl falls back to host header", () => {
   );
 });
 
+test("oauthCallbackUrl defaults public hosts to HTTPS when proxy proto is missing", () => {
+  delete process.env.SOCIAL_POSTER_OAUTH_CALLBACK_URL;
+  const request = {
+    headers: new Headers({ host: "social.maxpetrusenko.com" }),
+    url: "http://social.maxpetrusenko.com/api/auth/instagram",
+  };
+  assert.equal(
+    oauthCallbackUrl("instagram", request),
+    "https://social.maxpetrusenko.com/api/auth/callback"
+  );
+});
+
 test("oauthCallbackUrl uses same-origin callback override", () => {
   process.env.SOCIAL_POSTER_OAUTH_CALLBACK_URL =
     "https://social.maxpetrusenko.com/api/auth/callback";

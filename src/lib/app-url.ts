@@ -75,7 +75,7 @@ export function getRequestAppUrl(input: {
       input.headers.get("x-forwarded-protocol") ??
       (isLocalHost(forwardedHost)
         ? "http"
-        : new URL(input.url ?? getAppUrlFromEnv()).protocol.replace(/:$/, ""));
+        : "https");
 
     return `${forwardedProto}://${forwardedHost}`;
   }
