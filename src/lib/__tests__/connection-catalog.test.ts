@@ -72,7 +72,7 @@ describe("connection catalog", () => {
   it("keeps OAuth account selection stable across mobile and desktop browsers", () => {
     const instagram = authUrlFor("instagram");
     expect(instagram.searchParams.get("enable_fb_login")).toBe("0");
-    expect(instagram.searchParams.get("force_reauth")).toBe("true");
+    expect(instagram.searchParams.has("force_reauth")).toBe(false);
 
     for (const platform of ["google_business", "youtube"]) {
       const url = authUrlFor(platform);

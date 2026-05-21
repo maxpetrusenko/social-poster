@@ -157,6 +157,16 @@ https://127.0.0.1:3000/api/auth/instagram?debug=oauth
 
 The debug endpoint is local-only and non-production.
 
+Manual E2E checklist for Instagram local connection:
+
+1. Run `npm run dev:https`.
+2. Open `https://127.0.0.1:3000/dashboard/workspace-settings/social-accounts?connect=1&platform=instagram`.
+3. Confirm the generated Instagram URL uses `redirect_uri=https%3A%2F%2F127.0.0.1%3A3000%2Fapi%2Fauth%2Fcallback`.
+4. Confirm the generated Instagram URL does not contain `force_reauth` or `force_authentication`.
+5. Finish login/approval manually with a Business or Creator Instagram account.
+
+Real Instagram credential entry and 2FA are intentionally not automated.
+
 ### 2D. Token Exchange (Short-Lived)
 
 ```

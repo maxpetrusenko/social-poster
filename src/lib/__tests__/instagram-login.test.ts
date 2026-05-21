@@ -36,7 +36,7 @@ describe("regular Instagram OAuth", () => {
     expect(url.pathname).toBe("/oauth/authorize");
     expect(url.searchParams.get("client_id")).toBe("ig-app-id");
     expect(url.searchParams.get("enable_fb_login")).toBe("0");
-    expect(url.searchParams.get("force_reauth")).toBe("true");
+    expect(url.searchParams.has("force_reauth")).toBe(false);
     expect(url.searchParams.has("force_authentication")).toBe(false);
     expect(url.searchParams.get("scope")).toBe(
       "instagram_business_basic,instagram_business_content_publish,instagram_business_manage_comments,instagram_business_manage_messages,instagram_business_manage_insights"
