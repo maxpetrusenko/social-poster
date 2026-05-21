@@ -1,6 +1,6 @@
 # Social Agent — Tasks & Status
 
-Last updated: 2026-05-21 (Instagram connection, Gauntlet weekly schedule targets)
+Last updated: 2026-05-21 (server schedules, Instagram connection, Gauntlet weekly schedule targets)
 
 ## Current State
 
@@ -15,6 +15,8 @@ RSS post quality note 2026-05-06: scheduled image posts had a broken partial pat
 Regression note 2026-05-20: mobile OAuth was forcing fresh login/consent in a few paths. Supabase Google login no longer requests offline access or forced consent, Google Business and YouTube use incremental OAuth with `include_granted_scopes=true`, and Instagram professional OAuth no longer sends forced reauthentication params so repeated connection attempts can reuse the Instagram browser session. The Create Post composer now guards media-dimension loading so saved media cannot trigger repeated render/image-load work, malformed legacy platform config is ignored/cleaned instead of blanking `/dashboard/posts/create`, publisher account resolution prefers the connected account ID over legacy platform defaults, and the calendar month uses app-local civil dates instead of UTC-shifted dates.
 
 Operational note 2026-05-21: local Gauntlet referral schedule `baec8c15-4ba3-426a-971e-43a7a6662d71` is enabled weekly (`30 14 * * 4`, Thursday 2:30 PM ET) and targets X via Bird, LinkedIn Personal via native OAuth, and Instagram via native OAuth `max.petrusenko`. Fixed schedules now canonicalize LinkedIn Personal/Company to `linkedin` content keys so personal accounts do not fall back to stale shared media.
+
+Production schedule note 2026-05-21: server DB now has `post-x-linkedin-11am`, `post-x-linkedin-1pm`, and `post-x-linkedin-3pm` enabled and targeted to `legacy-platform-x` plus native LinkedIn Personal account `96946ee9-9941-47f2-9a5e-b0c3ecf50db1`. `/api/health` verified `dbEnabledCount: 3`, `runtimeRegisteredCount: 3`, `runtimeRegisteredScheduleIds: ["post-x-linkedin-11am","post-x-linkedin-1pm","post-x-linkedin-3pm"]`, `drift: 0`. Production backup before the update: `/var/lib/docker/volumes/ch6cjsgcqn6afd5052etgvwn-data/_data/backups/social-poster-before-enable-11-1-3-native-linkedin-20260521T151531Z.db`.
 
 ## What's Done
 
