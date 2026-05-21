@@ -1,6 +1,6 @@
 import cron from "node-cron";
 import { db } from "@/db";
-import { pipelineRuns, schedules } from "@/db/schema";
+import { pipelineRuns, schedules, workspaces } from "@/db/schema";
 import { and, eq, isNotNull } from "drizzle-orm";
 import { processReadyReplyQueue } from "./replies/live";
 import { runScheduleJob } from "./schedule-jobs";
@@ -18,6 +18,7 @@ import {
   checkBirdSessions,
   getBirdSessionCheckSnapshot,
 } from "./replies/bird-session-health";
+import { runXLikedAutopost } from "./x-liked-autopost";
 
 type RegisteredScheduleTask = {
   cron: string;
@@ -37,6 +38,8 @@ let birdSessionCheckInterval: NodeJS.Timeout | null = null;
 let birdSessionCheckBootTimer: NodeJS.Timeout | null = null;
 let dripQueueInterval: NodeJS.Timeout | null = null;
 let blogAutomationInterval: NodeJS.Timeout | null = null;
+let xLikedAutopostInterval: NodeJS.Timeout | null = null;
+let xLikedAutopostBootTimer: NodeJS.Timeout | null = null;
 
 export async function initScheduler(): Promise<void> {
   console.log("[scheduler] init");
@@ -47,6 +50,7 @@ export async function initScheduler(): Promise<void> {
   ensureBirdSessionCheckWorker();
   ensureDripQueueWorker();
   ensureBlogAutomationWorker();
+  ensureXLikedAutopostWorker();
   await reconcileSchedules("init");
 
   console.log("[scheduler] ready");
@@ -116,6 +120,7 @@ export async function ensureSchedulerReady(): Promise<void> {
   ensureProfileRefreshWorker();
   ensureBirdSessionCheckWorker();
   ensureBlogAutomationWorker();
+  ensureXLikedAutopostWorker();
 
   if (tasks.size === 0) {
     await reconcileSchedules("ensure-ready");
@@ -133,6 +138,11 @@ export function getSchedulerSnapshot() {
     tokenRefresh: getTokenRefreshSnapshot(),
     profileRefresh: getProfileRefreshSnapshot(),
     birdSessionCheck: getBirdSessionCheckSnapshot(),
+    xLikedAutopost: {
+      enabled: process.env.X_LIKES_AUTOPUBLISH_ENABLED === "true",
+      intervalMinutes: readXLikedAutopostIntervalMinutes(),
+      limit: readXLikedAutopostLimit(),
+    },
   };
 }
 
@@ -217,6 +227,42 @@ function ensureReadyQueueWorker() {
     void runSweep();
   }, 60_000);
   readyQueueInterval.unref?.();
+}
+
+function ensureXLikedAutopostWorker() {
+  if (process.env.X_LIKES_AUTOPUBLISH_ENABLED !== "true") return;
+  if (xLikedAutopostInterval || xLikedAutopostBootTimer) return;
+
+  const runSweep = async () => {
+    try {
+      const workspaceRows = await db.select({ id: workspaces.id }).from(workspaces);
+      for (const workspace of workspaceRows) {
+        const summary = await runXLikedAutopost({
+          workspaceId: workspace.id,
+          limit: readXLikedAutopostLimit(),
+          fetchCount: readXLikedAutopostFetchCount(),
+        });
+        if (summary.imported > 0 || summary.skipped.length > 0) {
+          console.log(
+            `[scheduler] X liked autopost ${workspace.id}: ${summary.imported} posted, ${summary.skipped.length} skipped`
+          );
+        }
+      }
+    } catch (error) {
+      console.error("[scheduler] X liked autopost sweep failed:", error);
+    }
+  };
+
+  xLikedAutopostBootTimer = setTimeout(() => {
+    xLikedAutopostBootTimer = null;
+    void runSweep();
+  }, 45_000);
+  xLikedAutopostBootTimer.unref?.();
+
+  xLikedAutopostInterval = setInterval(() => {
+    void runSweep();
+  }, readXLikedAutopostIntervalMinutes() * 60_000);
+  xLikedAutopostInterval.unref?.();
 }
 
 function ensureTokenRefreshWorker() {
@@ -316,6 +362,21 @@ function readBirdSessionCheckIntervalMs() {
 function readProfileRefreshIntervalMs() {
   const hours = Number(process.env.PROFILE_REFRESH_SWEEP_HOURS ?? 24);
   return (Number.isFinite(hours) && hours > 0 ? hours : 24) * 60 * 60 * 1000;
+}
+
+function readXLikedAutopostIntervalMinutes() {
+  const minutes = Number(process.env.X_LIKES_AUTOPUBLISH_INTERVAL_MINUTES ?? 2);
+  return Number.isFinite(minutes) && minutes > 0 ? minutes : 2;
+}
+
+function readXLikedAutopostLimit() {
+  const limit = Number(process.env.X_LIKES_AUTOPUBLISH_LIMIT ?? 3);
+  return Number.isFinite(limit) && limit > 0 ? Math.min(10, Math.floor(limit)) : 3;
+}
+
+function readXLikedAutopostFetchCount() {
+  const count = Number(process.env.X_LIKES_AUTOPUBLISH_FETCH_COUNT ?? 20);
+  return Number.isFinite(count) && count > 0 ? Math.min(50, Math.floor(count)) : 20;
 }
 
 function ensureDripQueueWorker() {

@@ -18,6 +18,8 @@ Operational note 2026-05-21: local Gauntlet referral schedule `baec8c15-4ba3-426
 
 Production schedule note 2026-05-21: server DB now has `post-x-linkedin-11am`, `post-x-linkedin-1pm`, and `post-x-linkedin-3pm` enabled and targeted to `legacy-platform-x` plus native LinkedIn Personal account `96946ee9-9941-47f2-9a5e-b0c3ecf50db1`. `/api/health` verified `dbEnabledCount: 3`, `runtimeRegisteredCount: 3`, `runtimeRegisteredScheduleIds: ["post-x-linkedin-11am","post-x-linkedin-1pm","post-x-linkedin-3pm"]`, `drift: 0`. Production backup before the update: `/var/lib/docker/volumes/ch6cjsgcqn6afd5052etgvwn-data/_data/backups/social-poster-before-enable-11-1-3-native-linkedin-20260521T151531Z.db`.
 
+X liked-post autopost note 2026-05-21: `/api/x-likes/autopost` can ingest recent posts liked by the workspace X/Bird account, copy the first image/video when present, create a normal `posts` record plus `post_targets`, publish immediately to X and LinkedIn Personal, and dedupe by `x-like:<tweetId>`. Manual runs use workspace manager auth or `CRON_SECRET`; background runs stay off unless `X_LIKES_AUTOPUBLISH_ENABLED=true` is set. Tunables: `X_LIKES_AUTOPUBLISH_INTERVAL_MINUTES`, `X_LIKES_AUTOPUBLISH_LIMIT`, and `X_LIKES_AUTOPUBLISH_FETCH_COUNT`.
+
 ## What's Done
 
 ### Infrastructure
@@ -190,6 +192,7 @@ Production schedule note 2026-05-21: server DB now has `post-x-linkedin-11am`, `
 - [x] Cron schedule execution now uses a SQLite-backed minute lock to suppress duplicate scheduler fires across processes
 - [x] Manual publishes persist per-platform format, caption, preview size, and fit-padded media variants so Instagram Feed does not fall through to Story and preview framing matches the posted asset
 - [x] X publish now routes through Bird when the platform provider is `bird`, with dashboard credentials first and env fallback second
+- [x] Liked X posts can be imported and immediately published as attributed X + LinkedIn posts, with media copy/snapshot, post-history rows, and dedupe
 - [x] Direct OAuth platform tokens now auto-refresh in a background scheduler sweep before expiry, with a manager-only manual refresh endpoint
 - [x] Platform-depth presearch docs added for X, LinkedIn, Instagram, Facebook, Threads, TikTok, YouTube, Pinterest, Bluesky, Mastodon, Google Business, Reddit, Discord, Telegram, and the future agent harness
 - [ ] Idempotency keys on every publish attempt

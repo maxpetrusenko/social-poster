@@ -29,6 +29,13 @@ export type BirdTweet = {
     name?: string;
     followersCount?: number;
   };
+  media?: Array<{
+    type?: string;
+    url?: string;
+    previewUrl?: string;
+    videoUrl?: string;
+  }>;
+  quotedTweet?: BirdTweet;
   authorId?: string;
   inReplyToStatusId?: string;
   replyCount?: number;
@@ -331,6 +338,26 @@ export async function getHomeTimelineForPlatform(
   return coerceTweets(
     await runBird(
       ["home", full ? "--json-full" : "--json", "--count", String(count)],
+      true,
+      platform
+    )
+  );
+}
+
+export async function getLikedTweetsFromInstalledSession(count = 20, full = false): Promise<BirdTweet[]> {
+  return coerceTweets(
+    await runBird(["likes", full ? "--json-full" : "--json", "--count", String(count)], true, undefined, false)
+  );
+}
+
+export async function getLikedTweetsForPlatform(
+  platform: BirdPlatform,
+  count = 20,
+  full = false
+): Promise<BirdTweet[]> {
+  return coerceTweets(
+    await runBird(
+      ["likes", full ? "--json-full" : "--json", "--count", String(count)],
       true,
       platform
     )
