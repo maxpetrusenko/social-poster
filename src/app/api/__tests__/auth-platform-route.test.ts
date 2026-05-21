@@ -44,17 +44,23 @@ describe("native OAuth platform route", () => {
 
     const { GET } = await import("@/app/api/auth/[platform]/route");
     const response = await GET(
-      new NextRequest("http://localhost:3000/api/auth/instagram?debug=oauth"),
+      new NextRequest("https://127.0.0.1:3000/api/auth/instagram?debug=oauth", {
+        headers: {
+          "x-forwarded-proto": "https",
+          "x-forwarded-host": "127.0.0.1:3000",
+        },
+      }),
       { params: Promise.resolve({ platform: "instagram" }) }
     );
+    expect(response.headers.get("location")).toBeNull();
+    expect(response.status).toBe(200);
     const body = (await response.json()) as {
       authUrl: string;
       redirectUri: string;
     };
     const authUrl = new URL(body.authUrl);
 
-    expect(response.status).toBe(200);
-    expect(body.redirectUri).toBe("http://localhost:3000/api/auth/callback");
+    expect(body.redirectUri).toBe("https://127.0.0.1:3000/api/auth/callback");
     expect(authUrl.searchParams.get("redirect_uri")).toBe(body.redirectUri);
     expect(response.headers.get("location")).toBeNull();
     expect(cookieStore.set).toHaveBeenCalledWith(
@@ -62,6 +68,20 @@ describe("native OAuth platform route", () => {
       expect.any(String),
       expect.objectContaining({ httpOnly: true, sameSite: "lax" })
     );
+  });
+
+  it("blocks unsupported local HTTP Instagram OAuth", async () => {
+    const { GET } = await import("@/app/api/auth/[platform]/route");
+    const response = await GET(
+      new NextRequest("http://localhost:3000/api/auth/instagram"),
+      { params: Promise.resolve({ platform: "instagram" }) }
+    );
+    const location = response.headers.get("location");
+
+    expect(response.status).toBe(307);
+    expect(location).toContain("Instagram+local+OAuth");
+    expect(location).toContain("https%3A%2F%2F127.0.0.1%3A3000");
+    expect(getProvider).not.toHaveBeenCalled();
   });
 
   it("does not expose Instagram OAuth diagnostics on non-local origins", async () => {

@@ -130,6 +130,11 @@ Use this matrix when testing locally:
 | `https://*.ngrok-free.app` | `ngrok http 3000` | `https://<ngrok-host>/api/auth/callback` | Yes, exact current ngrok host | Mobile/external HTTPS tunnel to local code |
 | `https://social.maxpetrusenko.com` | production | `https://social.maxpetrusenko.com/api/auth/callback` | Yes | Production |
 
+The app blocks unsupported local HTTP Instagram OAuth starts before redirecting
+to Meta. This keeps local tests from producing Meta's `Invalid redirect_uri`
+screen. Use `npm run dev:https` and open `https://127.0.0.1:3000`, or use an
+HTTPS tunnel.
+
 `https://d87e-2600-1700-512b-8200-1c63-72d2-58c7-86f2.ngrok-free.app/api/auth/callback`
 is an example ngrok callback. It is not production. It is a temporary public
 HTTPS tunnel to a local dev server. Ngrok hostnames change unless a reserved

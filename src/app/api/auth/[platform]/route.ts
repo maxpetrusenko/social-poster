@@ -58,6 +58,10 @@ async function startNativeOAuth(
     timestamp: Date.now(),
   });
   const redirectUri = oauthCallbackUrl(platform, request);
+  const setupError = getOAuthSetupError(platform, appUrl, redirectUri);
+  if (setupError) {
+    return oauthStartError(request, appUrl, setupError);
+  }
   const oauthCredentials = isAppManagedOAuth(platform)
     ? null
     : transientCredentials;
@@ -89,7 +93,7 @@ async function startNativeOAuth(
       maxAge: 10 * 60,
       path: "/",
     });
-    if (isLocalOAuthDebugRequest(request, appUrl, platform)) {
+    if (isLocalOAuthDebugRequest(request, redirectUri, platform)) {
       return NextResponse.json({ authUrl, redirectUri });
     }
     if (request.method === "POST") {
@@ -131,7 +135,7 @@ function oauthStartError(request: NextRequest, appUrl: string, message: string) 
 
 function isLocalOAuthDebugRequest(
   request: NextRequest,
-  appUrl: string,
+  redirectUri: string,
   platform: string
 ) {
   if (platform !== "instagram") return false;
@@ -139,9 +143,30 @@ function isLocalOAuthDebugRequest(
   if (request.nextUrl.searchParams.get("debug") !== "oauth") return false;
 
   try {
-    return isLoopback(new URL(appUrl).hostname);
+    return isLoopback(new URL(redirectUri).hostname);
   } catch {
     return false;
+  }
+}
+
+function getOAuthSetupError(
+  platform: string,
+  appUrl: string,
+  redirectUri: string
+) {
+  if (platform !== "instagram") return null;
+
+  try {
+    const app = new URL(appUrl);
+    const callback = new URL(redirectUri);
+    if (!isLoopback(app.hostname)) return null;
+    if (callback.protocol === "https:" && callback.hostname === "127.0.0.1") {
+      return null;
+    }
+
+    return "Instagram local OAuth must use https://127.0.0.1:3000 or an HTTPS tunnel. Run npm run dev:https and open https://127.0.0.1:3000, then make sure Meta has https://127.0.0.1:3000/api/auth/callback.";
+  } catch {
+    return null;
   }
 }
 
