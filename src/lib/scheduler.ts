@@ -1,6 +1,6 @@
 import cron from "node-cron";
 import { db } from "@/db";
-import { pipelineRuns, schedules, workspaces } from "@/db/schema";
+import { pipelineRuns, schedules } from "@/db/schema";
 import { and, eq, isNotNull } from "drizzle-orm";
 import { processReadyReplyQueue } from "./replies/live";
 import { runScheduleJob } from "./schedule-jobs";
@@ -19,6 +19,10 @@ import {
   getBirdSessionCheckSnapshot,
 } from "./replies/bird-session-health";
 import { runXLikedAutopost } from "./x-liked-autopost";
+import {
+  findXLikedAutopostWorkspaceIds,
+  parseXLikedAutopostWorkspaceIds,
+} from "./x-liked-autopost-workspaces";
 
 type RegisteredScheduleTask = {
   cron: string;
@@ -142,6 +146,7 @@ export function getSchedulerSnapshot() {
       enabled: process.env.X_LIKES_AUTOPUBLISH_ENABLED === "true",
       intervalMinutes: readXLikedAutopostIntervalMinutes(),
       limit: readXLikedAutopostLimit(),
+      configuredWorkspaceIds: parseXLikedAutopostWorkspaceIds(),
     },
   };
 }
@@ -235,16 +240,16 @@ function ensureXLikedAutopostWorker() {
 
   const runSweep = async () => {
     try {
-      const workspaceRows = await db.select({ id: workspaces.id }).from(workspaces);
-      for (const workspace of workspaceRows) {
+      const workspaceIds = await findXLikedAutopostWorkspaceIds();
+      for (const workspaceId of workspaceIds) {
         const summary = await runXLikedAutopost({
-          workspaceId: workspace.id,
+          workspaceId,
           limit: readXLikedAutopostLimit(),
           fetchCount: readXLikedAutopostFetchCount(),
         });
         if (summary.imported > 0 || summary.skipped.length > 0) {
           console.log(
-            `[scheduler] X liked autopost ${workspace.id}: ${summary.imported} posted, ${summary.skipped.length} skipped`
+            `[scheduler] X liked autopost ${workspaceId}: ${summary.imported} posted, ${summary.skipped.length} skipped`
           );
         }
       }

@@ -126,7 +126,6 @@ async function findTargetPlatforms(workspaceId: string) {
 
   const xPlatform =
     rows.find((row) => row.provider === "bird" && isXPlatform(row)) ??
-    rows.find((row) => isXPlatform(row)) ??
     null;
   const linkedinPlatform = rows.find((row) => isLinkedInPlatform(row)) ?? null;
 

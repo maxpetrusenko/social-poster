@@ -5,6 +5,7 @@ import { db } from "@/db";
 import { workspaces } from "@/db/schema";
 import { requireApiWorkspaceManager } from "@/lib/api-authorization";
 import { runXLikedAutopost } from "@/lib/x-liked-autopost";
+import { resolveDefaultXLikedAutopostWorkspaceId } from "@/lib/x-liked-autopost-workspaces";
 import { eq } from "drizzle-orm";
 
 const runSchema = z.object({
@@ -23,17 +24,12 @@ function isCronAuthorized(request: NextRequest) {
   return Boolean(secret && getBearerToken(request) === secret);
 }
 
-async function resolveDefaultWorkspaceId() {
-  const first = await db.select({ id: workspaces.id }).from(workspaces);
-  return first[0]?.id ?? null;
-}
-
 export async function POST(request: NextRequest) {
   const body = runSchema.parse(await request.json().catch(() => ({})));
   let workspaceId = body.workspaceId ?? null;
 
   if (isCronAuthorized(request)) {
-    workspaceId = workspaceId ?? await resolveDefaultWorkspaceId();
+    workspaceId = workspaceId ?? await resolveDefaultXLikedAutopostWorkspaceId();
     if (!workspaceId) {
       return NextResponse.json({ error: "No workspace found." }, { status: 404 });
     }
@@ -59,4 +55,3 @@ export async function POST(request: NextRequest) {
 
   return NextResponse.json(result);
 }
-
