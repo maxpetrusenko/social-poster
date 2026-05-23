@@ -23,6 +23,7 @@ import {
   buildXLikedPostContent,
   buildXLikedSourceUrl,
   cleanXLikedText,
+  getXLikedAutopostSkipReason,
   pickXLikedMedia,
   type XLikedMedia,
 } from "@/lib/x-liked-autopost-format";
@@ -188,7 +189,7 @@ async function snapshotMedia(
   return stored?.url ?? media.url;
 }
 
-function shouldSkipTweet(tweet: BirdTweet, xPlatform: PlatformRow) {
+function shouldSkipTweet(tweet: BirdTweet, xPlatform: PlatformRow, hasMedia = false) {
   const sourceUrl = buildXLikedSourceUrl(tweet);
   if (!tweet.id && !tweet.url) {
     return { url: sourceUrl, reason: "missing tweet id/url" };
@@ -207,6 +208,14 @@ function shouldSkipTweet(tweet: BirdTweet, xPlatform: PlatformRow) {
   const ownHandle = normalizeHandle(xPlatform.handle);
   if (authorHandle && ownHandle && authorHandle === ownHandle) {
     return { url: sourceUrl, reason: "own tweet" };
+  }
+
+  const unsafeReason = getXLikedAutopostSkipReason({
+    sourceText,
+    hasMedia,
+  });
+  if (unsafeReason) {
+    return { url: sourceUrl, reason: unsafeReason };
   }
 
   return null;
@@ -258,7 +267,9 @@ export async function runXLikedAutopost(options: RunOptions): Promise<XLikedAuto
   for (const tweet of likedTweets) {
     if (result.imported >= limit) break;
 
-    const skip = shouldSkipTweet(tweet, xPlatform);
+    const fallbackImage = getTweetImageUrl(tweet);
+    const media = pickXLikedMedia(tweet, fallbackImage);
+    const skip = shouldSkipTweet(tweet, xPlatform, Boolean(media));
     if (skip) {
       result.skipped.push(skip);
       continue;
@@ -272,8 +283,6 @@ export async function runXLikedAutopost(options: RunOptions): Promise<XLikedAuto
     }
 
     const authorHandle = getTweetAuthor(tweet);
-    const fallbackImage = getTweetImageUrl(tweet);
-    const media = pickXLikedMedia(tweet, fallbackImage);
     const cleanText = cleanXLikedText(getTweetText(tweet), { hasMedia: Boolean(media) });
     const content = buildXLikedPostContent({
       authorHandle,

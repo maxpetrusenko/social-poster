@@ -20,6 +20,12 @@ import {
 } from "./replies/bird-session-health";
 import { runXLikedAutopost } from "./x-liked-autopost";
 import {
+  isXLikedAutopostWorkerEnabled,
+  readXLikedAutopostFetchCount,
+  readXLikedAutopostIntervalMinutes,
+  readXLikedAutopostLimit,
+} from "./x-liked-autopost-config";
+import {
   findXLikedAutopostWorkspaceIds,
   parseXLikedAutopostWorkspaceIds,
 } from "./x-liked-autopost-workspaces";
@@ -143,7 +149,9 @@ export function getSchedulerSnapshot() {
     profileRefresh: getProfileRefreshSnapshot(),
     birdSessionCheck: getBirdSessionCheckSnapshot(),
     xLikedAutopost: {
-      enabled: process.env.X_LIKES_AUTOPUBLISH_ENABLED === "true",
+      enabled: isXLikedAutopostWorkerEnabled(),
+      requested: process.env.X_LIKES_AUTOPUBLISH_ENABLED === "true",
+      mode: process.env.X_LIKES_AUTOPUBLISH_MODE ?? null,
       intervalMinutes: readXLikedAutopostIntervalMinutes(),
       limit: readXLikedAutopostLimit(),
       configuredWorkspaceIds: parseXLikedAutopostWorkspaceIds(),
@@ -235,7 +243,7 @@ function ensureReadyQueueWorker() {
 }
 
 function ensureXLikedAutopostWorker() {
-  if (process.env.X_LIKES_AUTOPUBLISH_ENABLED !== "true") return;
+  if (!isXLikedAutopostWorkerEnabled()) return;
   if (xLikedAutopostInterval || xLikedAutopostBootTimer) return;
 
   const runSweep = async () => {
@@ -367,21 +375,6 @@ function readBirdSessionCheckIntervalMs() {
 function readProfileRefreshIntervalMs() {
   const hours = Number(process.env.PROFILE_REFRESH_SWEEP_HOURS ?? 24);
   return (Number.isFinite(hours) && hours > 0 ? hours : 24) * 60 * 60 * 1000;
-}
-
-function readXLikedAutopostIntervalMinutes() {
-  const minutes = Number(process.env.X_LIKES_AUTOPUBLISH_INTERVAL_MINUTES ?? 2);
-  return Number.isFinite(minutes) && minutes > 0 ? minutes : 2;
-}
-
-function readXLikedAutopostLimit() {
-  const limit = Number(process.env.X_LIKES_AUTOPUBLISH_LIMIT ?? 3);
-  return Number.isFinite(limit) && limit > 0 ? Math.min(10, Math.floor(limit)) : 3;
-}
-
-function readXLikedAutopostFetchCount() {
-  const count = Number(process.env.X_LIKES_AUTOPUBLISH_FETCH_COUNT ?? 20);
-  return Number.isFinite(count) && count > 0 ? Math.min(50, Math.floor(count)) : 20;
 }
 
 function ensureDripQueueWorker() {
