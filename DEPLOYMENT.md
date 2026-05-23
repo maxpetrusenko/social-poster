@@ -88,12 +88,13 @@ Workflow: `.github/workflows/fast-coolify-deploy.yml`
 
 Coolify application UUID: `ch6cjsgcqn6afd5052etgvwn`
 
-GitHub secrets required: `COOLIFY_API_URL` or `COOLIFY_URL`, and `COOLIFY_API_TOKEN` or `COOLIFY_TOKEN`.
-Use `COOLIFY_URL=https://coolify.maxpetrusenko.com` and a token with application update/deploy access.
+GitHub secrets required: `COOLIFY_API_TOKEN` or `COOLIFY_TOKEN`, plus `COOLIFY_SSH_PRIVATE_KEY`.
+`COOLIFY_SSH_HOST` and `COOLIFY_SSH_USER` are optional; defaults are `173.249.52.27` and `root`.
+The deploy job reaches Coolify through SSH and calls `http://127.0.0.1:8000/api/v1` on the VPS. Do not call the public `coolify.maxpetrusenko.com` API from GitHub Actions; Cloudflare Access/WAF can return a browser challenge to CI runners.
 
-After GHCR push, the workflow validates Coolify API access, then triggers:
+After GHCR push, the workflow validates the Coolify API token and SSH key, then triggers from the VPS private control plane:
 
-`GET /api/v1/deploy?uuid=ch6cjsgcqn6afd5052etgvwn&force=false`
+`POST /api/v1/deploy?uuid=ch6cjsgcqn6afd5052etgvwn&force=false`
 
 Current Coolify resource note: the app is still a Dockerfile resource. The current Coolify update endpoint rejects changing `build_pack` in-place, so the deploy trigger builds from Git on the VPS until the app is recreated as a Docker Image resource or registry auth is configured for Dockerfile image pushes.
 
