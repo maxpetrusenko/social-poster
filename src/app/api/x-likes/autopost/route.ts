@@ -13,6 +13,7 @@ const runSchema = z.object({
   limit: z.number().int().positive().max(10).optional(),
   fetchCount: z.number().int().positive().max(50).optional(),
   dryRun: z.boolean().optional(),
+  confirmPublish: z.boolean().optional(),
 });
 
 function getBearerToken(request: NextRequest) {
@@ -27,6 +28,14 @@ function isCronAuthorized(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const body = runSchema.parse(await request.json().catch(() => ({})));
   let workspaceId = body.workspaceId ?? null;
+  const dryRun = body.dryRun !== false;
+
+  if (!dryRun && body.confirmPublish !== true) {
+    return NextResponse.json(
+      { error: "Liked-post publishing requires confirmPublish=true." },
+      { status: 400 }
+    );
+  }
 
   if (isCronAuthorized(request)) {
     workspaceId = workspaceId ?? await resolveDefaultXLikedAutopostWorkspaceId();
@@ -50,7 +59,7 @@ export async function POST(request: NextRequest) {
     workspaceId,
     limit: body.limit,
     fetchCount: body.fetchCount,
-    dryRun: body.dryRun,
+    dryRun,
   });
 
   return NextResponse.json(result);

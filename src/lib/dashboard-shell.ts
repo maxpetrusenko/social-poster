@@ -37,6 +37,12 @@ export const workspaceShellNav: ShellNavItem[] = [
         blurb: "Recurring slots and buckets.",
         icon: "categories",
       },
+      {
+        label: "Liked Queue",
+        href: "/dashboard/likes",
+        blurb: "Review liked X posts before reuse.",
+        icon: "rss",
+      },
     ],
   },
   {

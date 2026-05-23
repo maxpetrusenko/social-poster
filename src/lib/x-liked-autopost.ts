@@ -53,6 +53,19 @@ export type XLikedAutopostResult = {
   }>;
 };
 
+export type XLikedAutopostReviewCandidate = {
+  id: string | null;
+  sourceUrl: string;
+  authorHandle: string;
+  authorName: string;
+  sourceText: string;
+  content: string;
+  mediaUrl: string | null;
+  mediaType: XLikedMedia["mediaType"] | null;
+  status: "eligible" | "skipped";
+  reason: string | null;
+};
+
 type RunOptions = {
   workspaceId: string;
   limit?: number;
@@ -232,6 +245,56 @@ async function markDedupKey(dedupKey: string, source: string) {
   } catch {
     // Duplicate key is the desired idempotent outcome.
   }
+}
+
+export async function getXLikedAutopostReviewCandidates(options: {
+  workspaceId: string;
+  fetchCount?: number;
+}): Promise<XLikedAutopostReviewCandidate[]> {
+  const fetchCount = clampPositiveInteger(options.fetchCount, 25, 50);
+  const workspace = await findWorkspace(options.workspaceId);
+  if (!workspace) {
+    throw new Error(`Workspace not found: ${options.workspaceId}`);
+  }
+
+  const { xPlatform } = await findTargetPlatforms(options.workspaceId);
+  if (!xPlatform) {
+    throw new Error("No enabled X/Bird platform found for this workspace.");
+  }
+
+  const likedTweets = await getLikedTweetsForPlatform(xPlatform, fetchCount, true);
+  const candidates: XLikedAutopostReviewCandidate[] = [];
+
+  for (const tweet of likedTweets) {
+    const sourceUrl = buildXLikedSourceUrl(tweet);
+    const dedupKey = buildXLikedDedupKey(tweet);
+    const authorHandle = getTweetAuthor(tweet);
+    const fallbackImage = getTweetImageUrl(tweet);
+    const media = pickXLikedMedia(tweet, fallbackImage);
+    const sourceText = cleanXLikedText(getTweetText(tweet), { hasMedia: Boolean(media) });
+    const policySkip = shouldSkipTweet(tweet, xPlatform, Boolean(media));
+    const imported = await alreadyImported(options.workspaceId, sourceUrl, dedupKey);
+    const reason = imported ? "already imported or blocked" : policySkip?.reason ?? null;
+
+    candidates.push({
+      id: tweet.id ?? null,
+      sourceUrl,
+      authorHandle,
+      authorName: getTweetAuthorName(tweet),
+      sourceText,
+      content: buildXLikedPostContent({
+        authorHandle,
+        sourceUrl,
+        sourceText,
+      }),
+      mediaUrl: media?.url ?? null,
+      mediaType: media?.mediaType ?? null,
+      status: reason ? "skipped" : "eligible",
+      reason,
+    });
+  }
+
+  return candidates;
 }
 
 export async function runXLikedAutopost(options: RunOptions): Promise<XLikedAutopostResult> {

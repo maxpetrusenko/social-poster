@@ -22,13 +22,6 @@ function decodeBasicHtmlEntities(text: string) {
     .replace(/&#39;/g, "'");
 }
 
-function quoteText(text: string) {
-  return text
-    .split("\n")
-    .map((line) => (line.trim() ? `> ${line}` : ">"))
-    .join("\n");
-}
-
 export function buildXLikedSourceUrl(tweet: Pick<BirdTweet, "id" | "url" | "author" | "authorId">) {
   if (tweet.url?.trim()) return tweet.url.trim();
   const author = normalizeHandle(tweet.author?.username || tweet.authorId || "unknown");
@@ -92,21 +85,61 @@ export function getXLikedAutopostSkipReason(input: {
   return null;
 }
 
+export function getXLikedPostAngle(sourceText: string) {
+  const text = cleanXLikedText(sourceText);
+  const normalized = text.toLowerCase();
+
+  if (/\b(price|cheap|cost|token|subscription|plan|discount|free|expensive|cad|\$)\b/.test(normalized)) {
+    return {
+      label: "model economics",
+      take:
+        "The useful signal is that model choice is becoming an architecture decision, not a loyalty decision. Expensive model for planning, cheaper strong model for bulk execution, verifier on top.",
+    };
+  }
+
+  if (/\b(train|training|dataset|gpu|a100|eval|validation|gguf|mlx|notebook|small model|slm)\b/.test(normalized)) {
+    return {
+      label: "small model workflow",
+      take:
+        "Small-model work is getting boring in the best way. The interesting part is not one custom model, it is that the loop can be scripted, checked overnight, and repeated by a tiny team.",
+    };
+  }
+
+  if (/\b(agent|codex|cursor|claude|composer|orchestrator|executor|coding)\b/.test(normalized)) {
+    return {
+      label: "agent workflow",
+      take:
+        "I do not think the winning coding setup is one model. It looks more like a pipeline: planner, executor, verifier, critic. The teams that wire that loop well will move faster.",
+    };
+  }
+
+  if (/\b(product|ux|user experience|workflow|tool|tools|automation|build)\b/.test(normalized)) {
+    return {
+      label: "builder workflow",
+      take:
+        "This is the direction I care about: tools that compress the loop between seeing a problem, trying a fix, and learning whether it actually worked.",
+    };
+  }
+
+  return {
+    label: "builder signal",
+    take:
+      "Worth tracking as a builder signal. The important part is not the post itself, it is what it suggests about where the workflow is moving.",
+  };
+}
+
 export function buildXLikedPostContent(input: {
   authorHandle: string;
   sourceUrl: string;
   sourceText: string;
 }) {
   const handle = normalizeHandle(input.authorHandle || "unknown");
-  const text = cleanXLikedText(input.sourceText);
-  const body = text || `A post from @${handle}.`;
+  const angle = getXLikedPostAngle(input.sourceText);
 
   return [
-    `From @${handle}:`,
+    angle.take,
     "",
-    quoteText(body),
-    "",
-    `Source: ${input.sourceUrl}`,
+    `Source: @${handle} ${input.sourceUrl}`,
   ].join("\n");
 }
 

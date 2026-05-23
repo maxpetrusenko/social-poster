@@ -6,22 +6,24 @@ import {
   buildXLikedSourceUrl,
   cleanXLikedText,
   getXLikedAutopostSkipReason,
+  getXLikedPostAngle,
   pickXLikedMedia,
 } from "../x-liked-autopost-format.ts";
 
 describe("X liked autopost formatting", () => {
-  it("quotes the original author and source without speaking as Max", () => {
+  it("builds Max-owned commentary instead of copying the original post", () => {
     const content = buildXLikedPostContent({
       authorHandle: "@founder",
       sourceUrl: "https://x.com/founder/status/123",
-      sourceText: "Shipping notes from the repo.",
+      sourceText:
+        "I am on the $200 Claude, $100 Codex, $20 Cursor plan and need to rethink the whole subscription stack.",
     });
 
-    expect(content).toMatch(/^From @founder:/);
-    expect(content).toMatch(/> Shipping notes from the repo\./);
+    expect(content).toMatch(/^The useful signal is that model choice/);
     expect(content).not.toMatch(/I discovered/);
     expect(content).not.toMatch(/Credit:/);
-    expect(content).toMatch(/Source: https:\/\/x\.com\/founder\/status\/123/);
+    expect(content).not.toMatch(/I am on the \$200 Claude/);
+    expect(content).toMatch(/Source: @founder https:\/\/x\.com\/founder\/status\/123/);
   });
 
   it("decodes entities and removes trailing t.co media URLs when media is copied", () => {
@@ -84,5 +86,17 @@ describe("X liked autopost formatting", () => {
           "I trained a small LLM on an A100 GPU overnight, then used Codex to automate the notebook and evaluation loop for a custom coding model.",
       })
     ).toBeNull();
+  });
+
+  it("selects reusable commentary angles", () => {
+    expect(getXLikedPostAngle("Training a 9B LLM on A100 overnight with evals.").label).toBe(
+      "small model workflow"
+    );
+    expect(getXLikedPostAngle("Codex as orchestrator and DeepSeek as executor.").label).toBe(
+      "agent workflow"
+    );
+    expect(getXLikedPostAngle("The $20 plan changes the cost per coding task.").label).toBe(
+      "model economics"
+    );
   });
 });
