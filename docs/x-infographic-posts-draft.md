@@ -73,6 +73,52 @@ For posts like the attached RAG graphic.
 - media: optional
 - copy: strongest framing
 
+### 6. Portable Account / Ecosystem Signal
+
+For posts where the source is really about account portability, model access, agent tools, or workflow ecosystems.
+
+- media: optional
+- copy: name the concrete platform implication and tie it to workflow quality
+- strongest approved angles:
+  - open platform signal: the account becomes portable infrastructure across tools
+  - product confidence: letting users bring access into other tools is a bet that the first-party experience can still win
+  - ecosystem formation: model first, account second, many workflow tools on top
+
+Example:
+
+`This is a platform signal. If your ChatGPT account works inside more coding tools, the account becomes the access layer and the tools compete on workflow quality: repo context, review flow, memory, and speed to landed change.`
+
+### 7. Video Repost With Attribution
+
+For a source video worth resharing because the media itself carries the proof or demo.
+
+- media: repost the source video when rights/context are acceptable
+- copy: add one clear interpretation above the video
+- attribution: mention the source account in copy or first reply when the source account adds trust
+- first reply can hold the source URL when the main X post needs a clean visual
+
+Example:
+
+`Qwen winning this kind of agent loop matters as a cost curve signal. Long self-improvement loops are where cheap frontier-ish inference starts changing product design.`
+
+Source reply:
+
+`Source: @atomic_chat_hq https://x.com/atomic_chat_hq/status/2057581603811901882`
+
+### 8. Bookmark-Worthy Repo Find
+
+For high-signal GitHub/tool posts where the goal is saves/bookmarks, with the repo as the hero.
+
+- find the repo from the X post or screenshot
+- verify useful signals: stars, recent commits, README clarity, install path, license
+- post the direct repo link when the repo is the useful object
+- copy should answer: what it does, who should save it, why it matters now
+- attribution to the X poster is optional; attribution to the repo/project is usually better
+
+Example:
+
+`Save this if you burn free LLM credits while prototyping. FreeLLMAPI wraps provider free tiers behind an OpenAI-compatible endpoint with failover, so small experiments can keep running before paid infra makes sense.`
+
 ## Copy Format
 
 Use:
