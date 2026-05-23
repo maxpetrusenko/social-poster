@@ -123,19 +123,29 @@ export class LinkedInProvider extends OAuthProvider {
     }
 
     if (content.firstComment?.trim() && result.platformPostId) {
-      const comment = await this.createComment(
-        accessToken,
-        author,
-        result.platformPostId,
-        content.firstComment
-      );
-      result = {
-        ...result,
-        extra: {
-          ...result.extra,
-          firstComment: comment,
-        },
-      };
+      try {
+        const comment = await this.createComment(
+          accessToken,
+          author,
+          result.platformPostId,
+          content.firstComment
+        );
+        result = {
+          ...result,
+          extra: {
+            ...result.extra,
+            firstComment: comment,
+          },
+        };
+      } catch (error) {
+        result = {
+          ...result,
+          extra: {
+            ...result.extra,
+            firstCommentError: error instanceof Error ? error.message : String(error),
+          },
+        };
+      }
     }
 
     return result;

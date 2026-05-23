@@ -108,6 +108,88 @@ describe("LinkedIn video publishing", () => {
       message: { text: "Source: https://x.com/source/status/1" },
     });
   });
+
+  it("keeps the video publish successful when the source comment is denied", async () => {
+    globalThis.fetch = vi.fn(async (input) => {
+      const url = new URL(String(input));
+
+      if (url.hostname === "cdn.example.com") {
+        return new Response(new Uint8Array([1, 2, 3, 4]), {
+          headers: { "Content-Type": "video/mp4" },
+        });
+      }
+
+      if (url.pathname === "/v2/userinfo") {
+        return jsonResponse({ sub: "member-123", name: "Max" });
+      }
+
+      if (url.pathname === "/rest/videos") {
+        if (url.searchParams.get("action") === "initializeUpload") {
+          return jsonResponse({
+            value: {
+              uploadInstructions: [
+                {
+                  uploadUrl: "https://upload.linkedin.example/video",
+                  firstByte: 0,
+                  lastByte: 3,
+                },
+              ],
+              uploadToken: "",
+              video: "urn:li:video:abc",
+            },
+          });
+        }
+
+        if (url.searchParams.get("action") === "finalizeUpload") {
+          return new Response("");
+        }
+      }
+
+      if (url.hostname === "upload.linkedin.example") {
+        return new Response("", {
+          headers: { etag: '"part-1"' },
+        });
+      }
+
+      if (url.pathname === "/rest/posts") {
+        return new Response("", {
+          headers: { "x-restli-id": "urn:li:share:123" },
+        });
+      }
+
+      if (url.pathname === "/rest/socialActions/urn%3Ali%3Ashare%3A123/comments") {
+        return jsonResponse(
+          {
+            status: 403,
+            serviceErrorCode: 100,
+            code: "ACCESS_DENIED",
+            message: "Not enough permissions to access: partnerApiSocialActions.CREATE.20260401",
+          },
+          403
+        );
+      }
+
+      return jsonResponse({ message: `Unexpected URL ${url.toString()}` }, 500);
+    });
+
+    const provider = new LinkedInProvider();
+    const result = await provider.publishPost("token", {
+      text: "Video post",
+      postType: "video",
+      mediaUrls: ["https://cdn.example.com/video.mp4"],
+      firstComment: "Source: https://x.com/source/status/1",
+    });
+
+    expect(result).toMatchObject({
+      platformPostId: "urn:li:share:123",
+      url: "https://www.linkedin.com/feed/update/urn:li:share:123/",
+      extra: {
+        urn: "urn:li:share:123",
+        videoUrn: "urn:li:video:abc",
+      },
+    });
+    expect(result.extra?.firstCommentError).toContain("ACCESS_DENIED");
+  });
 });
 
 function jsonResponse(body: unknown, status = 200) {
