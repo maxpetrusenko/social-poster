@@ -62,9 +62,6 @@ export function getXLikedAutopostSkipReason(input: {
   hasMedia?: boolean;
 }) {
   const text = cleanXLikedText(input.sourceText, { hasMedia: input.hasMedia });
-  const normalized = text.toLowerCase();
-  const isAiTopic = hasApprovedAiTopic(normalized);
-  const isSourceOwnedLaunch = hasSourceOwnedLaunchSignal(text);
 
   if (/\b(fuck|fucking|shit|bitch|cunt|dick)\b/i.test(text)) {
     return "profanity";
@@ -74,38 +71,7 @@ export function getXLikedAutopostSkipReason(input: {
     return "high controversy";
   }
 
-  if (/\b(immigration|green card|visa|visas|washington|national security)\b/i.test(text) && !isAiTopic) {
-    return "politics/news";
-  }
-
-  if (/^(breaking|new):/i.test(text) && !isAiTopic) {
-    return "headline/news post";
-  }
-
-  if (
-    /\b(try it now|npm i -g|install now|limited time|don't miss out)\b/i.test(text) &&
-    !(isAiTopic && isSourceOwnedLaunch)
-  ) {
-    return "promotional copy";
-  }
-
-  if (text.length < 80) {
-    return "too short/low context";
-  }
-
-  if (text.length < 160 && text.trim().endsWith("?")) {
-    return "contextless question";
-  }
-
-  if (!isAiTopic) {
-    return "outside approved topics";
-  }
-
   return null;
-}
-
-function hasApprovedAiTopic(normalized: string) {
-  return /\b(ai|agent|anthropic|code|coding|codex|claude|cursor|developer|data|frontier labs|gbrain|google|gpu|llm|meta|model|openai|deepseek|product|researcher|researchers|software|startup|automation|tools|training)\b/i.test(normalized);
 }
 
 export function getXLikedPostAngle(sourceText: string) {
@@ -129,6 +95,28 @@ export function getXLikedPostAngle(sourceText: string) {
         "That tension is hard to ignore.",
         "",
         "The future gets built by people who still have to ask whether they can stay.",
+      ].join("\n"),
+    };
+  }
+
+  if (
+    /\b(blue-collar|blue collar|robot|robots|automation|automate|automated)\b/.test(normalized) &&
+    /\b(200 hours|40 hours|weekends|sleep|breaks|sick days|vacations|human works)\b/.test(normalized)
+  ) {
+    return {
+      label: "physical automation economics",
+      take: [
+        "Blue-collar automation will arrive unevenly.",
+        "",
+        "The first jobs to watch have four traits:",
+        "controlled environment",
+        "repetitive motion",
+        "high labor shortage",
+        "expensive downtime",
+        "",
+        "That is where the 200-hour robot vs 40-hour human comparison becomes brutal.",
+        "",
+        "The easiest slices of the work become economically irrational to keep manual first.",
       ].join("\n"),
     };
   }

@@ -122,7 +122,7 @@ describe("X liked autopost formatting", () => {
     ).toEqual(["https://openai.com/index/agent-workflow/", "https://t.co/short"]);
   });
 
-  it("skips liked posts that should not publish from Max's accounts", () => {
+  it("treats likes as publish intent with only hard safety skips", () => {
     expect(
       getXLikedAutopostSkipReason({
         sourceText: "Free time as a man is a meme. Fucking Peter Pan ass.",
@@ -132,7 +132,7 @@ describe("X liked autopost formatting", () => {
       getXLikedAutopostSkipReason({
         sourceText: "NEW: U.S. green card applicants must leave the country.",
       })
-    ).toBe("politics/news");
+    ).toBeNull();
     expect(
       getXLikedAutopostSkipReason({
         sourceText:
@@ -149,12 +149,12 @@ describe("X liked autopost formatting", () => {
       getXLikedAutopostSkipReason({
         sourceText: "Starlink should be mandatory on every plane.",
       })
-    ).toBe("too short/low context");
+    ).toBeNull();
     expect(
       getXLikedAutopostSkipReason({
         sourceText: "Is Composer 2.5 really that good at coding? Anyone tried it yet?",
       })
-    ).toBe("too short/low context");
+    ).toBeNull();
     expect(
       getXLikedAutopostSkipReason({
         sourceText:
@@ -208,6 +208,40 @@ describe("X liked autopost formatting", () => {
         "Long loops make cost per attempt matter as much as peak intelligence.",
         "",
         "Source: @atomic_chat_hq https://x.com/atomic_chat_hq/status/2057581603811901882",
+      ].join("\n")
+    );
+  });
+
+  it("turns blue-collar robot demos into physical automation economics", () => {
+    const sourceText = [
+      "How on earth do people still assume blue-collar work is safe from automation?",
+      "",
+      "A robot can work 200 hours nonstop.",
+      "A human works around 40 hours a week, needs weekends, sleep, breaks, sick days, and vacations.",
+      "",
+      "That changes the economics completely.",
+    ].join("\n");
+    const content = buildXLikedPostContent({
+      authorHandle: "@kimmonismus",
+      sourceUrl: "https://x.com/kimmonismus/status/2058254144855544092",
+      sourceText,
+      includeSource: false,
+    });
+
+    expect(getXLikedPostAngle(sourceText).label).toBe("physical automation economics");
+    expect(content).toBe(
+      [
+        "Blue-collar automation will arrive unevenly.",
+        "",
+        "The first jobs to watch have four traits:",
+        "controlled environment",
+        "repetitive motion",
+        "high labor shortage",
+        "expensive downtime",
+        "",
+        "That is where the 200-hour robot vs 40-hour human comparison becomes brutal.",
+        "",
+        "The easiest slices of the work become economically irrational to keep manual first.",
       ].join("\n")
     );
   });
