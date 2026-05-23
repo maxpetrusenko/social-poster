@@ -20,6 +20,7 @@ env:
   COOLIFY_UUID: ch6cjsgcqn6afd5052etgvwn
   COOLIFY_PORT: "3000"
   COOLIFY_HEALTH_PATH: /api/health
+  PRODUCTION_URL: https://social.maxpetrusenko.com
 
 jobs:
   gate:
@@ -121,14 +122,17 @@ jobs:
           chmod 600 "${key_file}"
           ssh-keyscan -H "${COOLIFY_SSH_HOST}" >> ~/.ssh/known_hosts
 
-          ssh -i "${key_file}" \
+          token_b64="$(printf '%s' "${COOLIFY_API_TOKEN}" | base64 | tr -d '\n')"
+
+          deploy_response="$(ssh -i "${key_file}" \
             -o BatchMode=yes \
             -o IdentitiesOnly=yes \
             -o StrictHostKeyChecking=yes \
             "${COOLIFY_SSH_USER}@${COOLIFY_SSH_HOST}" \
-            "COOLIFY_API_TOKEN='${COOLIFY_API_TOKEN}' COOLIFY_UUID='${COOLIFY_UUID}' IMAGE_TAG='${IMAGE_TAG}' bash -s" <<'REMOTE'
+            "COOLIFY_API_TOKEN_B64='${token_b64}' COOLIFY_UUID='${COOLIFY_UUID}' IMAGE_TAG='${IMAGE_TAG}' bash -s" <<'REMOTE'
           set -euo pipefail
 
+          COOLIFY_API_TOKEN="$(printf '%s' "${COOLIFY_API_TOKEN_B64}" | base64 -d)"
           api_base="http://127.0.0.1:8000/api/v1"
 
           curl --fail --silent --show-error \
@@ -144,3 +148,48 @@ jobs:
             --url "${api_base}/deploy?uuid=${COOLIFY_UUID}&force=false" \
             --header "Authorization: Bearer ${COOLIFY_API_TOKEN}"
           REMOTE
+          )"
+
+          echo "${deploy_response}"
+
+          deployment_uuid="$(
+            python3 -c 'import json,sys; print(json.load(sys.stdin)["deployments"][0]["deployment_uuid"])' \
+              <<<"${deploy_response}"
+          )"
+          echo "Coolify deployment queued: ${deployment_uuid}"
+
+          for attempt in $(seq 1 90); do
+            status_response="$(ssh -i "${key_file}" \
+              -o BatchMode=yes \
+              -o IdentitiesOnly=yes \
+              -o StrictHostKeyChecking=yes \
+              "${COOLIFY_SSH_USER}@${COOLIFY_SSH_HOST}" \
+              "COOLIFY_API_TOKEN_B64='${token_b64}' DEPLOYMENT_UUID='${deployment_uuid}' bash -s" <<'REMOTE'
+            set -euo pipefail
+            COOLIFY_API_TOKEN="$(printf '%s' "${COOLIFY_API_TOKEN_B64}" | base64 -d)"
+            curl --fail --silent --show-error \
+              --url "http://127.0.0.1:8000/api/v1/deployments/${DEPLOYMENT_UUID}" \
+              --header "Authorization: Bearer ${COOLIFY_API_TOKEN}"
+          REMOTE
+            )"
+
+            status="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["status"])' <<<"${status_response}")"
+            echo "Coolify deployment status: ${status} (${attempt}/90)"
+
+            if [ "${status}" = "finished" ]; then
+              curl --fail --silent --show-error "${PRODUCTION_URL}${COOLIFY_HEALTH_PATH}" >/dev/null
+              echo "Production healthcheck passed."
+              exit 0
+            fi
+
+            if [ "${status}" != "in_progress" ] && [ "${status}" != "queued" ]; then
+              echo "${status_response}"
+              echo "::error::Coolify deployment ended with status ${status}"
+              exit 1
+            fi
+
+            sleep 10
+          done
+
+          echo "::error::Timed out waiting for Coolify deployment ${deployment_uuid}"
+          exit 1

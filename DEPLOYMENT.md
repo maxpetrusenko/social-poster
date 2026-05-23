@@ -96,6 +96,8 @@ After GHCR push, the workflow validates the Coolify API token and SSH key, then 
 
 `POST /api/v1/deploy?uuid=ch6cjsgcqn6afd5052etgvwn&force=false`
 
+The deploy job polls the returned deployment UUID and verifies `https://social.maxpetrusenko.com/api/health` before reporting success.
+
 Current Coolify resource note: the app is still a Dockerfile resource. The current Coolify update endpoint rejects changing `build_pack` in-place, so the deploy trigger builds from Git on the VPS until the app is recreated as a Docker Image resource or registry auth is configured for Dockerfile image pushes.
 
 Coolify setup checklist:
