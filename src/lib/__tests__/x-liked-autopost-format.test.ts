@@ -72,6 +72,18 @@ describe("X liked autopost formatting", () => {
     ).toBe("politics/news");
     expect(
       getXLikedAutopostSkipReason({
+        sourceText:
+          "Many of the best researchers at OpenAI, Anthropic, Google, Meta and other frontier labs are not U.S. citizens. They are in the U.S. on temporary visas while building critical AI systems.",
+      })
+    ).toBeNull();
+    expect(
+      getXLikedAutopostSkipReason({
+        sourceText:
+          "OpenAI researchers are building frontier AI systems while Congress and the White House turn this into an election fight.",
+      })
+    ).toBe("high controversy");
+    expect(
+      getXLikedAutopostSkipReason({
         sourceText: "Starlink should be mandatory on every plane.",
       })
     ).toBe("too short/low context");
@@ -119,5 +131,25 @@ describe("X liked autopost formatting", () => {
         "https://github.com/tashfeenahmed/freellmapi",
       ].join("\n")
     );
+  });
+
+  it("turns an AI talent policy post into emotion-first commentary", () => {
+    const content = buildXLikedPostContent({
+      authorHandle: "@kimmonismus",
+      sourceUrl: "https://x.com/kimmonismus/status/2058211601753505951",
+      sourceText:
+        "Many of the best researchers at OpenAI, Anthropic, Google, Meta and other frontier labs are not U.S. citizens. They are in the U.S. on temporary visas while building the very systems Washington increasingly describes as critical to national security. Forcing them to leave the country to apply for a Green Card adds uncertainty, delays and risk.",
+    });
+
+    expect(content).toBe(
+      [
+        "This is one of those AI stories that feels quietly sad.",
+        "",
+        "Some of the people building the most important systems in the world are also living with visa uncertainty in the background.",
+        "",
+        "It is strange to watch the future get built by people who still have to ask whether they can stay.",
+      ].join("\n")
+    );
+    expect(content).not.toMatch(/Source:/);
   });
 });

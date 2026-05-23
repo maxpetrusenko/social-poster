@@ -61,16 +61,21 @@ export function getXLikedAutopostSkipReason(input: {
 }) {
   const text = cleanXLikedText(input.sourceText, { hasMedia: input.hasMedia });
   const normalized = text.toLowerCase();
+  const isAiTopic = hasApprovedAiTopic(normalized);
 
   if (/\b(fuck|fucking|shit|bitch|cunt|dick)\b/i.test(text)) {
     return "profanity";
   }
 
-  if (/\b(trump|election|immigration|green card|war|shooting|senate|congress|white house)\b/i.test(text)) {
+  if (/\b(trump|election|war|shooting|senate|congress|white house)\b/i.test(text)) {
+    return "high controversy";
+  }
+
+  if (/\b(immigration|green card|visa|visas|washington|national security)\b/i.test(text) && !isAiTopic) {
     return "politics/news";
   }
 
-  if (/^(breaking|new):/i.test(text)) {
+  if (/^(breaking|new):/i.test(text) && !isAiTopic) {
     return "headline/news post";
   }
 
@@ -86,11 +91,15 @@ export function getXLikedAutopostSkipReason(input: {
     return "contextless question";
   }
 
-  if (!/\b(ai|agent|code|coding|codex|claude|cursor|model|llm|gbrain|deepseek|openai|developer|data|gpu|training|tools|product|software|startup|automation)\b/i.test(normalized)) {
+  if (!isAiTopic) {
     return "outside approved topics";
   }
 
   return null;
+}
+
+function hasApprovedAiTopic(normalized: string) {
+  return /\b(ai|agent|anthropic|code|coding|codex|claude|cursor|developer|data|frontier labs|gbrain|google|gpu|llm|meta|model|openai|deepseek|product|researcher|researchers|software|startup|automation|tools|training)\b/i.test(normalized);
 }
 
 export function getXLikedPostAngle(sourceText: string) {
@@ -102,6 +111,19 @@ export function getXLikedPostAngle(sourceText: string) {
     return {
       label: "repo bookmark",
       take: buildRepoBookmarkTake(repo),
+    };
+  }
+
+  if (/\b(visa|visas|green card|researcher|researchers|frontier labs|temporary visas|stay in the u\.s\.|stay in the us)\b/.test(normalized)) {
+    return {
+      label: "ai talent human cost",
+      take: [
+        "This is one of those AI stories that feels quietly sad.",
+        "",
+        "Some of the people building the most important systems in the world are also living with visa uncertainty in the background.",
+        "",
+        "It is strange to watch the future get built by people who still have to ask whether they can stay.",
+      ].join("\n"),
     };
   }
 
@@ -196,7 +218,11 @@ export function buildXLikedPostContent(input: {
 }) {
   const handle = normalizeHandle(input.authorHandle || "unknown");
   const angle = getXLikedPostAngle(input.sourceText);
-  if (angle.label === "repo bookmark" || angle.label === "video benchmark") {
+  if (
+    angle.label === "repo bookmark" ||
+    angle.label === "video benchmark" ||
+    angle.label === "ai talent human cost"
+  ) {
     return angle.take;
   }
 

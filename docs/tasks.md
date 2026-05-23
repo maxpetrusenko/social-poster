@@ -20,7 +20,7 @@ Production schedule note 2026-05-21: server DB now has `post-x-linkedin-11am`, `
 
 X liked-post autopost note 2026-05-21: `/api/x-likes/autopost` can ingest recent posts liked by the workspace X/Bird account, copy the first image/video when present, create a normal `posts` record plus `post_targets`, publish immediately to X and LinkedIn Personal, and dedupe by `x-like:<tweetId>`. Manual runs use workspace manager auth or `CRON_SECRET`; cron-default/background runs auto-select only workspaces with enabled Bird X plus LinkedIn Personal, or the explicit `X_LIKES_AUTOPUBLISH_WORKSPACE_ID` / `X_LIKES_AUTOPUBLISH_WORKSPACE_IDS` override. Background runs stay off unless both `X_LIKES_AUTOPUBLISH_ENABLED=true` and `X_LIKES_AUTOPUBLISH_MODE=publish` are set. Tunables: `X_LIKES_AUTOPUBLISH_INTERVAL_MINUTES`, `X_LIKES_AUTOPUBLISH_LIMIT`, and `X_LIKES_AUTOPUBLISH_FETCH_COUNT`.
 
-X liked-post posting quality note 2026-05-23: Max is happy with the X liked-post path after commit `e448f8d` and the FreeLLMAPI repo-bookmark publish. Posts with a link should publish as one post. Use `1/2` style numbering only for intentional multi-post threads. Linear follow-up: `MAX-158`.
+X liked-post posting quality note 2026-05-23: Max is happy with the X liked-post path after commit `e448f8d` and the FreeLLMAPI repo-bookmark publish. Posts with a link should publish as one post. Use `1/2` style numbering only for intentional multi-post threads. Liked AI-topic posts should be eligible by default; keep high-controversy topics filtered. Linear follow-up: `MAX-158`.
 
 ## What's Done
 
