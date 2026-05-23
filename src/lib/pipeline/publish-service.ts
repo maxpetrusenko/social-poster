@@ -28,6 +28,7 @@ export type PublishPlatformInput = {
   platformFormat?: string;
   firstComment?: string;
   collaborators?: string[];
+  threadLongPosts?: boolean;
 };
 
 export type PublishExecutionSummary = {
@@ -183,6 +184,7 @@ async function publishViaBirdWithDirectFallback(
     content: target.content,
     mediaUrl: target.mediaUrl,
     mediaUrls: target.mediaUrls,
+    threadLongPosts: target.threadLongPosts,
   });
 
   if (birdResult.success) {
@@ -201,6 +203,7 @@ async function publishViaBirdWithDirectFallback(
     const textOnlyBirdResult = await publishToBird({
       platform: birdPlatform,
       content: fallbackTarget.content,
+      threadLongPosts: fallbackTarget.threadLongPosts,
     });
 
     if (textOnlyBirdResult.success) {

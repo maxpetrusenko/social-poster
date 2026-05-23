@@ -28,6 +28,7 @@ type BirdPublishTarget = {
   content: string;
   mediaUrl?: string;
   mediaUrls?: string[];
+  threadLongPosts?: boolean;
 };
 
 export function resolveBirdCredentials(
@@ -35,6 +36,20 @@ export function resolveBirdCredentials(
 ): BirdCredentials {
   const stored = readStoredConnectionConfig(platform.config);
   return resolveBirdCredentialsFromSource(stored.credentials ?? {});
+}
+
+export function resolveBirdThreadParts(
+  content: string,
+  credentials: Pick<
+    BirdCredentials,
+    "threadLongPosts" | "tweetCharLimit" | "threadChunkLimit"
+  >,
+  threadLongPostsOverride?: boolean
+) {
+  const threadLongPosts = threadLongPostsOverride ?? credentials.threadLongPosts;
+  return threadLongPosts && content.length > credentials.tweetCharLimit
+    ? splitBirdThreadContent(content, credentials.threadChunkLimit)
+    : [content.trim()];
 }
 
 function extractBirdUrl(output: string) {
@@ -212,10 +227,11 @@ async function publishToBirdWithCredentials(
     };
   }
 
-  const threadParts =
-    credentials.threadLongPosts && target.content.length > credentials.tweetCharLimit
-      ? splitBirdThreadContent(target.content, credentials.threadChunkLimit)
-      : [target.content.trim()];
+  const threadParts = resolveBirdThreadParts(
+    target.content,
+    credentials,
+    target.threadLongPosts
+  );
 
   let media: Array<Awaited<ReturnType<typeof downloadBirdMedia>>> = [];
 

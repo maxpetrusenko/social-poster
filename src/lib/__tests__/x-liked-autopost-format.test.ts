@@ -98,6 +98,12 @@ describe("X liked autopost formatting", () => {
           "I trained a small LLM on an A100 GPU overnight, then used Codex to automate the notebook and evaluation loop for a custom coding model.",
       })
     ).toBeNull();
+    expect(
+      getXLikedAutopostSkipReason({
+        sourceText:
+          "We launched a new OpenAI agent workflow today. Try it now and see how it changes coding loops inside ChatGPT.",
+      })
+    ).toBeNull();
   });
 
   it("selects reusable commentary angles", () => {
@@ -143,13 +149,37 @@ describe("X liked autopost formatting", () => {
 
     expect(content).toBe(
       [
-        "This is one of those AI stories that feels quietly sad.",
-        "",
         "Some of the people building the most important systems in the world are also living with visa uncertainty in the background.",
         "",
-        "It is strange to watch the future get built by people who still have to ask whether they can stay.",
+        "That tension is hard to ignore.",
+        "",
+        "The future gets built by people who still have to ask whether they can stay.",
       ].join("\n")
     );
+    expect(content).not.toMatch(/\bsad\b/i);
     expect(content).not.toMatch(/Source:/);
+  });
+
+  it("keeps source-owned launches attributed to the original account", () => {
+    const content = buildXLikedPostContent({
+      authorHandle: "@OpenAI",
+      sourceUrl: "https://x.com/OpenAI/status/123",
+      sourceText:
+        "We launched a new agent workflow today. Try it now and see how it changes coding loops inside ChatGPT.",
+    });
+
+    expect(content).toBe(
+      [
+        "@OpenAI launched this.",
+        "",
+        "Looks worth testing inside a real workflow before having a strong take.",
+        "",
+        "Source: @OpenAI https://x.com/OpenAI/status/123",
+      ].join("\n")
+    );
+    expect(content).not.toMatch(/\bwe launched\b/i);
+    expect(content).not.toMatch(/\bI launched\b/i);
+    expect(content).not.toMatch(/\bI tried\b/i);
+    expect(content).not.toMatch(/\bwe tried\b/i);
   });
 });

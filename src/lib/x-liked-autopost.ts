@@ -377,6 +377,7 @@ export async function runXLikedAutopost(options: RunOptions): Promise<XLikedAuto
       content,
       mediaUrl: mediaUrl ?? undefined,
       mediaType: media?.mediaType,
+      threadLongPosts: false,
     }));
 
     await db.insert(pipelineRuns).values({

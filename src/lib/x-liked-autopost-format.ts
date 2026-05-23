@@ -62,6 +62,7 @@ export function getXLikedAutopostSkipReason(input: {
   const text = cleanXLikedText(input.sourceText, { hasMedia: input.hasMedia });
   const normalized = text.toLowerCase();
   const isAiTopic = hasApprovedAiTopic(normalized);
+  const isSourceOwnedLaunch = hasSourceOwnedLaunchSignal(text);
 
   if (/\b(fuck|fucking|shit|bitch|cunt|dick)\b/i.test(text)) {
     return "profanity";
@@ -79,7 +80,10 @@ export function getXLikedAutopostSkipReason(input: {
     return "headline/news post";
   }
 
-  if (/\b(try it now|npm i -g|install now|limited time|don't miss out)\b/i.test(text)) {
+  if (
+    /\b(try it now|npm i -g|install now|limited time|don't miss out)\b/i.test(text) &&
+    !(isAiTopic && isSourceOwnedLaunch)
+  ) {
     return "promotional copy";
   }
 
@@ -118,11 +122,11 @@ export function getXLikedPostAngle(sourceText: string) {
     return {
       label: "ai talent human cost",
       take: [
-        "This is one of those AI stories that feels quietly sad.",
-        "",
         "Some of the people building the most important systems in the world are also living with visa uncertainty in the background.",
         "",
-        "It is strange to watch the future get built by people who still have to ask whether they can stay.",
+        "That tension is hard to ignore.",
+        "",
+        "The future gets built by people who still have to ask whether they can stay.",
       ].join("\n"),
     };
   }
@@ -211,6 +215,30 @@ function buildRepoBookmarkTake(repo: { url: string; name: string }) {
   ].join("\n");
 }
 
+function hasSourceOwnedLaunchSignal(text: string) {
+  return /\b((we|i)\s+(just\s+)?(launched|launching|shipped|released|rolled out|built)|introducing|now available|try it now|available today)\b/i.test(
+    text
+  );
+}
+
+function buildSourceOwnedLaunchTake(input: {
+  handle: string;
+  sourceUrl: string;
+  sourceText: string;
+}) {
+  const source = `@${input.handle}`;
+  const shipped = /\b(shipped|released|rolled out)\b/i.test(input.sourceText);
+  const verb = shipped ? "shipped" : "launched";
+
+  return [
+    `${source} ${verb} this.`,
+    "",
+    "Looks worth testing inside a real workflow before having a strong take.",
+    "",
+    `Source: ${source} ${input.sourceUrl}`,
+  ].join("\n");
+}
+
 export function buildXLikedPostContent(input: {
   authorHandle: string;
   sourceUrl: string;
@@ -224,6 +252,14 @@ export function buildXLikedPostContent(input: {
     angle.label === "ai talent human cost"
   ) {
     return angle.take;
+  }
+
+  if (hasSourceOwnedLaunchSignal(input.sourceText)) {
+    return buildSourceOwnedLaunchTake({
+      handle,
+      sourceUrl: input.sourceUrl,
+      sourceText: input.sourceText,
+    });
   }
 
   return [
