@@ -136,8 +136,7 @@ export function getXLikedPostAngle(sourceText: string) {
   if (/\b(qwen|benchmark|beats|training cost|bot improvement|agentic task|tetris bot)\b/.test(normalized)) {
     return {
       label: "video benchmark",
-      take:
-        "This matters as a cost curve signal. Long agent loops reward more attempts, strict verification, and expensive models used only where judgment matters.",
+      take: buildVideoBenchmarkTake(text),
     };
   }
 
@@ -145,7 +144,7 @@ export function getXLikedPostAngle(sourceText: string) {
     return {
       label: "model economics",
       take:
-        "The useful signal is model choice becoming an architecture decision. Expensive model for planning, cheaper strong model for bulk execution, verifier on top.",
+        "Model choice is becoming an architecture decision. Expensive model for planning, cheaper strong model for bulk execution, verifier on top.",
     };
   }
 
@@ -176,7 +175,7 @@ export function getXLikedPostAngle(sourceText: string) {
   return {
     label: "builder signal",
     take:
-      "Worth tracking as a builder signal. The useful part is what it suggests about where the workflow is moving.",
+      "Builder signal worth tracking: workflow changes show up first in the small loops people repeat every day.",
   };
 }
 
@@ -217,6 +216,27 @@ function buildRepoBookmarkTake(repo: { url: string; name: string }) {
   ].join("\n");
 }
 
+function buildVideoBenchmarkTake(text: string) {
+  const modelRows = text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => /\bcost\b/i.test(line) && /\bimprovement\b/i.test(line))
+    .slice(0, 4);
+
+  if (modelRows.length >= 2) {
+    return [
+      "Agent-loop economics matters here: quality, cost per run, and iteration count.",
+      "",
+      "In a 10-iteration Tetris bot loop:",
+      ...modelRows,
+      "",
+      "Long loops make cost per attempt matter as much as peak intelligence.",
+    ].join("\n");
+  }
+
+  return "This matters as a cost curve signal. Long agent loops reward more attempts, strict verification, and expensive models used only where judgment matters.";
+}
+
 function hasSourceOwnedLaunchSignal(text: string) {
   return /\b((we|i)\s+(just\s+)?(launched|launching|shipped|released|rolled out|built)|introducing|now available|try it now|available today)\b/i.test(
     text
@@ -227,33 +247,48 @@ function buildSourceOwnedLaunchTake(input: {
   handle: string;
   sourceUrl: string;
   sourceText: string;
+  includeSource?: boolean;
 }) {
   const source = `@${input.handle}`;
   const shipped = /\b(shipped|released|rolled out)\b/i.test(input.sourceText);
   const verb = shipped ? "shipped" : "launched";
 
-  return [
+  const lines = [
     `${source} ${verb} this.`,
     "",
-    "Looks worth testing inside a real workflow before having a strong take.",
-    "",
-    `Source: ${source} ${input.sourceUrl}`,
-  ].join("\n");
+    "Looks worth testing inside a real workflow. Strong take after hands-on time.",
+  ];
+
+  if (input.includeSource !== false) {
+    lines.push("", `Source: ${source} ${input.sourceUrl}`);
+  }
+
+  return lines.join("\n");
 }
 
 export function buildXLikedPostContent(input: {
   authorHandle: string;
   sourceUrl: string;
   sourceText: string;
+  includeSource?: boolean;
 }) {
   const handle = normalizeHandle(input.authorHandle || "unknown");
   const angle = getXLikedPostAngle(input.sourceText);
   if (
     angle.label === "repo bookmark" ||
-    angle.label === "video benchmark" ||
     angle.label === "ai talent human cost"
   ) {
     return angle.take;
+  }
+
+  if (angle.label === "video benchmark") {
+    return input.includeSource === false
+      ? angle.take
+      : [
+          angle.take,
+          "",
+          `Source: @${handle} ${input.sourceUrl}`,
+        ].join("\n");
   }
 
   if (hasSourceOwnedLaunchSignal(input.sourceText)) {
@@ -261,14 +296,41 @@ export function buildXLikedPostContent(input: {
       handle,
       sourceUrl: input.sourceUrl,
       sourceText: input.sourceText,
+      includeSource: input.includeSource,
     });
   }
 
-  return [
-    angle.take,
-    "",
-    `Source: @${handle} ${input.sourceUrl}`,
-  ].join("\n");
+  return input.includeSource === false
+    ? angle.take
+    : [
+        angle.take,
+        "",
+        `Source: @${handle} ${input.sourceUrl}`,
+      ].join("\n");
+}
+
+export function buildXLikedSourceComment(input: {
+  authorHandle: string;
+  sourceUrl: string;
+}) {
+  const handle = normalizeHandle(input.authorHandle || "unknown");
+  return `Source: @${handle} ${input.sourceUrl}`;
+}
+
+export function buildXLikedPlatformPostContent(input: {
+  baseContent: string;
+  platformType: string;
+  media: XLikedMedia | null;
+  sourceUrl: string;
+}) {
+  const normalized = input.platformType.toLowerCase();
+  const shouldEmbedSourceVideo =
+    input.media?.mediaType === "video" &&
+    (normalized === "x" || normalized === "twitter");
+
+  if (!shouldEmbedSourceVideo) return input.baseContent;
+  if (input.baseContent.includes(input.sourceUrl)) return input.baseContent;
+  return [input.baseContent.trim(), "", input.sourceUrl].join("\n");
 }
 
 function pickTweetMedia(tweet: BirdTweet): XLikedMedia | null {
@@ -303,6 +365,18 @@ export function pickXLikedMedia(tweet: BirdTweet, fallbackImageUrl?: string | nu
   }
 
   return null;
+}
+
+export function resolveXLikedPlatformMedia(
+  platformType: string,
+  media: XLikedMedia | null
+): XLikedMedia | null {
+  const normalized = platformType.toLowerCase();
+  if (media?.mediaType === "video" && (normalized === "x" || normalized === "twitter")) {
+    return null;
+  }
+
+  return media;
 }
 
 export function getXLikedExternalUrls(input: {

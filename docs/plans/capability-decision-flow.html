@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Capability Decision Flow</title>
+  <style>
+    :root {
+      --ink: #172126;
+      --muted: #607079;
+      --line: #bfd0d6;
+      --paper: #f7faf8;
+      --card: #ffffff;
+      --green: #2f8f5b;
+      --blue: #2f6f9f;
+      --amber: #b7791f;
+      --red: #b84545;
+    }
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: ui-serif, Georgia, "Times New Roman", serif;
+    }
+    main {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 44px 28px 64px;
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: 34px;
+      letter-spacing: 0;
+    }
+    p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 16px;
+      line-height: 1.5;
+    }
+    .flow {
+      margin-top: 32px;
+      display: grid;
+      grid-template-columns: repeat(5, minmax(150px, 1fr));
+      gap: 18px;
+      align-items: stretch;
+    }
+    .node {
+      position: relative;
+      min-height: 92px;
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--card);
+      box-shadow: 0 10px 28px rgba(23, 33, 38, 0.08);
+    }
+    .node::after {
+      content: "";
+      position: absolute;
+      top: 50%;
+      right: -19px;
+      width: 18px;
+      height: 1px;
+      background: var(--line);
+    }
+    .node:last-child::after {
+      display: none;
+    }
+    .label {
+      display: inline-block;
+      margin-bottom: 12px;
+      color: var(--muted);
+      font: 700 11px/1.1 ui-sans-serif, system-ui, sans-serif;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .title {
+      font: 700 18px/1.2 ui-sans-serif, system-ui, sans-serif;
+    }
+    .desc {
+      margin-top: 8px;
+      color: var(--muted);
+      font: 14px/1.35 ui-sans-serif, system-ui, sans-serif;
+    }
+    .green { border-top: 5px solid var(--green); }
+    .blue { border-top: 5px solid var(--blue); }
+    .amber { border-top: 5px solid var(--amber); }
+    .red { border-top: 5px solid var(--red); }
+    .matrix {
+      margin-top: 36px;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(220px, 1fr));
+      gap: 14px;
+    }
+    .cap {
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.72);
+      font: 14px/1.35 ui-sans-serif, system-ui, sans-serif;
+    }
+    .cap strong {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--ink);
+    }
+    @media (max-width: 900px) {
+      .flow,
+      .matrix {
+        grid-template-columns: 1fr;
+      }
+      .node::after {
+        top: auto;
+        right: auto;
+        bottom: -19px;
+        left: 28px;
+        width: 1px;
+        height: 18px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Capability Decision Flow</h1>
+    <p>Account features become data first. The publisher reads capability status, confidence, and evidence before choosing text, image, video, long post, thread, or source-share.</p>
+
+    <section class="flow" aria-label="Decision flow">
+      <div class="node green">
+        <span class="label">input</span>
+        <div class="title">Max likes an X post</div>
+        <div class="desc">Bird reads the liked post and captures source text, author, URL, and media hints.</div>
+      </div>
+      <div class="node blue">
+        <span class="label">lane</span>
+        <div class="title">Classify intent</div>
+        <div class="desc">Repo bookmark, source-owned launch, video demo, opinion, or high-risk topic.</div>
+      </div>
+      <div class="node amber">
+        <span class="label">media</span>
+        <div class="title">Pick media plan</div>
+        <div class="desc">Images snapshot. External links resolve OG images. Videos embed on X and upload on LinkedIn, with source in reply/comment.</div>
+      </div>
+      <div class="node blue">
+        <span class="label">capability</span>
+        <div class="title">Load account graph</div>
+        <div class="desc">Check publish.text, image, video, long_text, thread, reply, and source_share.</div>
+      </div>
+      <div class="node green">
+        <span class="label">decision</span>
+        <div class="title">Preview then publish</div>
+        <div class="desc">Allowed plans get logged. Blocked plans show the missing capability before side effects.</div>
+      </div>
+    </section>
+
+    <section class="matrix" aria-label="Capability matrix">
+      <div class="cap"><strong>publish.long_text</strong>Max account capability. Unknown for other X accounts until verified.</div>
+      <div class="cap"><strong>publish.link_preview_image</strong>Used for LinkedIn image recovery from external or GitHub links.</div>
+      <div class="cap"><strong>publish.source_share</strong>Used for video/demo likes: X embeds the original post URL and gets a source reply; LinkedIn receives an uploaded video and source comment.</div>
+      <div class="cap"><strong>confidence</strong>observed, verified, operator_confirmed, config, provider_default.</div>
+      <div class="cap"><strong>status</strong>supported, unsupported, unknown, degraded.</div>
+      <div class="cap"><strong>evidence</strong>publish result, connection test, provider default, or operator note.</div>
+    </section>
+  </main>
+</body>
+</html>

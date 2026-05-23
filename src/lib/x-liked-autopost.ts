@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 
 import { db } from "@/db";
 import { dedupCache, pipelineRuns, platforms, posts, postTargets, profiles, workspaces } from "@/db/schema";
+import { publishFirstComment } from "@/lib/pipeline/first-comment";
 import { publishPlatformTargets } from "@/lib/pipeline/publish-service";
 import { fetchOpenGraphImage } from "@/lib/open-graph-image";
 import {
@@ -21,12 +22,15 @@ import { safeFetchRemote } from "@/lib/safe-remote-fetch";
 import { uploadMediaAsset } from "@/lib/storage/r2";
 import {
   buildXLikedDedupKey,
+  buildXLikedPlatformPostContent,
   getXLikedExternalUrls,
   buildXLikedPostContent,
+  buildXLikedSourceComment,
   buildXLikedSourceUrl,
   cleanXLikedText,
   getXLikedAutopostSkipReason,
   pickXLikedMedia,
+  resolveXLikedPlatformMedia,
   type XLikedMedia,
 } from "@/lib/x-liked-autopost-format";
 import { and, desc, eq, inArray, or } from "drizzle-orm";
@@ -370,6 +374,11 @@ export async function runXLikedAutopost(options: RunOptions): Promise<XLikedAuto
       authorHandle,
       sourceUrl,
       sourceText: cleanText,
+      includeSource: false,
+    });
+    const firstComment = buildXLikedSourceComment({
+      authorHandle,
+      sourceUrl,
     });
 
     if (dryRun) {
@@ -393,9 +402,18 @@ export async function runXLikedAutopost(options: RunOptions): Promise<XLikedAuto
     const mediaUrl = await snapshotMedia(options.workspaceId, tweet.id, media);
     const publishTargets = publishPlatforms.map((platform) => ({
       platform,
-      content,
-      mediaUrl: mediaUrl ?? undefined,
-      mediaType: media?.mediaType,
+      content: buildXLikedPlatformPostContent({
+        baseContent: content,
+        platformType: platform.type,
+        media,
+        sourceUrl,
+      }),
+      firstComment,
+      mediaUrl:
+        resolveXLikedPlatformMedia(platform.type, media) && mediaUrl
+          ? mediaUrl
+          : undefined,
+      mediaType: resolveXLikedPlatformMedia(platform.type, media)?.mediaType,
       threadLongPosts: false,
     }));
 
@@ -440,6 +458,20 @@ export async function runXLikedAutopost(options: RunOptions): Promise<XLikedAuto
     });
 
     const summary = await publishPlatformTargets(publishTargets);
+    const firstCommentResults = await Promise.all(
+      publishTargets.map(async (target) => {
+        const outcome = summary.outcomes.find((item) => item.platform === target.platform.type);
+        if (!outcome?.success) return null;
+        const platformType = target.platform.type.toLowerCase();
+        if (platformType !== "x" && platformType !== "twitter") return null;
+        return publishFirstComment({
+          platform: target.platform,
+          publishResult: outcome,
+          sourceUrl,
+          sourceTitle: `@${normalizeHandle(authorHandle) || authorHandle}`,
+        });
+      })
+    );
     const postStatus = resolvePostStatusFromTargetResults(summary.outcomes);
     const completedAt = new Date();
 
@@ -490,7 +522,10 @@ export async function runXLikedAutopost(options: RunOptions): Promise<XLikedAuto
           status: summary.errors.length > 0 ? "failed" : "completed",
           startedAt: now.toISOString(),
           completedAt: completedAt.toISOString(),
-          output: summary,
+          output: {
+            ...summary,
+            firstCommentResults: firstCommentResults.filter(Boolean),
+          },
           error: summary.errors.map((error) => `${error.platform}: ${error.error}`).join("; ") || undefined,
         },
       ],

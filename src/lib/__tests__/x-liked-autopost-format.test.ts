@@ -2,13 +2,16 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildXLikedDedupKey,
+  buildXLikedPlatformPostContent,
   buildXLikedPostContent,
+  buildXLikedSourceComment,
   buildXLikedSourceUrl,
   cleanXLikedText,
   getXLikedExternalUrls,
   getXLikedAutopostSkipReason,
   getXLikedPostAngle,
   pickXLikedMedia,
+  resolveXLikedPlatformMedia,
 } from "../x-liked-autopost-format.ts";
 
 describe("X liked autopost formatting", () => {
@@ -20,7 +23,7 @@ describe("X liked autopost formatting", () => {
         "I am on the $200 Claude, $100 Codex, $20 Cursor plan and need to rethink the whole subscription stack.",
     });
 
-    expect(content).toMatch(/^The useful signal is model choice/);
+    expect(content).toMatch(/^Model choice is becoming an architecture decision/);
     expect(content).not.toMatch(/I discovered/);
     expect(content).not.toMatch(/Credit:/);
     expect(content).not.toMatch(/I am on the \$200 Claude/);
@@ -52,6 +55,36 @@ describe("X liked autopost formatting", () => {
         },
       })
     ).toEqual({ url: "https://img.example/quoted.jpg", mediaType: "image" });
+  });
+
+  it("uploads liked videos to LinkedIn while letting X embed the source URL", () => {
+    const video = { url: "https://cdn.example/post.mp4", mediaType: "video" as const };
+
+    expect(resolveXLikedPlatformMedia("twitter", video)).toBeNull();
+    expect(resolveXLikedPlatformMedia("x", video)).toBeNull();
+    expect(resolveXLikedPlatformMedia("linkedin_personal", video)).toEqual(video);
+    expect(
+      buildXLikedPlatformPostContent({
+        baseContent: "Blue-collar automation will arrive unevenly.",
+        platformType: "x",
+        media: video,
+        sourceUrl: "https://x.com/kimmonismus/status/2058254144855544092",
+      })
+    ).toBe(
+      [
+        "Blue-collar automation will arrive unevenly.",
+        "",
+        "https://x.com/kimmonismus/status/2058254144855544092",
+      ].join("\n")
+    );
+    expect(
+      buildXLikedPlatformPostContent({
+        baseContent: "Blue-collar automation will arrive unevenly.",
+        platformType: "linkedin_personal",
+        media: video,
+        sourceUrl: "https://x.com/kimmonismus/status/2058254144855544092",
+      })
+    ).toBe("Blue-collar automation will arrive unevenly.");
   });
 
   it("builds stable source URL and dedupe key", () => {
@@ -148,6 +181,63 @@ describe("X liked autopost formatting", () => {
     );
   });
 
+  it("credits the source when the liked post is a video share lane", () => {
+    const content = buildXLikedPostContent({
+      authorHandle: "@atomic_chat_hq",
+      sourceUrl: "https://x.com/atomic_chat_hq/status/2057581603811901882",
+      sourceText: [
+        "Qwen 3.7-max beats Opus 4.7 and GPT-5.5",
+        "",
+        "We tested three frontier models on a real agentic task: write a Tetris bot that plays the game and trains itself.",
+        "",
+        "Qwen 3.7-Max: training cost $1.32, bot improvement +56%",
+        "Claude Opus 4.7: training cost $12.15, bot improvement +28%",
+        "GPT-5.5: training cost $2.85, bot improvement +7%",
+      ].join("\n"),
+    });
+
+    expect(content).toBe(
+      [
+        "Agent-loop economics matters here: quality, cost per run, and iteration count.",
+        "",
+        "In a 10-iteration Tetris bot loop:",
+        "Qwen 3.7-Max: training cost $1.32, bot improvement +56%",
+        "Claude Opus 4.7: training cost $12.15, bot improvement +28%",
+        "GPT-5.5: training cost $2.85, bot improvement +7%",
+        "",
+        "Long loops make cost per attempt matter as much as peak intelligence.",
+        "",
+        "Source: @atomic_chat_hq https://x.com/atomic_chat_hq/status/2057581603811901882",
+      ].join("\n")
+    );
+  });
+
+  it("can keep source attribution in a reply/comment instead of the main post", () => {
+    const content = buildXLikedPostContent({
+      authorHandle: "@atomic_chat_hq",
+      sourceUrl: "https://x.com/atomic_chat_hq/status/2057581603811901882",
+      sourceText: [
+        "Qwen 3.7-max beats Opus 4.7 and GPT-5.5",
+        "",
+        "Qwen 3.7-Max: training cost $1.32, bot improvement +56%",
+        "Claude Opus 4.7: training cost $12.15, bot improvement +28%",
+        "GPT-5.5: training cost $2.85, bot improvement +7%",
+      ].join("\n"),
+      includeSource: false,
+    });
+
+    expect(content).toContain("Qwen 3.7-Max: training cost $1.32, bot improvement +56%");
+    expect(content).not.toMatch(/Source:/);
+    expect(
+      buildXLikedSourceComment({
+        authorHandle: "@atomic_chat_hq",
+        sourceUrl: "https://x.com/atomic_chat_hq/status/2057581603811901882",
+      })
+    ).toBe(
+      "Source: @atomic_chat_hq https://x.com/atomic_chat_hq/status/2057581603811901882"
+    );
+  });
+
   it("turns a liked GitHub repo post into a bookmark-worthy repo share", () => {
     const content = buildXLikedPostContent({
       authorHandle: "@dr_cintas",
@@ -202,7 +292,7 @@ describe("X liked autopost formatting", () => {
       [
         "@OpenAI launched this.",
         "",
-        "Looks worth testing inside a real workflow before having a strong take.",
+        "Looks worth testing inside a real workflow. Strong take after hands-on time.",
         "",
         "Source: @OpenAI https://x.com/OpenAI/status/123",
       ].join("\n")

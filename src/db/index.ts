@@ -152,6 +152,26 @@ function ensureSchema(sqlite: Database.Database) {
       updated_at INTEGER NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS platform_capabilities (
+      id TEXT PRIMARY KEY NOT NULL,
+      workspace_id TEXT REFERENCES workspaces(id) ON DELETE CASCADE,
+      platform_id TEXT NOT NULL REFERENCES platforms(id) ON DELETE CASCADE,
+      capability TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'unknown',
+      confidence TEXT NOT NULL DEFAULT 'provider_default',
+      source TEXT NOT NULL DEFAULT 'provider_default',
+      evidence TEXT,
+      last_checked_at INTEGER,
+      last_observed_at INTEGER,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
+
+    CREATE UNIQUE INDEX IF NOT EXISTS platform_capabilities_platform_capability_unique
+      ON platform_capabilities(platform_id, capability);
+    CREATE INDEX IF NOT EXISTS platform_capabilities_workspace_idx
+      ON platform_capabilities(workspace_id);
+
     CREATE TABLE IF NOT EXISTS profiles (
       id TEXT PRIMARY KEY NOT NULL,
       workspace_id TEXT REFERENCES workspaces(id) ON DELETE SET NULL,

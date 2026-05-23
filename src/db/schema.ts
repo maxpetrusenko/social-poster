@@ -157,6 +157,31 @@ export const platforms = sqliteTable("platforms", {
     .where(sql`workspace_id IS NOT NULL AND account_id IS NOT NULL AND account_id != ''`),
 ]);
 
+export const platformCapabilities = sqliteTable("platform_capabilities", {
+  id: text("id").primaryKey(),
+  workspaceId: text("workspace_id").references(() => workspaces.id, {
+    onDelete: "cascade",
+  }),
+  platformId: text("platform_id").notNull().references(() => platforms.id, {
+    onDelete: "cascade",
+  }),
+  capability: text("capability").notNull(),
+  status: text("status").notNull().default("unknown"),
+  confidence: text("confidence").notNull().default("provider_default"),
+  source: text("source").notNull().default("provider_default"),
+  evidence: text("evidence", { mode: "json" }).$type<Record<string, unknown>>(),
+  lastCheckedAt: integer("last_checked_at", { mode: "timestamp" }),
+  lastObservedAt: integer("last_observed_at", { mode: "timestamp" }),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+}, (table) => [
+  uniqueIndex("platform_capabilities_platform_capability_unique").on(
+    table.platformId,
+    table.capability
+  ),
+  index("platform_capabilities_workspace_idx").on(table.workspaceId),
+]);
+
 // ── Social Profile ────────────────────────────────────────────────────
 // Your brand identity / voice settings
 export const profiles = sqliteTable("profiles", {

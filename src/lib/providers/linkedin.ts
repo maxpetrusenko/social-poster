@@ -108,20 +108,37 @@ export class LinkedInProvider extends OAuthProvider {
   ): Promise<PublishResult> {
     const author = await this.resolveAuthor(accessToken, content);
     const postType = content.postType ?? "text";
+    let result: PublishResult;
 
     if (postType === "image" && firstMedia(content)) {
-      return this.publishMediaPost(accessToken, author, content, "images", "image");
+      result = await this.publishMediaPost(accessToken, author, content, "images", "image");
+    } else if (postType === "video" && firstMedia(content)) {
+      result = await this.publishMediaPost(accessToken, author, content, "videos", "video");
+    } else if (postType === "article" || postType === "link" || content.linkUrl) {
+      result = await this.publishArticlePost(accessToken, author, content);
+    } else if (postType === "poll") {
+      result = await this.publishPollPost(accessToken, author, content);
+    } else {
+      result = await this.publishTextPost(accessToken, author, content);
     }
-    if (postType === "video" && firstMedia(content)) {
-      return this.publishMediaPost(accessToken, author, content, "videos", "video");
+
+    if (content.firstComment?.trim() && result.platformPostId) {
+      const comment = await this.createComment(
+        accessToken,
+        author,
+        result.platformPostId,
+        content.firstComment
+      );
+      result = {
+        ...result,
+        extra: {
+          ...result.extra,
+          firstComment: comment,
+        },
+      };
     }
-    if (postType === "article" || postType === "link" || content.linkUrl) {
-      return this.publishArticlePost(accessToken, author, content);
-    }
-    if (postType === "poll") {
-      return this.publishPollPost(accessToken, author, content);
-    }
-    return this.publishTextPost(accessToken, author, content);
+
+    return result;
   }
 
   protected async resolveAuthor(
@@ -205,6 +222,13 @@ export class LinkedInProvider extends OAuthProvider {
     endpoint: "images" | "videos",
     responseKey: "image" | "video"
   ): Promise<PublishResult> {
+    const mediaSource = firstMedia(content) ?? "";
+    const bytes = await readBytes(mediaSource);
+    const initializeUploadRequest: JsonRecord = { owner: author };
+    if (endpoint === "videos") {
+      initializeUploadRequest.fileSizeBytes = bytes.byteLength;
+    }
+
     const init = await this.requestJson<JsonRecord>(
       "POST",
       `${API_BASE}/rest/${endpoint}`,
@@ -212,20 +236,40 @@ export class LinkedInProvider extends OAuthProvider {
         accessToken,
         headers: LINKEDIN_HEADERS,
         params: { action: "initializeUpload" },
-        json: { initializeUploadRequest: { owner: author } },
+        json: { initializeUploadRequest },
       }
     );
     const value = readRecord(init, "value");
-    const uploadUrl = readString(value, "uploadUrl");
     const assetUrn = readString(value, responseKey);
-    if (!uploadUrl || !assetUrn) {
+    if (!assetUrn) {
       throw new PublishError(`Failed to initialize LinkedIn ${responseKey} upload`, {
         platform: this.platformName,
         rawResponse: value,
       });
     }
 
-    await this.uploadBinary(accessToken, uploadUrl, firstMedia(content) ?? "");
+    if (endpoint === "videos") {
+      const uploadedPartIds = await this.uploadVideoParts(
+        readUploadInstructions(value),
+        bytes
+      );
+      await this.finalizeVideoUpload(
+        accessToken,
+        assetUrn,
+        readString(value, "uploadToken"),
+        uploadedPartIds
+      );
+    } else {
+      const uploadUrl = readString(value, "uploadUrl");
+      if (!uploadUrl) {
+        throw new PublishError(`Failed to initialize LinkedIn ${responseKey} upload`, {
+          platform: this.platformName,
+          rawResponse: value,
+        });
+      }
+      await this.uploadBinary(accessToken, uploadUrl, bytes);
+    }
+
     const body = this.buildPostBody(author, content.text);
     body.content = { media: { id: assetUrn } };
     const result = await this.createPost(accessToken, body);
@@ -249,6 +293,31 @@ export class LinkedInProvider extends OAuthProvider {
     };
   }
 
+  private async createComment(
+    accessToken: string,
+    author: string,
+    postUrn: string,
+    text: string
+  ) {
+    const body = await this.requestJson<JsonRecord>(
+      "POST",
+      `${API_BASE}/rest/socialActions/${encodeURIComponent(postUrn)}/comments`,
+      {
+        accessToken,
+        headers: LINKEDIN_HEADERS,
+        json: {
+          actor: author,
+          object: postUrn,
+          message: { text },
+        },
+      }
+    );
+    return {
+      id: readString(body, "commentUrn") || readString(body, "id"),
+      raw: body,
+    };
+  }
+
   async deletePost(accessToken: string, platformPostId: string) {
     const encodedPostId = encodeURIComponent(platformPostId);
     await this.request("DELETE", `${API_BASE}/rest/posts/${encodedPostId}`, {
@@ -263,22 +332,76 @@ export class LinkedInProvider extends OAuthProvider {
   }
 
   private async uploadBinary(
-    accessToken: string,
+    accessToken: string | null,
     uploadUrl: string,
-    source: string
+    bytes: Uint8Array
   ) {
-    const bytes = await readBytes(source);
     await this.request("PUT", uploadUrl, {
-      accessToken,
+      accessToken: accessToken ?? undefined,
       headers: {
-        ...LINKEDIN_HEADERS,
         "Content-Type": "application/octet-stream",
       },
       body: toArrayBuffer(bytes),
       timeoutMs: 120_000,
     });
   }
+
+  private async uploadVideoParts(
+    instructions: UploadInstruction[],
+    bytes: Uint8Array
+  ) {
+    if (instructions.length === 0) {
+      throw new PublishError("LinkedIn video upload returned no upload instructions", {
+        platform: this.platformName,
+      });
+    }
+
+    const uploadedPartIds: string[] = [];
+    for (const instruction of instructions) {
+      const part = bytes.slice(instruction.firstByte, instruction.lastByte + 1);
+      const response = await this.request("PUT", instruction.uploadUrl, {
+        headers: { "Content-Type": "application/octet-stream" },
+        body: toArrayBuffer(part),
+        timeoutMs: 120_000,
+      });
+      const etag = response.headers.get("etag")?.replace(/^"|"$/g, "");
+      if (!etag) {
+        throw new PublishError("LinkedIn video part upload did not return an ETag", {
+          platform: this.platformName,
+        });
+      }
+      uploadedPartIds.push(etag);
+    }
+
+    return uploadedPartIds;
+  }
+
+  private async finalizeVideoUpload(
+    accessToken: string,
+    video: string,
+    uploadToken: string,
+    uploadedPartIds: string[]
+  ) {
+    await this.request("POST", `${API_BASE}/rest/videos`, {
+      accessToken,
+      headers: LINKEDIN_HEADERS,
+      params: { action: "finalizeUpload" },
+      json: {
+        finalizeUploadRequest: {
+          video,
+          uploadToken,
+          uploadedPartIds,
+        },
+      },
+    });
+  }
 }
+
+type UploadInstruction = {
+  uploadUrl: string;
+  firstByte: number;
+  lastByte: number;
+};
 
 async function readBytes(source: string): Promise<Uint8Array> {
   if (source.startsWith("http://") || source.startsWith("https://")) {
@@ -293,6 +416,28 @@ async function readBytes(source: string): Promise<Uint8Array> {
 
 function firstMedia(content: PublishContent): string | undefined {
   return content.mediaFiles?.[0] ?? content.mediaUrls?.[0];
+}
+
+function readUploadInstructions(source: JsonRecord): UploadInstruction[] {
+  const value = source.uploadInstructions;
+  if (!Array.isArray(value)) return [];
+
+  return value.flatMap((item) => {
+    if (!item || typeof item !== "object" || Array.isArray(item)) return [];
+    const record = item as JsonRecord;
+    const uploadUrl = readString(record, "uploadUrl");
+    const firstByte = readNumber(record, "firstByte");
+    const lastByte = readNumber(record, "lastByte");
+    return uploadUrl && firstByte !== null && lastByte !== null
+      ? [{ uploadUrl, firstByte, lastByte }]
+      : [];
+  });
+}
+
+function readNumber(source: unknown, key: string): number | null {
+  if (!source || typeof source !== "object" || Array.isArray(source)) return null;
+  const value = (source as JsonRecord)[key];
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
 function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
