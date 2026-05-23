@@ -249,6 +249,19 @@ export class LinkedInProvider extends OAuthProvider {
     };
   }
 
+  async deletePost(accessToken: string, platformPostId: string) {
+    const encodedPostId = encodeURIComponent(platformPostId);
+    await this.request("DELETE", `${API_BASE}/rest/posts/${encodedPostId}`, {
+      accessToken,
+      headers: LINKEDIN_HEADERS,
+    });
+
+    return {
+      deleted: true,
+      extra: { urn: platformPostId },
+    };
+  }
+
   private async uploadBinary(
     accessToken: string,
     uploadUrl: string,

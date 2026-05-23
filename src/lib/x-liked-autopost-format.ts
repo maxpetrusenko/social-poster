@@ -13,6 +13,14 @@ function asString(value: unknown) {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
+const KNOWN_REPO_URLS: Array<{ pattern: RegExp; url: string; name: string }> = [
+  {
+    pattern: /\bfree\s*llm\s*api\b|\bfreellmapi\b/i,
+    url: "https://github.com/tashfeenahmed/freellmapi",
+    name: "FreeLLMAPI",
+  },
+];
+
 function decodeBasicHtmlEntities(text: string) {
   return text
     .replace(/&amp;/g, "&")
@@ -88,12 +96,28 @@ export function getXLikedAutopostSkipReason(input: {
 export function getXLikedPostAngle(sourceText: string) {
   const text = cleanXLikedText(sourceText);
   const normalized = text.toLowerCase();
+  const repo = extractGithubRepoSignal(text);
+
+  if (repo) {
+    return {
+      label: "repo bookmark",
+      take: buildRepoBookmarkTake(repo),
+    };
+  }
+
+  if (/\b(qwen|benchmark|beats|training cost|bot improvement|agentic task|tetris bot)\b/.test(normalized)) {
+    return {
+      label: "video benchmark",
+      take:
+        "This matters as a cost curve signal. Long agent loops reward more attempts, strict verification, and expensive models used only where judgment matters.",
+    };
+  }
 
   if (/\b(price|cheap|cost|token|subscription|plan|discount|free|expensive|cad|\$)\b/.test(normalized)) {
     return {
       label: "model economics",
       take:
-        "The useful signal is that model choice is becoming an architecture decision, not a loyalty decision. Expensive model for planning, cheaper strong model for bulk execution, verifier on top.",
+        "The useful signal is model choice becoming an architecture decision. Expensive model for planning, cheaper strong model for bulk execution, verifier on top.",
     };
   }
 
@@ -101,7 +125,7 @@ export function getXLikedPostAngle(sourceText: string) {
     return {
       label: "small model workflow",
       take:
-        "Small-model work is getting boring in the best way. The interesting part is not one custom model, it is that the loop can be scripted, checked overnight, and repeated by a tiny team.",
+        "Small-model work is getting boring in the best way. The useful part is the loop: script it, check it overnight, repeat it with a tiny team.",
     };
   }
 
@@ -109,7 +133,7 @@ export function getXLikedPostAngle(sourceText: string) {
     return {
       label: "agent workflow",
       take:
-        "I do not think the winning coding setup is one model. It looks more like a pipeline: planner, executor, verifier, critic. The teams that wire that loop well will move faster.",
+        "The winning coding setup looks like a pipeline: planner, executor, verifier, critic. Teams that wire that loop well will move faster.",
     };
   }
 
@@ -124,8 +148,45 @@ export function getXLikedPostAngle(sourceText: string) {
   return {
     label: "builder signal",
     take:
-      "Worth tracking as a builder signal. The important part is not the post itself, it is what it suggests about where the workflow is moving.",
+      "Worth tracking as a builder signal. The useful part is what it suggests about where the workflow is moving.",
   };
+}
+
+function extractGithubRepoSignal(text: string) {
+  const repoUrl = text.match(/https:\/\/github\.com\/([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)/i)?.[0];
+  if (repoUrl) {
+    const [, owner = "", repo = ""] =
+      repoUrl.match(/github\.com\/([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)/i) ?? [];
+    return {
+      url: repoUrl.replace(/[).,]+$/, ""),
+      name: repo ? repo.replace(/[-_]/g, " ") : `${owner}/${repo}`,
+    };
+  }
+
+  const known = KNOWN_REPO_URLS.find((entry) => entry.pattern.test(text));
+  return known ? { url: known.url, name: known.name } : null;
+}
+
+function buildRepoBookmarkTake(repo: { url: string; name: string }) {
+  if (/freellmapi/i.test(repo.name) || /freellmapi/i.test(repo.url)) {
+    return [
+      "Save this if you prototype with LLM APIs.",
+      "",
+      "FreeLLMAPI gives you one OpenAI-compatible endpoint across multiple provider free tiers, with failover and per-key rate tracking.",
+      "",
+      "Useful when experiments need to keep running before paid infra makes sense.",
+      "",
+      repo.url,
+    ].join("\n");
+  }
+
+  return [
+    `Save this repo: ${repo.name}.`,
+    "",
+    "Useful developer tools earn bookmarks when they solve one repeated workflow clearly. This one is worth a look if it fits your stack.",
+    "",
+    repo.url,
+  ].join("\n");
 }
 
 export function buildXLikedPostContent(input: {
@@ -135,6 +196,9 @@ export function buildXLikedPostContent(input: {
 }) {
   const handle = normalizeHandle(input.authorHandle || "unknown");
   const angle = getXLikedPostAngle(input.sourceText);
+  if (angle.label === "repo bookmark" || angle.label === "video benchmark") {
+    return angle.take;
+  }
 
   return [
     angle.take,

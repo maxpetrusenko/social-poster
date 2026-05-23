@@ -19,7 +19,7 @@ describe("X liked autopost formatting", () => {
         "I am on the $200 Claude, $100 Codex, $20 Cursor plan and need to rethink the whole subscription stack.",
     });
 
-    expect(content).toMatch(/^The useful signal is that model choice/);
+    expect(content).toMatch(/^The useful signal is model choice/);
     expect(content).not.toMatch(/I discovered/);
     expect(content).not.toMatch(/Credit:/);
     expect(content).not.toMatch(/I am on the \$200 Claude/);
@@ -97,6 +97,27 @@ describe("X liked autopost formatting", () => {
     );
     expect(getXLikedPostAngle("The $20 plan changes the cost per coding task.").label).toBe(
       "model economics"
+    );
+  });
+
+  it("turns a liked GitHub repo post into a bookmark-worthy repo share", () => {
+    const content = buildXLikedPostContent({
+      authorHandle: "@dr_cintas",
+      sourceUrl: "https://x.com/dr_cintas/status/2057875643300511944",
+      sourceText:
+        "FreeLLMAPI is an open-source proxy. Each provider's free tier is a toy on its own. Stacked together they add up to ~800M tokens a month. Drop-in OpenAI endpoint, just swap base_url. Auto failover when a provider hits its rate limit.",
+    });
+
+    expect(content).toBe(
+      [
+        "Save this if you prototype with LLM APIs.",
+        "",
+        "FreeLLMAPI gives you one OpenAI-compatible endpoint across multiple provider free tiers, with failover and per-key rate tracking.",
+        "",
+        "Useful when experiments need to keep running before paid infra makes sense.",
+        "",
+        "https://github.com/tashfeenahmed/freellmapi",
+      ].join("\n")
     );
   });
 });
