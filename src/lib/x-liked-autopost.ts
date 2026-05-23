@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import { db } from "@/db";
 import { dedupCache, pipelineRuns, platforms, posts, postTargets, profiles, workspaces } from "@/db/schema";
 import { publishPlatformTargets } from "@/lib/pipeline/publish-service";
+import { fetchOpenGraphImage } from "@/lib/open-graph-image";
 import {
   resolvePostStatusFromTargetResults,
   resolvePublishResultsStatus,
@@ -20,6 +21,7 @@ import { safeFetchRemote } from "@/lib/safe-remote-fetch";
 import { uploadMediaAsset } from "@/lib/storage/r2";
 import {
   buildXLikedDedupKey,
+  getXLikedExternalUrls,
   buildXLikedPostContent,
   buildXLikedSourceUrl,
   cleanXLikedText,
@@ -202,6 +204,23 @@ async function snapshotMedia(
   return stored?.url ?? media.url;
 }
 
+async function resolveExternalPreviewMedia(tweet: BirdTweet, sourceText: string): Promise<XLikedMedia | null> {
+  for (const url of getXLikedExternalUrls({ tweet, sourceText }).slice(0, 3)) {
+    const imageUrl = await fetchOpenGraphImage(url);
+    if (imageUrl) {
+      return { url: imageUrl, mediaType: "image" };
+    }
+  }
+
+  return null;
+}
+
+async function resolveXLikedMedia(tweet: BirdTweet, fallbackImage: string | null) {
+  const directMedia = pickXLikedMedia(tweet, fallbackImage);
+  if (directMedia) return directMedia;
+  return resolveExternalPreviewMedia(tweet, getTweetText(tweet));
+}
+
 function shouldSkipTweet(tweet: BirdTweet, xPlatform: PlatformRow, hasMedia = false) {
   const sourceUrl = buildXLikedSourceUrl(tweet);
   if (!tweet.id && !tweet.url) {
@@ -270,7 +289,7 @@ export async function getXLikedAutopostReviewCandidates(options: {
     const dedupKey = buildXLikedDedupKey(tweet);
     const authorHandle = getTweetAuthor(tweet);
     const fallbackImage = getTweetImageUrl(tweet);
-    const media = pickXLikedMedia(tweet, fallbackImage);
+    const media = await resolveXLikedMedia(tweet, fallbackImage);
     const sourceText = cleanXLikedText(getTweetText(tweet), { hasMedia: Boolean(media) });
     const policySkip = shouldSkipTweet(tweet, xPlatform, Boolean(media));
     const imported = await alreadyImported(options.workspaceId, sourceUrl, dedupKey);
@@ -331,7 +350,7 @@ export async function runXLikedAutopost(options: RunOptions): Promise<XLikedAuto
     if (result.imported >= limit) break;
 
     const fallbackImage = getTweetImageUrl(tweet);
-    const media = pickXLikedMedia(tweet, fallbackImage);
+    const media = await resolveXLikedMedia(tweet, fallbackImage);
     const skip = shouldSkipTweet(tweet, xPlatform, Boolean(media));
     if (skip) {
       result.skipped.push(skip);

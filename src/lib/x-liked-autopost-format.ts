@@ -5,6 +5,8 @@ export type XLikedMedia = {
   mediaType: "image" | "video";
 };
 
+type JsonRecord = Record<string, unknown>;
+
 function normalizeHandle(value: string) {
   return value.trim().replace(/^@/, "");
 }
@@ -301,4 +303,87 @@ export function pickXLikedMedia(tweet: BirdTweet, fallbackImageUrl?: string | nu
   }
 
   return null;
+}
+
+export function getXLikedExternalUrls(input: {
+  tweet?: BirdTweet | null;
+  sourceText: string;
+}) {
+  const urls: string[] = [];
+  const push = (value: unknown) => {
+    if (typeof value !== "string") return;
+    const normalized = normalizeExternalUrl(value);
+    if (!normalized) return;
+    if (urls.includes(normalized)) return;
+    urls.push(normalized);
+  };
+
+  for (const value of readTweetUrlEntities(input.tweet)) {
+    push(value);
+  }
+
+  for (const match of input.sourceText.matchAll(/https?:\/\/[^\s)]+/gi)) {
+    push(match[0]);
+  }
+
+  const repo = extractGithubRepoSignal(input.sourceText);
+  if (repo) {
+    push(repo.url);
+  }
+
+  return urls;
+}
+
+function readTweetUrlEntities(tweet?: BirdTweet | null) {
+  const raw = tweet?._raw;
+  if (!raw || typeof raw !== "object") return [];
+
+  const legacy = readRecord(raw, "legacy");
+  const entities = readRecord(legacy, "entities");
+  const urls = readArray(entities, "urls");
+
+  return urls.flatMap((entry) => [
+    readStringValue(entry, "expanded_url"),
+    readStringValue(entry, "expandedUrl"),
+    readStringValue(entry, "url"),
+    readStringValue(readRecord(entry, "unwound"), "url"),
+  ]);
+}
+
+function normalizeExternalUrl(value: string) {
+  const trimmed = value.trim().replace(/[).,]+$/, "");
+  let url: URL;
+  try {
+    url = new URL(trimmed);
+  } catch {
+    return null;
+  }
+
+  if (!["http:", "https:"].includes(url.protocol)) return null;
+  const host = url.hostname.toLowerCase().replace(/^www\./, "");
+  if (host === "x.com" || host === "twitter.com") return null;
+  return url.toString();
+}
+
+function readRecord(source: unknown, key: string): JsonRecord {
+  if (!source || typeof source !== "object" || Array.isArray(source)) return {};
+  const value = (source as JsonRecord)[key];
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as JsonRecord)
+    : {};
+}
+
+function readArray(source: JsonRecord, key: string): JsonRecord[] {
+  const value = source[key];
+  return Array.isArray(value)
+    ? value.filter((item): item is JsonRecord => {
+        return Boolean(item && typeof item === "object" && !Array.isArray(item));
+      })
+    : [];
+}
+
+function readStringValue(source: unknown, key: string) {
+  if (!source || typeof source !== "object" || Array.isArray(source)) return null;
+  const value = (source as JsonRecord)[key];
+  return typeof value === "string" && value.trim() ? value.trim() : null;
 }

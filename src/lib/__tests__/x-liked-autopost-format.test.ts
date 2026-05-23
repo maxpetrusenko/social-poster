@@ -5,6 +5,7 @@ import {
   buildXLikedPostContent,
   buildXLikedSourceUrl,
   cleanXLikedText,
+  getXLikedExternalUrls,
   getXLikedAutopostSkipReason,
   getXLikedPostAngle,
   pickXLikedMedia,
@@ -57,6 +58,35 @@ describe("X liked autopost formatting", () => {
     const tweet = { id: "123", author: { username: "founder" } };
     expect(buildXLikedSourceUrl(tweet)).toBe("https://x.com/founder/status/123");
     expect(buildXLikedDedupKey(tweet)).toBe("x-like:123");
+  });
+
+  it("extracts external preview links from tweet URL entities and known repo signals", () => {
+    expect(
+      getXLikedExternalUrls({
+        sourceText: "FreeLLMAPI is an open-source proxy.",
+      })
+    ).toEqual(["https://github.com/tashfeenahmed/freellmapi"]);
+
+    expect(
+      getXLikedExternalUrls({
+        sourceText: "Launching today https://t.co/short",
+        tweet: {
+          id: "123",
+          _raw: {
+            legacy: {
+              entities: {
+                urls: [
+                  {
+                    url: "https://t.co/short",
+                    expanded_url: "https://openai.com/index/agent-workflow/",
+                  },
+                ],
+              },
+            },
+          },
+        },
+      })
+    ).toEqual(["https://openai.com/index/agent-workflow/", "https://t.co/short"]);
   });
 
   it("skips liked posts that should not publish from Max's accounts", () => {
