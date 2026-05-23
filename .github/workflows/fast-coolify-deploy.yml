@@ -20,7 +20,6 @@ env:
   COOLIFY_UUID: ch6cjsgcqn6afd5052etgvwn
   COOLIFY_PORT: "3000"
   COOLIFY_HEALTH_PATH: /api/health
-  PRODUCTION_URL: https://social.maxpetrusenko.com
 
 jobs:
   gate:
@@ -177,8 +176,21 @@ jobs:
             echo "Coolify deployment status: ${status} (${attempt}/90)"
 
             if [ "${status}" = "finished" ]; then
-              curl --fail --silent --show-error "${PRODUCTION_URL}${COOLIFY_HEALTH_PATH}" >/dev/null
-              echo "Production healthcheck passed."
+              ssh -i "${key_file}" \
+                -o BatchMode=yes \
+                -o IdentitiesOnly=yes \
+                -o StrictHostKeyChecking=yes \
+                "${COOLIFY_SSH_USER}@${COOLIFY_SSH_HOST}" \
+                "COOLIFY_UUID='${COOLIFY_UUID}' COOLIFY_HEALTH_PATH='${COOLIFY_HEALTH_PATH}' bash -s" <<'REMOTE'
+              set -euo pipefail
+              container_id="$(docker ps --filter "name=${COOLIFY_UUID}" --format "{{.ID}}" | sed -n '1p')"
+              if [ -z "${container_id}" ]; then
+                echo "No running container found for ${COOLIFY_UUID}" >&2
+                exit 1
+              fi
+              docker exec "${container_id}" curl --fail --silent --show-error "http://127.0.0.1:3000${COOLIFY_HEALTH_PATH}" >/dev/null
+          REMOTE
+              echo "Private production healthcheck passed."
               exit 0
             fi
 
