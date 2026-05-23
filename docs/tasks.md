@@ -1,6 +1,6 @@
 # Social Agent — Tasks & Status
 
-Last updated: 2026-05-21 (server schedules, Instagram connection, Gauntlet weekly schedule targets)
+Last updated: 2026-05-23 (X liked-post happy path and posting rules)
 
 ## Current State
 
@@ -19,6 +19,8 @@ Operational note 2026-05-21: local Gauntlet referral schedule `baec8c15-4ba3-426
 Production schedule note 2026-05-21: server DB now has `post-x-linkedin-11am`, `post-x-linkedin-1pm`, and `post-x-linkedin-3pm` enabled and targeted to `legacy-platform-x` plus native LinkedIn Personal account `96946ee9-9941-47f2-9a5e-b0c3ecf50db1`. `/api/health` verified `dbEnabledCount: 3`, `runtimeRegisteredCount: 3`, `runtimeRegisteredScheduleIds: ["post-x-linkedin-11am","post-x-linkedin-1pm","post-x-linkedin-3pm"]`, `drift: 0`. Production backup before the update: `/var/lib/docker/volumes/ch6cjsgcqn6afd5052etgvwn-data/_data/backups/social-poster-before-enable-11-1-3-native-linkedin-20260521T151531Z.db`.
 
 X liked-post autopost note 2026-05-21: `/api/x-likes/autopost` can ingest recent posts liked by the workspace X/Bird account, copy the first image/video when present, create a normal `posts` record plus `post_targets`, publish immediately to X and LinkedIn Personal, and dedupe by `x-like:<tweetId>`. Manual runs use workspace manager auth or `CRON_SECRET`; cron-default/background runs auto-select only workspaces with enabled Bird X plus LinkedIn Personal, or the explicit `X_LIKES_AUTOPUBLISH_WORKSPACE_ID` / `X_LIKES_AUTOPUBLISH_WORKSPACE_IDS` override. Background runs stay off unless both `X_LIKES_AUTOPUBLISH_ENABLED=true` and `X_LIKES_AUTOPUBLISH_MODE=publish` are set. Tunables: `X_LIKES_AUTOPUBLISH_INTERVAL_MINUTES`, `X_LIKES_AUTOPUBLISH_LIMIT`, and `X_LIKES_AUTOPUBLISH_FETCH_COUNT`.
+
+X liked-post posting quality note 2026-05-23: Max is happy with the X liked-post path after commit `e448f8d` and the FreeLLMAPI repo-bookmark publish. Posts with a link should publish as one post. Use `1/2` style numbering only for intentional multi-post threads. Linear follow-up: `MAX-158`.
 
 ## What's Done
 
