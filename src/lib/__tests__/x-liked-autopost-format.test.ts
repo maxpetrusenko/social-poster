@@ -83,8 +83,18 @@ describe("X liked autopost formatting", () => {
         platformType: "linkedin_personal",
         media: video,
         sourceUrl: "https://x.com/kimmonismus/status/2058254144855544092",
+        authorHandle: "@kimmonismus",
       })
-    ).toBe("Blue-collar automation will arrive unevenly.");
+    ).toBe(["Blue-collar automation will arrive unevenly.", "", "via @kimmonismus"].join("\n"));
+    expect(
+      buildXLikedPlatformPostContent({
+        baseContent: "Save this repo.",
+        platformType: "x",
+        media: { url: "https://cdn.example/post.jpg", mediaType: "image" },
+        sourceUrl: "https://x.com/founder/status/123",
+        authorHandle: "@founder",
+      })
+    ).toBe(["Save this repo.", "", "via @founder"].join("\n"));
   });
 
   it("builds stable source URL and dedupe key", () => {

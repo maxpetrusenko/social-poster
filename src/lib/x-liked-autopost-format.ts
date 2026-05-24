@@ -310,13 +310,22 @@ export function buildXLikedPlatformPostContent(input: {
   platformType: string;
   media: XLikedMedia | null;
   sourceUrl: string;
+  authorHandle?: string;
 }) {
   const normalized = input.platformType.toLowerCase();
   const shouldEmbedSourceVideo =
     input.media?.mediaType === "video" &&
     (normalized === "x" || normalized === "twitter");
 
-  if (!shouldEmbedSourceVideo) return input.baseContent;
+  if (!shouldEmbedSourceVideo) {
+    const handle = normalizeHandle(input.authorHandle || "");
+    const attribution = handle ? `via @${handle}` : "";
+    if (!input.media || !attribution || input.baseContent.includes(attribution)) {
+      return input.baseContent;
+    }
+    return [input.baseContent.trim(), "", attribution].join("\n");
+  }
+
   if (input.baseContent.includes(input.sourceUrl)) return input.baseContent;
   return [input.baseContent.trim(), "", input.sourceUrl].join("\n");
 }
