@@ -83,7 +83,7 @@ jobs:
             ${{ env.IMAGE_NAME }}:main
             ${{ env.IMAGE_NAME }}:latest
           cache-from: type=gha
-          cache-to: type=gha,mode=min
+          cache-to: type=gha,mode=max
 
   deploy:
     name: Trigger Coolify Deploy

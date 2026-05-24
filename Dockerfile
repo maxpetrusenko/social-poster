@@ -13,7 +13,8 @@ FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-RUN (while true; do sleep 10; echo "next build still running"; done) & \
+RUN --mount=type=cache,target=/app/.next/cache \
+  (while true; do sleep 10; echo "next build still running"; done) & \
   heartbeat_pid="$!"; \
   npm run build; \
   build_status="$?"; \
