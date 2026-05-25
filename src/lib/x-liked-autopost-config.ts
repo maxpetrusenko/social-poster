@@ -18,6 +18,7 @@ export function readXLikedAutopostLimit(env: XLikedAutopostEnv = process.env) {
 }
 
 export function readXLikedAutopostFetchCount(env: XLikedAutopostEnv = process.env) {
-  const count = Number(env.X_LIKES_AUTOPUBLISH_FETCH_COUNT ?? 20);
-  return Number.isFinite(count) && count > 0 ? Math.min(50, Math.floor(count)) : 20;
+  const count = Number(env.X_LIKES_AUTOPUBLISH_FETCH_COUNT ?? 50);
+  if (!Number.isFinite(count) || count <= 0) return 50;
+  return 50;
 }

@@ -22,6 +22,21 @@ describe("X liked autopost writer", () => {
     expect(prompt).toContain("Reposting is usually curation");
     expect(prompt).toContain("preserve the frame, metaphor, numbers, and ending");
     expect(prompt).toContain("builder signal");
+    expect(prompt).toContain("Hard length budget: 275 characters");
+  });
+
+  it("feeds rejection feedback into retry prompts", () => {
+    const prompt = buildXLikedAutopostWriterPrompt({
+      authorHandle: "@garrytan",
+      sourceUrl: "https://x.com/garrytan/status/123",
+      sourceText: "Everyone building AI agents is focused on the prefrontal cortex and cerebellum.",
+      hasMedia: true,
+      mediaType: "image",
+      previousRejection: "writer returned thread numbering",
+    });
+
+    expect(prompt).toContain("Previous draft failed: writer returned thread numbering");
+    expect(prompt).toContain("Hard length budget: 220 characters");
   });
 
   it("rejects generic fallback phrases before publish", () => {
@@ -53,6 +68,26 @@ describe("X liked autopost writer", () => {
         sourceUrl: "https://x.com/source/status/123",
       })
     ).toBe("writer included source URL for text-only repost");
+  });
+
+  it("rejects drafts that exceed the final X-safe length budget", () => {
+    expect(
+      getXLikedAutopostContentRejection({
+        content: "A".repeat(276),
+        sourceText: "Short source.",
+        hasMedia: false,
+        sourceUrl: "https://x.com/source/status/123",
+      })
+    ).toBe("writer exceeded 275 character budget");
+
+    expect(
+      getXLikedAutopostContentRejection({
+        content: "A".repeat(221),
+        sourceText: "Short source with media.",
+        hasMedia: true,
+        sourceUrl: "https://x.com/source/status/123",
+      })
+    ).toBe("writer exceeded 220 character budget");
   });
 
   it("rejects drafts that lose required concrete source hooks", () => {

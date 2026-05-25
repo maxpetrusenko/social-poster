@@ -27,7 +27,7 @@ describe("X liked autopost config", () => {
     const env = {
       X_LIKES_AUTOPUBLISH_INTERVAL_MINUTES: "0",
       X_LIKES_AUTOPUBLISH_LIMIT: "42",
-      X_LIKES_AUTOPUBLISH_FETCH_COUNT: "500",
+      X_LIKES_AUTOPUBLISH_FETCH_COUNT: "10",
     };
 
     expect(readXLikedAutopostIntervalMinutes(env)).toBe(2);

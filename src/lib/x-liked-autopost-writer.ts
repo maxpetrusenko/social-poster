@@ -5,6 +5,9 @@ import { resolveOpenAIResponsesRuntime } from "@/lib/model-runtime";
 import { X_POSTING_SKILL_INSTRUCTIONS } from "@/lib/x-posting-skill";
 
 const DEFAULT_MODEL = process.env.OPENAI_SOCIAL_POST_MODEL || "gpt-4.1-mini";
+const MAX_ATTEMPTS = 3;
+const X_SAFE_CHAR_LIMIT = 275;
+const X_MEDIA_SAFE_CHAR_LIMIT = 220;
 
 const GENERIC_PHRASES = [
   "builder signal",
@@ -66,44 +69,58 @@ export async function draftXLikedAutopostContent(input: {
   }
 
   try {
-    const result = await callOpenAIResponses<Record<string, unknown>>({
-      name: "x-liked-autopost-writer",
-      apiKey: runtime.apiKey,
-      body: {
-        model: runtime.model,
-        input: buildXLikedAutopostWriterPrompt(input),
-        text: { format: { type: "json_object" } },
-      },
-      tags: ["x-liked-autopost", "writer"],
-      metadata: {
-        source: "x-liked-autopost",
-        sourceUrl: input.sourceUrl,
-        authorHandle: input.authorHandle,
-        mediaType: input.mediaType,
-        modelSource: runtime.source ?? "unknown",
-      },
-    });
+    let lastRejection = "";
+    let lastTraceUrl: string | null = null;
 
-    const content = parseWriterResponse(result.data);
-    const rejection = getXLikedAutopostContentRejection({
-      content,
-      sourceText: input.sourceText,
-      hasMedia: input.hasMedia,
-      sourceUrl: input.sourceUrl,
-    });
-
-    if (rejection) {
-      throw new XLikedAutopostWriterError(rejection, {
-        code: "quality_rejected",
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
+      const result = await callOpenAIResponses<Record<string, unknown>>({
+        name: attempt === 1
+          ? "x-liked-autopost-writer"
+          : "x-liked-autopost-writer-retry",
+        apiKey: runtime.apiKey,
+        body: {
+          model: runtime.model,
+          input: buildXLikedAutopostWriterPrompt({
+            ...input,
+            previousRejection: lastRejection || null,
+          }),
+          text: { format: { type: "json_object" } },
+        },
+        tags: ["x-liked-autopost", "writer"],
+        metadata: {
+          source: "x-liked-autopost",
+          sourceUrl: input.sourceUrl,
+          authorHandle: input.authorHandle,
+          mediaType: input.mediaType,
+          modelSource: runtime.source ?? "unknown",
+          attempt,
+        },
       });
+
+      lastTraceUrl = result.trace?.url ?? null;
+      const content = parseWriterResponse(result.data);
+      const rejection = getXLikedAutopostContentRejection({
+        content,
+        sourceText: input.sourceText,
+        hasMedia: input.hasMedia,
+        sourceUrl: input.sourceUrl,
+      });
+
+      if (!rejection) {
+        return {
+          content,
+          model: runtime.model,
+          modelSource: runtime.source ?? "unknown",
+          traceUrl: lastTraceUrl,
+        };
+      }
+
+      lastRejection = rejection;
     }
 
-    return {
-      content,
-      model: runtime.model,
-      modelSource: runtime.source ?? "unknown",
-      traceUrl: result.trace?.url ?? null,
-    };
+    throw new XLikedAutopostWriterError(lastRejection || "writer quality rejected", {
+      code: "quality_rejected",
+    });
   } catch (error) {
     if (error instanceof XLikedAutopostWriterError) throw error;
     throw new XLikedAutopostWriterError(
@@ -123,7 +140,12 @@ export function buildXLikedAutopostWriterPrompt(input: {
   sourceText: string;
   hasMedia: boolean;
   mediaType: "image" | "video" | null;
+  previousRejection?: string | null;
 }) {
+  const retryInstruction = input.previousRejection
+    ? `\nPrevious draft failed: ${input.previousRejection}\nRewrite the draft to satisfy that issue while preserving the source's concrete point.\n`
+    : "";
+
   return `You write Max Petrusenko's liked-post autoposts.
 
 Use these X posting rules as binding instructions:
@@ -146,8 +168,10 @@ Rules for this draft:
 - Keep useful GitHub URLs when the source is a repo/bookmark lane.
 - Attribute source-owned launches to the source account.
 - Do not claim Max built, launched, tried, or discovered something without evidence in the source text.
-- Do not write a thread marker like 1/2 unless the source itself requires a thread.
+- Write one standalone post. No thread markers such as 1/2.
 - Avoid generic phrases such as "builder signal", "winning coding setup", "workflow loop", "game-changing", "cutting-edge", "unlock", and "redefine".
+- Hard length budget: ${input.hasMedia ? X_MEDIA_SAFE_CHAR_LIMIT : X_SAFE_CHAR_LIMIT} characters. Count all characters.
+${retryInstruction}
 
 Respond with JSON only:
 {
@@ -195,6 +219,9 @@ export function getXLikedAutopostContentRejection(input: {
   const source = input.sourceText.toLowerCase();
 
   if (!content) return "writer returned empty content";
+  if (content.length > (input.hasMedia ? X_MEDIA_SAFE_CHAR_LIMIT : X_SAFE_CHAR_LIMIT)) {
+    return `writer exceeded ${input.hasMedia ? X_MEDIA_SAFE_CHAR_LIMIT : X_SAFE_CHAR_LIMIT} character budget`;
+  }
   if (/^1\s*\/\s*2\b/m.test(content)) return "writer returned thread numbering";
   if (/\bsource:\s*/i.test(content)) return "writer included source label";
 
