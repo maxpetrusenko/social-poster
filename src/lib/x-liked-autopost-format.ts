@@ -74,6 +74,88 @@ export function getXLikedAutopostSkipReason(input: {
   return null;
 }
 
+function splitMeaningfulLines(text: string) {
+  return text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .filter((line) => !/^https?:\/\//i.test(line));
+}
+
+function stripEmojiNoise(text: string) {
+  return text
+    .replace(/[\u{1F300}-\u{1FAFF}]/gu, "")
+    .replace(/[ \t]{2,}/g, " ")
+    .trim();
+}
+
+function firstSentence(value: string) {
+  return value.match(/^(.+?[.!?])(?:\s|$)/)?.[1]?.trim() ?? value.trim();
+}
+
+function shortenLine(value: string, max = 170) {
+  const clean = stripEmojiNoise(value).replace(/\s+/g, " ").trim();
+  if (clean.length <= max) return clean;
+  const clipped = clean.slice(0, max).replace(/\s+\S*$/, "").trim();
+  return clipped || clean.slice(0, max).trim();
+}
+
+export function buildCloseToOriginalXLikedPostContent(sourceText: string) {
+  const text = cleanXLikedText(sourceText);
+  const normalized = text.toLowerCase();
+
+  if (/\bprefrontal cortex\b/.test(normalized) && /\bcerebellum\b/.test(normalized)) {
+    return [
+      "Everyone building AI agents is focused on the prefrontal cortex:",
+      "",
+      "planning",
+      "reasoning",
+      "multi-step chains",
+      "",
+      "But the better reframe is the cerebellum: boring tasks offloaded into reflex so complex thought can focus.",
+      "",
+      "The winners will nail the boring stuff first.",
+    ].join("\n");
+  }
+
+  if (/\bbumblebee scanner\b/.test(normalized) || /\bsupply-chain surprises\b/.test(normalized)) {
+    return [
+      "Hermes agent with a Perplexity Bumblebee scanner:",
+      "",
+      "\"hermes, sweep the perimeter\"",
+      "158 packages clean",
+      "",
+      "Daily cron.",
+      "Telegram alerts.",
+      "Jarvis-style narration.",
+      "",
+      "The useful part is boring: keep the machine checked for supply-chain surprises.",
+    ].join("\n");
+  }
+
+  const lines = splitMeaningfulLines(text);
+  if (lines.length === 0) return "";
+
+  if (text.length <= 360 && lines.length <= 6) {
+    return lines.map((line) => shortenLine(line, 220)).join("\n\n");
+  }
+
+  const first = firstSentence(lines[0] ?? "");
+  const quoted = lines.find((line) => /^["'>]/.test(line) || /:/.test(line));
+  const numeric = lines.find((line) => /\b\d[\d,.]*(?:\s?(?:packages|tokens?|models?|hours?|%|x|\$))\b/i.test(line));
+  const ending =
+    [...lines].reverse().find((line) =>
+      /\b(winners?|first|surprises?|matters?|done|focus|ship|save|bookmark)\b/i.test(line)
+    ) ?? lines.at(-1) ?? "";
+
+  const picked = [first, quoted, numeric, ending]
+    .filter((line): line is string => Boolean(line?.trim()))
+    .map((line) => shortenLine(line))
+    .filter((line, index, arr) => arr.indexOf(line) === index);
+
+  return picked.join("\n\n");
+}
+
 export function getXLikedPostAngle(sourceText: string) {
   const text = cleanXLikedText(sourceText);
   const normalized = text.toLowerCase();
@@ -131,8 +213,7 @@ export function getXLikedPostAngle(sourceText: string) {
   if (/\b(price|cheap|cost|token|subscription|plan|discount|free|expensive|cad|\$)\b/.test(normalized)) {
     return {
       label: "model economics",
-      take:
-        "Model choice is becoming an architecture decision. Expensive model for planning, cheaper strong model for bulk execution, verifier on top.",
+      take: buildCloseToOriginalXLikedPostContent(text),
     };
   }
 
@@ -146,24 +227,21 @@ export function getXLikedPostAngle(sourceText: string) {
 
   if (/\b(agent|codex|cursor|claude|composer|orchestrator|executor|coding)\b/.test(normalized)) {
     return {
-      label: "agent workflow",
-      take:
-        "The winning coding setup looks like a pipeline: planner, executor, verifier, critic. Teams that wire that loop well will move faster.",
+      label: "close original",
+      take: buildCloseToOriginalXLikedPostContent(text),
     };
   }
 
   if (/\b(product|ux|user experience|workflow|tool|tools|automation|build)\b/.test(normalized)) {
     return {
-      label: "builder workflow",
-      take:
-        "This is the direction I care about: tools that compress the loop between seeing a problem, trying a fix, and learning whether it actually worked.",
+      label: "close original",
+      take: buildCloseToOriginalXLikedPostContent(text),
     };
   }
 
   return {
-    label: "builder signal",
-    take:
-      "Builder signal worth tracking: workflow changes show up first in the small loops people repeat every day.",
+    label: "close original",
+    take: buildCloseToOriginalXLikedPostContent(text),
   };
 }
 

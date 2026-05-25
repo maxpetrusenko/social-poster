@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildXLikedDedupKey,
+  buildCloseToOriginalXLikedPostContent,
   buildXLikedPlatformPostContent,
   buildXLikedPostContent,
   buildXLikedSourceComment,
@@ -15,7 +16,7 @@ import {
 } from "../x-liked-autopost-format.ts";
 
 describe("X liked autopost formatting", () => {
-  it("builds Max-owned commentary instead of copying the original post", () => {
+  it("keeps text-only reposts close to the original by default", () => {
     const content = buildXLikedPostContent({
       authorHandle: "@founder",
       sourceUrl: "https://x.com/founder/status/123",
@@ -23,10 +24,9 @@ describe("X liked autopost formatting", () => {
         "I am on the $200 Claude, $100 Codex, $20 Cursor plan and need to rethink the whole subscription stack.",
     });
 
-    expect(content).toMatch(/^Model choice is becoming an architecture decision/);
+    expect(content).toMatch(/^I am on the \$200 Claude/);
     expect(content).not.toMatch(/I discovered/);
     expect(content).not.toMatch(/Credit:/);
-    expect(content).not.toMatch(/I am on the \$200 Claude/);
     expect(content).toMatch(/Source: @founder https:\/\/x\.com\/founder\/status\/123/);
   });
 
@@ -184,11 +184,48 @@ describe("X liked autopost formatting", () => {
       "small model workflow"
     );
     expect(getXLikedPostAngle("Codex as orchestrator and DeepSeek as executor.").label).toBe(
-      "agent workflow"
+      "close original"
     );
     expect(getXLikedPostAngle("The $20 plan changes the cost per coding task.").label).toBe(
       "model economics"
     );
+  });
+
+  it("preserves the concrete metaphor from the agent cerebellum source", () => {
+    const content = buildCloseToOriginalXLikedPostContent(
+      [
+        "Everyone building AI agents is focused on the prefrontal cortex:",
+        "",
+        "planning",
+        "reasoning",
+        "multi-step chains",
+        "",
+        "But the better reframe is the cerebellum. Offload boring tasks into reflex so complex thought can focus.",
+      ].join("\n")
+    );
+
+    expect(content).toContain("prefrontal cortex");
+    expect(content).toContain("cerebellum");
+    expect(content).toContain("The winners will nail the boring stuff first.");
+    expect(content).not.toMatch(/winning coding setup/i);
+    expect(content).not.toMatch(/builder signal/i);
+  });
+
+  it("preserves concrete demo details from the Bumblebee scanner source", () => {
+    const content = buildCloseToOriginalXLikedPostContent(
+      [
+        "Hermes agent with a Perplexity Bumblebee scanner.",
+        "\"hermes, sweep the perimeter\"",
+        "158 packages clean",
+        "Daily cron. Telegram alerts. Jarvis-style narration.",
+        "The useful part is catching supply-chain surprises.",
+      ].join("\n")
+    );
+
+    expect(content).toContain("Bumblebee scanner");
+    expect(content).toContain("158 packages clean");
+    expect(content).toContain("supply-chain surprises");
+    expect(content).not.toMatch(/workflow loop/i);
   });
 
   it("credits the source when the liked post is a video share lane", () => {

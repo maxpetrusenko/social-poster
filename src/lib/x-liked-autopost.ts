@@ -20,6 +20,11 @@ import {
 import { safeFetchRemote } from "@/lib/safe-remote-fetch";
 import { uploadMediaAsset } from "@/lib/storage/r2";
 import {
+  draftXLikedAutopostContent,
+  XLikedAutopostWriterError,
+  type XLikedAutopostWriterResult,
+} from "@/lib/x-liked-autopost-writer";
+import {
   buildXLikedDedupKey,
   buildXLikedPlatformPostContent,
   getXLikedExternalUrls,
@@ -268,6 +273,46 @@ async function markDedupKey(dedupKey: string, source: string) {
   }
 }
 
+async function recordXLikedWriterFailure(input: {
+  workspaceId: string;
+  sourceUrl: string;
+  authorHandle: string;
+  mediaUrl: string | null;
+  error: string;
+}) {
+  const now = new Date();
+  await db.insert(pipelineRuns).values({
+    id: crypto.randomUUID(),
+    workspaceId: input.workspaceId,
+    trigger: "api",
+    status: "failed",
+    steps: [
+      {
+        name: "x-like:ingest",
+        status: "completed",
+        startedAt: now.toISOString(),
+        completedAt: now.toISOString(),
+        output: {
+          sourceUrl: input.sourceUrl,
+          authorHandle: input.authorHandle,
+          mediaUrl: input.mediaUrl,
+        },
+      },
+      {
+        name: "x-like:writer",
+        status: "failed",
+        startedAt: now.toISOString(),
+        completedAt: now.toISOString(),
+        error: input.error,
+      },
+    ],
+    error: input.error,
+    durationMs: 0,
+    startedAt: now,
+    completedAt: now,
+  });
+}
+
 export async function getXLikedAutopostReviewCandidates(options: {
   workspaceId: string;
   fetchCount?: number;
@@ -368,12 +413,35 @@ export async function runXLikedAutopost(options: RunOptions): Promise<XLikedAuto
 
     const authorHandle = getTweetAuthor(tweet);
     const cleanText = cleanXLikedText(getTweetText(tweet), { hasMedia: Boolean(media) });
-    const content = buildXLikedPostContent({
-      authorHandle,
-      sourceUrl,
-      sourceText: cleanText,
-      includeSource: false,
-    });
+    let writer: XLikedAutopostWriterResult;
+    try {
+      writer = await draftXLikedAutopostContent({
+        workspaceId: options.workspaceId,
+        authorHandle,
+        sourceUrl,
+        sourceText: cleanText,
+        hasMedia: Boolean(media),
+        mediaType: media?.mediaType ?? null,
+      });
+    } catch (error) {
+      const writerError =
+        error instanceof Error ? error.message : String(error);
+      const reason = `writer_error: ${writerError}`;
+      result.skipped.push({ url: sourceUrl, reason });
+      if (!dryRun) {
+        await recordXLikedWriterFailure({
+          workspaceId: options.workspaceId,
+          sourceUrl,
+          authorHandle,
+          mediaUrl: media?.url ?? null,
+          error: reason,
+        });
+      }
+      if (error instanceof XLikedAutopostWriterError && error.fatal) break;
+      continue;
+    }
+
+    const content = writer.content;
 
     if (dryRun) {
       result.imported += 1;
@@ -422,7 +490,16 @@ export async function runXLikedAutopost(options: RunOptions): Promise<XLikedAuto
           status: "completed",
           startedAt: now.toISOString(),
           completedAt: now.toISOString(),
-          output: { sourceUrl, authorHandle, mediaUrl },
+          output: {
+            sourceUrl,
+            authorHandle,
+            mediaUrl,
+            writer: {
+              model: writer.model,
+              modelSource: writer.modelSource,
+              traceUrl: writer.traceUrl,
+            },
+          },
         },
         { name: "publish", status: "running", startedAt: now.toISOString() },
       ],
@@ -446,6 +523,12 @@ export async function runXLikedAutopost(options: RunOptions): Promise<XLikedAuto
         runId,
         tweetId: tweet.id ?? null,
         authorHandle,
+        writer: {
+          source: "ai",
+          model: writer.model,
+          modelSource: writer.modelSource,
+          traceUrl: writer.traceUrl,
+        },
       },
       createdAt: now,
       updatedAt: now,
@@ -495,7 +578,16 @@ export async function runXLikedAutopost(options: RunOptions): Promise<XLikedAuto
           status: "completed",
           startedAt: now.toISOString(),
           completedAt: now.toISOString(),
-          output: { sourceUrl, authorHandle, mediaUrl },
+          output: {
+            sourceUrl,
+            authorHandle,
+            mediaUrl,
+            writer: {
+              model: writer.model,
+              modelSource: writer.modelSource,
+              traceUrl: writer.traceUrl,
+            },
+          },
         },
         {
           name: "publish",
