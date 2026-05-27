@@ -1,123 +1,15 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getDashboardInsights, type ScheduleInsight } from "@/lib/dashboard/insights";
-import { getCronOccurrences } from "@/lib/dashboard/cron";
 import {
-  formatTimeInZone,
-  getAppTimeZone,
-  getScheduleCronTimeZone,
-  getZonedDateParts,
-} from "@/lib/timezone";
+  buildGridEvents,
+  hourLabel,
+  WEEK_DAYS,
+  type RecurrentGridEvent,
+} from "@/lib/dashboard/recurrent-week";
+import { getDashboardInsights } from "@/lib/dashboard/insights";
 import { getTenantContext } from "@/lib/tenancy";
 
 export const dynamic = "force-dynamic";
-
-const CATEGORY_ACCENTS: Record<string, string> = {
-  opinion_take: "#2f9fb5",
-  product_update: "#3f8cff",
-  source_share: "#ef6a67",
-  hype_future: "#8a69d8",
-  hiring_signal: "#d28a1d",
-};
-
-const CATEGORY_SURFACES: Record<string, string> = {
-  opinion_take: "#d9f4f4",
-  product_update: "#e1ebff",
-  source_share: "#ffe1df",
-  hype_future: "#ece0ff",
-  hiring_signal: "#fff1cf",
-};
-
-const WEEK_DAYS = [
-  { index: 1, label: "Monday" },
-  { index: 2, label: "Tuesday" },
-  { index: 3, label: "Wednesday" },
-  { index: 4, label: "Thursday" },
-  { index: 5, label: "Friday" },
-  { index: 6, label: "Saturday" },
-  { index: 0, label: "Sunday" },
-] as const;
-
-type GridEvent = {
-  id: string;
-  label: string;
-  timeLabel: string;
-  dayIndex: number;
-  hour: number;
-  minute: number;
-  href: string;
-  accent: string;
-  surface: string;
-};
-
-function startOfWeek(date: Date) {
-  const value = new Date(date);
-  const day = value.getDay();
-  const diff = day === 0 ? -6 : 1 - day;
-  value.setDate(value.getDate() + diff);
-  value.setHours(0, 0, 0, 0);
-  return value;
-}
-
-function endOfWeek(date: Date) {
-  const value = new Date(date);
-  value.setDate(value.getDate() + 6);
-  value.setHours(23, 59, 59, 999);
-  return value;
-}
-
-function hourLabel(hour: number) {
-  const suffix = hour >= 12 ? "PM" : "AM";
-  const value = hour % 12 || 12;
-  return `${value}:00 ${suffix}`;
-}
-
-function slotLabel(schedule: ScheduleInsight) {
-  return schedule.contentCategoryLabel || schedule.name;
-}
-
-function buildGridEvents(scheduleInsights: ScheduleInsight[]) {
-  const weekStart = startOfWeek(new Date());
-  const weekEnd = endOfWeek(weekStart);
-  const displayTimeZone = getAppTimeZone();
-  const cronTimeZone = getScheduleCronTimeZone();
-
-  return scheduleInsights
-    .filter((schedule) => schedule.enabled && schedule.jobType !== "reply_engine")
-    .flatMap((schedule) => {
-      const occurrences = getCronOccurrences(
-        schedule.cron,
-        weekStart,
-        weekEnd,
-        64,
-        cronTimeZone
-      );
-      const accent = CATEGORY_ACCENTS[schedule.contentCategory || ""] || "#7d8aa0";
-      const surface = CATEGORY_SURFACES[schedule.contentCategory || ""] || "#e7edf5";
-
-      return occurrences.map((at) => {
-        const parts = getZonedDateParts(at, displayTimeZone);
-
-        return {
-          id: `${schedule.id}-${at.toISOString()}`,
-          label: slotLabel(schedule),
-          timeLabel: formatTimeInZone(at, displayTimeZone),
-          dayIndex: parts.weekday,
-          hour: parts.hour,
-          minute: parts.minute,
-          href: `/dashboard/schedules/${schedule.id}`,
-          accent,
-          surface,
-        } satisfies GridEvent;
-      });
-    })
-    .sort((a, b) => {
-      if (a.dayIndex !== b.dayIndex) return a.dayIndex - b.dayIndex;
-      if (a.hour !== b.hour) return a.hour - b.hour;
-      if (a.minute !== b.minute) return a.minute - b.minute;
-      return a.label.localeCompare(b.label);
-    });
-}
 
 export default async function CategoriesPage() {
   const tenant = await getTenantContext();
@@ -126,7 +18,7 @@ export default async function CategoriesPage() {
   const { scheduleInsights } = await getDashboardInsights(tenant.currentWorkspace.id);
   const gridEvents = buildGridEvents(scheduleInsights);
 
-  const eventsByCell = gridEvents.reduce<Map<string, GridEvent[]>>((accumulator, event) => {
+  const eventsByCell = gridEvents.reduce<Map<string, RecurrentGridEvent[]>>((accumulator, event) => {
     const key = `${event.dayIndex}-${event.hour}`;
     const current = accumulator.get(key) ?? [];
     current.push(event);

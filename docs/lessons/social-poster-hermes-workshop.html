@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Social Poster Hermes Workshop</title>
+    <link rel="stylesheet" href="social-poster-hermes-workshop.css" />
+  </head>
+  <body>
+    <header class="shell">
+      <div class="topbar">
+        <div class="brand">Social Poster Hermes Workshop</div>
+        <nav aria-label="Workshop sections">
+          <a href="#overview">Overview</a>
+          <a href="#lesson-one">Lesson 1</a>
+          <a href="#lesson-two">Lesson 2</a>
+          <a href="#freellmapi">FreeLLMAPI</a>
+          <a href="#sources">Sources</a>
+        </nav>
+      </div>
+      <div class="hero">
+        <div>
+          <h1>Two lessons for today</h1>
+          <p class="lead">
+            A workshop pack for installing Hermes, posting through Social Poster, then auditing the repo and turning findings into PR requests.
+          </p>
+        </div>
+        <div class="hero-panel" aria-label="Workshop summary">
+          <h2>Deliverables</h2>
+          <div class="mission-grid">
+            <div class="metric"><strong>2h</strong><span>Hermes setup and Social Poster posting flow</span></div>
+            <div class="metric"><strong>2h</strong><span>Repo audit, UI review, code review, PR request</span></div>
+            <div class="metric"><strong>+1</strong><span>FreeLLMAPI add-on for learners without paid model access</span></div>
+            <div class="metric"><strong>0</strong><span>Shared platform tokens or raw social API bypasses</span></div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section id="overview" class="shell">
+        <div class="section-title">
+          <h2>Operating Model</h2>
+          <p>Hermes assists. Social Poster owns account connection, workspace scope, publish state, and audit evidence.</p>
+        </div>
+        <div class="flow" aria-label="Posting lifecycle">
+          <div class="step"><strong>1. Install agent CLI</strong><span>Codex or Cursor Agent gives the learner a terminal AI workflow.</span></div>
+          <div class="step"><strong>2. Install Hermes</strong><span>Hermes becomes the local agent shell and model tool runner.</span></div>
+          <div class="step"><strong>3. Connect account</strong><span>User signs into Social Poster and completes OAuth or supported connection.</span></div>
+          <div class="step"><strong>4. Human publishes</strong><span>Hermes drafts copy. Social Poster composer performs the actual publish.</span></div>
+          <div class="step"><strong>5. Verify evidence</strong><span>Pipeline, logs, platform URL, or exact error proves the outcome.</span></div>
+        </div>
+      </section>
+
+      <section class="shell">
+        <div class="section-title">
+          <h2>Decision Matrix</h2>
+          <p>Default to the path that is easiest to finish live and safest for real accounts.</p>
+        </div>
+        <div class="matrix">
+          <div class="choice">
+            <strong>Agent CLI</strong>
+            <p>Use Codex if learners already have ChatGPT or API access. Use Cursor Agent if their editor setup is already Cursor based.</p>
+          </div>
+          <div class="choice">
+            <strong>Publishing route</strong>
+            <p>Use Social Poster UI. Do not teach raw social token posting. Current internal agent tools are intentionally narrow.</p>
+          </div>
+          <div class="choice">
+            <strong>No paid model access</strong>
+            <p>Use FreeLLMAPI locally as an OpenAI-compatible endpoint. Treat it as workshop infrastructure, not production inference.</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="lesson-one" class="shell">
+        <article class="lesson">
+          <div class="lesson-head">
+            <h3>Lesson 1: Hermes to Social Poster</h3>
+            <div class="duration">2 hours</div>
+          </div>
+          <div class="lesson-body">
+            <div>
+              <table>
+                <thead>
+                  <tr><th>Time</th><th>Block</th><th>Done when</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td>0:00</td><td>Safety boundary</td><td>Learner knows public posts require their approval.</td></tr>
+                  <tr><td>0:10</td><td>Install Codex or Cursor Agent</td><td>CLI version command works.</td></tr>
+                  <tr><td>0:25</td><td>Install Hermes</td><td><code>hermes version</code> and <code>hermes doctor</code> work.</td></tr>
+                  <tr><td>0:45</td><td>Configure model</td><td><code>hermes -z</code> returns <code>hermes-ready</code>.</td></tr>
+                  <tr><td>1:05</td><td>Connect account</td><td>Connected account row is visible and enabled.</td></tr>
+                  <tr><td>1:25</td><td>Create post</td><td>Draft or published post exists in Social Poster.</td></tr>
+                  <tr><td>1:50</td><td>Verify</td><td>Pipeline or logs show status or exact error.</td></tr>
+                </tbody>
+              </table>
+              <div class="callout">
+                Instructor script: Hermes generates copy. Social Poster handles account scope, preview, the Publish click, logs, and platform result.
+              </div>
+            </div>
+            <div>
+              <pre><code>curl -fsSL https://chatgpt.com/codex/install.sh | sh
+codex --version
+
+curl https://cursor.com/install -fsS | bash
+agent --version || cursor-agent --version || cursor --version
+
+curl -fsSL https://raw.githubusercontent.com/NousResearch/hermes-agent/main/scripts/install.sh | bash
+hermes version
+hermes doctor
+hermes setup --portal
+hermes -z "Reply with exactly: hermes-ready"</code></pre>
+              <pre><code>hermes -z "Create a safe workshop test post for a social automation platform. It must say it is a test. No claims, no hashtags, no emoji, under 180 chars."</code></pre>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <section id="lesson-two" class="shell">
+        <article class="lesson">
+          <div class="lesson-head">
+            <h3>Lesson 2: Audit and PR Requests</h3>
+            <div class="duration">2 hours</div>
+          </div>
+          <div class="lesson-body">
+            <div>
+              <table>
+                <thead>
+                  <tr><th>Time</th><th>Block</th><th>Artifact</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td>0:00</td><td>Mission and repo tour</td><td>Target area selected.</td></tr>
+                  <tr><td>0:10</td><td>Clone and install</td><td>Repo boots or blocker logged.</td></tr>
+                  <tr><td>0:25</td><td>Run gates</td><td>Lint, typecheck, tests, build evidence.</td></tr>
+                  <tr><td>0:45</td><td>UI audit</td><td>Screenshot plus repro.</td></tr>
+                  <tr><td>1:15</td><td>Code and safety audit</td><td>File refs plus risk statement.</td></tr>
+                  <tr><td>1:40</td><td>PR request</td><td>Issue or draft PR with evidence.</td></tr>
+                </tbody>
+              </table>
+              <div class="callout">
+                Strong output: one concrete problem, a screenshot or command trace, file references, expected behavior, and a small proposed fix.
+              </div>
+            </div>
+            <div>
+              <pre><code>git clone https://github.com/maxpetrusenko/social-poster.git
+cd social-poster
+npm install
+cp .env.example .env.local
+mkdir -p data
+DISABLE_AUTH=true DATABASE_URL=./data/social-poster.db npm run db:push
+
+npm run lint
+npm run typecheck
+npm run test
+npm run build
+npx -y react-doctor --full --offline --json --no-respect-inline-disables</code></pre>
+              <pre><code>DISABLE_AUTH=true DATABASE_URL=./data/social-poster.db npm run dev
+
+Audit routes:
+/dashboard
+/dashboard/posts/create
+/dashboard/workspace-settings/social-accounts
+/dashboard/pipeline
+/dashboard/logs</code></pre>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <section id="freellmapi" class="shell">
+        <div class="section-title">
+          <h2>FreeLLMAPI Add-On</h2>
+          <p>Use this when a learner has no paid model subscription or provider key for Hermes practice.</p>
+        </div>
+        <div class="cards">
+          <div class="card">
+            <h3>Install</h3>
+            <pre><code>git clone https://github.com/tashfeenahmed/freellmapi.git
+cd freellmapi
+npm install
+cp .env.example .env
+echo "ENCRYPTION_KEY=$(node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\")" >> .env
+npm run dev</code></pre>
+          </div>
+          <div class="card">
+            <h3>Configure Hermes</h3>
+            <pre><code>custom_providers:
+  - name: freellmapi
+    base_url: http://localhost:3001/v1
+    key_env: FREELLMAPI_API_KEY
+    model: auto
+    api_mode: chat_completions
+
+model:
+  default: auto
+  provider: custom:freellmapi</code></pre>
+          </div>
+          <div class="card">
+            <h3>Limits</h3>
+            <ul>
+              <li>Keep it local.</li>
+              <li>Do not expose provider keys.</li>
+              <li>Expect free tier rate limits.</li>
+              <li>Use for lessons, not production decisions.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section id="sources" class="shell">
+        <div class="section-title">
+          <h2>Sources</h2>
+          <p>Current external docs plus local code and product docs grounded the lesson flow.</p>
+        </div>
+        <div class="source-list">
+          <a href="https://developers.openai.com/codex/cli">OpenAI Codex CLI docs</a>
+          <a href="https://cursor.com/docs/cli/installation">Cursor CLI install docs</a>
+          <a href="https://hermes-agent.nousresearch.com/docs/getting-started/installation/">Hermes Agent install docs</a>
+          <a href="https://github.com/tashfeenahmed/freellmapi">FreeLLMAPI README</a>
+          <a href="../tasks.md">Local Social Poster tasks doc</a>
+          <a href="../hermes/agent-setup.md">Local Hermes setup doc</a>
+        </div>
+      </section>
+    </main>
+
+    <footer class="shell">
+      Generated 2026-05-27. Markdown source notes remain in this folder for editing. This HTML page is the workshop artifact.
+    </footer>
+  </body>
+</html>

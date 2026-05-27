@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { pipelineRuns, schedules } from "@/db/schema";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, ne } from "drizzle-orm";
 import { CheckCircle2, Clock, XCircle } from "lucide-react";
 import { DashboardPageContent } from "@/components/dashboard/ui";
 import { relativeTime } from "@/lib/utils";
@@ -43,19 +43,44 @@ function getDuration(run: {
   return "–";
 }
 
-export default async function PipelinePage() {
+export default async function PipelinePage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ runId?: string }>;
+}) {
   const tenant = await getTenantContext();
   if (!tenant) redirect("/login");
 
+  const selectedRunId = (await searchParams)?.runId?.trim() || "";
+  const selectedRuns = selectedRunId
+    ? await db
+        .select()
+        .from(pipelineRuns)
+        .where(
+          and(
+            eq(pipelineRuns.workspaceId, tenant.currentWorkspace.id),
+            eq(pipelineRuns.id, selectedRunId)
+          )
+        )
+        .limit(1)
+    : [];
   const runs = await db
     .select()
     .from(pipelineRuns)
-    .where(eq(pipelineRuns.workspaceId, tenant.currentWorkspace.id))
+    .where(
+      selectedRunId
+        ? and(
+            eq(pipelineRuns.workspaceId, tenant.currentWorkspace.id),
+            ne(pipelineRuns.id, selectedRunId)
+          )
+        : eq(pipelineRuns.workspaceId, tenant.currentWorkspace.id)
+    )
     .orderBy(desc(pipelineRuns.startedAt))
-    .limit(50);
+    .limit(selectedRuns.length > 0 ? 49 : 50);
+  const visibleRuns = [...selectedRuns, ...runs];
 
   const scheduleIds = Array.from(
-    new Set(runs.map((run) => run.scheduleId).filter(Boolean))
+    new Set(visibleRuns.map((run) => run.scheduleId).filter(Boolean))
   ) as string[];
   const scheduleRows =
     scheduleIds.length > 0
@@ -75,24 +100,30 @@ export default async function PipelinePage() {
     <DashboardPageContent>
       <h1 className="text-2xl font-bold text-gray-900 mb-6">Pipeline Runs</h1>
 
-      {runs.length === 0 ? (
+      {visibleRuns.length === 0 ? (
         <div className="bg-white border border-gray-200 rounded-lg p-12 text-center">
           <p className="text-gray-500">
-            No pipeline runs yet. Create a schedule to get started.
+            {selectedRunId
+              ? "That pipeline run was not found in this workspace."
+              : "No pipeline runs yet. Create a schedule to get started."}
           </p>
         </div>
       ) : (
         <div className="space-y-2">
-          {runs.map((run) => {
+          {visibleRuns.map((run) => {
             const schedule = run.scheduleId
               ? scheduleMap.get(run.scheduleId)
               : null;
             const effectiveStatus = resolvePipelineRunStatus(run);
+            const isSelected = selectedRunId === run.id;
 
             return (
               <details
                 key={run.id}
-                className="bg-white border border-gray-200 rounded-lg overflow-hidden group"
+                open={isSelected || undefined}
+                className={`bg-white border rounded-lg overflow-hidden group ${
+                  isSelected ? "border-[#D97706] shadow-sm" : "border-gray-200"
+                }`}
               >
                 <summary className="list-none cursor-pointer p-4 hover:bg-gray-50 transition-colors">
                   <div className="flex items-center justify-between">

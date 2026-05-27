@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Hermes Social Poster Workflow Board</title>
+    <link rel="stylesheet" href="social-poster-workflow-board.css" />
+  </head>
+  <body>
+    <main class="board">
+      <header>
+        <h1>Workflow board</h1>
+        <p>One glance view for the live lesson: what Hermes does, what Social Poster does, where human approval lives.</p>
+      </header>
+
+      <section class="grid" aria-label="Split workflow">
+        <div class="pane">
+          <div class="pane-head">
+            <h2>Social Poster</h2>
+            <span class="status">Publish boundary</span>
+          </div>
+          <div class="content">
+            <div class="state-stack">
+              <div class="state">
+                <div class="num">1</div>
+                <div><h3>Auth required</h3><p>User signs in and connects their own social account under workspace settings.</p></div>
+              </div>
+              <div class="state">
+                <div class="num">2</div>
+                <div><h3>Account selected</h3><p>Composer shows the platform target and connected handle before posting.</p></div>
+              </div>
+              <div class="state">
+                <div class="num">3</div>
+                <div><h3>Draft reviewed</h3><p>Human checks copy, account, and platform. Workshop path can save draft first.</p></div>
+              </div>
+              <div class="state">
+                <div class="num">4</div>
+                <div><h3>Publish clicked</h3><p>Social Poster route performs the platform publish and records pipeline/log evidence.</p></div>
+              </div>
+            </div>
+
+            <div class="composer" aria-label="Composer mock">
+              <div class="field">
+                <label>Connected account</label>
+                <div class="value">@learner_account on X</div>
+              </div>
+              <div class="field">
+                <label>Post copy</label>
+                <div class="value">Testing my Social Poster workshop setup. This is a short manual test post.</div>
+              </div>
+              <div class="actions">
+                <div class="button">Save Draft</div>
+                <div class="button primary">Publish</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="pane">
+          <div class="pane-head">
+            <h2>Hermes Agent</h2>
+            <span class="status">Assistant boundary</span>
+          </div>
+          <div class="content chat">
+            <div class="msg user">
+              <h3>Learner</h3>
+              <p>Install Hermes, configure a model, then create a safe test post for Social Poster.</p>
+            </div>
+            <div class="msg agent">
+              <h3>Hermes</h3>
+              <p>Runs setup checks and returns one short safe test post. It does not receive social cookies or platform tokens.</p>
+            </div>
+            <div class="msg system">
+              <h3>Instructor guardrail</h3>
+              <ul>
+                <li>Do not share account access.</li>
+                <li>Do not bypass Social Poster publish route.</li>
+                <li>Stop on exact OAuth or provider error.</li>
+              </ul>
+            </div>
+            <div class="msg agent">
+              <h3>Repo audit thread</h3>
+              <p>Separate learner flow clones the repo, runs gates, audits UI and code, then files a focused PR request.</p>
+            </div>
+            <div class="msg system">
+              <h3>No paid model access</h3>
+              <p>Use FreeLLMAPI locally at <code>http://localhost:3001/v1</code>, configure Hermes as a custom provider, keep it private.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="bottom" aria-label="Operating rules">
+        <div class="rule"><strong>Done means evidence</strong><p>Version command, connected account, draft or publish result, pipeline/log state, or exact blocker.</p></div>
+        <div class="rule"><strong>PR request means repro</strong><p>Screenshot, route, command output, file refs, expected behavior, and a scoped fix proposal.</p></div>
+        <div class="rule"><strong>FreeLLMAPI means local</strong><p>Workshop use only. No public exposure, no shared keys, no production decisions.</p></div>
+      </section>
+    </main>
+  </body>
+</html>

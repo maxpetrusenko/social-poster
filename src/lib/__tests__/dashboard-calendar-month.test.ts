@@ -1,7 +1,9 @@
 import { expect, test } from "vitest";
 
 import {
+  formatCalendarDayKey,
   formatCalendarMonth,
+  getCalendarMonthRange,
   getCalendarDays,
   getCurrentCalendarMonth,
 } from "../dashboard/calendar-month.ts";
@@ -23,4 +25,17 @@ test("getCurrentCalendarMonth uses app timezone instead of UTC month", () => {
   expect(
     getCurrentCalendarMonth(new Date("2026-06-01T03:30:00.000Z"), "America/New_York"),
   ).toBe("2026-05");
+});
+
+test("formatCalendarDayKey uses app timezone instead of UTC date", () => {
+  expect(
+    formatCalendarDayKey(new Date("2026-06-01T03:30:00.000Z"), "America/New_York"),
+  ).toBe("2026-05-31");
+});
+
+test("getCalendarMonthRange builds exclusive app-timezone month windows", () => {
+  const range = getCalendarMonthRange("2026-05", "America/New_York");
+
+  expect(range.monthStart.toISOString()).toBe("2026-05-01T04:00:00.000Z");
+  expect(range.monthEnd.toISOString()).toBe("2026-06-01T04:00:00.000Z");
 });

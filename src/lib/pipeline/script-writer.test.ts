@@ -1,4 +1,4 @@
-import test from "node:test";
+import { test } from "vitest";
 import assert from "node:assert/strict";
 
 import { writePostCaption } from "./script-writer.ts";
@@ -28,7 +28,7 @@ test("writePostCaption regeneration seed changes output without changing the sel
   const story = {
     title: "Compile English function descriptions into 22MB neural programs that run locally via llama.cpp",
     summary:
-      "The project compiles natural language function descriptions into small local neural programs for llama.cpp workflows.",
+      "The project compiles natural language function descriptions into small local neural programs for llama.cpp workflows. Developers can run the generated programs without a hosted inference service.",
   };
 
   const seed0 = writePostCaption(story, "linkedin", { seed: 0 });

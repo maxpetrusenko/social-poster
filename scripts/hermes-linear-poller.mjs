@@ -125,6 +125,8 @@ function parseProjects(raw) {
       projectName: name,
       projectId,
       hermesCommand: readCommand(project.hermesCommand),
+      hermesModel: readString(project.hermesModel || project.model),
+      hermesProvider: readString(project.hermesProvider || project.provider),
       hermesSkills: readString(project.hermesSkills) || "github-issues,subagent-driven-development",
       readyLabels: readStringArray(project.readyLabels, DEFAULT_READY_LABELS),
       blockedLabels: readStringArray(project.blockedLabels, DEFAULT_BLOCKED_LABELS),
@@ -257,7 +259,10 @@ function buildHermesPrompt(project, issue) {
 
 function runHermes(project, prompt) {
   const [command, ...commandPrefixArgs] = project.hermesCommand;
-  const args = ["chat", "-Q", "--worktree", "-s", project.hermesSkills, "-q", prompt];
+  const args = ["chat"];
+  if (project.hermesModel) args.push("--model", project.hermesModel);
+  if (project.hermesProvider) args.push("--provider", project.hermesProvider);
+  args.push("-Q", "--worktree", "-s", project.hermesSkills, "-q", prompt);
   const commandOptions = {
     cwd: project.cwd || process.cwd(),
     encoding: "utf8",

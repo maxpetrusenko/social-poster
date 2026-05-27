@@ -50,6 +50,8 @@ Container requires these env vars (set via `docker run -e`):
 | `X_AUTH_TOKEN` | X auth cookie for reply engine |
 | `X_CT0` | X ct0 cookie for reply engine |
 | `BIRD_RUNNER=bird` | bird CLI runner inside container |
+| `TELEGRAM_BOT_TOKEN` | Telegram bot token for operational liked-post failure alerts |
+| `TELEGRAM_CHAT_ID` | Telegram chat id for Max operational liked-post failure alerts |
 
 Keys live in Doppler (`api_keys` project, `dev` config). Fetch:
 ```bash
@@ -85,20 +87,28 @@ GitHub Actions runs the local deploy gates, builds the Docker image with BuildKi
 - `ghcr.io/maxpetrusenko/social-poster:latest`
 
 Workflow: `.github/workflows/fast-coolify-deploy.yml`
+Shared Coolify SSH deploy helper: `scripts/ci/coolify-image-deploy.sh`
 
 Coolify application UUID: `ch6cjsgcqn6afd5052etgvwn`
 
 GitHub secrets required: `COOLIFY_API_TOKEN` or `COOLIFY_TOKEN`, plus `COOLIFY_SSH_PRIVATE_KEY`.
 `COOLIFY_SSH_HOST` and `COOLIFY_SSH_USER` are optional; defaults are `173.249.52.27` and `root`.
+`COOLIFY_SSH_KNOWN_HOSTS` is set in GitHub secrets and pins the VPS SSH host key instead of relying on `ssh-keyscan`.
+The GitHub `production` environment exists with a custom deployment branch policy allowing only `main`.
 The deploy job reaches Coolify through SSH and calls `http://127.0.0.1:8000/api/v1` on the VPS. Do not call the public `coolify.maxpetrusenko.com` API from GitHub Actions; Cloudflare Access/WAF can return a browser challenge to CI runners.
 
-After GHCR push, the workflow validates the Coolify API token and SSH key, then triggers from the VPS private control plane:
+After GHCR push, the workflow validates the Coolify API token and SSH key, reads the currently deployed Coolify image tag for rollback, creates a SQLite backup through the running app container with `better-sqlite3`, patches the app to the new immutable `sha-<commit>` tag, then triggers from the VPS private control plane:
 
 `POST /api/v1/deploy?uuid=ch6cjsgcqn6afd5052etgvwn&force=false`
 
-The deploy job polls the returned deployment UUID and verifies `/api/health` through SSH inside the running app container before reporting success. GitHub runners should not use public Cloudflare-proxied admin or health URLs as deployment gates.
+The deploy job polls the returned deployment UUID and verifies `/api/health` through SSH inside the running app container before reporting the Coolify rollout as finished. After that, a separate public canary checks:
 
-Current Coolify resource note: the app is still a Dockerfile resource. The current Coolify update endpoint rejects changing `build_pack` in-place, so the deploy trigger builds from Git on the VPS until the app is recreated as a Docker Image resource or registry auth is configured for Dockerfile image pushes.
+- `https://social.maxpetrusenko.com/health`
+- `https://social.maxpetrusenko.com/api/health`
+
+The public canary must see app status `ok` and schedule drift `0`. If the public canary fails and the previous image tag was captured, the workflow automatically patches Coolify back to that previous tag, triggers another deploy, polls it, then reruns both the private container healthcheck and the public canary. The workflow still stays red after rollback so the failed release is visible.
+
+Every run writes a GitHub step summary and uploads a `deploy-report-<run_id>` artifact for 30 days with commit, image, previous image, SQLite backup path, Coolify deployment UUID, timings, canary result, and rollback result.
 
 Coolify setup checklist:
 
@@ -112,9 +122,10 @@ Local deploy gates before image push:
 
 ```bash
 npm run test:unit
+npm run test:deploy-workflow
 npm run typecheck
 npm run lint
-npm run test:e2e
+npm run test:e2e:ci
 npm run test:browser
 ```
 
@@ -127,10 +138,10 @@ git add -A && git commit -m "feat: ..." && git push origin main
 
 # 2. Wait for GitHub Actions to publish ghcr.io/maxpetrusenko/social-poster:sha-<commit>
 
-# 3. The workflow triggers Coolify by UUID with force=false
-# Coolify pulls the image and rolls traffic after /api/health passes
+# 3. The workflow triggers Coolify by UUID with force=false.
+# Coolify pulls the image and rolls traffic after private /api/health passes.
 
-# 4. Verify
+# 4. The workflow verifies public health and scheduler drift.
 curl -sk https://social.maxpetrusenko.com/api/health
 curl -I -L https://social.maxpetrusenko.com/dashboard/calendar
 ```

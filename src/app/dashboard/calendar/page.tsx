@@ -24,9 +24,17 @@ function dayKey(date: Date) {
 }
 
 function mediaSignature(event: CalendarSurfaceEvent) {
+  const values = {
+    I: "image",
+    T: "text",
+    V: "video",
+  } as const;
+  const order = { I: 0, T: 1, V: 2 } as const;
+
   return event.media
     .map((media) => media.code)
-    .sort()
+    .sort((left, right) => order[left] - order[right])
+    .map((code) => values[code])
     .join("_")
     .toLowerCase();
 }

@@ -375,6 +375,60 @@ export function buildXLikedPostContent(input: {
       ].join("\n");
 }
 
+function fitWithinCharacterBudget(value: string, maxLength: number) {
+  const clean = value
+    .replace(/\r\n/g, "\n")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+
+  if (clean.length <= maxLength) return clean;
+
+  const githubUrl = clean.match(/https:\/\/github\.com\/[^\s)]+/i)?.[0];
+  if (githubUrl && githubUrl.length < maxLength - 40) {
+    const firstLine = clean.split("\n").find((line) => line.trim() && !line.includes(githubUrl)) ?? "";
+    const intro = shortenLine(firstLine, maxLength - githubUrl.length - 2);
+    return [intro, githubUrl].filter(Boolean).join("\n").trim();
+  }
+
+  const lines = clean.split("\n").map((line) => line.trim()).filter(Boolean);
+  const kept: string[] = [];
+  let used = 0;
+
+  for (const line of lines) {
+    const separator = kept.length > 0 ? 2 : 0;
+    const remaining = maxLength - used - separator;
+    if (remaining <= 0) break;
+
+    const fitted = shortenLine(line, Math.max(40, remaining));
+    if (!fitted) continue;
+    kept.push(fitted);
+    used += fitted.length + separator;
+    if (used >= maxLength) break;
+  }
+
+  const joined = kept.join("\n\n").trim();
+  if (joined.length <= maxLength) return joined;
+  return joined.slice(0, maxLength).replace(/\s+\S*$/, "").trim();
+}
+
+export function buildFaithfulXLikedFallbackPostContent(input: {
+  authorHandle: string;
+  sourceUrl: string;
+  sourceText: string;
+  hasMedia?: boolean;
+}) {
+  const content = buildXLikedPostContent({
+    authorHandle: input.authorHandle,
+    sourceUrl: input.sourceUrl,
+    sourceText: input.sourceText,
+    includeSource: false,
+  });
+  const fallback = content || buildCloseToOriginalXLikedPostContent(input.sourceText);
+  const budget = input.hasMedia ? 220 : 275;
+  return fitWithinCharacterBudget(fallback || cleanXLikedText(input.sourceText), budget);
+}
+
 export function buildXLikedSourceComment(input: {
   authorHandle: string;
   sourceUrl: string;

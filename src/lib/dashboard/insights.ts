@@ -21,6 +21,11 @@ import {
   isCalendarVisibleRun,
   isCalendarVisibleSchedule,
 } from "./calendar-visibility";
+import {
+  formatCalendarDayKey,
+  getCalendarMonthRange,
+} from "./calendar-month";
+import { getAppTimeZone } from "@/lib/timezone";
 
 type RunRow = typeof pipelineRuns.$inferSelect;
 type ScheduleRow = typeof schedules.$inferSelect;
@@ -150,7 +155,7 @@ export type CalendarInsights = {
 };
 
 function dayKey(date: Date) {
-  return date.toISOString().slice(0, 10);
+  return formatCalendarDayKey(date);
 }
 
 function startOfDay(date: Date) {
@@ -770,9 +775,8 @@ export async function getCalendarInsights(
   monthValue: string,
   workspaceId: string
 ): Promise<CalendarInsights> {
-  const [year, month] = monthValue.split("-").map((value) => Number.parseInt(value, 10));
-  const monthStart = new Date(year, month - 1, 1);
-  const monthEnd = new Date(year, month, 0, 23, 59, 59, 999);
+  const { monthStart, monthEnd } = getCalendarMonthRange(monthValue);
+  const occurrenceEnd = new Date(monthEnd.getTime() - 1);
 
   const { scheduleRows, scheduleIdSet, postIdSet } =
     await getDashboardWorkspaceScope(workspaceId);
@@ -797,7 +801,7 @@ export async function getCalendarInsights(
   const enabledScheduleMap = new Map(enabledScheduleRows.map((schedule) => [schedule.id, schedule]));
 
   for (const schedule of enabledScheduleRows) {
-    const occurrences = getCronOccurrences(schedule.cron, monthStart, monthEnd, 120);
+    const occurrences = getCronOccurrences(schedule.cron, monthStart, occurrenceEnd, 120);
     for (const at of occurrences) {
       events.push({
         id: `${schedule.id}-${at.toISOString()}`,
@@ -832,7 +836,11 @@ export async function getCalendarInsights(
     }, {});
 
   return {
-    monthLabel: monthStart.toLocaleDateString("en-US", { month: "long", year: "numeric" }),
+    monthLabel: monthStart.toLocaleDateString("en-US", {
+      month: "long",
+      year: "numeric",
+      timeZone: getAppTimeZone(),
+    }),
     monthStart,
     monthEnd,
     eventsByDay,

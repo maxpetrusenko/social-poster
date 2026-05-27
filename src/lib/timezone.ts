@@ -10,6 +10,14 @@ type ZonedDateParts = {
   weekday: number;
 };
 
+type ZonedDateInput = {
+  year: number;
+  month: number;
+  day: number;
+  hour?: number;
+  minute?: number;
+};
+
 const WEEKDAY_INDEX: Record<string, number> = {
   Sun: 0,
   Mon: 1,
@@ -114,6 +122,36 @@ export function getZonedDateParts(
   zonedPartsCache.set(cacheKey, value);
 
   return value;
+}
+
+export function dateFromZonedParts(
+  input: ZonedDateInput,
+  timeZone = APP_TIME_ZONE
+) {
+  const targetUtc = Date.UTC(
+    input.year,
+    input.month - 1,
+    input.day,
+    input.hour ?? 0,
+    input.minute ?? 0
+  );
+  let instant = targetUtc;
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const actual = getZonedDateParts(new Date(instant), timeZone);
+    const actualUtc = Date.UTC(
+      actual.year,
+      actual.month - 1,
+      actual.day,
+      actual.hour,
+      actual.minute
+    );
+    const delta = targetUtc - actualUtc;
+    instant += delta;
+    if (delta === 0) break;
+  }
+
+  return new Date(instant);
 }
 
 export function formatDateInZone(

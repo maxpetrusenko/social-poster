@@ -1,4 +1,8 @@
-import { getAppTimeZone, getZonedDateParts } from "@/lib/timezone";
+import {
+  dateFromZonedParts,
+  getAppTimeZone,
+  getZonedDateParts,
+} from "@/lib/timezone";
 
 export function formatCalendarMonth(year: number, monthIndex: number) {
   const normalized = new Date(Date.UTC(year, monthIndex, 1));
@@ -13,6 +17,38 @@ export function getCurrentCalendarMonth(
 ) {
   const parts = getZonedDateParts(date, timeZone);
   return `${parts.year}-${String(parts.month).padStart(2, "0")}`;
+}
+
+export function formatCalendarDayKey(
+  date: Date,
+  timeZone = getAppTimeZone()
+) {
+  const parts = getZonedDateParts(date, timeZone);
+  return `${parts.year}-${String(parts.month).padStart(2, "0")}-${String(parts.day).padStart(2, "0")}`;
+}
+
+export function getCalendarMonthRange(
+  monthValue: string,
+  timeZone = getAppTimeZone()
+) {
+  const [year, month] = monthValue
+    .split("-")
+    .map((value) => Number.parseInt(value, 10));
+  const endMonth = new Date(Date.UTC(year, month, 1));
+
+  return {
+    year,
+    monthIndex: month - 1,
+    monthStart: dateFromZonedParts({ year, month, day: 1 }, timeZone),
+    monthEnd: dateFromZonedParts(
+      {
+        year: endMonth.getUTCFullYear(),
+        month: endMonth.getUTCMonth() + 1,
+        day: 1,
+      },
+      timeZone
+    ),
+  };
 }
 
 export function getCalendarDays(year: number, monthIndex: number) {

@@ -6,7 +6,7 @@ REPO="${HERMES_REPO:-maxpetrusenko/social-poster}"
 REPO_DIR="${HERMES_REPO_DIR:-~/Desktop/Projects/social-poster}"
 AGENT_EMAIL="${MAXICLAW_AGENT_EMAIL:-${HERMES_AGENT_EMAIL:-maxiclaw@maxpetrusenko.com}}"
 AGENT_NAME="${MAXICLAW_AGENT_NAME:-${HERMES_AGENT_NAME:-Maxiclaw Agent}}"
-AGENT_USER="${MAXICLAW_GH_USER:-${HERMES_GH_USER:-}}"
+AGENT_USER="${MAXICLAW_GH_USER:-${HERMES_GH_USER:-maxpetrusenkoagent}}"
 
 load_env_file() {
   local env_file="${HERMES_ENV_FILE:-.env}"
@@ -59,7 +59,7 @@ commands:
 
 env:
   HERMES_REMOTE_HOST          SSH target, default: mini
-  MAXICLAW_GH_USER            Expected GitHub username for Maxiclaw
+  MAXICLAW_GH_USER            Expected GitHub username for Maxiclaw, default: maxpetrusenkoagent
   MAXICLAW_AGENT_EMAIL        Commit email, default: maxiclaw@maxpetrusenko.com
   MAXICLAW_GH_EMAIL           Maxiclaw login email, explicit only
   MAXICLAW_GH_PASSWORD        Maxiclaw login password, explicit only

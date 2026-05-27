@@ -3,6 +3,7 @@
 import { ChevronLeft, ChevronRight, List, RefreshCcw, Rows3 } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { getCurrentCalendarMonth } from "@/lib/dashboard/calendar-month";
 
 type Option = {
   value: string;
@@ -110,7 +111,7 @@ export function CalendarControls({
           </div>
           <button
             type="button"
-            onClick={() => pushWith({ month: todayMonth })}
+            onClick={() => pushWith({ month: getCurrentCalendarMonth() || todayMonth })}
             className="rounded-[12px] border border-[rgba(12,17,21,0.08)] bg-white px-3 py-2 text-sm font-semibold text-[var(--ink)] shadow-[0_8px_24px_rgba(12,17,21,0.05)]"
           >
             Today

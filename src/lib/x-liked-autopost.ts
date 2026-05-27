@@ -1,8 +1,9 @@
 import crypto from "node:crypto";
 
 import { db } from "@/db";
-import { dedupCache, pipelineRuns, platforms, posts, postTargets, profiles, workspaces } from "@/db/schema";
+import { dedupCache, pipelineRuns, platforms, posts, postTargets, profiles, workspaces, type PipelineStep } from "@/db/schema";
 import { publishPlatformTargets } from "@/lib/pipeline/publish-service";
+import type { PublishResult } from "@/lib/pipeline/publisher";
 import { fetchOpenGraphImage } from "@/lib/open-graph-image";
 import {
   resolvePostStatusFromTargetResults,
@@ -26,6 +27,7 @@ import {
 } from "@/lib/x-liked-autopost-writer";
 import {
   buildXLikedDedupKey,
+  buildFaithfulXLikedFallbackPostContent,
   buildXLikedPlatformPostContent,
   getXLikedExternalUrls,
   buildXLikedPostContent,
@@ -36,6 +38,10 @@ import {
   resolveXLikedPlatformMedia,
   type XLikedMedia,
 } from "@/lib/x-liked-autopost-format";
+import {
+  notifyXLikedAutopostOperationalFailure,
+  type XLikedAutopostOperationalFailure,
+} from "@/lib/x-liked-autopost-notifications";
 import { and, desc, eq, inArray, or } from "drizzle-orm";
 
 type PlatformRow = typeof platforms.$inferSelect;
@@ -90,6 +96,136 @@ function clampPositiveInteger(value: unknown, fallback: number, max: number) {
 
 function normalizeHandle(value?: string | null) {
   return value?.trim().replace(/^@/, "").toLowerCase() || "";
+}
+
+function completedStep(
+  name: string,
+  at: Date,
+  output?: unknown,
+  error?: string
+): PipelineStep {
+  return {
+    name,
+    status: error ? "failed" : "completed",
+    startedAt: at.toISOString(),
+    completedAt: at.toISOString(),
+    output,
+    error,
+  };
+}
+
+function runningStep(name: string, at: Date, output?: unknown): PipelineStep {
+  return {
+    name,
+    status: "running",
+    startedAt: at.toISOString(),
+    output,
+  };
+}
+
+function getDashboardRunUrl(runId: string) {
+  const base = (
+    process.env.APP_URL ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    "https://social.maxpetrusenko.com"
+  ).replace(/\/+$/, "");
+  return `${base}/dashboard/pipeline?runId=${encodeURIComponent(runId)}`;
+}
+
+function buildXLikedFallbackWriterResult(input: {
+  authorHandle: string;
+  sourceUrl: string;
+  sourceText: string;
+  hasMedia: boolean;
+}): XLikedAutopostWriterResult {
+  return {
+    content: buildFaithfulXLikedFallbackPostContent(input),
+    model: "faithful-curation-fallback",
+    modelSource: "local",
+    traceUrl: null,
+  };
+}
+
+function buildWriterOperationalFailure(input: {
+  error: XLikedAutopostWriterError;
+}): XLikedAutopostOperationalFailure | null {
+  if (input.error.code === "quality_rejected") return null;
+  return {
+    platform: "writer",
+    classification: "writer_unavailable",
+    error: input.error.message,
+  };
+}
+
+function buildPublishOperationalFailures(
+  errors: Array<{ platform: string; error: string; classification: string }>
+): XLikedAutopostOperationalFailure[] {
+  return errors.map((error) => ({
+    platform: error.platform,
+    classification: error.classification as XLikedAutopostOperationalFailure["classification"],
+    error: error.error,
+  }));
+}
+
+function classifyThrownPublishError(error: unknown): PublishResult["classification"] {
+  const message = error instanceof Error ? error.message : String(error);
+  const normalized = message.toLowerCase();
+
+  if (
+    normalized.includes("api_key") ||
+    normalized.includes("token") ||
+    normalized.includes("auth") ||
+    normalized.includes("401") ||
+    normalized.includes("403")
+  ) {
+    return "auth_error";
+  }
+
+  if (normalized.includes("rate limit") || normalized.includes("429")) {
+    return "rate_limited";
+  }
+
+  if (
+    normalized.includes("fetch") ||
+    normalized.includes("network") ||
+    normalized.includes("timeout") ||
+    normalized.includes("econn")
+  ) {
+    return "network_error";
+  }
+
+  return "provider_error";
+}
+
+function buildThrownPublishSummary(
+  targets: Array<{ platform: PlatformRow }>,
+  error: unknown
+) {
+  const message = error instanceof Error ? error.message : String(error);
+  const classification = classifyThrownPublishError(error);
+  const outcomes: PublishResult[] = targets.map((target) => ({
+    platform: target.platform.type,
+    provider:
+      target.platform.provider === "bird"
+        ? "bird"
+        : target.platform.provider === "direct"
+          ? "direct"
+          : "late",
+    accountId: target.platform.accountId,
+    success: false,
+    classification,
+    error: message,
+  }));
+
+  return {
+    outcomes,
+    published: [],
+    errors: outcomes.map((outcome) => ({
+      platform: outcome.platform,
+      error: outcome.error ?? message,
+      classification: outcome.classification,
+    })),
+  };
 }
 
 function isXPlatform(row: Pick<PlatformRow, "type">) {
@@ -273,46 +409,6 @@ async function markDedupKey(dedupKey: string, source: string) {
   }
 }
 
-async function recordXLikedWriterFailure(input: {
-  workspaceId: string;
-  sourceUrl: string;
-  authorHandle: string;
-  mediaUrl: string | null;
-  error: string;
-}) {
-  const now = new Date();
-  await db.insert(pipelineRuns).values({
-    id: crypto.randomUUID(),
-    workspaceId: input.workspaceId,
-    trigger: "api",
-    status: "failed",
-    steps: [
-      {
-        name: "x-like:ingest",
-        status: "completed",
-        startedAt: now.toISOString(),
-        completedAt: now.toISOString(),
-        output: {
-          sourceUrl: input.sourceUrl,
-          authorHandle: input.authorHandle,
-          mediaUrl: input.mediaUrl,
-        },
-      },
-      {
-        name: "x-like:writer",
-        status: "failed",
-        startedAt: now.toISOString(),
-        completedAt: now.toISOString(),
-        error: input.error,
-      },
-    ],
-    error: input.error,
-    durationMs: 0,
-    startedAt: now,
-    completedAt: now,
-  });
-}
-
 export async function getXLikedAutopostReviewCandidates(options: {
   workspaceId: string;
   fetchCount?: number;
@@ -413,7 +509,42 @@ export async function runXLikedAutopost(options: RunOptions): Promise<XLikedAuto
 
     const authorHandle = getTweetAuthor(tweet);
     const cleanText = cleanXLikedText(getTweetText(tweet), { hasMedia: Boolean(media) });
+    const now = new Date();
+    const runId = crypto.randomUUID();
+    const runSteps: PipelineStep[] = [
+      completedStep("x-like:source-captured", now, {
+        sourceUrl,
+        authorHandle,
+        tweetId: tweet.id ?? null,
+        mediaUrl: media?.url ?? null,
+        externalUrls: getXLikedExternalUrls({ tweet, sourceText: cleanText }),
+      }),
+      completedStep("x-like:gbrain-context", now, {
+        status: "deferred",
+        note: "Persisting taste/eval evidence in pipeline run until gbrain adapter is wired.",
+      }),
+      completedStep("x-like:source-verified", now, {
+        status: "captured",
+        sourceUrl,
+        authorHandle,
+        hasText: Boolean(cleanText.trim()),
+        hasMedia: Boolean(media),
+      }),
+    ];
+
+    if (!dryRun) {
+      await db.insert(pipelineRuns).values({
+        id: runId,
+        workspaceId: options.workspaceId,
+        trigger: "api",
+        status: "running",
+        steps: [...runSteps, runningStep("x-like:draft", now)],
+        startedAt: now,
+      });
+    }
+
     let writer: XLikedAutopostWriterResult;
+    let writerOperationalFailure: XLikedAutopostOperationalFailure | null = null;
     try {
       writer = await draftXLikedAutopostContent({
         workspaceId: options.workspaceId,
@@ -423,22 +554,56 @@ export async function runXLikedAutopost(options: RunOptions): Promise<XLikedAuto
         hasMedia: Boolean(media),
         mediaType: media?.mediaType ?? null,
       });
+      runSteps.push(
+        completedStep("x-like:draft", new Date(), {
+          strategy: "ai",
+          model: writer.model,
+          modelSource: writer.modelSource,
+          traceUrl: writer.traceUrl,
+        }),
+        completedStep("x-like:judge", new Date(), {
+          status: "passed",
+          rubric: [
+            "source_fidelity",
+            "max_voice",
+            "specificity",
+            "platform_fit",
+          ],
+        })
+      );
     } catch (error) {
       const writerError =
         error instanceof Error ? error.message : String(error);
-      const reason = `writer_error: ${writerError}`;
-      result.skipped.push({ url: sourceUrl, reason });
-      if (!dryRun) {
-        await recordXLikedWriterFailure({
-          workspaceId: options.workspaceId,
-          sourceUrl,
-          authorHandle,
-          mediaUrl: media?.url ?? null,
-          error: reason,
-        });
+      if (error instanceof XLikedAutopostWriterError) {
+        writerOperationalFailure = buildWriterOperationalFailure({ error });
       }
-      if (error instanceof XLikedAutopostWriterError && error.fatal) break;
-      continue;
+      writer = buildXLikedFallbackWriterResult({
+        authorHandle,
+        sourceUrl,
+        sourceText: cleanText,
+        hasMedia: Boolean(media),
+      });
+      runSteps.push(
+        completedStep("x-like:draft", new Date(), {
+          strategy: "ai",
+          status: "rejected_or_unavailable",
+          error: writerError,
+        }),
+        completedStep("x-like:research", new Date(), {
+          status: "source-captured",
+          sourceUrl,
+          externalUrls: getXLikedExternalUrls({ tweet, sourceText: cleanText }),
+          note: "Hermes/web repair path fell back to faithful curation for this first slice.",
+        }),
+        completedStep("x-like:faithful-curation", new Date(), {
+          reason:
+            error instanceof XLikedAutopostWriterError
+              ? error.code
+              : "writer_error",
+          model: writer.model,
+          contentLength: writer.content.length,
+        })
+      );
     }
 
     const content = writer.content;
@@ -458,8 +623,6 @@ export async function runXLikedAutopost(options: RunOptions): Promise<XLikedAuto
       continue;
     }
 
-    const now = new Date();
-    const runId = crypto.randomUUID();
     const postId = crypto.randomUUID();
     const mediaUrl = await snapshotMedia(options.workspaceId, tweet.id, media);
     const publishTargets = publishPlatforms.map((platform) => ({
@@ -479,32 +642,21 @@ export async function runXLikedAutopost(options: RunOptions): Promise<XLikedAuto
       threadLongPosts: false,
     }));
 
-    await db.insert(pipelineRuns).values({
-      id: runId,
-      workspaceId: options.workspaceId,
-      trigger: "api",
-      status: "running",
-      steps: [
-        {
-          name: "x-like:ingest",
-          status: "completed",
-          startedAt: now.toISOString(),
-          completedAt: now.toISOString(),
-          output: {
-            sourceUrl,
-            authorHandle,
-            mediaUrl,
-            writer: {
-              model: writer.model,
-              modelSource: writer.modelSource,
-              traceUrl: writer.traceUrl,
-            },
-          },
-        },
-        { name: "publish", status: "running", startedAt: now.toISOString() },
-      ],
-      startedAt: now,
-    });
+    runSteps.push(
+      completedStep("x-like:packet-ready", new Date(), {
+        contentLength: content.length,
+        mediaUrl,
+        targets: publishTargets.map((target) => ({
+          platform: target.platform.type,
+          contentLength: target.content.length,
+          mediaType: target.mediaType ?? null,
+        })),
+      })
+    );
+
+    await db.update(pipelineRuns).set({
+      steps: [...runSteps, runningStep("publish", new Date())],
+    }).where(eq(pipelineRuns.id, runId));
 
     await db.insert(posts).values({
       id: postId,
@@ -521,10 +673,16 @@ export async function runXLikedAutopost(options: RunOptions): Promise<XLikedAuto
       metadata: {
         source: "x-liked-autopost",
         runId,
+        dashboardUrl: getDashboardRunUrl(runId),
         tweetId: tweet.id ?? null,
         authorHandle,
+        contentMachine: {
+          invariant: "like_creates_publishing_obligation",
+          fallbackAllowed: true,
+          lowQualityAction: "research_or_faithful_curation",
+        },
         writer: {
-          source: "ai",
+          source: writer.model === "faithful-curation-fallback" ? "fallback" : "ai",
           model: writer.model,
           modelSource: writer.modelSource,
           traceUrl: writer.traceUrl,
@@ -534,9 +692,25 @@ export async function runXLikedAutopost(options: RunOptions): Promise<XLikedAuto
       updatedAt: now,
     });
 
-    const summary = await publishPlatformTargets(publishTargets);
+    const summary = await publishPlatformTargets(publishTargets).catch((error) =>
+      buildThrownPublishSummary(publishTargets, error)
+    );
     const postStatus = resolvePostStatusFromTargetResults(summary.outcomes);
     const completedAt = new Date();
+    const publishFailures = buildPublishOperationalFailures(summary.errors);
+    const operationalFailures = [
+      ...(writerOperationalFailure ? [writerOperationalFailure] : []),
+      ...publishFailures,
+    ];
+    const telegramResult = await notifyXLikedAutopostOperationalFailure({
+      runId,
+      workspaceId: options.workspaceId,
+      sourceUrl,
+      failures: operationalFailures,
+    }).catch((error) => ({
+      status: "failed" as const,
+      error: error instanceof Error ? error.message : String(error),
+    }));
 
     for (const target of publishTargets) {
       const outcome = summary.outcomes.find((item) => item.platform === target.platform.type);
@@ -573,22 +747,7 @@ export async function runXLikedAutopost(options: RunOptions): Promise<XLikedAuto
       status: resolvePublishResultsStatus(summary.outcomes),
       postId,
       steps: [
-        {
-          name: "x-like:ingest",
-          status: "completed",
-          startedAt: now.toISOString(),
-          completedAt: now.toISOString(),
-          output: {
-            sourceUrl,
-            authorHandle,
-            mediaUrl,
-            writer: {
-              model: writer.model,
-              modelSource: writer.modelSource,
-              traceUrl: writer.traceUrl,
-            },
-          },
-        },
+        ...runSteps,
         {
           name: "publish",
           status: summary.errors.length > 0 ? "failed" : "completed",
@@ -597,6 +756,14 @@ export async function runXLikedAutopost(options: RunOptions): Promise<XLikedAuto
           output: summary,
           error: summary.errors.map((error) => `${error.platform}: ${error.error}`).join("; ") || undefined,
         },
+        completedStep("x-like:telegram-alert", completedAt, {
+          result: telegramResult,
+          operationalFailures,
+        }),
+        completedStep("x-like:gbrain-learning", completedAt, {
+          status: "ready",
+          note: "Run evidence is persisted for gbrain ingestion: source, draft, fallback, publish outcome, and Telegram result.",
+        }),
       ],
       error: summary.errors.map((error) => `${error.platform}: ${error.error}`).join("; ") || null,
       durationMs: Math.max(0, completedAt.getTime() - now.getTime()),

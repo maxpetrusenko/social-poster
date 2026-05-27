@@ -367,6 +367,6 @@ function finalizeCaption(value: string, prompt: PromptConfig) {
     .replace(/\.\s+\./g, ".")
     .replace(/\.{2,}/g, ".")
     .replace(/\n{3,}/g, "\n\n")
-    .replace(/^\W+/, "")
+    .replace(/^[^A-Za-z0-9$€£¥]+/u, "")
     .trim();
 }

@@ -6,7 +6,7 @@ Maxiclaw uses Hermes on the Mac mini and should use a separate GitHub machine ac
 
 - Email: `maxiclaw@maxpetrusenko.com`
 - Commit name: `Maxiclaw Agent`
-- GitHub username: set with `MAXICLAW_GH_USER`
+- GitHub username: `maxpetrusenkoagent` by default, override with `MAXICLAW_GH_USER` if the machine account changes
 
 Do not use Max's personal GitHub login on the mini for automated PR work.
 
@@ -25,7 +25,7 @@ If credentials are stored in `.env`, prefer explicit names:
 ```dotenv
 MAXICLAW_GH_EMAIL=maxiclaw@maxpetrusenko.com
 MAXICLAW_GH_PASSWORD=...
-MAXICLAW_GH_USER=...
+MAXICLAW_GH_USER=maxpetrusenkoagent
 MAXICLAW_GH_TOKEN=...
 ```
 

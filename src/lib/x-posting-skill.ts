@@ -9,7 +9,7 @@ X Posting rules for Max Petrusenko:
 - Liked posts are taste signals. Preserve why Max likely liked it, then add Max-owned commentary or a bookmark/use-case angle.
 - Reposting is usually curation, not invention. For text-only liked posts, default to close-to-original compression: preserve the original frame, metaphor, numbers, and conclusion; lightly tighten wording; do not turn it into a new Max essay.
 - In the liked-post worker, a visible liked post should publish unless it is duplicate, own/reply/empty, or hits hard brand-safety blocks.
-- If AI writing is unavailable or fails quality checks, report a writer error and skip publish. Never publish generic deterministic fallback copy.
+- If AI writing fails quality checks, Hermes/web research should repair the draft. If writing is unavailable, publish faithful curation close to the original and notify Max only for the operational writer failure.
 - Do not add automatic source replies. Use inline via @handle for copied media, or the original X URL in the main post when it is needed to render the source embed.
 - Direct opinion posts should stand as opinion. Omit source URL by default for close-to-original text reposts.
 - Strip obvious AI-social patterns: antithesis frames, fake triads, "game-changing", "cutting-edge", "revolutionary", "unlock", "redefine", and generic framework voice.

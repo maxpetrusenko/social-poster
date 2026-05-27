@@ -1,16 +1,18 @@
-import test from "node:test";
+import { test } from "vitest";
 import assert from "node:assert/strict";
 import { getLatePlatformFailure, resolvePublishAccountId } from "./publisher.ts";
 
-test("resolvePublishAccountId prefers owned default ids over imported stale ids", () => {
+test("resolvePublishAccountId prefers connected account ids over legacy defaults", () => {
   assert.equal(
     resolvePublishAccountId("linkedin", "stale-imported-id"),
-    "69024a4c9d65616f16a5c5c0"
+    "stale-imported-id"
   );
   assert.equal(
     resolvePublishAccountId("twitter", "stale-imported-id"),
-    "690248619d65616f16a5c5bc"
+    "stale-imported-id"
   );
+  assert.equal(resolvePublishAccountId("linkedin"), "69024a4c9d65616f16a5c5c0");
+  assert.equal(resolvePublishAccountId("twitter"), "690248619d65616f16a5c5bc");
 });
 
 test("resolvePublishAccountId falls back to provided id for unknown platforms", () => {

@@ -99,6 +99,8 @@ HERMES_LINEAR_PROJECTS='[
     "projectName": "SocialClaw",
     "cwd": "/Users/maxpetrusenko/Desktop/Projects/social-poster",
     "hermesCommand": "hermes",
+    "hermesModel": "gpt-5.5",
+    "hermesProvider": "openai-codex",
     "readyLabels": ["agent:ready"],
     "blockedLabels": ["agent:needs-context", "agent:blocked"],
     "runTests": "npm run lint, npm run typecheck, npm run test"
@@ -109,7 +111,7 @@ TELEGRAM_BOT_TOKEN=
 TELEGRAM_CHAT_ID=
 ```
 
-On Contabo, set `hermesCommand` to the local wrapper if needed, for example `"sudo hermes-vps"`.
+Set `hermesModel` and `hermesProvider` explicitly when the poller should not inherit the host's Hermes default model. On Contabo, set `hermesCommand` to the local wrapper if needed, for example `"sudo hermes-vps"`.
 
 Cron example:
 

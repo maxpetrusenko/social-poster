@@ -2,15 +2,17 @@ import { defineConfig } from "vitest/config";
 import path from "path";
 
 export default defineConfig({
+  oxc: false,
+  esbuild: {
+    jsx: "automatic",
+    jsxImportSource: "react",
+  },
   test: {
     environment: "happy-dom",
     globals: true,
     testTimeout: 10000,
     include: [
-      "src/lib/__tests__/**/*.test.{ts,tsx}",
-      "src/lib/providers/instagram-personal.test.ts",
-      "src/components/__tests__/**/*.test.{ts,tsx}",
-      "src/app/api/__tests__/**/*.test.{ts,tsx}",
+      "src/**/*.test.{ts,tsx}",
     ],
     setupFiles: [],
     coverage: {

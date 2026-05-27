@@ -6,23 +6,15 @@ import { getCalendarInsights, getDashboardInsights } from "@/lib/dashboard/insig
 import { getDashboardWorkspaceScope } from "@/lib/dashboard/workspace-scope";
 import { formatDate } from "@/lib/utils";
 import { formatTimeInZone } from "@/lib/timezone";
+import {
+  getCalendarDays,
+  getCurrentCalendarMonth,
+} from "@/lib/dashboard/calendar-month";
 import { redirect } from "next/navigation";
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { getTenantContext } from "@/lib/tenancy";
 
 export const dynamic = "force-dynamic";
-
-function getCalendarDays(year: number, monthIndex: number) {
-  const firstDay = new Date(year, monthIndex, 1);
-  const lastDay = new Date(year, monthIndex + 1, 0);
-  const daysInMonth = lastDay.getDate();
-  const startingDayOfWeek = firstDay.getDay();
-
-  const days: Array<Date | null> = [];
-  for (let index = 0; index < startingDayOfWeek; index += 1) days.push(null);
-  for (let day = 1; day <= daysInMonth; day += 1) days.push(new Date(year, monthIndex, day));
-  return days;
-}
 
 function toneClass(tone: "planned" | "completed" | "failed" | "running") {
   if (tone === "completed") return "border-emerald-200 bg-emerald-50 text-emerald-700";
@@ -88,7 +80,7 @@ export default async function PublishPage({
     ? (params.tab as (typeof listTabs)[number]["id"])
     : "queue";
 
-  const monthParam = params.month || new Date().toISOString().slice(0, 7);
+  const monthParam = params.month || getCurrentCalendarMonth();
   const workspaceScope = await getDashboardWorkspaceScope(tenant.currentWorkspace.id);
   const [dashboard, calendar, queueCount, draftCount, sentCount, tabPosts] =
     await Promise.all([
@@ -216,7 +208,7 @@ export default async function PublishPage({
                       );
                     }
 
-                    const key = day.toISOString().slice(0, 10);
+                    const key = day;
                     const events = calendar.eventsByDay[key] || [];
 
                     return (
@@ -225,7 +217,9 @@ export default async function PublishPage({
                         className="min-h-32 border-r border-b border-[rgba(12,17,21,0.08)] bg-white/82 p-3"
                       >
                         <div className="mb-2 flex items-center justify-between">
-                          <span className="text-sm font-semibold text-[var(--ink)]">{day.getDate()}</span>
+                          <span className="text-sm font-semibold text-[var(--ink)]">
+                            {Number.parseInt(day.slice(-2), 10)}
+                          </span>
                           {events.length > 0 ? (
                             <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
                               {events.length}

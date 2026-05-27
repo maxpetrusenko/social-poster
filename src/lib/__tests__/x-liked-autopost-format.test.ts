@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildXLikedDedupKey,
   buildCloseToOriginalXLikedPostContent,
+  buildFaithfulXLikedFallbackPostContent,
   buildXLikedPlatformPostContent,
   buildXLikedPostContent,
   buildXLikedSourceComment,
@@ -382,5 +383,38 @@ describe("X liked autopost formatting", () => {
     expect(content).not.toMatch(/\bI launched\b/i);
     expect(content).not.toMatch(/\bI tried\b/i);
     expect(content).not.toMatch(/\bwe tried\b/i);
+  });
+
+  it("builds a bounded faithful fallback instead of dropping weak liked posts", () => {
+    const content = buildFaithfulXLikedFallbackPostContent({
+      authorHandle: "@atomic_chat_hq",
+      sourceUrl: "https://x.com/atomic_chat_hq/status/2057581603811901882",
+      hasMedia: true,
+      sourceText: [
+        "Qwen 3.7-max beats Opus 4.7 and GPT-5.5",
+        "",
+        "Qwen 3.7-Max: training cost $1.32, bot improvement +56%",
+        "Claude Opus 4.7: training cost $12.15, bot improvement +28%",
+        "GPT-5.5: training cost $2.85, bot improvement +7%",
+        "",
+        "This is a very long benchmark post with enough detail that a fallback must keep the concrete source numbers while still fitting the copied-media budget.",
+      ].join("\n"),
+    });
+
+    expect(content.length).toBeLessThanOrEqual(220);
+    expect(content).toContain("Qwen");
+    expect(content).not.toMatch(/Source:/);
+  });
+
+  it("keeps a GitHub URL in bounded repo fallbacks", () => {
+    const content = buildFaithfulXLikedFallbackPostContent({
+      authorHandle: "@dr_cintas",
+      sourceUrl: "https://x.com/dr_cintas/status/2057875643300511944",
+      sourceText:
+        "FreeLLMAPI is an open-source proxy. Each provider's free tier is a toy on its own. Stacked together they add up to ~800M tokens a month.",
+    });
+
+    expect(content.length).toBeLessThanOrEqual(275);
+    expect(content).toContain("https://github.com/tashfeenahmed/freellmapi");
   });
 });

@@ -16,7 +16,7 @@ import { resolvePipelineRunStatus } from "@/lib/pipeline/status";
 import { and, desc, eq, gte, inArray, lt } from "drizzle-orm";
 import { getCronOccurrences } from "./cron";
 import { getPlatformMeta, normalizePlatformType } from "./platforms";
-import { getZonedDateParts } from "@/lib/timezone";
+import { getAppTimeZone } from "@/lib/timezone";
 import { getPostCategoryMeta } from "@/lib/post-categories";
 import { deriveCalendarRunDetails } from "./calendar-run-details";
 import {
@@ -30,6 +30,10 @@ import {
   getDashboardWorkspaceScope,
   runTargetsWorkspace,
 } from "./workspace-scope";
+import {
+  formatCalendarDayKey,
+  getCalendarMonthRange,
+} from "./calendar-month";
 
 type ScheduleRow = typeof schedules.$inferSelect;
 type PlatformRow = typeof platforms.$inferSelect;
@@ -102,8 +106,7 @@ export type CalendarInsights = {
 };
 
 function dayKey(date: Date) {
-  const parts = getZonedDateParts(date);
-  return `${parts.year}-${String(parts.month).padStart(2, "0")}-${String(parts.day).padStart(2, "0")}`;
+  return formatCalendarDayKey(date);
 }
 
 function normalizeText(value: string | null | undefined) {
@@ -647,9 +650,8 @@ export async function getCalendarInsights(
   monthValue: string,
   workspaceId: string
 ): Promise<CalendarInsights> {
-  const [year, month] = monthValue.split("-").map((value) => Number.parseInt(value, 10));
-  const monthStart = new Date(year, month - 1, 1);
-  const monthEnd = new Date(year, month, 0, 23, 59, 59, 999);
+  const { monthStart, monthEnd } = getCalendarMonthRange(monthValue);
+  const occurrenceEnd = new Date(monthEnd.getTime() - 1);
 
   const {
     platformRows,
@@ -812,7 +814,7 @@ export async function getCalendarInsights(
 
   for (const schedule of calendarScheduleRows) {
     const targetPlatforms = getTargetPlatformsForSchedule(schedule, platformMap);
-    const occurrences = getCronOccurrences(schedule.cron, monthStart, monthEnd, 120);
+    const occurrences = getCronOccurrences(schedule.cron, monthStart, occurrenceEnd, 120);
 
     for (const [index, at] of occurrences.entries()) {
       if (at.getTime() < now.getTime()) {
@@ -1207,7 +1209,11 @@ export async function getCalendarInsights(
     }, {});
 
   return {
-    monthLabel: monthStart.toLocaleDateString("en-US", { month: "long", year: "numeric" }),
+    monthLabel: monthStart.toLocaleDateString("en-US", {
+      month: "long",
+      year: "numeric",
+      timeZone: getAppTimeZone(),
+    }),
     monthStart,
     monthEnd,
     eventsByDay,

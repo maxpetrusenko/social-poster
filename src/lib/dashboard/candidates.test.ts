@@ -1,5 +1,5 @@
-import test from "node:test";
 import assert from "node:assert/strict";
+import { test } from "vitest";
 import { shouldRefreshCandidateCache } from "./candidate-cache-policy.ts";
 
 test("candidate cache refreshes when empty", () => {
