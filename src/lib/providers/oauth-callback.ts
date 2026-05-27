@@ -13,8 +13,11 @@ import { getProvider } from "@/lib/providers/registry";
 import {
   type NativeOAuthState,
   decodeNativeOAuthCookie,
+  encodeNativeOAuthCookie,
+  findNativeOAuthCookieFlow,
   NATIVE_OAUTH_COOKIE,
   oauthCallbackUrl,
+  removeNativeOAuthCookieFlow,
   storedPlatformType,
 } from "@/lib/providers/oauth-state";
 
@@ -33,7 +36,7 @@ export async function handleNativeOAuthCallback(
   const oauthCookie = decodeNativeOAuthCookie(
     cookieStore.get(NATIVE_OAUTH_COOKIE)?.value ?? null
   );
-  cookieStore.delete(NATIVE_OAUTH_COOKIE);
+  const oauthFlow = findNativeOAuthCookieFlow(oauthCookie, state?.nonce);
 
   const fallback = new URL(
     state?.next || "/dashboard/workspace-settings/social-accounts",
@@ -41,6 +44,7 @@ export async function handleNativeOAuthCallback(
   );
   const disabledOAuthMessage = getDisabledNativeOAuthMessage(platform);
   if (disabledOAuthMessage) {
+    updateNativeOAuthCookie(cookieStore, oauthCookie, state?.nonce);
     fallback.searchParams.set("error", disabledOAuthMessage);
     return NextResponse.redirect(fallback);
   }
@@ -56,13 +60,15 @@ export async function handleNativeOAuthCallback(
   if (
     !code ||
     !state ||
-    state.nonce !== oauthCookie?.nonce ||
+    !oauthFlow ||
     state.platform !== platform
   ) {
-    console.error(`[oauth-callback] ❌ State mismatch for ${platform}: code=${!!code}, state=${!!state}, nonceMatch=${state?.nonce === oauthCookie?.nonce}, platformMatch=${state?.platform === platform}`);
+    console.error(`[oauth-callback] ❌ State mismatch for ${platform}: code=${!!code}, state=${!!state}, nonceMatch=${Boolean(oauthFlow)}, platformMatch=${state?.platform === platform}`);
     fallback.searchParams.set("error", "Invalid OAuth callback state.");
     return NextResponse.redirect(fallback);
   }
+
+  updateNativeOAuthCookie(cookieStore, oauthCookie, state.nonce);
 
   const type = storedPlatformType(platform);
   if (!isPlatformType(type)) {
@@ -70,20 +76,20 @@ export async function handleNativeOAuthCallback(
     return NextResponse.redirect(fallback);
   }
 
-  const redirectUri = oauthCookie.redirectUri ?? oauthCallbackUrl(platform, request);
+  const redirectUri = oauthFlow.redirectUri ?? oauthCallbackUrl(platform, request);
 
   try {
     const provider = getProvider(
       platform,
       mergeProviderCredentials(
         platform,
-        oauthCookie.credentials ? { credentials: oauthCookie.credentials } : null
+        oauthFlow.credentials ? { credentials: oauthFlow.credentials } : null
       )
     );
     const tokens = await provider.exchangeCode(
       code,
       redirectUri,
-      oauthCookie.codeVerifier ?? undefined
+      oauthFlow.codeVerifier ?? undefined
     );
     if (platform === "facebook" && provider instanceof FacebookProvider) {
       return saveFacebookPageConnections({
@@ -265,4 +271,27 @@ async function getCallbackProfile(
 
 function isPlatformType(value: string): value is PlatformType {
   return (PLATFORM_TYPES as readonly string[]).includes(value);
+}
+
+function updateNativeOAuthCookie(
+  cookieStore: Awaited<ReturnType<typeof cookies>>,
+  oauthCookie: ReturnType<typeof decodeNativeOAuthCookie>,
+  nonce: string | null | undefined
+) {
+  const remainingOAuthCookie = removeNativeOAuthCookieFlow(oauthCookie, nonce);
+  if (remainingOAuthCookie) {
+    cookieStore.set(
+      NATIVE_OAUTH_COOKIE,
+      encodeNativeOAuthCookie(remainingOAuthCookie),
+      {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: 10 * 60,
+        path: "/",
+      }
+    );
+  } else {
+    cookieStore.delete(NATIVE_OAUTH_COOKIE);
+  }
 }

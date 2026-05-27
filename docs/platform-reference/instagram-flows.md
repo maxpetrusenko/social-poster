@@ -135,6 +135,11 @@ to Meta. This keeps local tests from producing Meta's `Invalid redirect_uri`
 screen. Use `npm run dev:https` and open `https://127.0.0.1:3000`, or use an
 HTTPS tunnel.
 
+The OAuth state cookie can hold a small set of pending nonces. This lets one
+browser recover when a user starts Instagram OAuth twice or retries from another
+tab before the first Meta callback returns. The callback consumes only the
+matching nonce and leaves newer pending attempts intact.
+
 `https://d87e-2600-1700-512b-8200-1c63-72d2-58c7-86f2.ngrok-free.app/api/auth/callback`
 is an example ngrok callback. It is not production. It is a temporary public
 HTTPS tunnel to a local dev server. Ngrok hostnames change unless a reserved
@@ -183,11 +188,16 @@ client_id={APP_ID}
 ### 2E. Exchange for Long-Lived Token
 
 ```
-GET https://graph.instagram.com/access_token
-  ?grant_type=ig_exchange_token
-  &client_secret={APP_SECRET}
-  &access_token={SHORT_LIVED_TOKEN}
+POST https://graph.instagram.com/access_token
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=ig_exchange_token
+&client_secret={APP_SECRET}
+&access_token={SHORT_LIVED_TOKEN}
 ```
+
+The provider falls back to the older GET shape only if Meta rejects POST as an
+unsupported method.
 
 ### 2F. Refresh Long-Lived Token
 

@@ -1,4 +1,4 @@
-import { OAuthError, PublishError } from "./errors";
+import { APIError, OAuthError, PublishError } from "./errors";
 import { OAuthProvider, buildAuthUrl } from "./oauth";
 import type {
   AccountProfile,
@@ -131,17 +131,29 @@ export class InstagramPersonalProvider extends OAuthProvider {
   private async exchangeForLongLivedToken(
     shortLivedToken: string
   ): Promise<OAuthTokens> {
-    const body = await this.requestJson<Record<string, unknown>>(
-      "GET",
-      LONG_LIVED_TOKEN_URL,
-      {
-        params: {
-          grant_type: "ig_exchange_token",
-          client_secret: this.clientSecret(),
-          access_token: shortLivedToken,
-        },
+    const payload = {
+      grant_type: "ig_exchange_token",
+      client_secret: this.clientSecret(),
+      access_token: shortLivedToken,
+    };
+    let body: Record<string, unknown>;
+
+    try {
+      body = await this.requestJson<Record<string, unknown>>(
+        "POST",
+        LONG_LIVED_TOKEN_URL,
+        { form: payload }
+      );
+    } catch (error) {
+      if (!shouldRetryLongLivedTokenExchangeWithGet(error)) {
+        throw error;
       }
-    );
+      body = await this.requestJson<Record<string, unknown>>(
+        "GET",
+        LONG_LIVED_TOKEN_URL,
+        { params: payload }
+      );
+    }
     return this.longLivedTokenResult(body);
   }
 
@@ -322,6 +334,24 @@ function numberValue(value: unknown) {
 
 function numberOrUndefined(value: unknown) {
   return typeof value === "number" ? value : undefined;
+}
+
+function shouldRetryLongLivedTokenExchangeWithGet(error: unknown) {
+  if (!(error instanceof APIError)) return false;
+  const rawError = recordValue(error.rawResponse.error);
+  const message = optionalString(rawError.message) ?? error.message;
+  const lowerMessage = message.toLowerCase();
+  return (
+    lowerMessage.includes("method type: post") ||
+    (lowerMessage.includes("unsupported post request") &&
+      lowerMessage.includes("object with id 'access_token'"))
+  );
+}
+
+function recordValue(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
 }
 
 function sleep(ms: number) {

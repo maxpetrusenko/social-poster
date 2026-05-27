@@ -9,6 +9,8 @@ import { getProvider } from "@/lib/providers/registry";
 import {
   signOAuthState,
   encodeNativeOAuthCookie,
+  appendNativeOAuthCookieFlow,
+  decodeNativeOAuthCookie,
   NATIVE_OAUTH_COOKIE,
   oauthCallbackUrl,
   normalizeRoutePlatform,
@@ -81,12 +83,17 @@ async function startNativeOAuth(
     );
     const authUrl = provider.getAuthUrl(redirectUri, state, codeVerifier);
     const cookieStore = await cookies();
-    cookieStore.set(NATIVE_OAUTH_COOKIE, encodeNativeOAuthCookie({
+    const existingCookie = decodeNativeOAuthCookie(
+      cookieStore.get(NATIVE_OAUTH_COOKIE)?.value ?? null
+    );
+    const oauthCookie = appendNativeOAuthCookieFlow(existingCookie, {
       nonce,
       codeVerifier,
       redirectUri,
       credentials: oauthCredentials ?? null,
-    }), {
+      timestamp: Date.now(),
+    });
+    cookieStore.set(NATIVE_OAUTH_COOKIE, encodeNativeOAuthCookie(oauthCookie), {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",

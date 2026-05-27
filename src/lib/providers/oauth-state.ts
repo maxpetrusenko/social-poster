@@ -1,4 +1,14 @@
 import crypto from "node:crypto";
+import {
+  appendOAuthFlowCookieFlow,
+  decodeOAuthFlowCookie,
+  encodeOAuthFlowCookie,
+  findOAuthFlowCookieFlow,
+  oauthFlowCookieFlows,
+  removeOAuthFlowCookieFlow,
+  type OAuthFlowCookie,
+  type OAuthFlowCookieFlow,
+} from "@/lib/oauth/flow-state";
 
 export type NativeOAuthState = {
   nonce: string;
@@ -11,15 +21,8 @@ export type NativeOAuthState = {
 
 export const NATIVE_OAUTH_COOKIE = "sp_native_oauth";
 
-export type NativeOAuthCookie = {
-  nonce: string;
-  codeVerifier?: string | null;
-  redirectUri?: string | null;
-  credentials?: {
-    clientId?: string;
-    clientSecret?: string;
-  } | null;
-};
+export type NativeOAuthCookieFlow = OAuthFlowCookieFlow;
+export type NativeOAuthCookie = OAuthFlowCookie;
 
 export function encodeNativeOAuthState(state: NativeOAuthState) {
   return Buffer.from(JSON.stringify(state), "utf8").toString("base64url");
@@ -51,45 +54,40 @@ export function decodeNativeOAuthState(value: string | null): NativeOAuthState |
 }
 
 export function encodeNativeOAuthCookie(cookie: NativeOAuthCookie) {
-  return Buffer.from(JSON.stringify(cookie), "utf8").toString("base64url");
+  return encodeOAuthFlowCookie(cookie);
 }
 
 export function decodeNativeOAuthCookie(value: string | null): NativeOAuthCookie | null {
-  if (!value) return null;
-
-  try {
-    const parsed = JSON.parse(
-      Buffer.from(value, "base64url").toString("utf8")
-    ) as Record<string, unknown>;
-
-    if (typeof parsed.nonce !== "string") return null;
-
-    return {
-      nonce: parsed.nonce,
-      codeVerifier:
-        typeof parsed.codeVerifier === "string" ? parsed.codeVerifier : null,
-      redirectUri:
-        typeof parsed.redirectUri === "string" ? parsed.redirectUri : null,
-      credentials: readCookieCredentials(parsed.credentials),
-    };
-  } catch {
-    return { nonce: value, codeVerifier: null };
-  }
+  return decodeOAuthFlowCookie(value);
 }
 
-function readCookieCredentials(value: unknown) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
-  const source = value as Record<string, unknown>;
-  const clientId =
-    typeof source.clientId === "string" && source.clientId.trim()
-      ? source.clientId.trim()
-      : undefined;
-  const clientSecret =
-    typeof source.clientSecret === "string" && source.clientSecret.trim()
-      ? source.clientSecret.trim()
-      : undefined;
+export function appendNativeOAuthCookieFlow(
+  existing: NativeOAuthCookie | null,
+  flow: NativeOAuthCookieFlow,
+  now = Date.now()
+): NativeOAuthCookie {
+  return appendOAuthFlowCookieFlow(existing, flow, now);
+}
 
-  return clientId || clientSecret ? { clientId, clientSecret } : null;
+export function findNativeOAuthCookieFlow(
+  cookie: NativeOAuthCookie | null,
+  nonce: string | null | undefined
+): NativeOAuthCookieFlow | null {
+  return findOAuthFlowCookieFlow(cookie, nonce);
+}
+
+export function removeNativeOAuthCookieFlow(
+  cookie: NativeOAuthCookie | null,
+  nonce: string | null | undefined,
+  now = Date.now()
+): NativeOAuthCookie | null {
+  return removeOAuthFlowCookieFlow(cookie, nonce, now);
+}
+
+export function nativeOAuthCookieFlows(
+  cookie: NativeOAuthCookie | null
+): NativeOAuthCookieFlow[] {
+  return oauthFlowCookieFlows(cookie);
 }
 
 export function normalizeRoutePlatform(platform: string) {

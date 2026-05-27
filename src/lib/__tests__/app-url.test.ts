@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   getAppUrlFromEnv,
   getPublicAppUrlFromEnv,
+  getRequestAppUrl,
   normalizeAppUrl,
 } from "@/lib/app-url";
 
@@ -32,5 +33,26 @@ describe("app url resolution", () => {
     expect(getAppUrlFromEnv({} as NodeJS.ProcessEnv)).toBe(
       "http://localhost:3000"
     );
+  });
+
+  it("keeps the request URL protocol for local HTTPS dev requests", () => {
+    expect(
+      getRequestAppUrl({
+        headers: new Headers({ host: "127.0.0.1:3000" }),
+        url: "https://127.0.0.1:3000/api/auth/instagram",
+      })
+    ).toBe("https://127.0.0.1:3000");
+  });
+
+  it("uses forwarded proto ahead of the request URL protocol", () => {
+    expect(
+      getRequestAppUrl({
+        headers: new Headers({
+          host: "127.0.0.1:3000",
+          "x-forwarded-proto": "http",
+        }),
+        url: "https://127.0.0.1:3000/api/auth/instagram",
+      })
+    ).toBe("http://127.0.0.1:3000");
   });
 });

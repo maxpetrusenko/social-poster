@@ -1,13 +1,14 @@
 import { NextRequest } from "next/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-const { cookieStore, getProvider } = vi.hoisted(() => ({
+const { cookieStore, getProvider, upsertPlatformConnection } = vi.hoisted(() => ({
   cookieStore: {
-    get: vi.fn(() => undefined),
+    get: vi.fn((): { value: string } | undefined => undefined),
     set: vi.fn(),
     delete: vi.fn(),
   },
   getProvider: vi.fn(),
+  upsertPlatformConnection: vi.fn(),
 }));
 
 vi.mock("server-only", () => ({}));
@@ -24,6 +25,10 @@ vi.mock("@/lib/api-authorization", () => ({
 
 vi.mock("@/lib/providers/registry", () => ({
   getProvider,
+}));
+
+vi.mock("@/lib/platform-connections", () => ({
+  upsertPlatformConnection,
 }));
 
 afterEach(() => {
@@ -147,5 +152,72 @@ describe("native OAuth platform route", () => {
     expect(location).toContain("Managed+relay");
     expect(cookieStore.delete).toHaveBeenCalledWith("sp_native_oauth");
     expect(getProvider).not.toHaveBeenCalled();
+  });
+
+  it("accepts an older Instagram callback after a newer OAuth start overwrote the top-level nonce", async () => {
+    const {
+      appendNativeOAuthCookieFlow,
+      encodeNativeOAuthCookie,
+      signOAuthState,
+    } = await import("@/lib/providers/oauth-state");
+    const firstState = {
+      nonce: "first-nonce",
+      platform: "instagram",
+      timestamp: Date.now(),
+      next: "/dashboard/workspace-settings/social-accounts",
+    };
+    const cookie = appendNativeOAuthCookieFlow(
+      appendNativeOAuthCookieFlow(null, {
+        nonce: firstState.nonce,
+        codeVerifier: "first-verifier",
+        redirectUri: "https://social.maxpetrusenko.com/api/auth/callback",
+        timestamp: firstState.timestamp,
+      }),
+      {
+        nonce: "second-nonce",
+        codeVerifier: "second-verifier",
+        redirectUri: "https://social.maxpetrusenko.com/api/auth/callback",
+        timestamp: firstState.timestamp + 1,
+      },
+      firstState.timestamp + 1
+    );
+    cookieStore.get.mockReturnValue({
+      value: encodeNativeOAuthCookie(cookie),
+    });
+    getProvider.mockReturnValue({
+      platformName: "Instagram",
+      exchangeCode: vi.fn().mockResolvedValue({
+        accessToken: "token",
+        tokenType: "Bearer",
+      }),
+      getProfile: vi.fn().mockResolvedValue({
+        platformId: "ig-user-1",
+        name: "Customer IG",
+        handle: "customer",
+      }),
+    });
+    upsertPlatformConnection.mockResolvedValue({ created: true });
+
+    const { GET } = await import("@/app/api/auth/callback/route");
+    const response = await GET(
+      new NextRequest(
+        `https://social.maxpetrusenko.com/api/auth/callback?code=ok&state=${signOAuthState(firstState)}`
+      )
+    );
+    const location = response.headers.get("location");
+
+    expect(location).toContain("connected=instagram");
+    expect(upsertPlatformConnection).toHaveBeenCalledWith(
+      expect.objectContaining({
+        workspaceId: "workspace-1",
+        accountId: "ig-user-1",
+      })
+    );
+    expect(cookieStore.delete).not.toHaveBeenCalledWith("sp_native_oauth");
+    expect(cookieStore.set).toHaveBeenCalledWith(
+      "sp_native_oauth",
+      expect.any(String),
+      expect.objectContaining({ httpOnly: true, sameSite: "lax" })
+    );
   });
 });

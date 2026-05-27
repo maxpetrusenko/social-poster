@@ -1,11 +1,15 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "vitest";
 
 import {
   oauthCallbackUrl,
   signOAuthState,
   verifyOAuthState,
   resolveOAuthCallbackOverride,
+  appendNativeOAuthCookieFlow,
+  findNativeOAuthCookieFlow,
+  removeNativeOAuthCookieFlow,
+  nativeOAuthCookieFlows,
 } from "./oauth-state.ts";
 
 // --- oauthCallbackUrl (request-derived) ---
@@ -105,6 +109,33 @@ test("oauthCallbackUrl uses X local bridge for HTTPS loopback requests", () => {
   );
 });
 
+test("oauthCallbackUrl keeps HTTPS loopback callbacks for non-X providers", () => {
+  delete process.env.SOCIAL_POSTER_OAUTH_CALLBACK_URL;
+  delete process.env.SOCIAL_POSTER_TWITTER_CALLBACK_URL;
+  const request = {
+    headers: new Headers({ host: "127.0.0.1:3000" }),
+    url: "https://127.0.0.1:3000/api/auth/instagram",
+  };
+  const platforms = [
+    "facebook",
+    "google_business",
+    "instagram",
+    "linkedin_personal",
+    "pinterest",
+    "threads",
+    "tiktok",
+    "youtube",
+  ];
+
+  for (const platform of platforms) {
+    assert.equal(
+      oauthCallbackUrl(platform, request),
+      "https://127.0.0.1:3000/api/auth/callback",
+      platform
+    );
+  }
+});
+
 test("oauthCallbackUrl lets X-specific callback override the local bridge", () => {
   process.env.SOCIAL_POSTER_TWITTER_CALLBACK_URL =
     "http://127.0.0.1:3999/api/auth/callback";
@@ -188,5 +219,71 @@ test("resolveOAuthCallbackOverride keeps exact loopback override", () => {
       "http://127.0.0.1:3000"
     ),
     "http://localhost:3000/api/auth/callback"
+  );
+});
+
+// --- native OAuth cookie flows ---
+
+test("appendNativeOAuthCookieFlow keeps previous pending nonces", () => {
+  const first = appendNativeOAuthCookieFlow(null, {
+    nonce: "first",
+    codeVerifier: "verifier-1",
+    redirectUri: "https://social.maxpetrusenko.com/api/auth/callback",
+    timestamp: 1_000,
+  });
+  const second = appendNativeOAuthCookieFlow(
+    first,
+    {
+      nonce: "second",
+      codeVerifier: "verifier-2",
+      redirectUri: "https://social.maxpetrusenko.com/api/auth/callback",
+      timestamp: 2_000,
+    },
+    2_000
+  );
+
+  assert.equal(second.nonce, "second");
+  assert.equal(findNativeOAuthCookieFlow(second, "first")?.codeVerifier, "verifier-1");
+  assert.equal(findNativeOAuthCookieFlow(second, "second")?.codeVerifier, "verifier-2");
+});
+
+test("removeNativeOAuthCookieFlow consumes only the matching nonce", () => {
+  const cookie = appendNativeOAuthCookieFlow(
+    appendNativeOAuthCookieFlow(null, {
+      nonce: "first",
+      codeVerifier: "verifier-1",
+      timestamp: 1_000,
+    }),
+    {
+      nonce: "second",
+      codeVerifier: "verifier-2",
+      timestamp: 2_000,
+    },
+    2_000
+  );
+
+  const remaining = removeNativeOAuthCookieFlow(cookie, "first", 2_000);
+
+  assert.ok(remaining);
+  assert.equal(findNativeOAuthCookieFlow(remaining, "first"), null);
+  assert.equal(findNativeOAuthCookieFlow(remaining, "second")?.codeVerifier, "verifier-2");
+});
+
+test("appendNativeOAuthCookieFlow prunes expired pending nonces", () => {
+  const cookie = appendNativeOAuthCookieFlow(
+    appendNativeOAuthCookieFlow(null, {
+      nonce: "expired",
+      timestamp: 1_000,
+    }),
+    {
+      nonce: "fresh",
+      timestamp: 1_000 + 10 * 60 * 1000 + 1,
+    },
+    1_000 + 10 * 60 * 1000 + 1
+  );
+
+  assert.deepEqual(
+    nativeOAuthCookieFlows(cookie).map((flow) => flow.nonce),
+    ["fresh"]
   );
 });

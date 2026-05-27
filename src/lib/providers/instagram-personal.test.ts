@@ -72,8 +72,97 @@ describe("InstagramPersonalProvider", () => {
     expect(calls[0].init?.method).toBe("POST");
     expect(calls[1].url.origin).toBe("https://graph.instagram.com");
     expect(calls[1].url.pathname).toBe("/access_token");
-    expect(calls[1].url.searchParams.get("grant_type")).toBe("ig_exchange_token");
-    expect(calls[1].url.searchParams.get("access_token")).toBe("short-token");
+    expect(calls[1].init?.method).toBe("POST");
+    expect(new Headers(calls[1].init?.headers).get("content-type")).toBe(
+      "application/x-www-form-urlencoded"
+    );
+    const longLivedBody = new URLSearchParams(String(calls[1].init?.body));
+    expect(longLivedBody.get("grant_type")).toBe("ig_exchange_token");
+    expect(longLivedBody.get("access_token")).toBe("short-token");
+  });
+
+  it("falls back to GET when Instagram rejects POST long-lived token exchange", async () => {
+    const { calls } = mockFetch(({ url, init }) => {
+      if (url.origin === "https://api.instagram.com") {
+        return jsonResponse({
+          access_token: "short-token",
+          user_id: "scoped-user-id",
+        });
+      }
+      if (init?.method === "POST") {
+        return jsonResponse(
+          {
+            error: {
+              message: "Unsupported request - method type: post",
+              type: "IGApiException",
+              code: 100,
+            },
+          },
+          400
+        );
+      }
+
+      return jsonResponse({
+        access_token: "long-token",
+        token_type: "bearer",
+        expires_in: 5_183_944,
+      });
+    });
+    const provider = providerForTest();
+
+    const tokens = await provider.exchangeCode(
+      "auth-code",
+      "https://app.example/callback"
+    );
+
+    expect(tokens.accessToken).toBe("long-token");
+    expect(calls[1].init?.method).toBe("POST");
+    expect(calls[2].init?.method).toBe("GET");
+    expect(calls[2].url.searchParams.get("grant_type")).toBe("ig_exchange_token");
+    expect(calls[2].url.searchParams.get("access_token")).toBe("short-token");
+  });
+
+  it("falls back to GET when Instagram treats POST /access_token as an object request", async () => {
+    const { calls } = mockFetch(({ url, init }) => {
+      if (url.origin === "https://api.instagram.com") {
+        return jsonResponse({
+          access_token: "short-token",
+          user_id: "scoped-user-id",
+        });
+      }
+      if (init?.method === "POST") {
+        return jsonResponse(
+          {
+            error: {
+              message:
+                "Unsupported post request. Object with ID 'access_token' does not exist, cannot be loaded due to missing permissions, or does not support this operation",
+              type: "IGApiException",
+              code: 100,
+              error_subcode: 33,
+            },
+          },
+          400
+        );
+      }
+
+      return jsonResponse({
+        access_token: "long-token",
+        token_type: "bearer",
+        expires_in: 5_183_944,
+      });
+    });
+    const provider = providerForTest();
+
+    const tokens = await provider.exchangeCode(
+      "auth-code",
+      "https://app.example/callback"
+    );
+
+    expect(tokens.accessToken).toBe("long-token");
+    expect(calls[1].init?.method).toBe("POST");
+    expect(calls[2].init?.method).toBe("GET");
+    expect(calls[2].url.searchParams.get("grant_type")).toBe("ig_exchange_token");
+    expect(calls[2].url.searchParams.get("access_token")).toBe("short-token");
   });
 
   it("rejects token exchange responses missing a short-lived token", async () => {
@@ -515,9 +604,9 @@ function jsonBody(call: FetchCall) {
   return JSON.parse(String(call.init?.body));
 }
 
-function jsonResponse(body: unknown) {
+function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
-    status: 200,
+    status,
     headers: { "Content-Type": "application/json" },
   });
 }

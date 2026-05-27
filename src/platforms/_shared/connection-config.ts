@@ -1,4 +1,5 @@
 import type { PlatformType } from "../../lib/platforms";
+import type { AuthStrategy } from "../../lib/oauth/auth-strategy";
 import type { PlatformCapability } from "./types";
 
 export type ConnectionFieldType = "text" | "password" | "textarea" | "toggle";
@@ -22,6 +23,7 @@ export type ConnectionMethod = {
   label: string;
   provider: "direct" | "zernio" | "bird";
   authType?: "manual" | "oauth";
+  authStrategy?: AuthStrategy;
   description: string;
   recommendation: string;
   infoTooltip?: ConnectionMethodInfoTooltip;
