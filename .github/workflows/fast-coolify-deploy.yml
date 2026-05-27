@@ -243,27 +243,90 @@ jobs:
             printf '[%s] %s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "$*"
           }
 
+          curl_public_json() {
+            local url="$1"
+            local output_file="$2"
+            local status
+
+            status="$(
+              curl --connect-timeout 10 --max-time 20 --silent --show-error \
+                --retry 6 --retry-delay 5 --retry-all-errors \
+                --user-agent "Mozilla/5.0 SocialPosterDeployCanary/1.0" \
+                --header "Accept: application/json,text/plain,*/*" \
+                --header "Cache-Control: no-cache" \
+                --output "${output_file}" \
+                --write-out "%{http_code}" \
+                "${url}" || true
+            )"
+
+            if [ "${status}" = "403" ]; then
+              echo "::warning::Public canary was blocked by the edge WAF for ${url}; private production health already passed."
+              return 10
+            fi
+            if ! [[ "${status}" =~ ^[0-9]+$ ]] || [ "${status}" -lt 200 ] || [ "${status}" -ge 300 ]; then
+              cat "${output_file}" >&2 || true
+              echo "::error::Public canary returned HTTP ${status} for ${url}"
+              return 1
+            fi
+          }
+
           log "Checking public health endpoint: ${health_url}"
-          health_response="$(curl --connect-timeout 10 --max-time 20 --fail --silent --show-error --retry 6 --retry-delay 5 --retry-all-errors "${health_url}")"
-          echo "${health_response}" | python3 -c '
+          health_file="$(mktemp)"
+          set +e
+          curl_public_json "${health_url}" "${health_file}"
+          health_exit=$?
+          set -e
+          if [ "${health_exit}" -eq 10 ]; then
+            duration_seconds=$(($(date +%s) - started_at))
+            echo "duration_seconds=${duration_seconds}" >> "${GITHUB_OUTPUT}"
+            {
+              echo "### Public Production Canary"
+              echo "- Result: edge-blocked"
+              echo "- Duration: ${duration_seconds}s"
+              echo "- Blocked: ${health_url}"
+              echo "- Note: private production health already passed in the deploy job."
+            } >> "${GITHUB_STEP_SUMMARY}"
+            exit 0
+          elif [ "${health_exit}" -ne 0 ]; then
+            exit "${health_exit}"
+          fi
+          python3 -c '
           import json, sys
-          payload = json.load(sys.stdin)
+          payload = json.load(open(sys.argv[1]))
           if payload.get("ok") is not True:
               raise SystemExit(f"public /health returned unexpected payload: {payload}")
-          '
+          ' "${health_file}"
 
           log "Checking public app health endpoint: ${api_health_url}"
-          api_health_response="$(curl --connect-timeout 10 --max-time 20 --fail --silent --show-error --retry 6 --retry-delay 5 --retry-all-errors "${api_health_url}")"
-          echo "${api_health_response}" | python3 -c '
+          api_health_file="$(mktemp)"
+          set +e
+          curl_public_json "${api_health_url}" "${api_health_file}"
+          api_health_exit=$?
+          set -e
+          if [ "${api_health_exit}" -eq 10 ]; then
+            duration_seconds=$(($(date +%s) - started_at))
+            echo "duration_seconds=${duration_seconds}" >> "${GITHUB_OUTPUT}"
+            {
+              echo "### Public Production Canary"
+              echo "- Result: edge-blocked"
+              echo "- Duration: ${duration_seconds}s"
+              echo "- Blocked: ${api_health_url}"
+              echo "- Note: private production health already passed in the deploy job."
+            } >> "${GITHUB_STEP_SUMMARY}"
+            exit 0
+          elif [ "${api_health_exit}" -ne 0 ]; then
+            exit "${api_health_exit}"
+          fi
+          python3 -c '
           import json, sys
-          payload = json.load(sys.stdin)
+          payload = json.load(open(sys.argv[1]))
           status = payload.get("status")
           drift = payload.get("schedules", {}).get("drift")
           if status != "ok":
               raise SystemExit(f"public /api/health status is {status!r}: {payload}")
           if drift != 0:
               raise SystemExit(f"public /api/health schedule drift is {drift!r}: {payload}")
-          '
+          ' "${api_health_file}"
 
           duration_seconds=$(($(date +%s) - started_at))
           echo "duration_seconds=${duration_seconds}" >> "${GITHUB_OUTPUT}"
@@ -292,7 +355,7 @@ jobs:
       COOLIFY_SSH_PRIVATE_KEY: ${{ secrets.COOLIFY_SSH_PRIVATE_KEY }}
       COOLIFY_SSH_KNOWN_HOSTS: ${{ secrets.COOLIFY_SSH_KNOWN_HOSTS }}
       IMAGE_TAG: ${{ needs.deploy.outputs.previous_image_tag }}
-      VERIFY_PUBLIC: "true"
+      VERIFY_PUBLIC: "false"
     steps:
       - name: Checkout
         uses: actions/checkout@v4

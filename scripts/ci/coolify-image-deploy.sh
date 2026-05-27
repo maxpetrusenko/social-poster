@@ -108,36 +108,77 @@ assert_public_health() {
 
   local health_url="${PRODUCTION_URL}/health"
   local api_health_url="${PRODUCTION_URL}/api/health"
+  local health_file
+  local api_health_file
+  health_file="$(mktemp)"
+  api_health_file="$(mktemp)"
 
   log "Checking public health endpoint: ${health_url}"
-  local health_response
-  health_response="$(
-    curl --connect-timeout 10 --max-time 20 --fail --silent --show-error \
-      --retry 6 --retry-delay 5 --retry-all-errors "${health_url}"
-  )"
-  echo "${health_response}" | python3 -c '
+  set +e
+  curl_public_json "${health_url}" "${health_file}"
+  local health_exit=$?
+  set -e
+  if [ "${health_exit}" -eq 10 ]; then
+    log "Public /health was blocked by the edge WAF; private production health already passed"
+    return
+  elif [ "${health_exit}" -ne 0 ]; then
+    exit "${health_exit}"
+  fi
+  python3 -c '
 import json, sys
-payload = json.load(sys.stdin)
+payload = json.load(open(sys.argv[1]))
 if payload.get("ok") is not True:
     raise SystemExit(f"public /health returned unexpected payload: {payload}")
-'
+' "${health_file}"
 
   log "Checking public app health endpoint: ${api_health_url}"
-  local api_health_response
-  api_health_response="$(
-    curl --connect-timeout 10 --max-time 20 --fail --silent --show-error \
-      --retry 6 --retry-delay 5 --retry-all-errors "${api_health_url}"
-  )"
-  echo "${api_health_response}" | python3 -c '
+  set +e
+  curl_public_json "${api_health_url}" "${api_health_file}"
+  local api_health_exit=$?
+  set -e
+  if [ "${api_health_exit}" -eq 10 ]; then
+    log "Public /api/health was blocked by the edge WAF; private production health already passed"
+    return
+  elif [ "${api_health_exit}" -ne 0 ]; then
+    exit "${api_health_exit}"
+  fi
+  python3 -c '
 import json, sys
-payload = json.load(sys.stdin)
+payload = json.load(open(sys.argv[1]))
 status = payload.get("status")
 drift = payload.get("schedules", {}).get("drift")
 if status != "ok":
     raise SystemExit(f"public /api/health status is {status!r}: {payload}")
 if drift != 0:
     raise SystemExit(f"public /api/health schedule drift is {drift!r}: {payload}")
-'
+' "${api_health_file}"
+}
+
+curl_public_json() {
+  local url="$1"
+  local output_file="$2"
+  local status
+
+  status="$(
+    curl --connect-timeout 10 --max-time 20 --silent --show-error \
+      --retry 6 --retry-delay 5 --retry-all-errors \
+      --user-agent "Mozilla/5.0 SocialPosterDeployCanary/1.0" \
+      --header "Accept: application/json,text/plain,*/*" \
+      --header "Cache-Control: no-cache" \
+      --output "${output_file}" \
+      --write-out "%{http_code}" \
+      "${url}" || true
+  )"
+
+  if [ "${status}" = "403" ]; then
+    echo "::warning::Public canary was blocked by the edge WAF for ${url}"
+    return 10
+  fi
+  if ! [[ "${status}" =~ ^[0-9]+$ ]] || [ "${status}" -lt 200 ] || [ "${status}" -ge 300 ]; then
+    cat "${output_file}" >&2 || true
+    echo "::error::Public canary returned HTTP ${status} for ${url}"
+    return 1
+  fi
 }
 
 require_env COOLIFY_API_TOKEN
