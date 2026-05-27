@@ -188,16 +188,20 @@ client_id={APP_ID}
 ### 2E. Exchange for Long-Lived Token
 
 ```
-POST https://graph.instagram.com/access_token
-Content-Type: application/x-www-form-urlencoded
-
-grant_type=ig_exchange_token
-&client_secret={APP_SECRET}
-&access_token={SHORT_LIVED_TOKEN}
+GET https://graph.instagram.com/access_token
+  ?grant_type=ig_exchange_token
+  &client_secret={APP_SECRET}
+  &access_token={SHORT_LIVED_TOKEN}
 ```
 
-The provider falls back to the older GET shape only if Meta rejects POST as an
-unsupported method.
+Meta's current Business Login docs specify GET for this step. The provider uses
+GET first and only tries the older POST shape if Meta rejects GET as an
+unsupported method. If Meta rejects both method shapes with the known
+`Unsupported request - method type: ...` / `Object with ID 'access_token'`
+errors, the provider stores the short-lived token so the callback can finish
+instead of showing the raw Meta error. That fallback is intentionally temporary:
+the account can connect, but durable posting still needs Meta to return a
+60-day long-lived token.
 
 ### 2F. Refresh Long-Lived Token
 

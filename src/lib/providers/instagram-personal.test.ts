@@ -43,7 +43,7 @@ describe("InstagramPersonalProvider", () => {
     expect(provider.rateLimits.publishPerDay).toBe(100);
   });
 
-  it("exchanges short-lived tokens at the unversioned long-lived token endpoint", async () => {
+  it("exchanges short-lived tokens at the documented GET long-lived token endpoint", async () => {
     const { calls } = mockFetch(({ url }) => {
       if (url.origin === "https://api.instagram.com") {
         return jsonResponse({
@@ -72,16 +72,12 @@ describe("InstagramPersonalProvider", () => {
     expect(calls[0].init?.method).toBe("POST");
     expect(calls[1].url.origin).toBe("https://graph.instagram.com");
     expect(calls[1].url.pathname).toBe("/access_token");
-    expect(calls[1].init?.method).toBe("POST");
-    expect(new Headers(calls[1].init?.headers).get("content-type")).toBe(
-      "application/x-www-form-urlencoded"
-    );
-    const longLivedBody = new URLSearchParams(String(calls[1].init?.body));
-    expect(longLivedBody.get("grant_type")).toBe("ig_exchange_token");
-    expect(longLivedBody.get("access_token")).toBe("short-token");
+    expect(calls[1].init?.method).toBe("GET");
+    expect(calls[1].url.searchParams.get("grant_type")).toBe("ig_exchange_token");
+    expect(calls[1].url.searchParams.get("access_token")).toBe("short-token");
   });
 
-  it("falls back to GET when Instagram rejects POST long-lived token exchange", async () => {
+  it("falls back to POST when Instagram rejects GET long-lived token exchange", async () => {
     const { calls } = mockFetch(({ url, init }) => {
       if (url.origin === "https://api.instagram.com") {
         return jsonResponse({
@@ -89,11 +85,11 @@ describe("InstagramPersonalProvider", () => {
           user_id: "scoped-user-id",
         });
       }
-      if (init?.method === "POST") {
+      if (init?.method === "GET") {
         return jsonResponse(
           {
             error: {
-              message: "Unsupported request - method type: post",
+              message: "Unsupported request - method type: get",
               type: "IGApiException",
               code: 100,
             },
@@ -116,19 +112,34 @@ describe("InstagramPersonalProvider", () => {
     );
 
     expect(tokens.accessToken).toBe("long-token");
-    expect(calls[1].init?.method).toBe("POST");
-    expect(calls[2].init?.method).toBe("GET");
-    expect(calls[2].url.searchParams.get("grant_type")).toBe("ig_exchange_token");
-    expect(calls[2].url.searchParams.get("access_token")).toBe("short-token");
+    expect(calls[1].init?.method).toBe("GET");
+    expect(calls[2].init?.method).toBe("POST");
+    const longLivedBody = new URLSearchParams(String(calls[2].init?.body));
+    expect(longLivedBody.get("grant_type")).toBe("ig_exchange_token");
+    expect(longLivedBody.get("access_token")).toBe("short-token");
   });
 
-  it("falls back to GET when Instagram treats POST /access_token as an object request", async () => {
+  it("keeps the connection when Instagram rejects both long-lived token exchange methods", async () => {
     const { calls } = mockFetch(({ url, init }) => {
       if (url.origin === "https://api.instagram.com") {
         return jsonResponse({
           access_token: "short-token",
           user_id: "scoped-user-id",
+          expires_in: 3600,
+          permissions: "instagram_business_basic",
         });
+      }
+      if (init?.method === "GET") {
+        return jsonResponse(
+          {
+            error: {
+              message: "Unsupported request - method type: get",
+              type: "IGApiException",
+              code: 100,
+            },
+          },
+          400
+        );
       }
       if (init?.method === "POST") {
         return jsonResponse(
@@ -145,11 +156,7 @@ describe("InstagramPersonalProvider", () => {
         );
       }
 
-      return jsonResponse({
-        access_token: "long-token",
-        token_type: "bearer",
-        expires_in: 5_183_944,
-      });
+      return jsonResponse({});
     });
     const provider = providerForTest();
 
@@ -158,11 +165,15 @@ describe("InstagramPersonalProvider", () => {
       "https://app.example/callback"
     );
 
-    expect(tokens.accessToken).toBe("long-token");
-    expect(calls[1].init?.method).toBe("POST");
-    expect(calls[2].init?.method).toBe("GET");
-    expect(calls[2].url.searchParams.get("grant_type")).toBe("ig_exchange_token");
-    expect(calls[2].url.searchParams.get("access_token")).toBe("short-token");
+    expect(tokens.accessToken).toBe("short-token");
+    expect(tokens.refreshToken).toBeUndefined();
+    expect(tokens.expiresIn).toBe(3600);
+    expect(tokens.scope).toBe("instagram_business_basic");
+    expect(tokens.raw?.long_lived_token_exchange).toMatchObject({
+      status: "skipped",
+    });
+    expect(calls[1].init?.method).toBe("GET");
+    expect(calls[2].init?.method).toBe("POST");
   });
 
   it("rejects token exchange responses missing a short-lived token", async () => {

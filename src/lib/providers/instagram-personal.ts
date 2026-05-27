@@ -69,7 +69,7 @@ export class InstagramPersonalProvider extends OAuthProvider {
       });
     }
 
-    return this.exchangeForLongLivedToken(shortLivedToken);
+    return this.exchangeForLongLivedToken(shortLivedToken, body);
   }
 
   async refreshToken(refreshToken: string): Promise<OAuthTokens> {
@@ -129,7 +129,8 @@ export class InstagramPersonalProvider extends OAuthProvider {
   }
 
   private async exchangeForLongLivedToken(
-    shortLivedToken: string
+    shortLivedToken: string,
+    shortLivedBody: Record<string, unknown>
   ): Promise<OAuthTokens> {
     const payload = {
       grant_type: "ig_exchange_token",
@@ -140,21 +141,54 @@ export class InstagramPersonalProvider extends OAuthProvider {
 
     try {
       body = await this.requestJson<Record<string, unknown>>(
-        "POST",
-        LONG_LIVED_TOKEN_URL,
-        { form: payload }
-      );
-    } catch (error) {
-      if (!shouldRetryLongLivedTokenExchangeWithGet(error)) {
-        throw error;
-      }
-      body = await this.requestJson<Record<string, unknown>>(
         "GET",
         LONG_LIVED_TOKEN_URL,
         { params: payload }
       );
+    } catch (getError) {
+      if (!shouldRetryLongLivedTokenExchangeWithPost(getError)) {
+        throw getError;
+      }
+      try {
+        body = await this.requestJson<Record<string, unknown>>(
+          "POST",
+          LONG_LIVED_TOKEN_URL,
+          { form: payload }
+        );
+      } catch (postError) {
+        if (shouldUseShortLivedTokenAfterLongLivedExchangeFailure(postError)) {
+          return this.shortLivedTokenResult(shortLivedToken, shortLivedBody, {
+            primary: getError,
+            fallback: postError,
+          });
+        }
+        throw postError;
+      }
     }
     return this.longLivedTokenResult(body);
+  }
+
+  private shortLivedTokenResult(
+    accessToken: string,
+    body: Record<string, unknown>,
+    exchangeErrors: { primary: unknown; fallback?: unknown }
+  ): OAuthTokens {
+    return {
+      accessToken,
+      expiresIn: numberOrUndefined(body.expires_in) ?? 3600,
+      tokenType: optionalString(body.token_type) ?? "Bearer",
+      scope: optionalString(body.scope) ?? optionalString(body.permissions),
+      raw: {
+        ...body,
+        long_lived_token_exchange: {
+          status: "skipped",
+          reason:
+            "Instagram rejected both documented and legacy long-lived token exchange methods; stored the short-lived token so the connection can finish.",
+          primary_error: providerErrorPayload(exchangeErrors.primary),
+          fallback_error: providerErrorPayload(exchangeErrors.fallback),
+        },
+      },
+    };
   }
 
   private longLivedTokenResult(body: Record<string, unknown>): OAuthTokens {
@@ -336,16 +370,48 @@ function numberOrUndefined(value: unknown) {
   return typeof value === "number" ? value : undefined;
 }
 
-function shouldRetryLongLivedTokenExchangeWithGet(error: unknown) {
-  if (!(error instanceof APIError)) return false;
-  const rawError = recordValue(error.rawResponse.error);
-  const message = optionalString(rawError.message) ?? error.message;
-  const lowerMessage = message.toLowerCase();
+function shouldRetryLongLivedTokenExchangeWithPost(error: unknown) {
+  return isUnsupportedLongLivedTokenExchangeMethod(error, "get");
+}
+
+function shouldUseShortLivedTokenAfterLongLivedExchangeFailure(error: unknown) {
   return (
-    lowerMessage.includes("method type: post") ||
-    (lowerMessage.includes("unsupported post request") &&
-      lowerMessage.includes("object with id 'access_token'"))
+    isUnsupportedLongLivedTokenExchangeMethod(error, "get") ||
+    isUnsupportedLongLivedTokenExchangeMethod(error, "post") ||
+    isUnsupportedLongLivedTokenObjectRequest(error)
   );
+}
+
+function isUnsupportedLongLivedTokenExchangeMethod(
+  error: unknown,
+  method: "get" | "post"
+) {
+  if (!(error instanceof APIError)) return false;
+  const lowerMessage = apiErrorMessage(error).toLowerCase();
+  return lowerMessage.includes(`method type: ${method}`);
+}
+
+function isUnsupportedLongLivedTokenObjectRequest(error: unknown) {
+  if (!(error instanceof APIError)) return false;
+  const lowerMessage = apiErrorMessage(error).toLowerCase();
+  return (
+    lowerMessage.includes("unsupported post request") &&
+    lowerMessage.includes("object with id 'access_token'")
+  );
+}
+
+function apiErrorMessage(error: APIError) {
+  const rawError = recordValue(error.rawResponse.error);
+  return optionalString(rawError.message) ?? error.message;
+}
+
+function providerErrorPayload(error: unknown) {
+  if (!(error instanceof APIError)) return undefined;
+  return {
+    message: apiErrorMessage(error),
+    statusCode: error.statusCode,
+    rawResponse: error.rawResponse,
+  };
 }
 
 function recordValue(value: unknown): Record<string, unknown> {
