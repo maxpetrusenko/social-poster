@@ -220,6 +220,104 @@ describe("InstagramPersonalProvider", () => {
     expect(calls[2].init?.method).toBe("POST");
   });
 
+  it("keeps the short-lived token when Instagram omits long-lived tokens from both methods", async () => {
+    const { calls } = mockFetch(({ url }) => {
+      if (url.origin === "https://api.instagram.com") {
+        return jsonResponse({
+          access_token: "short-token",
+          user_id: "scoped-user-id",
+        });
+      }
+
+      return jsonResponse({ token_type: "bearer", expires_in: 5_183_944 });
+    });
+    const provider = providerForTest();
+
+    const tokens = await provider.exchangeCode(
+      "auth-code",
+      "https://app.example/callback"
+    );
+
+    expect(tokens.accessToken).toBe("short-token");
+    expect(tokens.refreshToken).toBeUndefined();
+    expect(tokens.expiresIn).toBe(3600);
+    expect(tokens.raw?.long_lived_token_exchange).toMatchObject({
+      status: "skipped",
+    });
+    expect(calls[1].init?.method).toBe("GET");
+    expect(calls[2].init?.method).toBe("POST");
+  });
+
+  it("does not try POST when GET long-lived exchange fails with a non-retryable error", async () => {
+    const { calls } = mockFetch(({ url }) => {
+      if (url.origin === "https://api.instagram.com") {
+        return jsonResponse({
+          access_token: "short-token",
+          user_id: "scoped-user-id",
+        });
+      }
+
+      return jsonResponse(
+        {
+          error: {
+            message: "Invalid OAuth access token",
+            type: "OAuthException",
+            code: 190,
+          },
+        },
+        400
+      );
+    });
+    const provider = providerForTest();
+
+    await expect(
+      provider.exchangeCode("auth-code", "https://app.example/callback")
+    ).rejects.toThrow("Invalid OAuth access token");
+    expect(calls).toHaveLength(2);
+    expect(calls[1].init?.method).toBe("GET");
+  });
+
+  it("surfaces POST errors when the fallback long-lived exchange is non-retryable", async () => {
+    const { calls } = mockFetch(({ url, init }) => {
+      if (url.origin === "https://api.instagram.com") {
+        return jsonResponse({
+          access_token: "short-token",
+          user_id: "scoped-user-id",
+        });
+      }
+      if (init?.method === "GET") {
+        return jsonResponse(
+          {
+            error: {
+              message: "Unsupported request - method type: get",
+              type: "IGApiException",
+              code: 100,
+            },
+          },
+          400
+        );
+      }
+
+      return jsonResponse(
+        {
+          error: {
+            message: "Invalid OAuth access token",
+            type: "OAuthException",
+            code: 190,
+          },
+        },
+        400
+      );
+    });
+    const provider = providerForTest();
+
+    await expect(
+      provider.exchangeCode("auth-code", "https://app.example/callback")
+    ).rejects.toThrow("Invalid OAuth access token");
+    expect(calls[1].init?.method).toBe("GET");
+    expect(calls[2].init?.method).toBe("POST");
+  });
+
   it("rejects token exchange responses missing a short-lived token", async () => {
     mockFetch(() => jsonResponse({ user_id: "scoped-user-id" }));
     const provider = providerForTest();
@@ -227,21 +325,6 @@ describe("InstagramPersonalProvider", () => {
     await expect(
       provider.exchangeCode("auth-code", "https://app.example/callback")
     ).rejects.toThrow("Instagram token exchange failed");
-  });
-
-  it("rejects long-lived token responses missing an access token", async () => {
-    mockFetch(({ url }) => {
-      if (url.origin === "https://api.instagram.com") {
-        return jsonResponse({ access_token: "short-token" });
-      }
-
-      return jsonResponse({ token_type: "bearer", expires_in: 5_183_944 });
-    });
-    const provider = providerForTest();
-
-    await expect(
-      provider.exchangeCode("auth-code", "https://app.example/callback")
-    ).rejects.toThrow("Instagram long-lived token exchange failed");
   });
 
   it("refreshes long-lived tokens with Instagram refresh token params", async () => {

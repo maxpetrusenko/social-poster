@@ -1,4 +1,4 @@
-import { APIError, OAuthError, PublishError } from "./errors";
+import { APIError, OAuthError, ProviderError, PublishError } from "./errors";
 import { OAuthProvider, buildAuthUrl } from "./oauth";
 import type {
   AccountProfile,
@@ -137,35 +137,38 @@ export class InstagramPersonalProvider extends OAuthProvider {
       client_secret: this.clientSecret(),
       access_token: shortLivedToken,
     };
-    let body: Record<string, unknown>;
+    let getError: unknown;
 
     try {
-      body = await this.requestJson<Record<string, unknown>>(
+      const body = await this.requestJson<Record<string, unknown>>(
         "GET",
         LONG_LIVED_TOKEN_URL,
         { params: payload }
       );
-    } catch (getError) {
+      return this.longLivedTokenResult(body);
+    } catch (error) {
+      getError = error;
       if (!shouldRetryLongLivedTokenExchangeWithPost(getError)) {
         throw getError;
       }
-      try {
-        body = await this.requestJson<Record<string, unknown>>(
-          "POST",
-          LONG_LIVED_TOKEN_URL,
-          { form: payload }
-        );
-      } catch (postError) {
-        if (shouldUseShortLivedTokenAfterLongLivedExchangeFailure(postError)) {
-          return this.shortLivedTokenResult(shortLivedToken, shortLivedBody, {
-            primary: getError,
-            fallback: postError,
-          });
-        }
-        throw postError;
-      }
     }
-    return this.longLivedTokenResult(body);
+
+    try {
+      const body = await this.requestJson<Record<string, unknown>>(
+        "POST",
+        LONG_LIVED_TOKEN_URL,
+        { form: payload }
+      );
+      return this.longLivedTokenResult(body);
+    } catch (postError) {
+      if (shouldUseShortLivedTokenAfterLongLivedExchangeFailure(postError)) {
+        return this.shortLivedTokenResult(shortLivedToken, shortLivedBody, {
+          primary: getError,
+          fallback: postError,
+        });
+      }
+      throw postError;
+    }
   }
 
   private shortLivedTokenResult(
@@ -373,7 +376,8 @@ function numberOrUndefined(value: unknown) {
 function shouldRetryLongLivedTokenExchangeWithPost(error: unknown) {
   return (
     isUnsupportedLongLivedTokenExchangeMethod(error, "get") ||
-    isUnsupportedLongLivedTokenObjectRequest(error)
+    isUnsupportedLongLivedTokenObjectRequest(error) ||
+    isMissingLongLivedTokenResponse(error)
   );
 }
 
@@ -381,7 +385,8 @@ function shouldUseShortLivedTokenAfterLongLivedExchangeFailure(error: unknown) {
   return (
     isUnsupportedLongLivedTokenExchangeMethod(error, "get") ||
     isUnsupportedLongLivedTokenExchangeMethod(error, "post") ||
-    isUnsupportedLongLivedTokenObjectRequest(error)
+    isUnsupportedLongLivedTokenObjectRequest(error) ||
+    isMissingLongLivedTokenResponse(error)
   );
 }
 
@@ -408,11 +413,18 @@ function apiErrorMessage(error: APIError) {
   return optionalString(rawError.message) ?? error.message;
 }
 
+function isMissingLongLivedTokenResponse(error: unknown) {
+  return (
+    error instanceof OAuthError &&
+    error.message.includes("Instagram long-lived token exchange failed")
+  );
+}
+
 function providerErrorPayload(error: unknown) {
-  if (!(error instanceof APIError)) return undefined;
+  if (!(error instanceof ProviderError)) return undefined;
   return {
-    message: apiErrorMessage(error),
-    statusCode: error.statusCode,
+    message: error instanceof APIError ? apiErrorMessage(error) : error.message,
+    statusCode: error instanceof APIError ? error.statusCode : undefined,
     rawResponse: error.rawResponse,
   };
 }
