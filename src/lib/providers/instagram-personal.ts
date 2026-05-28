@@ -371,7 +371,10 @@ function numberOrUndefined(value: unknown) {
 }
 
 function shouldRetryLongLivedTokenExchangeWithPost(error: unknown) {
-  return isUnsupportedLongLivedTokenExchangeMethod(error, "get");
+  return (
+    isUnsupportedLongLivedTokenExchangeMethod(error, "get") ||
+    isUnsupportedLongLivedTokenObjectRequest(error)
+  );
 }
 
 function shouldUseShortLivedTokenAfterLongLivedExchangeFailure(error: unknown) {
