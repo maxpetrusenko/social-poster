@@ -30,8 +30,14 @@ describe("X liked autopost config", () => {
       X_LIKES_AUTOPUBLISH_FETCH_COUNT: "10",
     };
 
-    expect(readXLikedAutopostIntervalMinutes(env)).toBe(2);
+    expect(readXLikedAutopostIntervalMinutes(env)).toBe(60);
     expect(readXLikedAutopostLimit(env)).toBe(10);
-    expect(readXLikedAutopostFetchCount(env)).toBe(50);
+    expect(readXLikedAutopostFetchCount(env)).toBe(10);
+  });
+
+  it("defaults to one hourly import run", () => {
+    expect(readXLikedAutopostIntervalMinutes({})).toBe(60);
+    expect(readXLikedAutopostLimit({})).toBe(1);
+    expect(readXLikedAutopostFetchCount({})).toBe(50);
   });
 });

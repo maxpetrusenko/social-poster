@@ -4,6 +4,7 @@ import { pipelineRuns, schedules } from "@/db/schema";
 import { and, eq, isNotNull } from "drizzle-orm";
 import { processReadyReplyQueue } from "./replies/live";
 import { runScheduleJob } from "./schedule-jobs";
+import { processDueScheduledPosts } from "./pipeline/scheduled-post-publisher";
 import { finalizeAbandonedSteps } from "./pipeline/recovery";
 import { getScheduleCronTimeZone } from "./timezone";
 import {
@@ -50,6 +51,7 @@ let dripQueueInterval: NodeJS.Timeout | null = null;
 let blogAutomationInterval: NodeJS.Timeout | null = null;
 let xLikedAutopostInterval: NodeJS.Timeout | null = null;
 let xLikedAutopostBootTimer: NodeJS.Timeout | null = null;
+let scheduledPostPublisherInterval: NodeJS.Timeout | null = null;
 
 export async function initScheduler(): Promise<void> {
   console.log("[scheduler] init");
@@ -60,6 +62,7 @@ export async function initScheduler(): Promise<void> {
   ensureBirdSessionCheckWorker();
   ensureDripQueueWorker();
   ensureBlogAutomationWorker();
+  ensureScheduledPostPublisherWorker();
   ensureXLikedAutopostWorker();
   await reconcileSchedules("init");
 
@@ -130,6 +133,7 @@ export async function ensureSchedulerReady(): Promise<void> {
   ensureProfileRefreshWorker();
   ensureBirdSessionCheckWorker();
   ensureBlogAutomationWorker();
+  ensureScheduledPostPublisherWorker();
   ensureXLikedAutopostWorker();
 
   if (tasks.size === 0) {
@@ -240,6 +244,26 @@ function ensureReadyQueueWorker() {
     void runSweep();
   }, 60_000);
   readyQueueInterval.unref?.();
+}
+
+function ensureScheduledPostPublisherWorker() {
+  if (scheduledPostPublisherInterval) return;
+
+  const runSweep = async () => {
+    try {
+      const summary = await processDueScheduledPosts();
+      if (summary.processed > 0) {
+        console.log(`[scheduler] published ${summary.processed} due scheduled post(s)`);
+      }
+    } catch (error) {
+      console.error("[scheduler] scheduled post publish sweep failed:", error);
+    }
+  };
+
+  scheduledPostPublisherInterval = setInterval(() => {
+    void runSweep();
+  }, 60_000);
+  scheduledPostPublisherInterval.unref?.();
 }
 
 function ensureXLikedAutopostWorker() {

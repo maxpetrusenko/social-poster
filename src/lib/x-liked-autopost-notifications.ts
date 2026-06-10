@@ -4,14 +4,23 @@ import type { PublishClassification } from "@/lib/pipeline/publisher";
 
 export type XLikedAutopostOperationalFailure = {
   platform: string;
-  classification: PublishClassification | "writer_unavailable" | "storage_error";
+  classification:
+    | PublishClassification
+    | "writer_unavailable"
+    | "writer_quality_rejected"
+    | "storage_error";
   error: string;
 };
 
-export type XLikedAutopostTelegramResult =
+export type XLikedAutopostNotificationChannelResult =
   | { status: "sent" }
   | { status: "skipped"; reason: string }
   | { status: "failed"; error: string };
+
+export type XLikedAutopostNotificationResult = {
+  telegram: XLikedAutopostNotificationChannelResult;
+  matrix: XLikedAutopostNotificationChannelResult;
+};
 
 const OPERATIONAL_CLASSIFICATIONS = new Set<string>([
   "auth_error",
@@ -19,6 +28,7 @@ const OPERATIONAL_CLASSIFICATIONS = new Set<string>([
   "provider_error",
   "network_error",
   "writer_unavailable",
+  "writer_quality_rejected",
   "storage_error",
 ]);
 
@@ -78,31 +88,93 @@ export async function notifyXLikedAutopostOperationalFailure(input: {
   retryCount?: number;
   nextRetryAt?: Date | null;
   fetchImpl?: typeof fetch;
-}): Promise<XLikedAutopostTelegramResult> {
+}): Promise<XLikedAutopostNotificationResult> {
   const failures = input.failures.filter(isXLikedAutopostOperationalFailure);
   if (failures.length === 0) {
-    return { status: "skipped", reason: "no operational failures" };
+    return {
+      telegram: { status: "skipped", reason: "no operational failures" },
+      matrix: { status: "skipped", reason: "no operational failures" },
+    };
   }
 
+  const message = buildXLikedAutopostFailureMessage({
+    ...input,
+    failures,
+  });
   const token = process.env.TELEGRAM_BOT_TOKEN?.trim();
   const chatId = process.env.TELEGRAM_CHAT_ID?.trim();
-  if (!token || !chatId) {
-    return { status: "skipped", reason: "telegram not configured" };
+  const fetcher = input.fetchImpl ?? fetch;
+
+  const telegram = token && chatId
+    ? await sendTelegram({ token, chatId, message, fetcher })
+    : ({ status: "skipped", reason: "telegram not configured" } as const);
+
+  const matrix = await sendMatrix({ message, fetcher });
+
+  return { telegram, matrix };
+}
+
+async function sendTelegram(input: {
+  token: string;
+  chatId: string;
+  message: string;
+  fetcher: typeof fetch;
+}): Promise<XLikedAutopostNotificationChannelResult> {
+  const response = await input.fetcher(
+    `https://api.telegram.org/bot${input.token}/sendMessage`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: input.chatId,
+        text: input.message,
+        disable_web_page_preview: true,
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    const text = await response.text().catch(() => response.statusText);
+    return {
+      status: "failed",
+      error: `${response.status} ${truncate(text, 180)}`,
+    };
   }
 
-  const fetcher = input.fetchImpl ?? fetch;
-  const response = await fetcher(`https://api.telegram.org/bot${token}/sendMessage`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      chat_id: chatId,
-      text: buildXLikedAutopostFailureMessage({
-        ...input,
-        failures,
+  return { status: "sent" };
+}
+
+async function sendMatrix(input: {
+  message: string;
+  fetcher: typeof fetch;
+}): Promise<XLikedAutopostNotificationChannelResult> {
+  const homeserver = process.env.MATRIX_HOMESERVER_URL?.trim().replace(/\/+$/, "");
+  const token = process.env.MATRIX_ACCESS_TOKEN?.trim();
+  const roomId = (
+    process.env.SOCIAL_POSTER_MATRIX_ROOM_ID ||
+    process.env.MATRIX_ROOM_ID ||
+    ""
+  ).trim();
+
+  if (!homeserver || !token || !roomId) {
+    return { status: "skipped", reason: "matrix not configured" };
+  }
+
+  const txId = `social-poster-liked-${Date.now()}-${crypto.randomUUID()}`;
+  const response = await input.fetcher(
+    `${homeserver}/_matrix/client/v3/rooms/${encodeURIComponent(roomId)}/send/m.room.message/${encodeURIComponent(txId)}`,
+    {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        msgtype: "m.text",
+        body: input.message,
       }),
-      disable_web_page_preview: true,
-    }),
-  });
+    }
+  );
 
   if (!response.ok) {
     const text = await response.text().catch(() => response.statusText);

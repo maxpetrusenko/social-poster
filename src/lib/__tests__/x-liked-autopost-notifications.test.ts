@@ -19,14 +19,14 @@ describe("X liked autopost operational notifications", () => {
     ).toBe(true);
     expect(
       isXLikedAutopostOperationalFailure({
-        platform: "x",
-        classification: "validation_error",
-        error: "too long",
+        platform: "writer",
+        classification: "writer_quality_rejected",
+        error: "too bland",
       })
-    ).toBe(false);
+    ).toBe(true);
   });
 
-  it("builds a Telegram message with run context", () => {
+  it("builds a notification message with run context", () => {
     const message = buildXLikedAutopostFailureMessage({
       runId: "run-1",
       workspaceId: "workspace-1",
@@ -47,11 +47,17 @@ describe("X liked autopost operational notifications", () => {
     expect(message).toContain("/dashboard/pipeline?runId=run-1");
   });
 
-  it("sends Telegram only when an operational failure exists", async () => {
+  it("sends notifications only when an operational failure exists", async () => {
     const previousToken = process.env.TELEGRAM_BOT_TOKEN;
     const previousChat = process.env.TELEGRAM_CHAT_ID;
+    const previousHomeserver = process.env.MATRIX_HOMESERVER_URL;
+    const previousMatrixToken = process.env.MATRIX_ACCESS_TOKEN;
+    const previousMatrixRoom = process.env.SOCIAL_POSTER_MATRIX_ROOM_ID;
     process.env.TELEGRAM_BOT_TOKEN = "token";
     process.env.TELEGRAM_CHAT_ID = "chat";
+    process.env.MATRIX_HOMESERVER_URL = "https://matrix.example";
+    process.env.MATRIX_ACCESS_TOKEN = "matrix-token";
+    process.env.SOCIAL_POSTER_MATRIX_ROOM_ID = "!social:example";
     const fetchImpl = vi.fn(async () => new Response("ok", { status: 200 }));
 
     try {
@@ -69,7 +75,10 @@ describe("X liked autopost operational notifications", () => {
           ],
           fetchImpl,
         })
-      ).resolves.toEqual({ status: "skipped", reason: "no operational failures" });
+      ).resolves.toEqual({
+        telegram: { status: "skipped", reason: "no operational failures" },
+        matrix: { status: "skipped", reason: "no operational failures" },
+      });
       expect(fetchImpl).not.toHaveBeenCalled();
 
       await expect(
@@ -86,13 +95,27 @@ describe("X liked autopost operational notifications", () => {
           ],
           fetchImpl,
         })
-      ).resolves.toEqual({ status: "sent" });
-      expect(fetchImpl).toHaveBeenCalledOnce();
+      ).resolves.toEqual({
+        telegram: { status: "sent" },
+        matrix: { status: "sent" },
+      });
+      expect(fetchImpl).toHaveBeenCalledTimes(2);
+      const matrixUrl =
+        (fetchImpl.mock.calls as unknown as Array<[string]>)[1]?.[0] ?? "";
+      expect(matrixUrl).toContain(
+        "/_matrix/client/v3/rooms/!social%3Aexample/send/m.room.message/"
+      );
     } finally {
       if (previousToken === undefined) delete process.env.TELEGRAM_BOT_TOKEN;
       else process.env.TELEGRAM_BOT_TOKEN = previousToken;
       if (previousChat === undefined) delete process.env.TELEGRAM_CHAT_ID;
       else process.env.TELEGRAM_CHAT_ID = previousChat;
+      if (previousHomeserver === undefined) delete process.env.MATRIX_HOMESERVER_URL;
+      else process.env.MATRIX_HOMESERVER_URL = previousHomeserver;
+      if (previousMatrixToken === undefined) delete process.env.MATRIX_ACCESS_TOKEN;
+      else process.env.MATRIX_ACCESS_TOKEN = previousMatrixToken;
+      if (previousMatrixRoom === undefined) delete process.env.SOCIAL_POSTER_MATRIX_ROOM_ID;
+      else process.env.SOCIAL_POSTER_MATRIX_ROOM_ID = previousMatrixRoom;
     }
   });
 });

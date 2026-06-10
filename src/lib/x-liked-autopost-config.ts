@@ -8,17 +8,17 @@ export function isXLikedAutopostWorkerEnabled(env: XLikedAutopostEnv = process.e
 }
 
 export function readXLikedAutopostIntervalMinutes(env: XLikedAutopostEnv = process.env) {
-  const minutes = Number(env.X_LIKES_AUTOPUBLISH_INTERVAL_MINUTES ?? 2);
-  return Number.isFinite(minutes) && minutes > 0 ? minutes : 2;
+  const minutes = Number(env.X_LIKES_AUTOPUBLISH_INTERVAL_MINUTES ?? 60);
+  return Number.isFinite(minutes) && minutes > 0 ? minutes : 60;
 }
 
 export function readXLikedAutopostLimit(env: XLikedAutopostEnv = process.env) {
-  const limit = Number(env.X_LIKES_AUTOPUBLISH_LIMIT ?? 3);
-  return Number.isFinite(limit) && limit > 0 ? Math.min(10, Math.floor(limit)) : 3;
+  const limit = Number(env.X_LIKES_AUTOPUBLISH_LIMIT ?? 1);
+  return Number.isFinite(limit) && limit > 0 ? Math.min(10, Math.floor(limit)) : 1;
 }
 
 export function readXLikedAutopostFetchCount(env: XLikedAutopostEnv = process.env) {
   const count = Number(env.X_LIKES_AUTOPUBLISH_FETCH_COUNT ?? 50);
   if (!Number.isFinite(count) || count <= 0) return 50;
-  return 50;
+  return Math.min(100, Math.floor(count));
 }
