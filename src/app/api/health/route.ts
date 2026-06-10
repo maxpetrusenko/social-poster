@@ -38,5 +38,6 @@ export async function GET() {
           : enabledSchedules - scheduler.runtimeRegisteredCount,
     },
     tokenRefresh: scheduler.tokenRefresh,
+    xLikedAutopost: scheduler.xLikedAutopost,
   });
 }
