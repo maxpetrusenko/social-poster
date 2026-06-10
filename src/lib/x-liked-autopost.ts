@@ -330,7 +330,15 @@ function shouldSkipTweet(tweet: BirdTweet, xPlatform: PlatformRow, hasMedia = fa
   return null;
 }
 
-async function markDedupKey(dedupKey: string, source: string) {
+function isDuplicateDedupKeyError(error: unknown) {
+  if (!(error instanceof Error)) return false;
+  return (
+    error.message.includes("UNIQUE constraint failed") ||
+    error.message.includes("SQLITE_CONSTRAINT")
+  );
+}
+
+async function claimDedupKey(dedupKey: string, source: string) {
   try {
     await db.insert(dedupCache).values({
       id: crypto.randomUUID(),
@@ -338,8 +346,18 @@ async function markDedupKey(dedupKey: string, source: string) {
       source: source.slice(0, 200),
       createdAt: new Date(),
     });
+    return true;
+  } catch (error) {
+    if (isDuplicateDedupKeyError(error)) return false;
+    throw error;
+  }
+}
+
+async function releaseDedupKey(dedupKey: string) {
+  try {
+    await db.delete(dedupCache).where(eq(dedupCache.key, dedupKey));
   } catch {
-    // Duplicate key is the desired idempotent outcome.
+    // A failed release should not hide the original pipeline failure.
   }
 }
 
@@ -451,6 +469,12 @@ export async function runXLikedAutopost(options: RunOptions): Promise<XLikedAuto
       result.skipped.push({ url: sourceUrl, reason: "empty cleaned tweet text" });
       continue;
     }
+
+    if (!dryRun && !(await claimDedupKey(dedupKey, sourceUrl))) {
+      result.skipped.push({ url: sourceUrl, reason: "already imported" });
+      continue;
+    }
+
     const now = new Date();
     const runId = crypto.randomUUID();
     const runSteps: PipelineStep[] = [
@@ -563,6 +587,7 @@ export async function runXLikedAutopost(options: RunOptions): Promise<XLikedAuto
           }));
 
       if (!dryRun) {
+        await releaseDedupKey(dedupKey);
         await db.update(pipelineRuns).set({
           status: "failed",
           steps: [
@@ -626,6 +651,7 @@ export async function runXLikedAutopost(options: RunOptions): Promise<XLikedAuto
       const completedAt = new Date();
 
       if (!dryRun) {
+        await releaseDedupKey(dedupKey);
         await db.update(pipelineRuns).set({
           status: "failed",
           steps: [
@@ -752,9 +778,6 @@ export async function runXLikedAutopost(options: RunOptions): Promise<XLikedAuto
       durationMs: Math.max(0, completedAt.getTime() - now.getTime()),
       completedAt,
     }).where(eq(pipelineRuns.id, runId));
-
-    await markDedupKey(dedupKey, sourceUrl);
-
     result.imported += 1;
     result.posts.push({
       postId,
