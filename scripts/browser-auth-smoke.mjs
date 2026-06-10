@@ -384,6 +384,7 @@ async function main() {
     browser = await puppeteer.launch({
       executablePath: chrome,
       headless: true,
+      timeout: 120_000,
       protocolTimeout: 120_000,
       args: ["--no-sandbox", "--disable-setuid-sandbox"],
     });
