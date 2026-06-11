@@ -1,7 +1,13 @@
-import { dateFromZonedParts, getZonedDateParts } from "@/lib/timezone";
+import { getCronOccurrences } from "@/lib/dashboard/cron";
+import {
+  dateFromZonedParts,
+  getScheduleCronTimeZone,
+  getZonedDateParts,
+} from "@/lib/timezone";
 
 export const X_LIKED_AUTOPUBLISH_START_HOUR = 8;
 export const X_LIKED_AUTOPUBLISH_END_HOUR = 20;
+export const X_LIKED_AUTOPUBLISH_RECURRING_LOOKAHEAD_DAYS = 21;
 
 type SlotOptions = {
   now?: Date;
@@ -14,6 +20,12 @@ type SlotOptions = {
 type PublishTargetLike = {
   platform: { type: string };
   content: string;
+};
+
+type RecurringScheduleLike = {
+  cron: string;
+  enabled?: boolean | null;
+  jobType?: string | null;
 };
 
 function slotKey(date: Date, timeZone: string) {
@@ -105,6 +117,27 @@ export function findNextXLikedAutopostSlot(options: SlotOptions = {}) {
   }
 
   return candidate;
+}
+
+export function getXLikedRecurringScheduleSlots({
+  schedules,
+  now = new Date(),
+  cronTimeZone = getScheduleCronTimeZone(),
+  lookaheadDays = X_LIKED_AUTOPUBLISH_RECURRING_LOOKAHEAD_DAYS,
+}: {
+  schedules: RecurringScheduleLike[];
+  now?: Date;
+  cronTimeZone?: string;
+  lookaheadDays?: number;
+}) {
+  const start = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  const end = new Date(now.getTime() + lookaheadDays * 24 * 60 * 60 * 1000);
+
+  return schedules.flatMap((schedule) => {
+    if (schedule.enabled === false) return [];
+    if (schedule.jobType === "reply_engine") return [];
+    return getCronOccurrences(schedule.cron, start, end, 500, cronTimeZone);
+  });
 }
 
 export function validateXLikedPublishTargets(targets: PublishTargetLike[]) {

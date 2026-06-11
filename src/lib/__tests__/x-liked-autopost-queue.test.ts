@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   findNextXLikedAutopostSlot,
+  getXLikedRecurringScheduleSlots,
   validateXLikedPublishTargets,
 } from "../x-liked-autopost-queue";
 
@@ -39,6 +40,28 @@ describe("X liked autopost queue", () => {
     });
 
     expect(slot.toISOString()).toBe("2026-06-11T12:00:00.000Z");
+  });
+
+  it("skips recurring scheduler slots when queueing liked posts", () => {
+    const now = new Date("2026-06-11T14:30:00.000Z");
+    const recurringSlots = getXLikedRecurringScheduleSlots({
+      now,
+      cronTimeZone: "UTC",
+      lookaheadDays: 1,
+      schedules: [
+        { cron: "0 15 * * *", enabled: true, jobType: "image_post" },
+        { cron: "0 17 * * *", enabled: true, jobType: "image_post" },
+        { cron: "0 19 * * *", enabled: true, jobType: "text_post" },
+      ],
+    });
+
+    const slot = findNextXLikedAutopostSlot({
+      now,
+      existingSlots: recurringSlots,
+      timeZone,
+    });
+
+    expect(slot.toISOString()).toBe("2026-06-11T16:00:00.000Z");
   });
 
   it("rejects empty final platform content before queueing", () => {

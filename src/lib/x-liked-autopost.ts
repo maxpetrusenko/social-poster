@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 
 import { db } from "@/db";
-import { dedupCache, pipelineRuns, platforms, posts, postTargets, profiles, workspaces, type PipelineStep } from "@/db/schema";
+import { dedupCache, pipelineRuns, platforms, posts, postTargets, profiles, schedules, workspaces, type PipelineStep } from "@/db/schema";
 import { fetchOpenGraphImage } from "@/lib/open-graph-image";
 import {
   getLikedTweetsForPlatform,
@@ -37,6 +37,7 @@ import {
 } from "@/lib/x-liked-autopost-notifications";
 import {
   findNextXLikedAutopostSlot,
+  getXLikedRecurringScheduleSlots,
   validateXLikedPublishTargets,
 } from "@/lib/x-liked-autopost-queue";
 import { and, asc, desc, eq, gte, inArray, or } from "drizzle-orm";
@@ -232,21 +233,37 @@ async function alreadyImported(workspaceId: string, sourceUrl: string, dedupKey:
 
 async function findExistingXLikedQueuedSlots(workspaceId: string, now: Date) {
   const since = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-  const rows = await db
-    .select({ scheduledAt: posts.scheduledAt })
-    .from(posts)
-    .where(
-      and(
-        eq(posts.workspaceId, workspaceId),
-        inArray(posts.status, ["scheduled", "publishing"]),
-        gte(posts.scheduledAt, since)
+  const [queuedRows, recurringSchedules] = await Promise.all([
+    db
+      .select({ scheduledAt: posts.scheduledAt })
+      .from(posts)
+      .where(
+        and(
+          eq(posts.workspaceId, workspaceId),
+          inArray(posts.status, ["scheduled", "publishing"]),
+          gte(posts.scheduledAt, since)
+        )
       )
-    )
-    .orderBy(asc(posts.scheduledAt));
+      .orderBy(asc(posts.scheduledAt)),
+    db
+      .select({
+        cron: schedules.cron,
+        enabled: schedules.enabled,
+        jobType: schedules.jobType,
+      })
+      .from(schedules)
+      .where(and(eq(schedules.workspaceId, workspaceId), eq(schedules.enabled, true))),
+  ]);
 
-  return rows
+  const queuedSlots = queuedRows
     .map((row) => row.scheduledAt)
     .filter((date): date is Date => date instanceof Date);
+  const recurringSlots = getXLikedRecurringScheduleSlots({
+    schedules: recurringSchedules,
+    now,
+  });
+
+  return [...queuedSlots, ...recurringSlots];
 }
 
 async function snapshotMedia(
