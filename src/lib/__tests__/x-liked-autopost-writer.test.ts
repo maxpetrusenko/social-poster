@@ -71,6 +71,19 @@ describe("X liked autopost writer", () => {
     ).toBe("writer included source URL for text-only repost");
   });
 
+  it("rejects text-only drafts that copy the source verbatim", () => {
+    const sourceText = "AI just made the answer key free.\n\nEveryone has it instantly now.";
+
+    expect(
+      getXLikedAutopostContentRejection({
+        content: sourceText,
+        sourceText,
+        hasMedia: false,
+        sourceUrl: "https://x.com/source/status/123",
+      })
+    ).toBe("writer returned source verbatim");
+  });
+
   it("rejects drafts that exceed the final X-safe length budget", () => {
     expect(
       getXLikedAutopostContentRejection({

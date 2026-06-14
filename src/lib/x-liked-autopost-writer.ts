@@ -20,6 +20,15 @@ const GENERIC_PHRASES = [
   "durable asset is the workflow loop",
 ];
 
+function normalizeComparableText(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/https?:\/\/\S+/g, "")
+    .replace(/["'`]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 export class XLikedAutopostWriterError extends Error {
   code: "runtime_unavailable" | "invalid_response" | "quality_rejected" | "api_error";
   fatal: boolean;
@@ -164,6 +173,7 @@ Rules for this draft:
 - The output is the main post text only.
 - For text-only reposts, keep the original train of thought: same paragraph order, same causal chain, same conclusion.
 - If the source is already clear and under budget, do a light edit only. Change roughly 5-15 words, keep the source's formatting/pacing, and preserve its key nouns.
+- Do not return the source verbatim. The post should read like a careful Max curation pass, not a copy/paste.
 - Preserve the source's frame, metaphor, numbers, named concepts, and ending. Do not replace them with generic commentary.
 - For copied media, include a compact take. The platform formatter adds video/embed attribution separately.
 - Omit the source URL for text-only opinion/compression.
@@ -229,6 +239,9 @@ export function getXLikedAutopostContentRejection(input: {
 
   if (!input.hasMedia && content.includes(input.sourceUrl)) {
     return "writer included source URL for text-only repost";
+  }
+  if (!input.hasMedia && normalizeComparableText(content) === normalizeComparableText(input.sourceText)) {
+    return "writer returned source verbatim";
   }
 
   const generic = GENERIC_PHRASES.find((phrase) => normalized.includes(phrase));
