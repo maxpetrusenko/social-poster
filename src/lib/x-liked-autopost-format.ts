@@ -100,6 +100,33 @@ function shortenLine(value: string, max = 170) {
   return clipped || clean.slice(0, max).trim();
 }
 
+function preserveTrainOfThoughtLines(lines: string[], maxLength = 1200) {
+  const shortened = lines.map((line) => shortenLine(line, 320));
+  const full = shortened.join("\n\n").trim();
+  if (full.length <= maxLength) return full;
+
+  const kept: string[] = [];
+  let used = 0;
+  for (const line of shortened) {
+    const separator = kept.length > 0 ? 2 : 0;
+    if (used + separator + line.length > maxLength) break;
+    kept.push(line);
+    used += separator + line.length;
+  }
+
+  const ending = shortened.at(-1);
+  if (ending && !kept.includes(ending)) {
+    while (kept.length > 1 && [...kept, ending].join("\n\n").length > maxLength) {
+      kept.pop();
+    }
+    if ([...kept, ending].join("\n\n").length <= maxLength) {
+      kept.push(ending);
+    }
+  }
+
+  return kept.join("\n\n").trim();
+}
+
 export function buildCloseToOriginalXLikedPostContent(sourceText: string) {
   const text = cleanXLikedText(sourceText);
   const normalized = text.toLowerCase();
@@ -136,8 +163,8 @@ export function buildCloseToOriginalXLikedPostContent(sourceText: string) {
   const lines = splitMeaningfulLines(text);
   if (lines.length === 0) return "";
 
-  if (text.length <= 360 && lines.length <= 6) {
-    return lines.map((line) => shortenLine(line, 220)).join("\n\n");
+  if (text.length <= 1200 && lines.length <= 14) {
+    return preserveTrainOfThoughtLines(lines);
   }
 
   const first = firstSentence(lines[0] ?? "");
@@ -366,13 +393,7 @@ export function buildXLikedPostContent(input: {
     });
   }
 
-  return input.includeSource === false
-    ? angle.take
-    : [
-        angle.take,
-        "",
-        `Source: @${handle} ${input.sourceUrl}`,
-      ].join("\n");
+  return angle.take;
 }
 
 function fitWithinCharacterBudget(value: string, maxLength: number) {
@@ -425,7 +446,7 @@ export function buildFaithfulXLikedFallbackPostContent(input: {
     includeSource: false,
   });
   const fallback = content || buildCloseToOriginalXLikedPostContent(input.sourceText);
-  const budget = input.hasMedia ? 220 : 275;
+  const budget = input.hasMedia ? 600 : 1200;
   return fitWithinCharacterBudget(fallback || cleanXLikedText(input.sourceText), budget);
 }
 

@@ -35,7 +35,7 @@ ENV BIRD_RUNNER=bird
 RUN --mount=type=cache,target=/root/.npm \
   apt-get update \
   && apt-get install -y --no-install-recommends chromium ffmpeg ca-certificates curl dumb-init \
-  && npm install -g @steipete/bird \
+  && npm install -g github:maxpetrusenko/steipete-bird#feat/social-poster-inbox-analytics \
   && rm -rf /var/lib/apt/lists/*
 
 RUN mkdir -p /data

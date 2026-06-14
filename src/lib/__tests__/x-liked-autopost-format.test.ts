@@ -28,7 +28,7 @@ describe("X liked autopost formatting", () => {
     expect(content).toMatch(/^I am on the \$200 Claude/);
     expect(content).not.toMatch(/I discovered/);
     expect(content).not.toMatch(/Credit:/);
-    expect(content).toMatch(/Source: @founder https:\/\/x\.com\/founder\/status\/123/);
+    expect(content).not.toMatch(/Source:/);
   });
 
   it("decodes entities and removes trailing t.co media URLs when media is copied", () => {
@@ -229,6 +229,42 @@ describe("X liked autopost formatting", () => {
     expect(content).not.toMatch(/workflow loop/i);
   });
 
+  it("preserves the Garry Tan answer-key train of thought in order", () => {
+    const content = buildCloseToOriginalXLikedPostContent(
+      [
+        "Elite admissions select for one trait: getting the known answer faster than anyone else. 18 years of optimizing against an answer key someone already wrote.",
+        "",
+        "AI just made the answer key free. Everyone has it instantly now.",
+        "",
+        "So the kids trained hardest to win spent their whole lives mastering the one thing that's now a commodity. The premium moved to the questions with no answer key yet.",
+        "",
+        "We need a new training.",
+        "",
+        "The new training is about one thing:",
+        "",
+        "How to be the first person standing in a new land, exploring it, preparing it for the coming billion people who will need it. The future will be built by these people.",
+        "",
+        "And there is a lot to build.",
+      ].join("\n")
+    );
+
+    expect(content).toContain("answer key");
+    expect(content).toContain("commodity");
+    expect(content).toContain("new training");
+    expect(content).toContain("new land");
+    expect(content).toContain("And there is a lot to build.");
+    expect(content.length).toBeGreaterThan(500);
+
+    const answerKeyIndex = content.indexOf("answer key");
+    const commodityIndex = content.indexOf("commodity");
+    const trainingIndex = content.indexOf("new training");
+    const newLandIndex = content.indexOf("new land");
+    expect(answerKeyIndex).toBeGreaterThanOrEqual(0);
+    expect(commodityIndex).toBeGreaterThan(answerKeyIndex);
+    expect(trainingIndex).toBeGreaterThan(commodityIndex);
+    expect(newLandIndex).toBeGreaterThan(trainingIndex);
+  });
+
   it("credits the source when the liked post is a video share lane", () => {
     const content = buildXLikedPostContent({
       authorHandle: "@atomic_chat_hq",
@@ -401,7 +437,7 @@ describe("X liked autopost formatting", () => {
       ].join("\n"),
     });
 
-    expect(content.length).toBeLessThanOrEqual(220);
+    expect(content.length).toBeLessThanOrEqual(600);
     expect(content).toContain("Qwen");
     expect(content).not.toMatch(/Source:/);
   });
@@ -414,7 +450,7 @@ describe("X liked autopost formatting", () => {
         "FreeLLMAPI is an open-source proxy. Each provider's free tier is a toy on its own. Stacked together they add up to ~800M tokens a month.",
     });
 
-    expect(content.length).toBeLessThanOrEqual(275);
+    expect(content.length).toBeLessThanOrEqual(1200);
     expect(content).toContain("https://github.com/tashfeenahmed/freellmapi");
   });
 });

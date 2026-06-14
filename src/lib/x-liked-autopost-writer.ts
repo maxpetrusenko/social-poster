@@ -6,8 +6,8 @@ import { X_POSTING_SKILL_INSTRUCTIONS } from "@/lib/x-posting-skill";
 
 const DEFAULT_MODEL = process.env.OPENAI_SOCIAL_POST_MODEL || "gpt-4.1-mini";
 const MAX_ATTEMPTS = 3;
-const X_SAFE_CHAR_LIMIT = 275;
-const X_MEDIA_SAFE_CHAR_LIMIT = 220;
+const X_SAFE_CHAR_LIMIT = 1200;
+const X_MEDIA_SAFE_CHAR_LIMIT = 600;
 
 const GENERIC_PHRASES = [
   "builder signal",
@@ -162,7 +162,9 @@ ${input.sourceText || "(empty)"}
 
 Rules for this draft:
 - The output is the main post text only.
-- For text-only reposts, stay close to the original: preserve the frame, metaphor, numbers, and ending.
+- For text-only reposts, keep the original train of thought: same paragraph order, same causal chain, same conclusion.
+- If the source is already clear and under budget, do a light edit only. Change roughly 5-15 words, keep the source's formatting/pacing, and preserve its key nouns.
+- Preserve the source's frame, metaphor, numbers, named concepts, and ending. Do not replace them with generic commentary.
 - For copied media, include a compact take. The platform formatter adds video/embed attribution separately.
 - Omit the source URL for text-only opinion/compression.
 - Keep useful GitHub URLs when the source is a repo/bookmark lane.
@@ -241,6 +243,21 @@ export function getXLikedAutopostContentRejection(input: {
   if (/\bbumblebee scanner\b/.test(source) || /\bsupply-chain surprises\b/.test(source)) {
     if (!/\bbumblebee\b/i.test(content) && !/\bsupply-chain\b/i.test(content)) {
       return "writer lost the concrete demo hook";
+    }
+  }
+
+  const trainOfThoughtTerms = [
+    ["answer key", /\banswer key\b/i],
+    ["commodity", /\bcommodity\b/i],
+    ["new training", /\bnew training\b/i],
+    ["new land", /\bnew land\b/i],
+  ] as const;
+  if (trainOfThoughtTerms.filter(([, pattern]) => pattern.test(source)).length >= 3) {
+    const missing = trainOfThoughtTerms
+      .filter(([, pattern]) => pattern.test(source) && !pattern.test(content))
+      .map(([label]) => label);
+    if (missing.length > 0) {
+      return `writer lost train-of-thought terms: ${missing.join(", ")}`;
     }
   }
 

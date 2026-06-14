@@ -20,9 +20,10 @@ describe("X liked autopost writer", () => {
 
     expect(prompt).toContain("X Posting rules for Max Petrusenko");
     expect(prompt).toContain("Reposting is usually curation");
-    expect(prompt).toContain("preserve the frame, metaphor, numbers, and ending");
+    expect(prompt).toContain("keep the original train of thought");
+    expect(prompt).toContain("Change roughly 5-15 words");
     expect(prompt).toContain("builder signal");
-    expect(prompt).toContain("Hard length budget: 275 characters");
+    expect(prompt).toContain("Hard length budget: 1200 characters");
   });
 
   it("feeds rejection feedback into retry prompts", () => {
@@ -36,7 +37,7 @@ describe("X liked autopost writer", () => {
     });
 
     expect(prompt).toContain("Previous draft failed: writer returned thread numbering");
-    expect(prompt).toContain("Hard length budget: 220 characters");
+    expect(prompt).toContain("Hard length budget: 600 characters");
   });
 
   it("rejects generic fallback phrases before publish", () => {
@@ -73,21 +74,21 @@ describe("X liked autopost writer", () => {
   it("rejects drafts that exceed the final X-safe length budget", () => {
     expect(
       getXLikedAutopostContentRejection({
-        content: "A".repeat(276),
+        content: "A".repeat(1201),
         sourceText: "Short source.",
         hasMedia: false,
         sourceUrl: "https://x.com/source/status/123",
       })
-    ).toBe("writer exceeded 275 character budget");
+    ).toBe("writer exceeded 1200 character budget");
 
     expect(
       getXLikedAutopostContentRejection({
-        content: "A".repeat(221),
+        content: "A".repeat(601),
         sourceText: "Short source with media.",
         hasMedia: true,
         sourceUrl: "https://x.com/source/status/123",
       })
-    ).toBe("writer exceeded 220 character budget");
+    ).toBe("writer exceeded 600 character budget");
   });
 
   it("rejects drafts that lose required concrete source hooks", () => {
@@ -108,6 +109,42 @@ describe("X liked autopost writer", () => {
         sourceUrl: "https://x.com/source/status/123",
       })
     ).toBe("writer lost the concrete demo hook");
+  });
+
+  it("rejects Garry-style drafts that lose the original train of thought", () => {
+    const sourceText = [
+      "Elite admissions select for one trait: getting the known answer faster than anyone else.",
+      "AI just made the answer key free.",
+      "So the kids trained hardest to win mastered the one thing that's now a commodity.",
+      "We need a new training.",
+      "How to be the first person standing in a new land.",
+    ].join("\n\n");
+
+    expect(
+      getXLikedAutopostContentRejection({
+        content: "AI makes old schooling less useful. The future belongs to explorers.",
+        sourceText,
+        hasMedia: false,
+        sourceUrl: "https://x.com/garrytan/status/2066153523868467702",
+      })
+    ).toBe("writer lost train-of-thought terms: answer key, commodity, new training, new land");
+
+    expect(
+      getXLikedAutopostContentRejection({
+        content: [
+          "AI just made the answer key free.",
+          "",
+          "The commodity is knowing the old answer faster.",
+          "",
+          "We need a new training for the questions with no answer key yet.",
+          "",
+          "The future belongs to people willing to stand in the new land first.",
+        ].join("\n"),
+        sourceText,
+        hasMedia: false,
+        sourceUrl: "https://x.com/garrytan/status/2066153523868467702",
+      })
+    ).toBeNull();
   });
 
   it("parses Responses JSON content", () => {
