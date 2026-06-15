@@ -61,6 +61,7 @@ export async function draftXLikedAutopostContent(input: {
   authorHandle: string;
   sourceUrl: string;
   sourceText: string;
+  externalUrls?: string[];
   hasMedia: boolean;
   mediaType: "image" | "video" | null;
 }): Promise<XLikedAutopostWriterResult> {
@@ -111,6 +112,7 @@ export async function draftXLikedAutopostContent(input: {
       const rejection = getXLikedAutopostContentRejection({
         content,
         sourceText: input.sourceText,
+        externalUrls: input.externalUrls,
         hasMedia: input.hasMedia,
         sourceUrl: input.sourceUrl,
       });
@@ -147,6 +149,7 @@ export function buildXLikedAutopostWriterPrompt(input: {
   authorHandle: string;
   sourceUrl: string;
   sourceText: string;
+  externalUrls?: string[];
   hasMedia: boolean;
   mediaType: "image" | "video" | null;
   previousRejection?: string | null;
@@ -165,6 +168,8 @@ Write one post for Max based on a liked X post.
 
 Source author: ${input.authorHandle || "unknown"}
 Source URL: ${input.sourceUrl}
+External URLs recovered from source metadata:
+${input.externalUrls?.length ? input.externalUrls.map((url) => `- ${url}`).join("\n") : "(none)"}
 Media: ${input.mediaType ?? "none"}
 Source text:
 ${input.sourceText || "(empty)"}
@@ -180,6 +185,8 @@ Rules for this draft:
 - Keep useful GitHub URLs when the source is a repo/bookmark lane.
 - Attribute source-owned launches to the source account.
 - Do not claim Max built, launched, tried, or discovered something without evidence in the source text.
+- If the source uses first person and the author is not Max, do not copy "I", "my", "we", or "our" into Max's voice. Translate it into a Max-owned workflow rule, concrete mechanism, or source-attributed observation.
+- If the source mentions a study, paper, research, experiment, or participant count, include the primary study URL from the recovered external URLs when one is available.
 - Write one standalone post. No thread markers such as 1/2.
 - Avoid generic phrases such as "builder signal", "winning coding setup", "workflow loop", "game-changing", "cutting-edge", "unlock", and "redefine".
 - Hard length budget: ${input.hasMedia ? X_MEDIA_SAFE_CHAR_LIMIT : X_SAFE_CHAR_LIMIT} characters. Count all characters.
@@ -223,6 +230,7 @@ export function parseWriterResponse(data: Record<string, unknown>) {
 export function getXLikedAutopostContentRejection(input: {
   content: string;
   sourceText: string;
+  externalUrls?: string[];
   hasMedia: boolean;
   sourceUrl: string;
 }) {
@@ -242,6 +250,19 @@ export function getXLikedAutopostContentRejection(input: {
   }
   if (!input.hasMedia && normalizeComparableText(content) === normalizeComparableText(input.sourceText)) {
     return "writer returned source verbatim";
+  }
+
+  if (hasSourceOwnedFirstPerson(input.sourceText) && hasSourceOwnedFirstPerson(content)) {
+    return "writer copied source-owned first person into Max voice";
+  }
+
+  const primaryStudyUrl = pickPrimaryStudyUrl(input.externalUrls ?? []);
+  if (
+    primaryStudyUrl &&
+    looksLikeStudyClaim(input.sourceText) &&
+    !content.includes(primaryStudyUrl)
+  ) {
+    return "writer omitted recovered primary study URL";
   }
 
   const generic = GENERIC_PHRASES.find((phrase) => normalized.includes(phrase));
@@ -275,4 +296,18 @@ export function getXLikedAutopostContentRejection(input: {
   }
 
   return null;
+}
+
+function hasSourceOwnedFirstPerson(text: string) {
+  return /\b(I|I'm|I’m|I've|I’ve|my|we|we're|we’re|we've|we’ve|our)\b/.test(text);
+}
+
+function looksLikeStudyClaim(text: string) {
+  return /\b(study|paper|research|participants|people|subjects|respondents|experiment|arxiv|doi)\b/i.test(text);
+}
+
+function pickPrimaryStudyUrl(urls: string[]) {
+  return urls.find((url) =>
+    /\b(arxiv\.org|doi\.org|papers\.ssrn\.com|openreview\.net|nature\.com|science\.org|acm\.org|ieee\.org)\b/i.test(url)
+  ) ?? null;
 }

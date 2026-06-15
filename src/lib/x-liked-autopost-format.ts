@@ -438,16 +438,90 @@ export function buildFaithfulXLikedFallbackPostContent(input: {
   sourceUrl: string;
   sourceText: string;
   hasMedia?: boolean;
+  externalUrls?: string[];
 }) {
+  const sourceText = input.sourceText;
   const content = buildXLikedPostContent({
     authorHandle: input.authorHandle,
     sourceUrl: input.sourceUrl,
-    sourceText: input.sourceText,
+    sourceText,
     includeSource: false,
   });
-  const fallback = content || buildCloseToOriginalXLikedPostContent(input.sourceText);
+  const fallback = content || buildCloseToOriginalXLikedPostContent(sourceText);
   const budget = input.hasMedia ? 600 : 1200;
-  return fitWithinCharacterBudget(fallback || cleanXLikedText(input.sourceText), budget);
+  const repaired = repairSourceOwnedFirstPerson({
+    content: fallback || cleanXLikedText(sourceText),
+    sourceText,
+    authorHandle: input.authorHandle,
+  });
+  const primaryStudyUrl = pickPrimaryStudyUrl(input.externalUrls ?? []);
+  const withStudyUrl =
+    primaryStudyUrl && looksLikeStudyClaim(sourceText) && !repaired.includes(primaryStudyUrl)
+      ? [repaired, "", `Study: ${primaryStudyUrl}`].join("\n")
+      : repaired;
+
+  return fitWithinCharacterBudget(withStudyUrl, budget);
+}
+
+function looksLikeStudyClaim(text: string) {
+  return /\b(study|paper|research|participants|people|subjects|respondents|experiment|arxiv|doi)\b/i.test(text);
+}
+
+function pickPrimaryStudyUrl(urls: string[]) {
+  return urls.find((url) => /\b(arxiv\.org|doi\.org|papers\.ssrn\.com|openreview\.net|nature\.com|science\.org|acm\.org|ieee\.org)\b/i.test(url))
+    ?? null;
+}
+
+function repairSourceOwnedFirstPerson(input: {
+  content: string;
+  sourceText: string;
+  authorHandle: string;
+}) {
+  if (!hasFirstPersonClaim(input.sourceText) || !hasFirstPersonClaim(input.content)) {
+    return input.content;
+  }
+
+  const handle = normalizeHandle(input.authorHandle || "source");
+  const lines = splitMeaningfulLines(input.sourceText);
+  const first = sourceFirstPersonToRule(lines[0] ?? input.sourceText, handle);
+  const concrete = lines.find((line) => /\b(goal|codex|claude|agent|prompt|diff|tok\/s|seconds?|minutes?|hours?|%|\$|\d)\b/i.test(line));
+  const second = concrete && concrete !== lines[0] ? shortenLine(concrete, 220) : "";
+
+  return [
+    "Useful pattern to steal:",
+    "",
+    first,
+    second ? "" : null,
+    second || null,
+    "",
+    "The post is not the point. The workflow rule is.",
+  ]
+    .filter((line): line is string => line !== null)
+    .join("\n");
+}
+
+function hasFirstPersonClaim(text: string) {
+  return /\b(I|I'm|I’m|I've|I’ve|my|we|we're|we’re|we've|we’ve|our)\b/.test(text);
+}
+
+function sourceFirstPersonToRule(line: string, handle: string) {
+  const cleaned = shortenLine(line, 220)
+    .replace(/\bmy own\b/gi, "a")
+    .replace(/\bour own\b/gi, "a")
+    .replace(/\bmy\b/gi, "their")
+    .replace(/\bour\b/gi, "their")
+    .replace(/\bI ask\b/gi, "ask")
+    .replace(/\bI use\b/gi, "use")
+    .replace(/\bI write\b/gi, "write")
+    .replace(/\bwe ask\b/gi, "ask")
+    .replace(/\bwe use\b/gi, "use")
+    .replace(/\bwe write\b/gi, "write")
+    .replace(/^\s*I\s+/i, "")
+    .replace(/^\s*we\s+/i, "")
+    .trim();
+
+  if (cleaned.startsWith(`@${handle}`)) return cleaned;
+  return `@${handle}'s workflow: ${cleaned}`;
 }
 
 export function buildXLikedSourceComment(input: {

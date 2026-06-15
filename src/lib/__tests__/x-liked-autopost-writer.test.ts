@@ -40,6 +40,21 @@ describe("X liked autopost writer", () => {
     expect(prompt).toContain("Hard length budget: 600 characters");
   });
 
+  it("tells the writer to repair source-owned first person and recovered study URLs", () => {
+    const prompt = buildXLikedAutopostWriterPrompt({
+      authorHandle: "@rohanpaul_ai",
+      sourceUrl: "https://x.com/rohanpaul_ai/status/123",
+      sourceText: "A study with 2,691 people shows AI saves 7.5s instead of 55.7s.",
+      externalUrls: ["https://arxiv.org/abs/2605.22687"],
+      hasMedia: false,
+      mediaType: null,
+    });
+
+    expect(prompt).toContain("https://arxiv.org/abs/2605.22687");
+    expect(prompt).toContain("do not copy \"I\", \"my\", \"we\", or \"our\"");
+    expect(prompt).toContain("include the primary study URL");
+  });
+
   it("rejects generic fallback phrases before publish", () => {
     expect(
       getXLikedAutopostContentRejection({
@@ -82,6 +97,54 @@ describe("X liked autopost writer", () => {
         sourceUrl: "https://x.com/source/status/123",
       })
     ).toBe("writer returned source verbatim");
+  });
+
+  it("rejects copied first-person source voice", () => {
+    expect(
+      getXLikedAutopostContentRejection({
+        content: "I basically never write my own /goal anymore. I ask Codex to write it.",
+        sourceText: "I basically never write my own /goal anymore. I ask Codex to write it.",
+        hasMedia: false,
+        sourceUrl: "https://x.com/source/status/123",
+      })
+    ).toBe("writer returned source verbatim");
+
+    expect(
+      getXLikedAutopostContentRejection({
+        content: "I ask Codex to write the goal before it starts.",
+        sourceText: "I basically never write my own /goal anymore. I ask Codex to write it.",
+        hasMedia: false,
+        sourceUrl: "https://x.com/source/status/123",
+      })
+    ).toBe("writer copied source-owned first person into Max voice");
+  });
+
+  it("rejects study drafts that omit a recovered primary source URL", () => {
+    expect(
+      getXLikedAutopostContentRejection({
+        content: "AI feels faster before it is faster. Measured saving: 7.5 seconds.",
+        sourceText: "A study with 2,691 people shows AI saves 7.5 seconds instead of the expected 55.7 seconds.",
+        externalUrls: ["https://arxiv.org/abs/2605.22687"],
+        hasMedia: false,
+        sourceUrl: "https://x.com/source/status/123",
+      })
+    ).toBe("writer omitted recovered primary study URL");
+
+    expect(
+      getXLikedAutopostContentRejection({
+        content: [
+          "AI feels faster before it is faster.",
+          "",
+          "Measured saving: 7.5 seconds.",
+          "",
+          "Study: https://arxiv.org/abs/2605.22687",
+        ].join("\n"),
+        sourceText: "A study with 2,691 people shows AI saves 7.5 seconds instead of the expected 55.7 seconds.",
+        externalUrls: ["https://arxiv.org/abs/2605.22687"],
+        hasMedia: false,
+        sourceUrl: "https://x.com/source/status/123",
+      })
+    ).toBeNull();
   });
 
   it("rejects drafts that exceed the final X-safe length budget", () => {

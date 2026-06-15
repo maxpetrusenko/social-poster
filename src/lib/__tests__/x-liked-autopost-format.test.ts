@@ -442,6 +442,35 @@ describe("X liked autopost formatting", () => {
     expect(content).not.toMatch(/Source:/);
   });
 
+  it("repairs source-owned first person in deterministic fallback", () => {
+    const content = buildFaithfulXLikedFallbackPostContent({
+      authorHandle: "@skirano",
+      sourceUrl: "https://x.com/skirano/status/2066225908202053818",
+      sourceText:
+        "I basically never write my own /goal anymore. Instead, I ask Codex to write one for itself, and one for each agent it spawns.",
+    });
+
+    expect(content).toContain("Useful pattern to steal:");
+    expect(content).toContain("@skirano's workflow: basically never write a /goal");
+    expect(content).toContain("The post is not the point. The workflow rule is.");
+    expect(content).not.toMatch(/^I\b/);
+  });
+
+  it("keeps recovered primary study URLs in deterministic fallback", () => {
+    const content = buildFaithfulXLikedFallbackPostContent({
+      authorHandle: "@rohanpaul_ai",
+      sourceUrl: "https://x.com/rohanpaul_ai/status/2066150916357493180",
+      sourceText:
+        "A study with 2,691 people shows AI feels efficient but often saves only 7.5s versus a 55.7s expected gain on easy tasks.",
+      externalUrls: ["https://arxiv.org/abs/2605.22687"],
+    });
+
+    expect(content).toContain("2,691");
+    expect(content).toContain("7.5s");
+    expect(content).toContain("Study: https://arxiv.org/abs/2605.22687");
+    expect(content.length).toBeLessThanOrEqual(1200);
+  });
+
   it("keeps a GitHub URL in bounded repo fallbacks", () => {
     const content = buildFaithfulXLikedFallbackPostContent({
       authorHandle: "@dr_cintas",

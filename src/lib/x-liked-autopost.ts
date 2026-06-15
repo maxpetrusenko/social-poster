@@ -20,6 +20,7 @@ import {
   type XLikedAutopostWriterResult,
 } from "@/lib/x-liked-autopost-writer";
 import {
+  buildFaithfulXLikedFallbackPostContent,
   buildXLikedDedupKey,
   buildXLikedPlatformPostContent,
   getXLikedExternalUrls,
@@ -31,10 +32,7 @@ import {
   resolveXLikedPlatformMedia,
   type XLikedMedia,
 } from "@/lib/x-liked-autopost-format";
-import {
-  notifyXLikedAutopostOperationalFailure,
-  type XLikedAutopostOperationalFailure,
-} from "@/lib/x-liked-autopost-notifications";
+import type { XLikedAutopostOperationalFailure } from "@/lib/x-liked-autopost-notifications";
 import {
   findNextXLikedAutopostSlot,
   getXLikedRecurringScheduleSlots,
@@ -482,6 +480,7 @@ export async function runXLikedAutopost(options: RunOptions): Promise<XLikedAuto
 
     const authorHandle = getTweetAuthor(tweet);
     const cleanText = cleanXLikedText(getTweetText(tweet), { hasMedia: Boolean(media) });
+    const externalUrls = getXLikedExternalUrls({ tweet, sourceText: cleanText });
     if (!cleanText.trim()) {
       result.skipped.push({ url: sourceUrl, reason: "empty cleaned tweet text" });
       continue;
@@ -500,7 +499,7 @@ export async function runXLikedAutopost(options: RunOptions): Promise<XLikedAuto
         authorHandle,
         tweetId: tweet.id ?? null,
         mediaUrl: media?.url ?? null,
-        externalUrls: getXLikedExternalUrls({ tweet, sourceText: cleanText }),
+        externalUrls,
       }),
       completedStep("x-like:gbrain-context", now, {
         status: "deferred",
@@ -533,6 +532,7 @@ export async function runXLikedAutopost(options: RunOptions): Promise<XLikedAuto
         authorHandle,
         sourceUrl,
         sourceText: cleanText,
+        externalUrls,
         hasMedia: Boolean(media),
         mediaType: media?.mediaType ?? null,
       });
@@ -565,66 +565,50 @@ export async function runXLikedAutopost(options: RunOptions): Promise<XLikedAuto
               error: writerError,
             };
       const completedAt = new Date();
+      const fallbackContent = buildFaithfulXLikedFallbackPostContent({
+        authorHandle,
+        sourceUrl,
+        sourceText: cleanText,
+        hasMedia: Boolean(media),
+        externalUrls,
+      });
+      writer = {
+        content: fallbackContent,
+        model: "deterministic-fallback",
+        modelSource: "local",
+        traceUrl: null,
+      };
       runSteps.push(
         completedStep("x-like:draft", completedAt, {
           strategy: "ai",
           status: "rejected_or_unavailable",
           error: writerError,
         }),
-        completedStep("x-like:review-needed", completedAt, {
+        completedStep("x-like:fallback-repaired", completedAt, {
           reason:
             error instanceof XLikedAutopostWriterError
               ? error.code
               : "writer_error",
           sourceUrl,
-          externalUrls: getXLikedExternalUrls({ tweet, sourceText: cleanText }),
-          note: "No fallback post was queued. Notify the social posting channel and wait for a better draft.",
+          externalUrls,
+          contentLength: fallbackContent.length,
+          note: "Like is the publish signal. Writer failure was repaired with faithful deterministic fallback and will still queue.",
         })
       );
 
-      const notificationResult = dryRun
-        ? {
-            telegram: { status: "skipped" as const, reason: "dry run" },
-            matrix: { status: "skipped" as const, reason: "dry run" },
-          }
-        : await notifyXLikedAutopostOperationalFailure({
-            runId,
-            workspaceId: options.workspaceId,
-            sourceUrl,
-            failures: [writerFailure],
-          }).catch((notifyError) => ({
-            telegram: {
-              status: "failed" as const,
-              error: notifyError instanceof Error ? notifyError.message : String(notifyError),
-            },
-            matrix: {
-              status: "failed" as const,
-              error: notifyError instanceof Error ? notifyError.message : String(notifyError),
-            },
-          }));
-
       if (!dryRun) {
-        await releaseDedupKey(dedupKey);
         await db.update(pipelineRuns).set({
-          status: "failed",
+          status: "running",
           steps: [
             ...runSteps,
-            completedStep("x-like:failure-notify", completedAt, {
-              result: notificationResult,
+            completedStep("x-like:repair-notify", completedAt, {
+              result: "skipped",
               failures: [writerFailure],
+              note: "No failure alert sent because the post was repaired and queued.",
             }),
           ],
-          error: writerError,
-          durationMs: Math.max(0, completedAt.getTime() - now.getTime()),
-          completedAt,
         }).where(eq(pipelineRuns.id, runId));
       }
-
-      result.skipped.push({
-        url: sourceUrl,
-        reason: `writer failed: ${writerError}`,
-      });
-      continue;
     }
 
     const content = writer.content;
@@ -746,8 +730,8 @@ export async function runXLikedAutopost(options: RunOptions): Promise<XLikedAuto
         mediaUrlsByPlatformId,
         contentMachine: {
           invariant: "like_creates_publishing_obligation",
-          fallbackAllowed: false,
-          lowQualityAction: "notify_and_review_needed",
+          fallbackAllowed: true,
+          lowQualityAction: "repair_and_queue",
         },
         writer: {
           source: "ai",
