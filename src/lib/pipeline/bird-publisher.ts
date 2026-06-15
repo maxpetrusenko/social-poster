@@ -46,7 +46,7 @@ export function resolveBirdThreadParts(
   >,
   threadLongPostsOverride?: boolean
 ) {
-  const threadLongPosts = threadLongPostsOverride ?? credentials.threadLongPosts;
+  const threadLongPosts = threadLongPostsOverride === true;
   return threadLongPosts && content.length > credentials.tweetCharLimit
     ? splitBirdThreadContent(content, credentials.threadChunkLimit)
     : [content.trim()];
@@ -96,7 +96,7 @@ function buildBirdBaseArgs(credentials: BirdCredentials) {
 }
 
 async function runBird(args: string[], credentials: BirdCredentials) {
-  const runner = process.env.BIRD_RUNNER || "npx";
+  const runner = process.env.BIRD_RUNNER || "bird";
   const baseArgs = buildBirdBaseArgs(credentials);
   const runnerArgs =
     runner === "npx"

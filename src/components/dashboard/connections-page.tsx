@@ -74,7 +74,7 @@ export function ConnectionsPage({
   const [selectedStatus, setSelectedStatus] = useState<"all" | "enabled" | "disabled">("all");
   const [formState, setFormState] = useState<FormState>({
     useInstalledBirdSession: true,
-    threadLongPosts: true,
+    threadLongPosts: false,
   });
   const [error, setError] = useState<string | null>(initialError);
   const [isSaving, startSaving] = useTransition();
@@ -238,7 +238,7 @@ export function ConnectionsPage({
     setRequestedMethodMode("native");
     setFormState({
       useInstalledBirdSession: true,
-      threadLongPosts: true,
+      threadLongPosts: false,
     });
     setError(null);
   }

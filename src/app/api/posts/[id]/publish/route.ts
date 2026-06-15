@@ -130,6 +130,7 @@ export async function POST(
         mediaType: getMediaType(post.contentType, platformMediaUrl ?? null),
         instagramContentType,
         platformFormat: override.format,
+        threadLongPosts: override.format?.trim().toLowerCase() === "thread",
         firstComment: override.firstComment,
         collaborators: override.collaborators,
       },

@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 
-const DEFAULT_TWEET_CHAR_LIMIT = 280;
+const DEFAULT_TWEET_CHAR_LIMIT = 25000;
 const DEFAULT_THREAD_CHUNK_LIMIT = 260;
 
 export type BirdCredentialSource = {
@@ -208,7 +208,7 @@ export function resolveBirdCredentialsFromSource(
       null,
     firefoxProfile: readCredentialString(credentials, "firefoxProfile"),
     cookieSource: readCredentialStringArray(credentials, "cookieSource"),
-    threadLongPosts: readCredentialBoolean(credentials, "threadLongPosts", true),
+    threadLongPosts: readCredentialBoolean(credentials, "threadLongPosts", false),
     tweetCharLimit: readCredentialNumber(
       credentials,
       "tweetCharLimit",

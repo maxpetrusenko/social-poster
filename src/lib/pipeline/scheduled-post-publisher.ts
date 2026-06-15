@@ -135,6 +135,7 @@ async function publishScheduledPost(post: ScheduledPost) {
               mediaUrlCount: platformMediaUrls.length,
             }),
             platformFormat: override.format,
+            threadLongPosts: override.format?.trim().toLowerCase() === "thread",
             firstComment: override.firstComment,
             collaborators: override.collaborators,
           },

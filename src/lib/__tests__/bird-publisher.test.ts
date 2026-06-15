@@ -10,10 +10,20 @@ describe("Bird publisher", () => {
       "The account can publish long-form X posts, so this should not become a numbered thread.",
     ].join("\n\n");
 
-    const threaded = resolveBirdThreadParts(
+    const singleByDefault = resolveBirdThreadParts(
       content,
       {
         threadLongPosts: true,
+        tweetCharLimit: 80,
+        threadChunkLimit: 70,
+      }
+    );
+    expect(singleByDefault).toEqual([content]);
+
+    const threaded = resolveBirdThreadParts(
+      content,
+      {
+        threadLongPosts: false,
         tweetCharLimit: 80,
         threadChunkLimit: 70,
       },

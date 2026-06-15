@@ -74,7 +74,8 @@ test("resolveBirdCredentials prefers installed Bird session over env fallback", 
     assert.equal(resolved.authToken, null);
     assert.equal(resolved.ct0, null);
     assert.equal(resolved.chromeProfileDir, "/tmp/chrome-profile");
-    assert.equal(resolved.threadLongPosts, true);
+    assert.equal(resolved.threadLongPosts, false);
+    assert.equal(resolved.tweetCharLimit, 25000);
   } finally {
     if (previousAuthToken === undefined) {
       delete process.env.X_AUTH_TOKEN;
