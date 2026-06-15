@@ -20,6 +20,16 @@ const GENERIC_PHRASES = [
   "durable asset is the workflow loop",
 ];
 
+function shouldEmbedSourceForTextOnlyPost(input: {
+  sourceText: string;
+  sourceUrl: string;
+  hasMedia?: boolean;
+}) {
+  if (input.hasMedia) return false;
+  if (!/^https:\/\/(?:x|twitter)\.com\//i.test(input.sourceUrl)) return false;
+  return input.sourceText.length > 1800 || /\b(article|essay|window has closed|worth reading)\b/i.test(input.sourceText);
+}
+
 function normalizeComparableText(value: string) {
   return value
     .toLowerCase()
@@ -157,6 +167,30 @@ export function buildXLikedAutopostWriterPrompt(input: {
   const retryInstruction = input.previousRejection
     ? `\nPrevious draft failed: ${input.previousRejection}\nRewrite the draft to satisfy that issue while preserving the source's concrete point.\n`
     : "";
+  const sourceEmbedInstruction = shouldEmbedSourceForTextOnlyPost(input)
+    ? [
+        "",
+        "This source is a long X article/essay. Do not compress the essay into Max's essay.",
+        "Write a short source-embed share instead:",
+        "- Open with a tiny human moment from the source, ideally 1 sentence.",
+        "- Name one concrete mechanism from the source.",
+        "- Add one plain implication in Max's voice.",
+        "- Include the original source URL as the final line so X embeds it.",
+        "- Target 70-140 words.",
+        "Example shape:",
+        "Fable was here, then gone.",
+        "",
+        "That tiny shock is the whole essay.",
+        "",
+        "Frontier AI is becoming infrastructure now: access, compute, models, talent, the ability to use models to build the next models.",
+        "",
+        "Countries and companies that treat this like another software wave are choosing dependence.",
+        "",
+        "Worth reading.",
+        "",
+        input.sourceUrl,
+      ].join("\n")
+    : "";
 
   return `You write Max Petrusenko's liked-post autoposts.
 
@@ -178,10 +212,12 @@ Rules for this draft:
 - The output is the main post text only.
 - For text-only reposts, keep the original train of thought: same paragraph order, same causal chain, same conclusion.
 - If the source is already clear and under budget, do a light edit only. Change roughly 5-15 words, keep the source's formatting/pacing, and preserve its key nouns.
+- Exception: if this prompt says the source is a long X article/essay, write a short Max take and include the original source URL as the final line for the embed.
 - Do not return the source verbatim. The post should read like a careful Max curation pass, not a copy/paste.
 - Preserve the source's frame, metaphor, numbers, named concepts, and ending. Do not replace them with generic commentary.
 - For copied media, include a compact take. The platform formatter adds video/embed attribution separately.
 - Omit the source URL for text-only opinion/compression.
+- For long X article/essay shares, include the source URL in the main post.
 - Keep useful GitHub URLs when the source is a repo/bookmark lane.
 - Attribute source-owned launches to the source account.
 - Do not claim Max built, launched, tried, or discovered something without evidence in the source text.
@@ -190,6 +226,7 @@ Rules for this draft:
 - Write one standalone post. No thread markers such as 1/2.
 - Avoid generic phrases such as "builder signal", "winning coding setup", "workflow loop", "game-changing", "cutting-edge", "unlock", and "redefine".
 - Hard length budget: ${input.hasMedia ? X_MEDIA_SAFE_CHAR_LIMIT : X_SAFE_CHAR_LIMIT} characters. Count all characters.
+${sourceEmbedInstruction}
 ${retryInstruction}
 
 Respond with JSON only:
@@ -245,8 +282,13 @@ export function getXLikedAutopostContentRejection(input: {
   if (/^1\s*\/\s*2\b/m.test(content)) return "writer returned thread numbering";
   if (/\bsource:\s*/i.test(content)) return "writer included source label";
 
-  if (!input.hasMedia && content.includes(input.sourceUrl)) {
+  const shouldEmbedSource = shouldEmbedSourceForTextOnlyPost(input);
+
+  if (!input.hasMedia && !shouldEmbedSource && content.includes(input.sourceUrl)) {
     return "writer included source URL for text-only repost";
+  }
+  if (shouldEmbedSource && !content.includes(input.sourceUrl)) {
+    return "writer omitted source URL for long X article embed";
   }
   if (!input.hasMedia && normalizeComparableText(content) === normalizeComparableText(input.sourceText)) {
     return "writer returned source verbatim";
@@ -277,6 +319,14 @@ export function getXLikedAutopostContentRejection(input: {
   if (/\bbumblebee scanner\b/.test(source) || /\bsupply-chain surprises\b/.test(source)) {
     if (!/\bbumblebee\b/i.test(content) && !/\bsupply-chain\b/i.test(content)) {
       return "writer lost the concrete demo hook";
+    }
+  }
+
+  if (/\bfable\b/.test(source) && /\bmythos\b/.test(source) && /\bwindow\b/.test(source)) {
+    const hasFeltHook = /\b(fable|tiny shock|here, then gone|disappearing|gone)\b/i.test(content);
+    const hasMechanism = /\b(models?\s+(?:to\s+)?build|model-building|infrastructure|access|compute|talent|dependence|frontier)\b/i.test(content);
+    if (!hasFeltHook || !hasMechanism) {
+      return "writer lost the Fable essay hook";
     }
   }
 

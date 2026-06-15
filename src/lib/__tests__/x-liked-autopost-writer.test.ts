@@ -86,6 +86,57 @@ describe("X liked autopost writer", () => {
     ).toBe("writer included source URL for text-only repost");
   });
 
+  it("allows source embeds for long X article shares", () => {
+    const sourceUrl = "https://x.com/andrewcurran_/status/2066332670817456584";
+    const sourceText = [
+      "The Window Has Closed",
+      "",
+      "If you used Fable while it was available, you know it is special in ways that will not show up on benchmarks.",
+      "After using Fable, it now seems clearer than ever that the shift was driven by Mythos emerging from its training run.",
+      "The frontier is now an accelerating system in which the leading models will help produce the next leading models.",
+      "Countries that missed the window are choosing dependence on systems they do not own.",
+      "This is the most important technology in the history of humanity.",
+    ].join("\n\n");
+    const prompt = buildXLikedAutopostWriterPrompt({
+      authorHandle: "@AndrewCurran_",
+      sourceUrl,
+      sourceText,
+      hasMedia: false,
+      mediaType: null,
+    });
+
+    expect(prompt).toContain("long X article/essay");
+    expect(prompt).toContain("include the original source URL as the final line");
+    expect(
+      getXLikedAutopostContentRejection({
+        content: [
+          "Fable was here, then gone.",
+          "",
+          "That tiny shock is the whole essay.",
+          "",
+          "Frontier AI is becoming infrastructure now: access, compute, models, talent, the ability to use models to build the next models.",
+          "",
+          "Countries and companies that treat this like another software wave are choosing dependence.",
+          "",
+          "Worth reading.",
+          "",
+          sourceUrl,
+        ].join("\n"),
+        sourceText,
+        hasMedia: false,
+        sourceUrl,
+      })
+    ).toBeNull();
+    expect(
+      getXLikedAutopostContentRejection({
+        content: "Interesting AI essay.\n\nWorth reading.",
+        sourceText,
+        hasMedia: false,
+        sourceUrl,
+      })
+    ).toBe("writer omitted source URL for long X article embed");
+  });
+
   it("rejects text-only drafts that copy the source verbatim", () => {
     const sourceText = "AI just made the answer key free.\n\nEveryone has it instantly now.";
 

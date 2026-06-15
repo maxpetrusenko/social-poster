@@ -12,12 +12,14 @@ X Posting rules for Max Petrusenko:
 - If AI writing fails quality checks, Hermes/web research should repair the draft. If writing is unavailable, publish faithful curation close to the original and notify Max only for the operational writer failure.
 - Do not add automatic source replies. Use inline via @handle for copied media, or the original X URL in the main post when it is needed to render the source embed.
 - Direct opinion posts should stand as opinion. Omit source URL by default for close-to-original text reposts.
+- Long X articles/essays are different from normal text reposts: write a short Max take, keep the source author's URL in the main post so X can embed the article, and do not rewrite the essay as Max's argument.
 - Strip obvious AI-social patterns: antithesis frames, fake triads, "game-changing", "cutting-edge", "revolutionary", "unlock", "redefine", and generic framework voice.
 - Prefer direct claims with one concrete mechanism, one useful checklist, or one first-hand constraint.
 
 Preferred shapes:
 - Repo/bookmark: practical value first, then the GitHub URL.
 - Text-only repost/compression: stay close to the original post; keep its concrete claim and ending; omit source URL by default.
+- Long X article share: one felt hook, one concrete mechanism, one source-owned framing line, then the original X URL.
 - Launch/news: attributed source first, then operator take or testable implication.
 - Human-cost/AI-labor posts: infer the feeling through concrete tension; use direct emotion words only when they sharpen the point.
 - Video/demo share happy path: on X, include the original X URL in the main post so the source video embeds. On LinkedIn, upload the video file natively and use a small inline via @handle when attribution is needed.

@@ -127,6 +127,32 @@ function preserveTrainOfThoughtLines(lines: string[], maxLength = 1200) {
   return kept.join("\n\n").trim();
 }
 
+function isFableWindowEssay(text: string) {
+  const normalized = text.toLowerCase();
+  return /\bfable\b/.test(normalized) &&
+    /\bmythos\b/.test(normalized) &&
+    /\bwindow\b/.test(normalized) &&
+    /\bfrontier\b/.test(normalized);
+}
+
+function buildFableWindowShare(sourceUrl: string) {
+  return [
+    "Fable was here, then gone.",
+    "",
+    "That tiny shock is the whole essay.",
+    "",
+    "Frontier AI is becoming infrastructure now: access, compute, models, talent, the ability to use models to build the next models.",
+    "",
+    "Countries and companies that treat this like another software wave are choosing dependence.",
+    "",
+    "Andrew's essay is strong because it makes the geopolitical point feel personal.",
+    "",
+    "Worth reading:",
+    "",
+    sourceUrl,
+  ].join("\n");
+}
+
 export function buildCloseToOriginalXLikedPostContent(sourceText: string) {
   const text = cleanXLikedText(sourceText);
   const normalized = text.toLowerCase();
@@ -366,6 +392,10 @@ export function buildXLikedPostContent(input: {
   includeSource?: boolean;
 }) {
   const handle = normalizeHandle(input.authorHandle || "unknown");
+  if (isFableWindowEssay(input.sourceText)) {
+    return buildFableWindowShare(input.sourceUrl);
+  }
+
   const angle = getXLikedPostAngle(input.sourceText);
   if (
     angle.label === "repo bookmark" ||

@@ -265,6 +265,45 @@ describe("X liked autopost formatting", () => {
     expect(newLandIndex).toBeGreaterThan(trainingIndex);
   });
 
+  it("turns the Fable window essay into a short source-embed share", () => {
+    const sourceUrl = "https://x.com/andrewcurran_/status/2066332670817456584";
+    const sourceText = [
+      "The Window Has Closed",
+      "",
+      "If you used Fable while it was available, you know it is special in ways that will not show up on benchmarks.",
+      "After using Fable, it now seems clearer than ever that the shift was driven not only by tool advances in Claude Code and Codex, but by Mythos emerging from its training run.",
+      "The frontier is now an accelerating system in which the leading models will help produce the next leading models.",
+      "Countries that missed this window are choosing dependence on systems they do not own.",
+      "This is the most important technology in the history of humanity.",
+    ].join("\n\n");
+    const content = buildXLikedPostContent({
+      authorHandle: "@AndrewCurran_",
+      sourceUrl,
+      sourceText,
+    });
+
+    expect(content).toBe(
+      [
+        "Fable was here, then gone.",
+        "",
+        "That tiny shock is the whole essay.",
+        "",
+        "Frontier AI is becoming infrastructure now: access, compute, models, talent, the ability to use models to build the next models.",
+        "",
+        "Countries and companies that treat this like another software wave are choosing dependence.",
+        "",
+        "Andrew's essay is strong because it makes the geopolitical point feel personal.",
+        "",
+        "Worth reading:",
+        "",
+        sourceUrl,
+      ].join("\n")
+    );
+    expect(content).toContain(sourceUrl);
+    expect(content).toContain("Fable was here, then gone.");
+    expect(content.length).toBeLessThanOrEqual(1200);
+  });
+
   it("credits the source when the liked post is a video share lane", () => {
     const content = buildXLikedPostContent({
       authorHandle: "@atomic_chat_hq",
