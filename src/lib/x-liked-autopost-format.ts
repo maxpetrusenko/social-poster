@@ -74,6 +74,19 @@ export function getXLikedAutopostSkipReason(input: {
   return null;
 }
 
+export function shouldUseDirectXLikedTextCopy(input: {
+  sourceText: string;
+  hasMedia?: boolean;
+}) {
+  const text = cleanXLikedText(input.sourceText, { hasMedia: input.hasMedia });
+  if (input.hasMedia) return false;
+  if (!text.trim() || text.length > 1200) return false;
+  if (hasFirstPersonClaim(text)) return false;
+  if (hasSourceOwnedLaunchSignal(text)) return false;
+  if (looksLikeStudyClaim(text)) return false;
+  return true;
+}
+
 function splitMeaningfulLines(text: string) {
   return text
     .split("\n")

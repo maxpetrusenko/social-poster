@@ -14,6 +14,7 @@ import {
   getXLikedPostAngle,
   pickXLikedMedia,
   resolveXLikedPlatformMedia,
+  shouldUseDirectXLikedTextCopy,
 } from "../x-liked-autopost-format.ts";
 
 describe("X liked autopost formatting", () => {
@@ -29,6 +30,27 @@ describe("X liked autopost formatting", () => {
     expect(content).not.toMatch(/I discovered/);
     expect(content).not.toMatch(/Credit:/);
     expect(content).not.toMatch(/Source:/);
+  });
+
+  it("uses direct copy for short self-contained text likes", () => {
+    const sourceText = [
+      "Hermes Agent pro tip:",
+      "",
+      "Don't just read this article.",
+      "",
+      "Paste the entire thing inside your Hermes session and ask it to build your setup from it.",
+      "",
+      "Articles aren't content anymore.",
+      "",
+      "They are playbooks your agent can turn into your actual setup.",
+    ].join("\n");
+
+    expect(shouldUseDirectXLikedTextCopy({ sourceText })).toBe(true);
+    expect(buildXLikedPostContent({
+      authorHandle: "@PrajwalTomar_",
+      sourceUrl: "https://x.com/PrajwalTomar_/status/2066497450358272493",
+      sourceText,
+    })).toContain("Articles aren't content anymore.");
   });
 
   it("decodes entities and removes trailing t.co media URLs when media is copied", () => {

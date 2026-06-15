@@ -30,6 +30,7 @@ import {
   getXLikedAutopostSkipReason,
   pickXLikedMedia,
   resolveXLikedPlatformMedia,
+  shouldUseDirectXLikedTextCopy,
   type XLikedMedia,
 } from "@/lib/x-liked-autopost-format";
 import type { XLikedAutopostOperationalFailure } from "@/lib/x-liked-autopost-notifications";
@@ -526,88 +527,112 @@ export async function runXLikedAutopost(options: RunOptions): Promise<XLikedAuto
     }
 
     let writer: XLikedAutopostWriterResult;
-    try {
-      writer = await draftXLikedAutopostContent({
-        workspaceId: options.workspaceId,
-        authorHandle,
-        sourceUrl,
-        sourceText: cleanText,
-        externalUrls,
-        hasMedia: Boolean(media),
-        mediaType: media?.mediaType ?? null,
-      });
-      runSteps.push(
-        completedStep("x-like:draft", new Date(), {
-          strategy: "ai",
-          model: writer.model,
-          modelSource: writer.modelSource,
-          traceUrl: writer.traceUrl,
-        }),
-        completedStep("x-like:judge", new Date(), {
-          status: "passed",
-          rubric: [
-            "source_fidelity",
-            "max_voice",
-            "specificity",
-            "platform_fit",
-          ],
-        })
-      );
-    } catch (error) {
-      const writerError =
-        error instanceof Error ? error.message : String(error);
-      const writerFailure: XLikedAutopostOperationalFailure =
-        error instanceof XLikedAutopostWriterError
-          ? buildWriterOperationalFailure({ error })
-          : {
-              platform: "writer",
-              classification: "writer_unavailable",
-              error: writerError,
-            };
-      const completedAt = new Date();
-      const fallbackContent = buildFaithfulXLikedFallbackPostContent({
-        authorHandle,
-        sourceUrl,
-        sourceText: cleanText,
-        hasMedia: Boolean(media),
-        externalUrls,
-      });
+    if (shouldUseDirectXLikedTextCopy({ sourceText: cleanText, hasMedia: Boolean(media) })) {
       writer = {
-        content: fallbackContent,
-        model: "deterministic-fallback",
+        content: buildXLikedPostContent({
+          authorHandle,
+          sourceUrl,
+          sourceText: cleanText,
+          includeSource: false,
+        }),
+        model: "deterministic-direct-copy",
         modelSource: "local",
         traceUrl: null,
       };
       runSteps.push(
-        completedStep("x-like:draft", completedAt, {
-          strategy: "ai",
-          status: "rejected_or_unavailable",
-          error: writerError,
+        completedStep("x-like:draft", new Date(), {
+          strategy: "deterministic-direct-copy",
+          note: "Self-contained text-like under budget. Preserved source wording instead of running interpretive writer.",
         }),
-        completedStep("x-like:fallback-repaired", completedAt, {
-          reason:
-            error instanceof XLikedAutopostWriterError
-              ? error.code
-              : "writer_error",
-          sourceUrl,
-          externalUrls,
-          contentLength: fallbackContent.length,
-          note: "Like is the publish signal. Writer failure was repaired with faithful deterministic fallback and will still queue.",
+        completedStep("x-like:judge", new Date(), {
+          status: "passed",
+          rubric: ["source_fidelity", "direct_copy_policy", "platform_fit"],
         })
       );
+    } else {
+      try {
+        writer = await draftXLikedAutopostContent({
+          workspaceId: options.workspaceId,
+          authorHandle,
+          sourceUrl,
+          sourceText: cleanText,
+          externalUrls,
+          hasMedia: Boolean(media),
+          mediaType: media?.mediaType ?? null,
+        });
+        runSteps.push(
+          completedStep("x-like:draft", new Date(), {
+            strategy: "ai",
+            model: writer.model,
+            modelSource: writer.modelSource,
+            traceUrl: writer.traceUrl,
+          }),
+          completedStep("x-like:judge", new Date(), {
+            status: "passed",
+            rubric: [
+              "source_fidelity",
+              "max_voice",
+              "specificity",
+              "platform_fit",
+            ],
+          })
+        );
+      } catch (error) {
+        const writerError =
+          error instanceof Error ? error.message : String(error);
+        const writerFailure: XLikedAutopostOperationalFailure =
+          error instanceof XLikedAutopostWriterError
+            ? buildWriterOperationalFailure({ error })
+            : {
+                platform: "writer",
+                classification: "writer_unavailable",
+                error: writerError,
+              };
+        const completedAt = new Date();
+        const fallbackContent = buildFaithfulXLikedFallbackPostContent({
+          authorHandle,
+          sourceUrl,
+          sourceText: cleanText,
+          hasMedia: Boolean(media),
+          externalUrls,
+        });
+        writer = {
+          content: fallbackContent,
+          model: "deterministic-fallback",
+          modelSource: "local",
+          traceUrl: null,
+        };
+        runSteps.push(
+          completedStep("x-like:draft", completedAt, {
+            strategy: "ai",
+            status: "rejected_or_unavailable",
+            error: writerError,
+          }),
+          completedStep("x-like:fallback-repaired", completedAt, {
+            reason:
+              error instanceof XLikedAutopostWriterError
+                ? error.code
+                : "writer_error",
+            sourceUrl,
+            externalUrls,
+            contentLength: fallbackContent.length,
+            note: "Like is the publish signal. Writer failure was repaired with faithful deterministic fallback and will still queue.",
+          })
+        );
 
-      if (!dryRun) {
-        await db.update(pipelineRuns).set({
-          status: "running",
-          steps: [
-            ...runSteps,
-            completedStep("x-like:repair-notify", completedAt, {
-              result: "skipped",
-              failures: [writerFailure],
-              note: "No failure alert sent because the post was repaired and queued.",
-            }),
-          ],
-        }).where(eq(pipelineRuns.id, runId));
+        if (!dryRun) {
+          await db.update(pipelineRuns).set({
+            status: "running",
+            steps: [
+              ...runSteps,
+              completedStep("x-like:repair-notify", completedAt, {
+                result: "skipped",
+                failures: [writerFailure],
+                note: "No failure alert sent because the post was repaired and queued.",
+              }),
+            ],
+          }).where(eq(pipelineRuns.id, runId));
+        }
       }
     }
 

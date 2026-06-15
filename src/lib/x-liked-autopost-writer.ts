@@ -27,7 +27,7 @@ function shouldEmbedSourceForTextOnlyPost(input: {
 }) {
   if (input.hasMedia) return false;
   if (!/^https:\/\/(?:x|twitter)\.com\//i.test(input.sourceUrl)) return false;
-  return input.sourceText.length > 1800 || /\b(article|essay|window has closed|worth reading)\b/i.test(input.sourceText);
+  return input.sourceText.length > 1800 || /\b(essay|window has closed|worth reading)\b/i.test(input.sourceText);
 }
 
 function normalizeComparableText(value: string) {

@@ -137,6 +137,50 @@ describe("X liked autopost writer", () => {
     ).toBe("writer omitted source URL for long X article embed");
   });
 
+  it("does not turn short article-prompt posts into long article embeds", () => {
+    const sourceUrl = "https://x.com/PrajwalTomar_/status/2066497450358272493";
+    const sourceText = [
+      "Hermes Agent pro tip:",
+      "",
+      "Don't just read this article.",
+      "",
+      "Paste the entire thing inside your Hermes session and ask it to build your setup from it.",
+      "",
+      "Articles aren't content anymore.",
+      "",
+      "They are playbooks your agent can turn into your actual setup.",
+    ].join("\n");
+    const prompt = buildXLikedAutopostWriterPrompt({
+      authorHandle: "@PrajwalTomar_",
+      sourceUrl,
+      sourceText,
+      hasMedia: false,
+      mediaType: null,
+    });
+
+    expect(prompt).not.toContain("This source is a long X article/essay");
+    expect(
+      getXLikedAutopostContentRejection({
+        content: [
+          "Hermes Agent pro tip:",
+          "",
+          "Don't just read the article.",
+          "",
+          "Paste the whole thing into Hermes and ask it to build the setup from it:",
+          "",
+          "SOUL.md",
+          "the first 3 profiles",
+          "an overnight /goal",
+          "",
+          "Articles are becoming playbooks agents can turn into working systems.",
+        ].join("\n"),
+        sourceText,
+        hasMedia: false,
+        sourceUrl,
+      })
+    ).toBeNull();
+  });
+
   it("rejects text-only drafts that copy the source verbatim", () => {
     const sourceText = "AI just made the answer key free.\n\nEveryone has it instantly now.";
 
