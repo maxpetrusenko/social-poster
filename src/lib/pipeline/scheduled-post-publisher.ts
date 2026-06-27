@@ -89,13 +89,24 @@ async function publishScheduledPost(post: ScheduledPost) {
     .innerJoin(platforms, eq(postTargets.platformId, platforms.id))
     .where(eq(postTargets.postId, post.id));
 
-  if (targets.length === 0) return;
+  if (targets.length === 0) return false;
 
   const runId = crypto.randomUUID();
   const startedAt = new Date();
   const publishMetadata = normalizePostPublishMetadata(post.metadata);
   const steps: PipelineStep[] = [];
   const results = [];
+
+  const claimed = await db.update(posts).set({
+    status: "publishing",
+    updatedAt: startedAt,
+  }).where(and(eq(posts.id, post.id), eq(posts.status, "scheduled"))).returning({
+    id: posts.id,
+  });
+
+  if (claimed.length === 0) {
+    return false;
+  }
 
   await db.insert(pipelineRuns).values({
     id: runId,
@@ -107,11 +118,6 @@ async function publishScheduledPost(post: ScheduledPost) {
     steps: [],
     startedAt,
   });
-
-  await db.update(posts).set({
-    status: "publishing",
-    updatedAt: startedAt,
-  }).where(eq(posts.id, post.id));
 
   for (const { target, platform } of targets) {
     const stepStart = new Date();
@@ -215,6 +221,8 @@ async function publishScheduledPost(post: ScheduledPost) {
         : null,
     updatedAt: completedAt,
   }).where(eq(posts.id, post.id));
+
+  return true;
 }
 
 export async function processDueScheduledPosts(options: {
@@ -230,9 +238,12 @@ export async function processDueScheduledPosts(options: {
     .orderBy(asc(posts.scheduledAt))
     .limit(limit);
 
+  let processed = 0;
   for (const post of duePosts) {
-    await publishScheduledPost(post);
+    if (await publishScheduledPost(post)) {
+      processed += 1;
+    }
   }
 
-  return { processed: duePosts.length };
+  return { processed };
 }
