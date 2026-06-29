@@ -279,7 +279,10 @@ export async function findPublishedDynamicBlogPost(slug: string) {
 export async function hasGeneratedToday(now = new Date()) {
   const start = new Date(now);
   start.setHours(0, 0, 0, 0);
+  return hasGeneratedSince(start);
+}
 
+export async function hasGeneratedSince(start: Date) {
   const rows = await db
     .select({ id: blogAutomationPosts.id })
     .from(blogAutomationPosts)

@@ -41,14 +41,14 @@ export default async function AdminBlogPage() {
   ]);
 
   const setupCommand =
-    "MEDIUM_AUTOMATION_API_URL=http://127.0.0.1:3001 MEDIUM_AUTOMATION_API_KEY=<local-key> BLOG_AUTOMATION_DAILY_ENABLED=true";
+    "MEDIUM_AUTOMATION_API_URL=http://127.0.0.1:3001 MEDIUM_AUTOMATION_API_KEY=<local-key> BLOG_AUTOMATION_DAILY_ENABLED=true BLOG_AUTOMATION_CADENCE=weekly BLOG_AUTOMATION_PUBLISH_MODE=publish";
 
   return (
     <div>
       <div className="mb-8">
         <h1 className="font-serif text-2xl font-semibold text-[#171717]">Blog Automation</h1>
         <p className="mt-1 text-sm text-[#8d7c64]">
-          Daily researched article drafts with image, source checks, and a human publish gate.
+          Weekly researched articles with image, source checks, and validation-gated publishing.
         </p>
       </div>
 
@@ -57,9 +57,11 @@ export default async function AdminBlogPage() {
         <Card label="Needs Review" value={drafts.count} />
         <Card label="Published" value={published.count} />
         <Card
-          label="Daily Worker"
+          label="Weekly Worker"
           value={process.env.BLOG_AUTOMATION_DAILY_ENABLED === "true" ? "On" : "Off"}
-          sub="Generates one draft per day, never autopublishes."
+          sub={process.env.BLOG_AUTOMATION_PUBLISH_MODE === "publish"
+            ? "Generates and publishes one validation-passing article per week."
+            : "Generates one draft per week for review."}
         />
       </div>
 
