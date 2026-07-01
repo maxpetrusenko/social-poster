@@ -2,6 +2,10 @@
 
 Production social and Medium agent system for Max Petrusenko. Dashboard first, agent second.
 
+![Social Poster approval workflow](docs/assets/social-poster-workflow-poster.png)
+
+[Watch the 8-second workflow video](docs/assets/social-poster-workflow.mp4)
+
 ![Social Poster safety flow](docs/assets/social-poster-safety-flow.svg)
 
 Social Poster is a Next.js 15 control plane for scheduled posts, X liked-post queueing, reply review, Medium article packages, provider connections, and deployment health. The important product shape is not "an agent posts anything it wants." The system keeps publishing behind explicit signals, review gates, scheduler health checks, and durable run evidence.
@@ -139,4 +143,3 @@ The deploy workflow:
 - Comments and DMs have intentionally stricter safeguards and some surfaces are paused until the permission model and audit trail are complete.
 - SQLite is still the active runtime database. Supabase Postgres migration is planned, not complete.
 - Cross-workspace aggregate reporting and some provider depth work remain open.
-
