@@ -144,6 +144,7 @@ jobs:
     needs:
       - gate
       - build
+    if: ${{ github.event_name == 'workflow_dispatch' || !contains(github.event.head_commit.message, '[skip deploy]') }}
     timeout-minutes: 20
     outputs:
       deployment_uuid: ${{ steps.coolify-deploy.outputs.deployment_uuid }}
