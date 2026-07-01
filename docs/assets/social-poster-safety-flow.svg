@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="650" viewBox="0 0 1200 650" role="img" aria-labelledby="title desc">
+  <title id="title">Social Poster safety flow</title>
+  <desc id="desc">A flow diagram showing source signals, draft and review gates, approval, scheduler health, provider dispatch, and production proof.</desc>
+  <defs>
+    <style>
+      .bg { fill: #f8f4ec; }
+      .panel { fill: #fffdf7; stroke: #2b3a36; stroke-width: 2; }
+      .gate { fill: #e8f2ef; stroke: #0f6b5b; stroke-width: 2; }
+      .warn { fill: #fff1cf; stroke: #9a6a00; stroke-width: 2; }
+      .proof { fill: #e9eef8; stroke: #244f87; stroke-width: 2; }
+      .ink { fill: #17211f; font-family: Georgia, serif; }
+      .sans { fill: #31413e; font-family: Arial, sans-serif; }
+      .small { font-size: 18px; }
+      .label { font-size: 24px; font-weight: 700; }
+      .title { font-size: 46px; font-weight: 700; }
+      .arrow { stroke: #2b3a36; stroke-width: 3; fill: none; marker-end: url(#arrowhead); }
+      .muted { fill: #5d6a66; }
+    </style>
+    <marker id="arrowhead" markerWidth="12" markerHeight="8" refX="11" refY="4" orient="auto">
+      <path d="M0,0 L12,4 L0,8 Z" fill="#2b3a36" />
+    </marker>
+  </defs>
+
+  <rect class="bg" width="1200" height="650" rx="0" />
+  <text class="ink title" x="60" y="72">Social Poster</text>
+  <text class="sans small muted" x="60" y="105">Production agent control plane: queue, review, approve, dispatch, prove.</text>
+
+  <rect class="panel" x="60" y="145" width="190" height="165" rx="8" />
+  <text class="ink label" x="85" y="185">Signals</text>
+  <text class="sans small" x="85" y="222">RSS and URLs</text>
+  <text class="sans small" x="85" y="250">Liked X posts</text>
+  <text class="sans small" x="85" y="278">YouTube playlist</text>
+
+  <rect class="gate" x="320" y="145" width="205" height="165" rx="8" />
+  <text class="ink label" x="345" y="185">Agent Packet</text>
+  <text class="sans small" x="345" y="222">Source captured</text>
+  <text class="sans small" x="345" y="250">Draft generated</text>
+  <text class="sans small" x="345" y="278">Reviewer pass</text>
+
+  <rect class="warn" x="595" y="145" width="220" height="165" rx="8" />
+  <text class="ink label" x="620" y="185">Human Gate</text>
+  <text class="sans small" x="620" y="222">Approval mode</text>
+  <text class="sans small" x="620" y="250">Queue slot</text>
+  <text class="sans small" x="620" y="278">Medium review</text>
+
+  <rect class="panel" x="890" y="145" width="250" height="165" rx="8" />
+  <text class="ink label" x="915" y="185">Dispatch</text>
+  <text class="sans small" x="915" y="222">X/Bird</text>
+  <text class="sans small" x="915" y="250">LinkedIn and native OAuth</text>
+  <text class="sans small" x="915" y="278">Provider adapters</text>
+
+  <path class="arrow" d="M250 228 H315" />
+  <path class="arrow" d="M525 228 H590" />
+  <path class="arrow" d="M815 228 H885" />
+
+  <rect class="proof" x="180" y="400" width="260" height="160" rx="8" />
+  <text class="ink label" x="205" y="440">Runtime Proof</text>
+  <text class="sans small" x="205" y="477">pipeline_runs.steps</text>
+  <text class="sans small" x="205" y="505">/api/health drift</text>
+  <text class="sans small" x="205" y="533">queue summary</text>
+
+  <rect class="proof" x="500" y="400" width="260" height="160" rx="8" />
+  <text class="ink label" x="525" y="440">Quality Proof</text>
+  <text class="sans small" x="525" y="477">evals and ratings</text>
+  <text class="sans small" x="525" y="505">public preview</text>
+  <text class="sans small" x="525" y="533">approval audit</text>
+
+  <rect class="proof" x="820" y="400" width="260" height="160" rx="8" />
+  <text class="ink label" x="845" y="440">Deploy Proof</text>
+  <text class="sans small" x="845" y="477">GHCR image</text>
+  <text class="sans small" x="845" y="505">Coolify canary</text>
+  <text class="sans small" x="845" y="533">rollback report</text>
+
+  <path class="arrow" d="M422 310 V392" />
+  <path class="arrow" d="M705 310 V392" />
+  <path class="arrow" d="M1015 310 V392" />
+
+  <text class="sans small muted" x="60" y="620">Default posture: prepare and queue safely, publish only through explicit signal, review state, scheduler health, and provider capability.</text>
+</svg>
