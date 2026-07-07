@@ -53,8 +53,11 @@ requireIncludes(workflowPath, workflow, "retention-days: 30", "deploy reports ne
 
 requireIncludes(deployScriptPath, deployScript, "COOLIFY_SSH_KNOWN_HOSTS", "optional pinned SSH host key support");
 requireIncludes(deployScriptPath, deployScript, "READ_PREVIOUS_IMAGE_TAG", "previous image capture switch");
+requireIncludes(deployScriptPath, deployScript, "skipped_same_image", "same-image deploys should be health-checked no-ops");
+requireIncludes(deployScriptPath, deployScript, "FORCE_REDEPLOY_SAME_IMAGE", "same-image deploy bypass switch");
 requireIncludes(deployScriptPath, deployScript, "VERIFY_PUBLIC", "rollback can verify public health");
 requireIncludes(deployScriptPath, deployScript, "backup_sqlite_database", "SQLite backup helper is required");
+requireIncludes(deployScriptPath, deployScript, "assert_private_health", "same-image no-ops still need private health verification");
 requireIncludes(deployScriptPath, deployScript, "better-sqlite3", "SQLite backup must use the database backup API");
 requireIncludes(deployScriptPath, deployScript, "/data/backups", "SQLite backups must land on the persistent data volume");
 requireIncludes(deployScriptPath, deployScript, "docker_registry_image_tag", "Coolify image tag patch");

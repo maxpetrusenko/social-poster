@@ -96,6 +96,29 @@ REMOTE
   log "SQLite backup created: ${backup_path}"
 }
 
+assert_private_health() {
+  local healthcheck_started_at
+  local healthcheck_seconds
+
+  healthcheck_started_at=$(date +%s)
+  log "Running private production healthcheck"
+  # shellcheck disable=SC2029
+  ssh "${ssh_opts[@]}" "${ssh_target}" \
+    "COOLIFY_UUID='${COOLIFY_UUID}' COOLIFY_HEALTH_PATH='${COOLIFY_HEALTH_PATH}' bash -s" <<'REMOTE'
+set -euo pipefail
+container_id="$(docker ps --filter "name=${COOLIFY_UUID}" --format "{{.ID}}" | sed -n '1p')"
+if [ -z "${container_id}" ]; then
+  echo "No running container found for ${COOLIFY_UUID}" >&2
+  exit 1
+fi
+docker exec "${container_id}" curl --connect-timeout 5 --max-time 10 --fail --silent --show-error "http://127.0.0.1:3000${COOLIFY_HEALTH_PATH}" >/dev/null
+REMOTE
+
+  healthcheck_seconds=$(($(date +%s) - healthcheck_started_at))
+  set_output healthcheck_seconds "${healthcheck_seconds}"
+  log "Private production healthcheck passed in $(format_duration "${healthcheck_seconds}")"
+}
+
 assert_public_health() {
   if [ "${VERIFY_PUBLIC:-false}" != "true" ]; then
     return
@@ -241,6 +264,16 @@ REMOTE
   else
     log "Previous Coolify image tag unavailable"
   fi
+
+  if [ "${previous_image_tag:-}" = "${IMAGE_TAG}" ] && [ "${FORCE_REDEPLOY_SAME_IMAGE:-false}" != "true" ]; then
+    log "Image tag ${IMAGE_TAG} is already deployed; skipping no-op Coolify rollout"
+    set_output deployment_uuid "noop-same-image"
+    set_output deployment_status "skipped_same_image"
+    set_output rollout_seconds "0"
+    assert_private_health
+    assert_public_health
+    exit 0
+  fi
 fi
 
 backup_sqlite_database
@@ -298,25 +331,10 @@ REMOTE
   log "Coolify status=${status} attempt=${attempt}/${POLL_ATTEMPTS} elapsed=$(format_duration "${elapsed_seconds}") deployment=${deployment_uuid}"
 
   if [ "${status}" = "finished" ]; then
-    healthcheck_started_at=$(date +%s)
-    log "Coolify finished; running private production healthcheck"
-    # shellcheck disable=SC2029
-    ssh "${ssh_opts[@]}" "${ssh_target}" \
-      "COOLIFY_UUID='${COOLIFY_UUID}' COOLIFY_HEALTH_PATH='${COOLIFY_HEALTH_PATH}' bash -s" <<'REMOTE'
-set -euo pipefail
-container_id="$(docker ps --filter "name=${COOLIFY_UUID}" --format "{{.ID}}" | sed -n '1p')"
-if [ -z "${container_id}" ]; then
-  echo "No running container found for ${COOLIFY_UUID}" >&2
-  exit 1
-fi
-docker exec "${container_id}" curl --connect-timeout 5 --max-time 10 --fail --silent --show-error "http://127.0.0.1:3000${COOLIFY_HEALTH_PATH}" >/dev/null
-REMOTE
-
-    healthcheck_seconds=$(($(date +%s) - healthcheck_started_at))
+    log "Coolify finished"
+    assert_private_health
     total_seconds=$(($(date +%s) - started_at))
-    set_output healthcheck_seconds "${healthcheck_seconds}"
     set_output rollout_seconds "${total_seconds}"
-    log "Private production healthcheck passed in $(format_duration "${healthcheck_seconds}")"
 
     assert_public_health
     [ "${VERIFY_PUBLIC:-false}" = "true" ] && log "Public production canary passed"
