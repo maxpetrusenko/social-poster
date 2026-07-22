@@ -31,6 +31,12 @@ describe("external Hermes blog publishing", () => {
     expect(result.inlineUrls).toHaveLength(5);
   });
 
+  it("counts link labels rather than URL path tokens as visible prose", () => {
+    const result = validateExternalBlogPublishPayload(validPayload());
+
+    expect(result.visibleWordCount).toBe(1564);
+  });
+
   it("rejects an article whose supplied hash does not match", () => {
     expect(() =>
       validateExternalBlogPublishPayload({

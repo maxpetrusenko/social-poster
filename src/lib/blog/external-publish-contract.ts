@@ -17,7 +17,7 @@ export type ValidatedExternalBlogArticle = {
 
 const RUN_ID_PATTERN = /^[a-zA-Z0-9._-]{6,160}$/;
 const SHA256_PATTERN = /^[a-f0-9]{64}$/;
-export const INLINE_LINK_PATTERN = /\[[^\]]+\]\((https?:\/\/[^\s)]+)\)/g;
+export const INLINE_LINK_PATTERN = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
 
 export function isBlogPublishAuthorized(
   authorizationHeader: string | null,
@@ -64,7 +64,7 @@ export function validateExternalBlogPublishPayload(
   if (!title || title.length > 180) {
     throw new Error("Article must have one valid H1 title.");
   }
-  const inlineUrls = [...payload.article.matchAll(INLINE_LINK_PATTERN)].map((match) => match[1]);
+  const inlineUrls = [...payload.article.matchAll(INLINE_LINK_PATTERN)].map((match) => match[2]);
   const uniqueInlineUrls = [...new Set(inlineUrls)];
   if (uniqueInlineUrls.length < 5) {
     throw new Error("Article must include at least five unique inline source links.");
