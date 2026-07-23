@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 
 export type ExternalBlogPublishPayload = {
+  contractVersion?: 1 | 2;
   runId: string;
   packageId: string;
   article: string;
@@ -13,11 +14,15 @@ export type ValidatedExternalBlogArticle = {
   visibleWordCount: number;
   inlineUrls: string[];
   articleSha256: string;
+  warnings: string[];
 };
 
 const RUN_ID_PATTERN = /^[a-zA-Z0-9._-]{6,160}$/;
 const SHA256_PATTERN = /^[a-f0-9]{64}$/;
 export const INLINE_LINK_PATTERN = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
+const COMMONS_IMAGE_PATTERN = /^!\[[^\]]+\]\(https:\/\/upload\.wikimedia\.org\/[^\s)]+\)$/m;
+const COMMONS_SOURCE_PATTERN = /\[[^\]]+\]\(https:\/\/commons\.wikimedia\.org\/wiki\/File:[^\s)]+\)/i;
+const COMMONS_LICENSE_PATTERN = /\[(?:CC BY(?:-SA)? \d\.\d|CC0(?: 1\.0)?|Public domain)\]\(https:\/\/(?:www\.)?creativecommons\.org\/[^\s)]+\)/i;
 
 export function isBlogPublishAuthorized(
   authorizationHeader: string | null,
@@ -33,6 +38,10 @@ export function validateExternalBlogPublishPayload(
     throw new Error("Publish payload must be an object.");
   }
   const payload = value as Partial<ExternalBlogPublishPayload>;
+  const contractVersion = payload.contractVersion ?? 1;
+  if (![1, 2].includes(contractVersion)) {
+    throw new Error("Article contract version must be 1 or 2.");
+  }
   if (!payload.runId || !RUN_ID_PATTERN.test(payload.runId)) {
     throw new Error("A valid Hermes run ID is required.");
   }
@@ -56,7 +65,7 @@ export function validateExternalBlogPublishPayload(
   if (!payload.review.includes(articleSha256)) {
     throw new Error("Review is not bound to the exact article SHA-256.");
   }
-  if (!/^outcome:\s*pass\s*$/im.test(payload.review)) {
+  if (!/^outcome:\s*['"]?pass['"]?\s*$/im.test(payload.review)) {
     throw new Error("Review outcome must be pass.");
   }
 
@@ -69,13 +78,24 @@ export function validateExternalBlogPublishPayload(
   if (uniqueInlineUrls.length < 5) {
     throw new Error("Article must include at least five unique inline source links.");
   }
+  if (
+    contractVersion >= 2 &&
+    !(
+      COMMONS_IMAGE_PATTERN.test(payload.article) &&
+      COMMONS_SOURCE_PATTERN.test(payload.article) &&
+      COMMONS_LICENSE_PATTERN.test(payload.article)
+    )
+  ) {
+    throw new Error("Version 2 articles require one licensed Wikimedia Commons image and attribution.");
+  }
 
   const visibleText = payload.article
     .replace(INLINE_LINK_PATTERN, "$1")
-    .replace(/[`*_>#~-]/g, " ");
-  const visibleWordCount = visibleText.match(/\b[\p{L}\p{N}][\p{L}\p{N}'’.-]*\b/gu)?.length ?? 0;
-  if (visibleWordCount < 1500 || visibleWordCount > 2000) {
-    throw new Error("Article visible word count must be between 1500 and 2000 words.");
+    .replace(/https?:\/\/\S+/g, "");
+  const visibleWordCount = visibleText.match(/\b[\p{L}\p{N}_’'-]+\b/gu)?.length ?? 0;
+  if (visibleWordCount < 1500) {
+    throw new Error("Article visible word count must be at least 1500 words.");
   }
-  return { title, visibleWordCount, inlineUrls: uniqueInlineUrls, articleSha256 };
+  const warnings = visibleWordCount > 2000 ? ["article_over_2000_words"] : [];
+  return { title, visibleWordCount, inlineUrls: uniqueInlineUrls, articleSha256, warnings };
 }

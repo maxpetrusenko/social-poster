@@ -24,7 +24,7 @@ export async function publishExternalBlogArticle(value: unknown) {
     .where(eq(blogAutomationPosts.externalDraftPath, externalDraftPath))
     .limit(1);
   if (existing?.publishStatus === "published") {
-    return publishResult(existing.slug, true);
+    return publishResult(existing.slug, true, validated.warnings);
   }
 
   const now = new Date();
@@ -60,7 +60,8 @@ export async function publishExternalBlogArticle(value: unknown) {
       externalHermesReview: true,
       exactHashReview: true,
       minimumInlineSources: true,
-      wordCountRange: true,
+      minimumWordCount: true,
+      licensedCommonsImage: payload.contractVersion === 2,
     },
     validationStatus: "pass",
     validationScore: 100,
@@ -74,6 +75,7 @@ export async function publishExternalBlogArticle(value: unknown) {
       externalRunId: payload.runId,
       externalPackageId: payload.packageId,
       articleSha256: validated.articleSha256,
+      warnings: validated.warnings,
       approvalMode: "autonomous-explicit-user-policy",
     },
     createdAt: now,
@@ -97,14 +99,15 @@ export async function publishExternalBlogArticle(value: unknown) {
     durationMs: 0,
   });
 
-  return publishResult(slug, false);
+  return publishResult(slug, false, validated.warnings);
 }
 
-function publishResult(slug: string, alreadyPublished: boolean) {
+function publishResult(slug: string, alreadyPublished: boolean, warnings: string[]) {
   return {
     slug,
     publicUrl: `https://smmagent.app/blog/${slug}`,
     alreadyPublished,
+    warnings,
   };
 }
 

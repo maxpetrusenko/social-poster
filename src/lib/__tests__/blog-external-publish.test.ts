@@ -21,6 +21,22 @@ function validPayload() {
   };
 }
 
+function versionTwoPayload() {
+  const payload = validPayload();
+  const article = payload.article.replace(
+    "# A Reviewed Hermes Article",
+    "# A Reviewed Hermes Article\n\n![Students learning with a laptop](https://upload.wikimedia.org/wikipedia/commons/8/84/Students-using-laptop.jpg)\n\n*Image: [Students using a laptop](https://commons.wikimedia.org/wiki/File:Students-using-laptop.jpg) by Dvitalo12, licensed under [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/).*",
+  );
+  const articleSha256 = createHash("sha256").update(article).digest("hex");
+  return {
+    ...payload,
+    contractVersion: 2,
+    article,
+    articleSha256,
+    review: `article_sha256: "${articleSha256}"\noutcome: "pass"\n`,
+  };
+}
+
 describe("external Hermes blog publishing", () => {
   it("accepts an exact-hash reviewed article with citations", () => {
     const result = validateExternalBlogPublishPayload(validPayload());
@@ -35,6 +51,30 @@ describe("external Hermes blog publishing", () => {
     const result = validateExternalBlogPublishPayload(validPayload());
 
     expect(result.visibleWordCount).toBe(1564);
+  });
+
+  it("treats more than 2000 words as a warning", () => {
+    const payload = versionTwoPayload();
+    const article = `${payload.article}\n\n${"additional evidence ".repeat(260)}`;
+    const articleSha256 = createHash("sha256").update(article).digest("hex");
+    const result = validateExternalBlogPublishPayload({
+      ...payload,
+      article,
+      articleSha256,
+      review: `article_sha256: "${articleSha256}"\noutcome: pass\n`,
+    });
+    expect(result.visibleWordCount).toBeGreaterThan(2000);
+    expect(result.warnings).toEqual(["article_over_2000_words"]);
+  });
+
+  it("requires a licensed Commons image for version two payloads", () => {
+    expect(() =>
+      validateExternalBlogPublishPayload({ ...validPayload(), contractVersion: 2 }),
+    ).toThrow(/licensed Wikimedia Commons image/i);
+  });
+
+  it("accepts a version two article with licensed image attribution", () => {
+    expect(validateExternalBlogPublishPayload(versionTwoPayload()).warnings).toEqual([]);
   });
 
   it("rejects an article whose supplied hash does not match", () => {
