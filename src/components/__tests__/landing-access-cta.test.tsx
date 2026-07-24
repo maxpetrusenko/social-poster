@@ -68,4 +68,20 @@ describe("public access calls to action", () => {
       expect(screen.queryByRole("textbox", { name: /email/i })).toBeNull();
     }
   );
+
+  it("shows a real SMM Agent calendar preview in the hero", () => {
+    render(<SmmAgentHome />);
+
+    const preview = screen.getByRole("img", {
+      name: "SMM Agent calendar showing scheduled social posts across channels",
+    });
+    expect(preview.getAttribute("src")).toContain(
+      "demo-screens%2Fsmm-agent-calendar.png"
+    );
+    expect(
+      screen.getByText(
+        "Plan, review, and track every channel from one calendar."
+      )
+    ).toBeTruthy();
+  });
 });

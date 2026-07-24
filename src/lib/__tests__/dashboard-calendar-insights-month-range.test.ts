@@ -13,6 +13,8 @@ function dbTime(value: string) {
 }
 
 afterEach(() => {
+  vi.useRealTimers();
+  vi.unstubAllGlobals();
   if (originalTimeZone === undefined) {
     delete process.env.TZ;
   } else {
@@ -113,6 +115,60 @@ async function setupCalendarDb() {
 }
 
 describe("calendar month ranges", () => {
+  it("renders stored calendar data without calling live discovery", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-05-15T12:00:00.000Z"));
+    const fetchMock = vi.fn(() => {
+      throw new Error("calendar rendering must not call external services");
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const sqlite = await setupCalendarDb();
+    const now = Date.UTC(2026, 4, 15);
+
+    sqlite
+      .prepare(
+        `INSERT INTO schedules (
+          id, workspace_id, name, description, cron, job_type,
+          target_platform_ids, config, enabled, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      )
+      .run(
+        "agent_persona_schedule",
+        "workspace_1",
+        "Agent Persona",
+        "Stored schedule fallback",
+        "0 9 * * *",
+        "text_post",
+        "[]",
+        JSON.stringify({
+          postMode: "agent_persona_updates",
+          siteUrl: "https://should-not-fetch.example",
+          githubOrg: "should-not-fetch",
+          repoName: "should-not-fetch",
+        }),
+        1,
+        now,
+        now
+      );
+
+    const { getCalendarInsights } = await import("@/lib/dashboard/calendar");
+    const calendar = await getCalendarInsights("2026-05", "workspace_1");
+    const events = Object.values(calendar.eventsByDay).flat();
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(events.map((event) => event.id)).toContain("late_may_post-published");
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        kind: "schedule",
+        label: "Agent Persona",
+        preview: null,
+        content: "Stored schedule fallback",
+      })
+    );
+
+    sqlite.close();
+  });
+
   it("keeps dedicated calendar events in the app-timezone month on UTC servers", async () => {
     const sqlite = await setupCalendarDb();
     const { getCalendarInsights } = await import("@/lib/dashboard/calendar");

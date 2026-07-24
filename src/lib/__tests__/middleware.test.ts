@@ -74,6 +74,24 @@ describe("middleware auth redirects", () => {
     );
   });
 
+  it("keeps authenticated Supabase dashboard traffic on smmagent.app", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("DISABLE_AUTH", "false");
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://supabase.maxpetrusenko.com");
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "anon");
+
+    const { middleware } = await import("@/middleware");
+    const response = await middleware(
+      requestFor("https://smmagent.app/dashboard/calendar", {
+        name: "sb-supabase-auth-token.0",
+        value: "base64-session",
+      })
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("location")).toBeNull();
+  });
+
   it("serves canonical login traffic on smmagent.app", async () => {
     vi.stubEnv("NODE_ENV", "production");
     vi.stubEnv("DISABLE_AUTH", "false");

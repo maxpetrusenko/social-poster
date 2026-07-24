@@ -6,11 +6,6 @@ import {
   postTargets,
   schedules,
 } from "@/db/schema";
-import {
-  loadAgentPersonaScheduleContext,
-  renderAgentPersonaScheduleContent,
-  type AgentPersonaScheduleContext,
-} from "@/lib/pipeline/agent-persona-updates";
 import { resolveFixedScheduleContent } from "@/lib/pipeline/fixed-schedule-post";
 import { resolvePipelineRunStatus } from "@/lib/pipeline/status";
 import { and, desc, eq, gte, inArray, lt } from "drizzle-orm";
@@ -23,7 +18,7 @@ import {
   isCalendarVisibleRun,
   isCalendarVisibleSchedule,
 } from "./calendar-visibility";
-import { getDashboardCandidates } from "./candidates";
+import type { DashboardCandidate } from "./candidates";
 import { resolveDynamicSchedulePreview } from "./calendar-schedule-preview";
 import { getWorkspaceRssSettings, type RssSettingsConfig } from "@/lib/rss-config";
 import {
@@ -549,21 +544,16 @@ async function buildSchedulePresentation(
   targetPlatforms: PlatformRow[],
   priorRunCount: number,
   at: Date,
-  candidatePool: Awaited<ReturnType<typeof getDashboardCandidates>>,
-  rssSettings: RssSettingsConfig,
-  agentPersonaContextPromise: Promise<AgentPersonaScheduleContext | null>
+  candidatePool: DashboardCandidate[],
+  rssSettings: RssSettingsConfig
 ) {
   const platformTypes = targetPlatforms.map((platform) => platform.type);
-  const agentPersonaContext = await agentPersonaContextPromise;
-  const fixedContent =
-    agentPersonaContext
-      ? await renderAgentPersonaScheduleContent(agentPersonaContext, platformTypes, at)
-      : resolveFixedScheduleContent(
-          schedule.config,
-          platformTypes,
-          priorRunCount,
-          at
-        );
+  const fixedContent = resolveFixedScheduleContent(
+    schedule.config,
+    platformTypes,
+    priorRunCount,
+    at
+  );
   const dynamicPreview =
     fixedContent
       ? null
@@ -659,14 +649,8 @@ export async function getCalendarInsights(
   const scheduleMap = new Map(scheduleRows.map((schedule) => [schedule.id, schedule]));
   const calendarScheduleRows = scheduleRows.filter(isCalendarVisibleSchedule);
   const calendarScheduleIds = calendarScheduleRows.map((schedule) => schedule.id);
-  const [candidatePool, rssSettings] = await Promise.all([
-    getDashboardCandidates(24, workspaceId),
-    getWorkspaceRssSettings(workspaceId),
-  ]);
-  const agentPersonaContextByScheduleId = new Map<
-    string,
-    Promise<AgentPersonaScheduleContext | null>
-  >();
+  const candidatePool: DashboardCandidate[] = [];
+  const rssSettings = await getWorkspaceRssSettings(workspaceId);
 
   const [allRunRows, scheduledPostRows, priorRunRows] = await Promise.all([
     db
@@ -798,15 +782,6 @@ export async function getCalendarInsights(
 
   const events: CalendarEvent[] = [];
 
-  const getAgentPersonaContext = (schedule: ScheduleRow) => {
-    const existing = agentPersonaContextByScheduleId.get(schedule.id);
-    if (existing) return existing;
-
-    const created = loadAgentPersonaScheduleContext(schedule.config);
-    agentPersonaContextByScheduleId.set(schedule.id, created);
-    return created;
-  };
-
   for (const schedule of calendarScheduleRows) {
     const targetPlatforms = getTargetPlatformsForSchedule(schedule, platformMap);
     const occurrences = getCronOccurrences(schedule.cron, monthStart, occurrenceEnd, 120);
@@ -826,8 +801,7 @@ export async function getCalendarInsights(
         index,
         at,
         candidatePool,
-        rssSettings,
-        getAgentPersonaContext(schedule)
+        rssSettings
       );
 
       const baseEvent = {
@@ -1015,8 +989,7 @@ export async function getCalendarInsights(
           priorRunCountByRunId.get(run.id) ?? 0,
           new Date(run.startedAt),
           candidatePool,
-          rssSettings,
-          getAgentPersonaContext(schedule)
+          rssSettings
         )
       : null;
     const runDetails = deriveCalendarRunDetails(run, targetPlatforms);

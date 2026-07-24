@@ -234,6 +234,10 @@ function startFakeSupabaseAuth(email) {
 }
 
 async function stopProcess(child) {
+  if (!child || child.exitCode !== null || child.killed) return;
+
+  const exit = new Promise((resolve) => child.once("exit", resolve));
+
   try {
     process.kill(-child.pid, "SIGTERM");
   } catch {
@@ -241,7 +245,7 @@ async function stopProcess(child) {
   }
 
   await Promise.race([
-    new Promise((resolve) => child.once("exit", resolve)),
+    exit,
     new Promise((resolve) => setTimeout(resolve, 5000)),
   ]);
 
@@ -252,6 +256,11 @@ async function stopProcess(child) {
       child.kill("SIGKILL");
     }
   }
+
+  child.stdin?.destroy();
+  child.stdout?.destroy();
+  child.stderr?.destroy();
+  child.unref();
 }
 
 async function assertSupabaseInternalUrlBrowserFlow(browser) {
@@ -411,6 +420,21 @@ async function main() {
       const metadata = await marketingPage.evaluate(() => ({
         title: document.title,
         body: document.body.innerText,
+        calendarPreview: (() => {
+          const image = document.querySelector(
+            'img[alt="SMM Agent calendar showing scheduled social posts across channels"]'
+          );
+          return image
+            ? {
+                complete: image.complete,
+                naturalWidth: image.naturalWidth,
+                renderedWidth: image.getBoundingClientRect().width,
+              }
+            : null;
+        })(),
+        hasHorizontalOverflow:
+          document.documentElement.scrollWidth >
+          document.documentElement.clientWidth,
         manifest: document.querySelector('link[rel="manifest"]')?.getAttribute("href"),
         shortcutIcon: document.querySelector('link[rel="shortcut icon"]')?.getAttribute("href"),
         ogImage: document.querySelector('meta[property="og:image"]')?.getAttribute("content"),
@@ -426,6 +450,11 @@ async function main() {
       assert.match(metadata.body, /Start using SMM Agent/);
       assert.doesNotMatch(metadata.body, /Join Waitlist|you@company\.com/);
       assert.doesNotMatch(metadata.body, /Max Petrusenko Studio|SMMAgent/);
+      assert.ok(metadata.calendarPreview);
+      assert.equal(metadata.calendarPreview.complete, true);
+      assert.ok(metadata.calendarPreview.naturalWidth > 0);
+      assert.ok(metadata.calendarPreview.renderedWidth > 0);
+      assert.equal(metadata.hasHorizontalOverflow, false);
     }
 
     await assertAsset(marketingPage, "/favicon.ico", /image\/x-icon/, [0, 0, 1, 0]);
@@ -441,6 +470,12 @@ async function main() {
       0x4e,
       0x47,
     ]);
+    await assertAsset(
+      marketingPage,
+      "/demo-screens/smm-agent-calendar.png",
+      /image\/png/,
+      [0x89, 0x50, 0x4e, 0x47]
+    );
     await marketingPage.deleteCookie({
       name: "sp_bypass_signed_out",
       url: baseUrl,
@@ -523,6 +558,37 @@ async function main() {
         );
       }
     });
+
+    const calendarPage = pages[1];
+    const calendarErrors = [];
+    calendarPage.on("pageerror", (error) => {
+      calendarErrors.push(error.message);
+    });
+    calendarPage.on("console", (message) => {
+      if (message.type() === "error") {
+        calendarErrors.push(message.text());
+      }
+    });
+    const calendarStartedAt = Date.now();
+    const calendarResponse = await calendarPage.goto(
+      `${baseUrl}/dashboard/calendar`,
+      {
+        waitUntil: "networkidle0",
+        timeout: 30_000,
+      }
+    );
+    const calendarBody = await calendarPage.evaluate(
+      () => document.body.innerText
+    );
+    assert.ok(calendarResponse);
+    assert.equal(calendarResponse.status(), 200);
+    assert.match(calendarBody, /Month View/);
+    assert.doesNotMatch(calendarBody, /Application error/);
+    assert.deepEqual(calendarErrors, []);
+    assert.ok(
+      Date.now() - calendarStartedAt < 30_000,
+      "Calendar should render inside the request budget."
+    );
 
     seedComposerPlatforms(dbPath, "browser-race@example.com");
 
