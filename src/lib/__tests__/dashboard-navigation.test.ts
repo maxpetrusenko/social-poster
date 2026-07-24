@@ -65,6 +65,15 @@ describe("dashboard navigation", () => {
     );
   });
 
+  it("keeps work review surfaces out of the default SaaS utility navigation", () => {
+    const defaultUtilityHrefs = new Set(
+      flattenNav(utilityShellNav).map((item) => item.href)
+    );
+
+    expect(defaultUtilityHrefs.has("/dashboard/review")).toBe(false);
+    expect(defaultUtilityHrefs.has("/dashboard/analytics")).toBe(false);
+  });
+
   it("keeps the live website preview inside the Article Generation submenu", () => {
     const articleGeneration = workspaceShellNav.find(
       (item) => item.href === "/dashboard/articles"

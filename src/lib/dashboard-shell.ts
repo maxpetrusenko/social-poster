@@ -161,18 +161,6 @@ export const utilityShellNav: ShellNavItem[] = [
     icon: "overview",
   },
   {
-    label: "Work review",
-    href: "/dashboard/review",
-    blurb: "Review proven work before release.",
-    icon: "posts",
-  },
-  {
-    label: "Work analytics",
-    href: "/dashboard/analytics",
-    blurb: "Approval, learning, and trace signals.",
-    icon: "pipeline",
-  },
-  {
     label: "Pipeline",
     href: "/dashboard/pipeline",
     blurb: "Run history and step truth.",
