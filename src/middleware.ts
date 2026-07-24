@@ -47,6 +47,17 @@ function permanentHostRedirect(request: NextRequest, host: string) {
   return NextResponse.redirect(url, 301);
 }
 
+function permanentMethodPreservingHostRedirect(
+  request: NextRequest,
+  host: string
+) {
+  const url = request.nextUrl.clone();
+  url.protocol = "https:";
+  url.host = host;
+  url.port = "";
+  return NextResponse.redirect(url, 308);
+}
+
 function hasCookieLike(request: NextRequest, name: string) {
   return request.cookies
     .getAll()
@@ -78,6 +89,14 @@ function isAppOnlyPath(pathname: string) {
   );
 }
 
+function isLegacyOAuthCallbackPath(pathname: string) {
+  return (
+    pathname === "/auth/callback" ||
+    pathname.startsWith("/social-accounts/callback/") ||
+    (pathname.startsWith("/api/auth/") && pathname.includes("/callback"))
+  );
+}
+
 export async function middleware(request: NextRequest) {
   const host = normalizeHost(
     request.headers.get("x-forwarded-host") ?? request.headers.get("host")
@@ -86,6 +105,13 @@ export async function middleware(request: NextRequest) {
 
   if (redirectHost) {
     return permanentHostRedirect(request, redirectHost);
+  }
+
+  if (
+    getAppHostKind(host) === "legacy" &&
+    !isLegacyOAuthCallbackPath(request.nextUrl.pathname)
+  ) {
+    return permanentMethodPreservingHostRedirect(request, SITE_DOMAINS.app);
   }
 
   if (

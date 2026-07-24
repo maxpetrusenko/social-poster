@@ -118,7 +118,7 @@ describe("middleware auth redirects", () => {
     expect(response.headers.get("location")).toBeNull();
   });
 
-  it("keeps legacy app dashboard traffic on the legacy host during dual-host transition", async () => {
+  it("permanently redirects legacy dashboard traffic to smmagent.app", async () => {
     vi.stubEnv("NODE_ENV", "production");
     vi.stubEnv("DISABLE_AUTH", "false");
 
@@ -127,9 +127,9 @@ describe("middleware auth redirects", () => {
       requestFor("https://social.maxpetrusenko.com/dashboard?from=legacy")
     );
 
-    expect(response.status).toBe(307);
+    expect(response.status).toBe(308);
     expect(response.headers.get("location")).toBe(
-      "https://social.maxpetrusenko.com/login?next=%2Fdashboard%3Ffrom%3Dlegacy"
+      "https://smmagent.app/dashboard?from=legacy"
     );
   });
 
@@ -148,7 +148,22 @@ describe("middleware auth redirects", () => {
     expect(response.headers.get("location")).toBeNull();
   });
 
-  it("redirects legacy product paths to the product host", async () => {
+  it("lets legacy provider API callbacks complete during the migration", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("DISABLE_AUTH", "false");
+
+    const { middleware } = await import("@/middleware");
+    const response = await middleware(
+      requestFor(
+        "https://social.maxpetrusenko.com/api/auth/callback?code=legacy-code"
+      )
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("location")).toBeNull();
+  });
+
+  it("redirects legacy product paths to smmagent.app", async () => {
     vi.stubEnv("NODE_ENV", "production");
     vi.stubEnv("DISABLE_AUTH", "false");
 
@@ -157,9 +172,9 @@ describe("middleware auth redirects", () => {
       requestFor("https://social.maxpetrusenko.com/social-media-bot")
     );
 
-    expect(response.status).toBe(301);
+    expect(response.status).toBe(308);
     expect(response.headers.get("location")).toBe(
-      "https://clawposter.app/social-media-bot"
+      "https://smmagent.app/social-media-bot"
     );
   });
 
@@ -174,7 +189,7 @@ describe("middleware auth redirects", () => {
       )
     );
 
-    expect(response.status).toBe(301);
+    expect(response.status).toBe(308);
     expect(response.headers.get("location")).toBe(
       "https://smmagent.app/blog/domain-migration?from=legacy"
     );
