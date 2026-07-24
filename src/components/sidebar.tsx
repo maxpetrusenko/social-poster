@@ -167,7 +167,7 @@ export function Sidebar() {
             <Share2 className="h-5 w-5 text-[var(--accent-tech)]" />
             <div>
               <p className="text-sm font-semibold text-[#edf6ff]">Primary Workspace</p>
-              <p className="text-xs text-[var(--dark-zone-muted)]">social.maxpetrusenko.com</p>
+              <p className="text-xs text-[var(--dark-zone-muted)]">smmagent.app</p>
             </div>
           </div>
         </div>

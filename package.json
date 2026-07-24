@@ -6,6 +6,7 @@
     "dev": "NEXT_DIST_DIR=.next-dev next dev --turbopack",
     "dev:https": "APP_URL=https://127.0.0.1:3000 NEXT_DIST_DIR=.next-dev next dev --turbopack --experimental-https --experimental-https-key certs/localhost+2-key.pem --experimental-https-cert certs/localhost+2.pem",
     "dev:x-bridge": "node scripts/x-oauth-bridge.mjs",
+    "pretest": "node scripts/check-node-version.mjs",
     "build": "next build",
     "start": "next start",
     "test": "vitest run",
@@ -29,10 +30,17 @@
     "tickets:poll": "node scripts/hermes-linear-poller.mjs",
     "articles:import": "node scripts/import-medium-article-workspace.mjs",
     "articles:import:notion-done": "node scripts/import-notion-done-article-workspace.mjs",
+    "articles:sync-youtube-queue": "node scripts/sync-youtube-medium-playlist-queue.mjs",
+    "articles:export-public-preview": "node scripts/export-medium-public-preview.mjs",
+    "articles:verify-public-preview": "node scripts/verify-medium-public-preview.mjs",
+    "notify:matrix": "node scripts/notify-matrix.mjs",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "db:migrate": "drizzle-kit migrate",
     "db:generate": "drizzle-kit generate"
+  },
+  "engines": {
+    "node": ">=22 <26"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1032.0",

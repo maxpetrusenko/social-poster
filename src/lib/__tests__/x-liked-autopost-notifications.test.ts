@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
@@ -7,6 +7,10 @@ import {
   isXLikedAutopostOperationalFailure,
   notifyXLikedAutopostOperationalFailure,
 } from "../x-liked-autopost-notifications.ts";
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
 
 describe("X liked autopost operational notifications", () => {
   it("classifies operational failures separately from content validation", () => {
@@ -27,6 +31,9 @@ describe("X liked autopost operational notifications", () => {
   });
 
   it("builds a notification message with run context", () => {
+    vi.stubEnv("APP_URL", "");
+    vi.stubEnv("NEXT_PUBLIC_APP_URL", "");
+
     const message = buildXLikedAutopostFailureMessage({
       runId: "run-1",
       workspaceId: "workspace-1",
@@ -44,7 +51,7 @@ describe("X liked autopost operational notifications", () => {
     expect(message).toContain("run_id: run-1");
     expect(message).toContain("source: https://x.com/source/status/123");
     expect(message).toContain("class=auth_error");
-    expect(message).toContain("/dashboard/pipeline?runId=run-1");
+    expect(message).toContain("dashboard: https://smmagent.app/dashboard/pipeline?runId=run-1");
   });
 
   it("sends notifications only when an operational failure exists", async () => {

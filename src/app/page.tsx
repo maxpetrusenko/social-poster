@@ -2,7 +2,15 @@ import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import type { Metadata } from "next";
 import { getSession } from "@/lib/auth";
-import { SITE_DOMAINS, getProductCanonicalUrl, getSmmAgentCanonicalUrl, getSmmCanonicalUrl, normalizeHost } from "@/lib/site-domains";
+import {
+  SITE_DOMAINS,
+  getAppCanonicalUrl,
+  getProductCanonicalUrl,
+  getSmmAgentCanonicalUrl,
+  getSmmCanonicalUrl,
+  isAppHost,
+  normalizeHost,
+} from "@/lib/site-domains";
 import { LandingNav } from "@/components/landing/nav";
 import { HeroSection } from "@/components/landing/hero";
 import { WhoIsThisFor } from "@/components/landing/who-is-this-for";
@@ -91,8 +99,12 @@ export async function generateMetadata(): Promise<Metadata> {
     };
   }
 
-  const canonicalUrl = getProductCanonicalUrl("/");
-  const previewUrl = getProductCanonicalUrl("/opengraph-image");
+  const canonicalUrl = isAppHost(host)
+    ? getAppCanonicalUrl("/")
+    : getProductCanonicalUrl("/");
+  const previewUrl = isAppHost(host)
+    ? getAppCanonicalUrl("/opengraph-image")
+    : getProductCanonicalUrl("/opengraph-image");
 
   return {
     title: "SMM Agent — Social Media Management",
@@ -123,10 +135,6 @@ export default async function HomePage() {
   const host = await getRequestHost();
   const session = await getSession();
 
-  if (host === SITE_DOMAINS.app) {
-    redirect(session ? "/dashboard" : "/login");
-  }
-
   if (host === SITE_DOMAINS.smm) {
     return (
       <>
@@ -140,11 +148,15 @@ export default async function HomePage() {
   if (host === SITE_DOMAINS.smmAgent) {
     return (
       <>
-        <LandingNav isLoggedIn={!!session} brandName="SMM Agent" />
-        <SmmAgentHome />
+        <LandingNav isLoggedIn={!!session} brandName="SMM Agent" accessMode="login" />
+        <SmmAgentHome isLoggedIn={!!session} />
         <LandingFooter brandName="SMM Agent" />
       </>
     );
+  }
+
+  if (isAppHost(host)) {
+    redirect(session ? "/dashboard" : "/login");
   }
 
   if (host !== SITE_DOMAINS.product && !isLocalHost(host)) {

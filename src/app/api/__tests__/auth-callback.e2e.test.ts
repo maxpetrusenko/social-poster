@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 const exchangeCodeForSession = vi.fn();
 const getUser = vi.fn();
 const signOut = vi.fn();
+const isSupabaseConfigured = vi.fn(() => true);
 
 vi.mock("server-only", () => ({}));
 
@@ -24,13 +25,14 @@ vi.mock("@/lib/supabase/config", () => ({
     anonKey: "anon-key",
     storageKey: "sb-supabase-auth-token",
   })),
-  isSupabaseConfigured: vi.fn(() => true),
+  isSupabaseConfigured,
 }));
 
 afterEach(() => {
   vi.clearAllMocks();
   vi.unstubAllEnvs();
   vi.resetModules();
+  isSupabaseConfigured.mockReturnValue(true);
 });
 
 describe("Supabase auth callback", () => {
@@ -78,6 +80,93 @@ describe("Supabase auth callback", () => {
 
     expect(response.headers.get("location")).toBe(
       "https://social.maxpetrusenko.com/dashboard"
+    );
+  });
+
+  it.each([
+    "//evil.example/path",
+    "/\\evil.example/path",
+    "/login?next=%2Fdashboard",
+    "/api/auth/logout",
+  ])("rejects unsafe callback next path %s", async (nextPath) => {
+    exchangeCodeForSession.mockResolvedValue({ error: null });
+    getUser.mockResolvedValue({
+      data: { user: { email: "customer@example.com" } },
+    });
+
+    const { GET } = await import("@/app/auth/callback/route");
+    const response = await GET(
+      new NextRequest(
+        `https://smmagent.app/auth/callback?code=ok&next=${encodeURIComponent(nextPath)}`
+      )
+    );
+
+    expect(response.headers.get("location")).toBe(
+      "https://smmagent.app/dashboard"
+    );
+  });
+
+  it("returns to login when the OAuth code is missing", async () => {
+    const { GET } = await import("@/app/auth/callback/route");
+    const response = await GET(
+      new NextRequest(
+        "https://smmagent.app/auth/callback?next=%2Fdashboard%2Fsettings"
+      )
+    );
+
+    expect(response.headers.get("location")).toBe(
+      "https://smmagent.app/login?error=oauth&next=%2Fdashboard%2Fsettings"
+    );
+    expect(exchangeCodeForSession).not.toHaveBeenCalled();
+  });
+
+  it("returns a configuration error when Supabase is unavailable", async () => {
+    isSupabaseConfigured.mockReturnValue(false);
+
+    const { GET } = await import("@/app/auth/callback/route");
+    const response = await GET(
+      new NextRequest(
+        "https://smmagent.app/auth/callback?code=ok&next=%2Fdashboard"
+      )
+    );
+
+    expect(response.headers.get("location")).toBe(
+      "https://smmagent.app/login?error=missing-config&next=%2Fdashboard"
+    );
+    expect(exchangeCodeForSession).not.toHaveBeenCalled();
+  });
+
+  it("returns to login when the provider exchange fails", async () => {
+    exchangeCodeForSession.mockResolvedValue({
+      error: { message: "invalid oauth code" },
+    });
+
+    const { GET } = await import("@/app/auth/callback/route");
+    const response = await GET(
+      new NextRequest(
+        "https://smmagent.app/auth/callback?code=bad&next=%2Fdashboard"
+      )
+    );
+
+    expect(response.headers.get("location")).toBe(
+      "https://smmagent.app/login?error=oauth&next=%2Fdashboard"
+    );
+  });
+
+  it("signs out a provider session with no usable email", async () => {
+    exchangeCodeForSession.mockResolvedValue({ error: null });
+    getUser.mockResolvedValue({ data: { user: { email: "" } } });
+
+    const { GET } = await import("@/app/auth/callback/route");
+    const response = await GET(
+      new NextRequest(
+        "https://smmagent.app/auth/callback?code=ok&next=%2Fdashboard"
+      )
+    );
+
+    expect(signOut).toHaveBeenCalledTimes(1);
+    expect(response.headers.get("location")).toBe(
+      "https://smmagent.app/login?error=unauthorized&next=%2Fdashboard"
     );
   });
 });

@@ -52,17 +52,22 @@ export default async function InvitationPage({
     workspaceRows.map((workspace) => [workspace.id, workspace.name])
   );
   const loginHref = `/login?next=${encodeURIComponent(`/invite/${token}`)}`;
+  const canAccept =
+    session?.email?.trim().toLowerCase() ===
+    invitation.invitation.email.trim().toLowerCase();
+  const switchAccountHref =
+    session && !canAccept
+      ? `/api/auth/logout?next=${encodeURIComponent(`/invite/${token}`)}`
+      : null;
 
   return (
     <InvitationAcceptPanel
       organizationName={invitation.organization.name}
       email={invitation.invitation.email}
       token={token}
-      canAccept={
-        session?.email?.trim().toLowerCase() ===
-        invitation.invitation.email.trim().toLowerCase()
-      }
+      canAccept={canAccept}
       loginHref={loginHref}
+      switchAccountHref={switchAccountHref}
       assignments={(invitation.invitation.workspaceAssignments ?? []).map(
         (assignment) => ({
           workspaceName:

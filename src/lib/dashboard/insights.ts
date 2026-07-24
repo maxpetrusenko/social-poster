@@ -31,7 +31,7 @@ type RunRow = typeof pipelineRuns.$inferSelect;
 type ScheduleRow = typeof schedules.$inferSelect;
 type PlatformRow = typeof platforms.$inferSelect;
 type PostRow = typeof posts.$inferSelect;
-type ReplyEventRow = typeof replyEvents.$inferSelect;
+type ReplyEventRow = Omit<typeof replyEvents.$inferSelect, "metadata">;
 type InboxMessageRow = typeof inboxMessages.$inferSelect;
 
 type RunPublishDetails = {
@@ -683,7 +683,22 @@ export async function getDashboardInsights(
       : Promise.resolve([] as PostRow[]),
     platformIds.length > 0
       ? db
-          .select()
+          .select({
+            id: replyEvents.id,
+            workspaceId: replyEvents.workspaceId,
+            runId: replyEvents.runId,
+            scheduleId: replyEvents.scheduleId,
+            platformId: replyEvents.platformId,
+            tweetUrl: replyEvents.tweetUrl,
+            replyUrl: replyEvents.replyUrl,
+            authorHandle: replyEvents.authorHandle,
+            category: replyEvents.category,
+            lane: replyEvents.lane,
+            replyText: replyEvents.replyText,
+            status: replyEvents.status,
+            error: replyEvents.error,
+            createdAt: replyEvents.createdAt,
+          })
           .from(replyEvents)
           .where(inArray(replyEvents.platformId, platformIds))
           .orderBy(desc(replyEvents.createdAt))

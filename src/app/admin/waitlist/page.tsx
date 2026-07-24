@@ -65,14 +65,14 @@ export default async function AdminWaitlistPage({
         <div>
           <div className="flex items-center gap-3">
             <h1 className="font-serif text-2xl font-semibold text-[#171717]">
-              Waitlist
+              Signup History
             </h1>
             <span className="rounded-full bg-[#171717] px-3 py-0.5 text-xs font-bold text-white">
               {total.count.toLocaleString()}
             </span>
           </div>
           <p className="mt-1 text-sm text-[#8d7c64]">
-            All waitlist signups from the landing page and blog
+            Legacy SMM Agent signups and access lists for other brands
           </p>
         </div>
         <ExportButton />
@@ -106,7 +106,7 @@ export default async function AdminWaitlistPage({
                   colSpan={3}
                   className="px-4 py-8 text-center text-[#8d7c64]"
                 >
-                  {q ? "No signups match your search." : "No waitlist signups yet."}
+                  {q ? "No signups match your search." : "No signups yet."}
                 </td>
               </tr>
             ) : (

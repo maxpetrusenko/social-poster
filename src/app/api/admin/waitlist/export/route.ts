@@ -31,7 +31,7 @@ export async function GET() {
   return new Response(csv, {
     headers: {
       "Content-Type": "text/csv",
-      "Content-Disposition": `attachment; filename="waitlist-${new Date().toISOString().slice(0, 10)}.csv"`,
+      "Content-Disposition": `attachment; filename="signup-history-${new Date().toISOString().slice(0, 10)}.csv"`,
     },
   });
 }

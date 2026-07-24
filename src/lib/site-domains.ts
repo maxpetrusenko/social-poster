@@ -1,5 +1,6 @@
 export const SITE_DOMAINS = {
-  app: "social.maxpetrusenko.com",
+  app: "smmagent.app",
+  legacyApp: "social.maxpetrusenko.com",
   product: "clawposter.app",
   smm: "smmclaw.app",
   smmAgent: "smmagent.app",
@@ -7,11 +8,13 @@ export const SITE_DOMAINS = {
 
 export type SiteDomain = (typeof SITE_DOMAINS)[keyof typeof SITE_DOMAINS];
 
+export const APP_DOMAIN_TRANSITION_MODE = "dual-host" as const;
+
 export const WWW_REDIRECTS = {
   "www.social.maxpetrusenko.com": SITE_DOMAINS.app,
   "www.clawposter.app": SITE_DOMAINS.product,
   "www.smmclaw.app": SITE_DOMAINS.smm,
-  "www.smmagent.app": SITE_DOMAINS.smmAgent,
+  "www.smmagent.app": SITE_DOMAINS.app,
 } as const satisfies Record<string, SiteDomain>;
 
 export const CANONICAL_PUBLIC_HOSTS = [
@@ -36,6 +39,29 @@ export function normalizeHost(host?: string | null) {
   }
 
   return stripPort(host);
+}
+
+export type AppHostKind = "canonical" | "legacy";
+
+export function getAppHostKind(host?: string | null): AppHostKind | null {
+  const normalizedHost = normalizeHost(host);
+
+  if (normalizedHost === SITE_DOMAINS.app) {
+    return "canonical";
+  }
+
+  if (
+    APP_DOMAIN_TRANSITION_MODE === "dual-host" &&
+    normalizedHost === SITE_DOMAINS.legacyApp
+  ) {
+    return "legacy";
+  }
+
+  return null;
+}
+
+export function isAppHost(host?: string | null) {
+  return getAppHostKind(host) !== null;
 }
 
 export function getCanonicalHost(host?: string | null): string | null {

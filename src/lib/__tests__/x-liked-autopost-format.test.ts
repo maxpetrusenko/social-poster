@@ -6,7 +6,6 @@ import {
   buildFaithfulXLikedFallbackPostContent,
   buildXLikedPlatformPostContent,
   buildXLikedPostContent,
-  buildXLikedSourceComment,
   buildXLikedSourceUrl,
   cleanXLikedText,
   getXLikedExternalUrls,
@@ -53,6 +52,33 @@ describe("X liked autopost formatting", () => {
     })).toContain("Articles aren't content anymore.");
   });
 
+  it("uses direct copy for short self-contained image likes with existing attribution", () => {
+    const sourceText = [
+      "It was foreseeable that OpenAI would not make the same mistake as Anthropic.",
+      "",
+      "They sought to coordinate directly with US authorities so they could release their next capable model without issues.",
+      "",
+      "Via Financial Times",
+    ].join("\n");
+    const baseContent = buildXLikedPostContent({
+      authorHandle: "@kimmonismus",
+      sourceUrl: "https://x.com/kimmonismus/status/2066591657324146820",
+      sourceText,
+    });
+
+    expect(shouldUseDirectXLikedTextCopy({ sourceText, hasMedia: true })).toBe(true);
+    expect(baseContent).toBe(sourceText);
+    expect(
+      buildXLikedPlatformPostContent({
+        baseContent,
+        platformType: "twitter",
+        media: { url: "https://pbs.twimg.com/media/HK4CAA6WkAAcVrL.png", mediaType: "image" },
+        sourceUrl: "https://x.com/kimmonismus/status/2066591657324146820",
+        authorHandle: "@kimmonismus",
+      })
+    ).toBe(sourceText);
+  });
+
   it("decodes entities and removes trailing t.co media URLs when media is copied", () => {
     expect(cleanXLikedText("UI &amp; Copy")).toBe("UI & Copy");
     expect(cleanXLikedText("Post text\n\nhttps://t.co/abc123", { hasMedia: true })).toBe("Post text");
@@ -67,20 +93,29 @@ describe("X liked autopost formatting", () => {
         id: "1",
         media: [{ type: "video", url: "https://img.example/post.jpg", videoUrl: "https://cdn.example/post.mp4" }],
       })
-    ).toEqual({ url: "https://cdn.example/post.mp4", mediaType: "video" });
+    ).toEqual({
+      url: "https://cdn.example/post.mp4",
+      mediaType: "video",
+      sourceUrl: "https://x.com/unknown/status/1",
+    });
 
     expect(
       pickXLikedMedia({
         id: "2",
         quotedTweet: {
           id: "3",
+          author: { username: "cline" },
           media: [{ type: "photo", url: "https://img.example/quoted.jpg" }],
         },
       })
-    ).toEqual({ url: "https://img.example/quoted.jpg", mediaType: "image" });
+    ).toEqual({
+      url: "https://img.example/quoted.jpg",
+      mediaType: "image",
+      sourceUrl: "https://x.com/cline/status/3",
+    });
   });
 
-  it("uploads liked videos to LinkedIn while letting X embed the source URL", () => {
+  it("uploads liked videos to LinkedIn while letting X embed the source URL without credit footers", () => {
     const video = { url: "https://cdn.example/post.mp4", mediaType: "video" as const };
 
     expect(resolveXLikedPlatformMedia("twitter", video)).toBeNull();
@@ -108,7 +143,7 @@ describe("X liked autopost formatting", () => {
         sourceUrl: "https://x.com/kimmonismus/status/2058254144855544092",
         authorHandle: "@kimmonismus",
       })
-    ).toBe(["Blue-collar automation will arrive unevenly.", "", "via @kimmonismus"].join("\n"));
+    ).toBe("Blue-collar automation will arrive unevenly.");
     expect(
       buildXLikedPlatformPostContent({
         baseContent: "Save this repo.",
@@ -117,7 +152,30 @@ describe("X liked autopost formatting", () => {
         sourceUrl: "https://x.com/founder/status/123",
         authorHandle: "@founder",
       })
-    ).toBe(["Save this repo.", "", "via @founder"].join("\n"));
+    ).toBe("Save this repo.");
+  });
+
+  it("embeds quoted X video source posts instead of the liked quote-take URL", () => {
+    const video = {
+      url: "https://video.twimg.com/amplify_video/2071610079170994176/vid/avc1/1440x1080/_oXbQqydnBM4ke8d.mp4",
+      mediaType: "video" as const,
+      sourceUrl: "https://x.com/cline/status/2071617325296734309",
+    };
+
+    expect(
+      buildXLikedPlatformPostContent({
+        baseContent: "Cline is testing whether the model is really the bottleneck.",
+        platformType: "x",
+        media: video,
+        sourceUrl: "https://x.com/svpino/status/2071628258307977499",
+      })
+    ).toBe(
+      [
+        "Cline is testing whether the model is really the bottleneck.",
+        "",
+        "https://x.com/cline/status/2071617325296734309",
+      ].join("\n")
+    );
   });
 
   it("builds stable source URL and dedupe key", () => {
@@ -326,7 +384,7 @@ describe("X liked autopost formatting", () => {
     expect(content.length).toBeLessThanOrEqual(1200);
   });
 
-  it("credits the source when the liked post is a video share lane", () => {
+  it("keeps video share lanes specific without source footers", () => {
     const content = buildXLikedPostContent({
       authorHandle: "@atomic_chat_hq",
       sourceUrl: "https://x.com/atomic_chat_hq/status/2057581603811901882",
@@ -351,10 +409,9 @@ describe("X liked autopost formatting", () => {
         "GPT-5.5: training cost $2.85, bot improvement +7%",
         "",
         "Long loops make cost per attempt matter as much as peak intelligence.",
-        "",
-        "Source: @atomic_chat_hq https://x.com/atomic_chat_hq/status/2057581603811901882",
       ].join("\n")
     );
+    expect(content).not.toMatch(/Source:/);
   });
 
   it("turns blue-collar robot demos into physical automation economics", () => {
@@ -391,7 +448,7 @@ describe("X liked autopost formatting", () => {
     );
   });
 
-  it("can keep source attribution in a reply/comment instead of the main post", () => {
+  it("omits source attribution from the main post", () => {
     const content = buildXLikedPostContent({
       authorHandle: "@atomic_chat_hq",
       sourceUrl: "https://x.com/atomic_chat_hq/status/2057581603811901882",
@@ -407,14 +464,6 @@ describe("X liked autopost formatting", () => {
 
     expect(content).toContain("Qwen 3.7-Max: training cost $1.32, bot improvement +56%");
     expect(content).not.toMatch(/Source:/);
-    expect(
-      buildXLikedSourceComment({
-        authorHandle: "@atomic_chat_hq",
-        sourceUrl: "https://x.com/atomic_chat_hq/status/2057581603811901882",
-      })
-    ).toBe(
-      "Source: @atomic_chat_hq https://x.com/atomic_chat_hq/status/2057581603811901882"
-    );
   });
 
   it("turns a liked GitHub repo post into a bookmark-worthy repo share", () => {
@@ -459,7 +508,7 @@ describe("X liked autopost formatting", () => {
     expect(content).not.toMatch(/Source:/);
   });
 
-  it("keeps source-owned launches attributed to the original account", () => {
+  it("keeps source-owned launches attributed inline without a source footer", () => {
     const content = buildXLikedPostContent({
       authorHandle: "@OpenAI",
       sourceUrl: "https://x.com/OpenAI/status/123",
@@ -472,10 +521,9 @@ describe("X liked autopost formatting", () => {
         "@OpenAI launched this.",
         "",
         "Looks worth testing inside a real workflow. Strong take after hands-on time.",
-        "",
-        "Source: @OpenAI https://x.com/OpenAI/status/123",
       ].join("\n")
     );
+    expect(content).not.toMatch(/Source:/);
     expect(content).not.toMatch(/\bwe launched\b/i);
     expect(content).not.toMatch(/\bI launched\b/i);
     expect(content).not.toMatch(/\bI tried\b/i);

@@ -16,7 +16,7 @@ permissions:
 env:
   IMAGE_NAME: ghcr.io/maxpetrusenko/social-poster
   IMAGE_TAG: sha-${{ github.sha }}
-  PRODUCTION_URL: https://social.maxpetrusenko.com
+  PRODUCTION_URL: https://smmagent.app
   COOLIFY_UUID: ch6cjsgcqn6afd5052etgvwn
   COOLIFY_PORT: "3000"
   COOLIFY_HEALTH_PATH: /api/health

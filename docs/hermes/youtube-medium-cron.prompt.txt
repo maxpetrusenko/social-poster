@@ -1,0 +1,91 @@
+Create one Medium article package from the next eligible YouTube source, collect review approval, then auto-update and auto-schedule approved Medium drafts with a good title.
+
+Read and follow docs/hermes/weekly-youtube-medium-article.md first.
+Load and follow these five editorial skills as one artifact-bound pipeline before drafting:
+- `source-of-truth-editorial-orchestrator`
+- `source-of-truth-source-research`
+- `source-of-truth-editorial-strategist`
+- `source-of-truth-article-writer`
+- `source-of-truth-adversarial-reviewer`
+The orchestrator routes work but does not research, choose the angle, write prose, or override review. Each specialist owns only its declared artifacts.
+Before strategy or drafting, Source & Research must open and inspect at least 20 unique external sources; the supplied transcript/source does not count. Required mix: 2 X, 2 Reddit, 2 LinkedIn, 4 specialist forums/practitioner communities, 5 official/primary, and 5 independent expert/research/reporting sources, including at least 3 that challenge or materially limit the thesis. Social/community sources are discovery signals and cannot be sole verification for material factual claims. Search snippets, duplicates, mirrors, reposts, and unopened results do not count. If the total, any class minimum, or required-platform access fails, stop as `research_insufficient` unless Max explicitly approves a recorded exception.
+Before any Medium draft, title/subtitle, story preview, publish, or schedule mutation, read and follow the Medium visible UI skills:
+- `/Users/maxsmacmini/.hermes/memories/codex-memory-mirror/current/skills/medium-visible-ui-mutation/SKILL.md`
+- `/Users/maxsmacmini/.hermes/memories/codex-memory-mirror/current/skills/medium-proof-reviewer/SKILL.md`
+
+Recovered goal:
+- This is a Hermes-owned factory, not a Codex automation and not a one-off draft.
+- Max adds a YouTube video to the Medium/Create Article playlist; Hermes polls every 6 hours; Hermes creates one review-ready public preview; Matrix tells Max to review; after approval Hermes updates the Medium draft and schedules it.
+- Completion must be proven on the external surface for the current phase. Internal status alone is never enough.
+
+Hard runtime rules:
+- This job is running on max-mini/maxiclaw through Hermes cron. Do not create Codex app automations.
+- Process at most one new video per run.
+- Use the monitored playlist before liked videos: https://www.youtube.com/playlist?list=PLOgmJw9hZGS8
+- Skip any video whose YouTube ID already has an article package under data/article-workspace/articles/.
+- The article must be based on the transcript and visible source storyline, not only the topic.
+- Generate the article as a standalone story/argument, not as a summary, transcript rewrite, or "what the video said" recap. The source gives evidence and sequence; the article must supply its own frame, tension, stakes, interpretation, practical rule, and ending realization.
+- Before drafting or revising, identify the story engine: cold open, central tension, reader stakes, turning point, practical rule, ending realization.
+- After source-faithfulness passes, convert the draft into a standalone Max essay voice. The body must not read like a video recap.
+- Remove inline timestamp links from the public body (`[09:55]`, `youtube.com/watch?...&t=...`). Keep timestamps only in source notes.
+- Remove recurring source narration such as "Mic says", "Mic explains", "Mic describes", "Greg says", "Greg's analogy", "in this video", "the episode shows", "the conversation", and "the viewer learns".
+- Rewrite those sentences as direct claims or first-person rules: "An AI loop is...", "The failure mode is...", "I use a stricter test...", "A good loop has...", "The practical rule is...".
+- Select images from source frames only when they show an infographic, claim evidence, visual sequence, or other story-relevant moment. Avoid presenter-only frames unless the person is contextually important.
+- Do not ship Russian/non-English infographic text in the final preview. Preferred path: use GStack Browser to open AI Studio/Gemini, give it the source frame plus an English or textless reconstruction brief, download the regenerated bitmap image, and store it under the article package.
+- Do not use local HTML/CSS-generated diagrams as normal final Medium art. They are an emergency fallback only, and the fallback reason must be recorded in version.json.
+- Prefer textless generated bitmap visuals or clean source frames for section art. Generated visuals must have no readable text, labels, numbers, timestamps, logos, watermarks, fake charts, or UI chrome.
+- Do not show timestamp captions under images in the public preview. Images should stand on their own; keep descriptive alt text only.
+- Important factual claims need nearby source links in the article body, not only a bottom source list.
+- Review `article-v1.md`, then permit at most two targeted writer revisions. Preserve every draft and hash-bound review. After `article-v3.md`, stop at `needs_human_resolution` if a blocker remains; do not create `article-v4.md` without Max's explicit approval.
+- Feed rating feedback into the next writing pass. Move feedback between Gemini/GPT/Claude when available so raters can see progress.
+- Use the stricter source-faithful rater as the gate. Do not stop at 8.x.
+- Use the pre-publish scorecard from docs/hermes/weekly-youtube-medium-article.md. Overall readiness is the minimum gate score, not the average. Rate source-faithful storyline, story engine, title, subtitle, body content, standalone voice, AI slop, shareability, current technique usage, research depth, visual evidence, Medium formatting, SEO, AEO/GEO, public preview, scheduling proof, Matrix notification, and rater provenance.
+- Before Matrix review, run a separate quality reliability reviewer. It must write `evals/prepublish-vN.json` and a short report with Brainlift-style evidence board, contradictory POV, confidence/falsifier, current-technique research packet, min-gate score, and proof gates. If it vetoes, revise or record a blocker; do not draft/schedule Medium.
+- If Max corrects a latest article to 8/10, reopen it even if model metadata says 9.5+. Set rating/consensusRating to 8, record the failed gates, and create the next revision before calling it ready.
+- Add a hard `storyArticleGate` before preview export. If the draft still reads like a source recap instead of a story/argument, rewrite the narrative frame first.
+- Add a hard `standaloneVoiceGate` before preview export. If timestamp links or recap voice remain in the body, write the next article-vN.md and rerun the gate.
+- Run the anti-ai-slop pass before export: source-scaffolding cleanup, negation scan, generic transition scan, high-definition noun pass, title/subtitle gate.
+- Run the `Max Voice Anti-Formula Gate` from `article-agent/skills/anti-ai-slop.md` before preview export. Diagnostic signposts, attributed `strongest line` framing, decorative paired aphorisms, and three-or-more unbulleted `Label: definition` fragments are hard failures. Rewrite them as connected prose and rerun the gate; do not convert prose into bullets unless reference structure genuinely helps the reader.
+- Rate title and subtitle separately from the article body. A 9.5/10 body with an 8/10 title or weak subtitle is not review-ready.
+- Default title policy for YouTube articles: start from the original video title translated into natural English, then refine it into a shareable story title if the literal translation is vague. Keep the article's sharper angle in the subtitle/opening. Use a fully rewritten editorial title only if Max explicitly asks or the translated source title is misleading/clickbait beyond the source.
+- After the final body exists, generate at least 10 title/subtitle pairs. Include translated-original, high-tension thesis, practical operator rule, curiosity/reframe, and plain-English versions.
+- Require title >= 9.2/10 and subtitle >= 9.2/10 before preview export; target 9.5/10+. Record candidates, scores, chosen rationale, and rejected options in evals/title-vN.json.
+- The chosen title must work in the Medium feed without the body; the chosen subtitle must add stakes, source context, and story angle instead of repeating the title.
+- Reject soft metaphor-only titles like `An AI Agent Loop Needs a Steering Wheel` when the article has a stronger thesis. Prefer shareable thesis titles like `AI Agent Loops Are Slop Machines Without a Score` when source evidence supports it.
+- If Max flags title, subtitle, slop, recap voice, image quality, formatting, preview availability, or scheduling behavior, treat it as a failed gate. Record the complaint in workflow.json, make a new revision/fix, and rerun the specific gate.
+- Export the noindex public preview to maxpetrusenko.com/medium/<slug>/.
+- Keep preview files live for at least 7 days or until Max explicitly asks to remove them.
+- Deploy through the public-site normal deploy from max-mini using Doppler `api_keys/prd` when needed; `api_keys/dev` may not exist on that host.
+- Verify the exact public preview URL from outside the local machine. Do not mark preview complete unless the clean phone URL returns HTTP 200 and contains the article title plus one unique research/source marker.
+- When the article is ready for review, notify Max from max-mini with `hermes send --to matrix:hermes`. Include title, source URL, rating, loop count, public preview URL, and next action: `Review article`.
+- If `matrix:hermes` or `matrix:max` cannot be resolved, run `hermes send --list matrix --json` and send to the exact Matrix target id. Preserve literal `$THREAD_ID`; use Python/Node argv if needed to avoid shell expansion.
+- Approval-channel hard gate: do not ask Max to reply `APPROVE`, `DENY`, or `REVIEW <notes>` unless this run first proves a live watcher consumes that exact room/thread, sender identity, article slug, and `workflow.json` decision update. Plain Matrix replies are not approval proof by themselves.
+- Preferred review message shape is preview plus signed approval links from `/Users/maxpetrusenko/Desktop/Projects/manager/docs/article-approval-pipeline.md`: `Approve: <signed approval URL>` and `Reject: <signed reject URL>`. The signed links must bind article id, content hash, decision, actor, and expiry.
+- If signed approval links are not available and no reply watcher is proven, send a review-only Matrix notification with the preview URL, record `approval_channel_blocked` in `workflow.json`, and stop before Medium mutation. Do not mark the article approved, drafted, scheduled, or complete from notification success alone.
+- Do not mark the run complete until the Matrix review notification succeeds and either an approval channel is proven, or `workflow.json` records `approval_channel_blocked` / `matrix_notification_blocked` with the exact missing dependency.
+- Do not publish immediately. After Max approves the local/public preview, create or update the Medium draft and schedule it for the next appropriate weekly slot.
+- If a Medium draft already exists, reconcile it before scheduling: local package title, article H1, second-line subtitle, Medium editor title, Medium story preview title/subtitle, and Medium Stories row title must match. A stale Medium title or subtitle is a failed run, not a warning.
+- Medium mutation has two musts: first verify the visible GStack editor/submission UI is reachable, then run an independent proof reviewer before claiming completion.
+- Existing-window hard gate: if a visible GStack/Chrome-for-Testing window is already open, reuse that exact window. Do not launch a new GStack window, new Chrome window, new browser process, new tab set, or new profile. `open-gstack-browser` may only focus/attach to the existing window in this case. If attach/focus/control fails, stop as `BLOCKED` and record the visible state; do not create a replacement browser.
+- If the visible editor/submission UI is not reachable because login, Cloudflare, MFA, blank tab, Not Found, or permission state blocks it, stop as `BLOCKED`. Do not use CLI/CDP/API/DOM/cookie/AppleScript/accessibility-tree fallback unless Max explicitly approves it in the same turn.
+- Medium topics are a scheduling gate. Before scheduling, add and verify up to five relevant topics in the visible Story preview. If approved topics are provided, use exactly those topics. Do not schedule with an empty topic set.
+- The normal post-approval phase is draft/update/schedule in the already-open headed GStack/Chrome-for-Testing Medium session. Verify `Draft`, `Saved`, `/p/{postId}/edit`, final title, second-line subtitle, source links, and hosted images before scheduling.
+- Use the visible `Schedule for later` button flow in the same headed browser and verify the Medium Stories row with exact title/date/time before claiming schedule completion.
+- If the article already has a Medium edit URL, open that URL and fix title/subtitle first. For `https://medium.com/p/a6ee8afb8283/edit`, the approved local title is `Scientists Have Confirmed What the Body Already Knew` and the approved subtitle is `Consciousness arrives late. The body is already sensing, shifting, repairing, and building the story you call a decision.`
+- Disclaimer-block gate: do not append generic evidence/benchmark caveats under headers like `Reality contact`, `Reality check`, `Limitations`, or `Practical takeaways`. If a caveat matters, weave it into the story as an audit trail, measurement test, or operator constraint.
+- After Max approves a Medium draft, scheduling must use the already-open headed GStack/Chrome-for-Testing browser when Max says it is open. Click visible buttons, verify after each click, and do not open extra Medium windows/tabs.
+- For scheduling: click `Schedule for later`, verify the picker opened, set the date/time, verify the summary text, click `Schedule to publish`, then verify Medium Stories shows the exact scheduled row.
+- If visible clicking fails after two concrete attempts, pause and research current browser-control options before fallback: GStack browser tooling, browse.sh capability, Patchright/Playwright attachment options, Chrome DevTools Protocol, Browser MCP, and current repo docs.
+- Hidden DOM scripts or API-style automation are fallback-only. If used, disclose that it was fallback automation and record why visible GStack clicking failed.
+- GStack `browse` CLI, `osascript`, AppleScript/System Events, and accessibility tree dumps are not the normal Medium mutation path. They may not be used to inspect or mutate Medium when Max asked for visible clicking. Use visible click/type/paste actions first or block.
+- Do not claim scheduling complete until Medium Stories shows the article row as scheduled with exact date/time and workflow.json records the proof.
+
+If blocked, write the blocker into the article package and notify with the exact missing dependency or auth issue.
+
+Final self-review before ending:
+- Did I use the playlist/liked-video source and transcript, not a generic topic?
+- Did I apply rater feedback into the next article revision instead of only reporting it?
+- Did every critical gate meet target, or did I record an explicit blocker?
+- Did public preview, Matrix notification, Medium draft, or Medium schedule each have real external proof before I claimed that phase complete?
+- If the run touched Medium, did the visible Medium title/subtitle match the approved local package before scheduling?
+- Did I update durable memory through Hermes/GBrain/Codex compatibility sync when I changed this workflow?

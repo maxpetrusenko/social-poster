@@ -38,8 +38,8 @@ export default async function LikesReviewPage() {
     <DashboardPageContent>
       <DashboardHero
         eyebrow="Liked X queue"
-        title="Liked posts are publish intent."
-        description="Recent liked X posts become Max-owned posts unless they hit hard safety, duplicate, own-post, reply, or empty-text blocks."
+        title="Liked posts are reviewed publish candidates."
+        description="Recent liked X posts can autopublish after source capture, writer repair, and an independent reviewer pass. Failed drafts skip instead of falling back to weak copy."
         actions={
           <>
             <HeroButton href="/dashboard/posts" tone="ghost">
@@ -60,7 +60,7 @@ export default async function LikesReviewPage() {
 
       <SectionCard
         title="Review candidates"
-        subtitle="This page shows what the worker will publish next. The draft is a Max-owned take; the original post stays as source context."
+        subtitle="This page shows source candidates before the runtime reviewer loop. The original post stays as source context."
       >
         {candidates.length === 0 ? (
           <div className="rounded-[16px] border border-dashed border-[rgba(12,17,21,0.16)] bg-white/70 p-8 text-sm text-[var(--muted)]">

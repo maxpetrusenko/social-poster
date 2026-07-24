@@ -391,6 +391,12 @@ async function main() {
 
     const marketingPage = await browser.newPage();
     await marketingPage.setExtraHTTPHeaders({ "x-forwarded-host": "smmagent.app" });
+    await marketingPage.setCookie({
+      name: "sp_bypass_signed_out",
+      value: "1",
+      url: baseUrl,
+      path: "/",
+    });
 
     for (const viewport of [
       { width: 1440, height: 900 },
@@ -417,6 +423,8 @@ async function main() {
       assert.equal(metadata.shortcutIcon, "/favicon.ico");
       assert.equal(metadata.ogImage, "https://smmagent.app/opengraph-image");
       assert.equal(metadata.twitterImage, "https://smmagent.app/opengraph-image");
+      assert.match(metadata.body, /Start using SMM Agent/);
+      assert.doesNotMatch(metadata.body, /Join Waitlist|you@company\.com/);
       assert.doesNotMatch(metadata.body, /Max Petrusenko Studio|SMMAgent/);
     }
 
@@ -433,6 +441,10 @@ async function main() {
       0x4e,
       0x47,
     ]);
+    await marketingPage.deleteCookie({
+      name: "sp_bypass_signed_out",
+      url: baseUrl,
+    });
     await marketingPage.close();
 
     const pages = await Promise.all([browser.newPage(), browser.newPage()]);

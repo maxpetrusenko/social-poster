@@ -58,6 +58,27 @@ describe("source-of-truth article framework", () => {
     expect(validation.checks.find((check) => check.key === "forbidden_phrases")?.status).toBe("fail");
   });
 
+  it("hard fails named no-ai-slop patterns", () => {
+    const draft = buildReviewFallbackDraft({
+      topic: "AI social scheduling",
+      sourceUrls: [
+        "https://developers.google.com/search/docs",
+        "https://schema.org/Article",
+        "https://www.w3.org/WAI/",
+      ],
+    });
+
+    const validation = validateSourceOfTruthArticle({
+      ...draft,
+      contentMarkdown: `${draft.contentMarkdown}\n\nThe uncomfortable truth is that the eval owns the result.`,
+    });
+
+    expect(validation.status).toBe("fail");
+    expect(validation.checks.find((check) => check.key === "no_ai_slop")?.detail).toContain(
+      "throat_clearing"
+    );
+  });
+
   it("accepts anti-slop takeaway and action sections as framework coverage", () => {
     const directAnswer =
       "Ghost Murmur is a sensor claim that sounds plausible because quantum magnetometry is real, but long-range heartbeat tracking fails under magnetic-field physics. The useful lesson is narrower: diamond magnetometers may help navigation, while biometric detection at kilometer range remains unsupported by public evidence.";

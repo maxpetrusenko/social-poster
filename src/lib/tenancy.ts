@@ -463,7 +463,7 @@ export const getTenantContext = cache(async function getTenantContext(): Promise
     return null;
   }
 
-  const { user, organization, orgMembership } = await ensureDefaultTenantForEmail(
+  const { user } = await ensureDefaultTenantForEmail(
     session.email
   );
 
@@ -493,6 +493,31 @@ export const getTenantContext = cache(async function getTenantContext(): Promise
     ) ??
     memberships.find((entry) => !entry.workspace.isArchived) ??
     memberships[0];
+
+  const [organization, orgMembership] = await Promise.all([
+    db
+      .select()
+      .from(organizations)
+      .where(eq(organizations.id, activeWorkspaceEntry.workspace.organizationId))
+      .get(),
+    db
+      .select()
+      .from(orgMemberships)
+      .where(
+        and(
+          eq(orgMemberships.userId, user.id),
+          eq(
+            orgMemberships.organizationId,
+            activeWorkspaceEntry.workspace.organizationId
+          )
+        )
+      )
+      .get(),
+  ]);
+
+  if (!organization || !orgMembership) {
+    throw new Error("Active workspace organization membership was not found.");
+  }
 
 
   const now = new Date();
@@ -556,18 +581,27 @@ export async function switchCurrentWorkspace(workspaceId: string) {
     throw new Error("Workspace not found.");
   }
 
+  await persistCurrentWorkspaceSelection(context.user.id, target.workspace.id);
+
+  return target.workspace;
+}
+
+async function persistCurrentWorkspaceSelection(
+  userId: string,
+  workspaceId: string
+) {
   const now = new Date();
   await db
     .update(users)
     .set({
-      lastWorkspaceId: target.workspace.id,
+      lastWorkspaceId: workspaceId,
       lastSeenAt: now,
       updatedAt: now,
     })
-    .where(eq(users.id, context.user.id));
+    .where(eq(users.id, userId));
 
   const cookieStore = await cookies();
-  cookieStore.set(WORKSPACE_COOKIE, target.workspace.id, {
+  cookieStore.set(WORKSPACE_COOKIE, workspaceId, {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
@@ -575,7 +609,6 @@ export async function switchCurrentWorkspace(workspaceId: string) {
     maxAge: 60 * 60 * 24 * 30,
   });
 
-  return target.workspace;
 }
 
 export async function getOrgMembersData() {
@@ -1091,72 +1124,127 @@ export async function acceptInvitationByToken(token: string) {
     throw new Error("This invite belongs to a different email.");
   }
 
-  const now = new Date();
-  const existingOrgMembership = await db
-    .select()
-    .from(orgMemberships)
-    .where(
-      and(
-        eq(orgMemberships.organizationId, invitation.organizationId),
-        eq(orgMemberships.userId, context.user.id)
-      )
-    )
-    .get();
+  const assignments = invitation.workspaceAssignments ?? [];
+  const assignedWorkspaceIds = [
+    ...new Set(assignments.map((assignment) => assignment.workspaceId)),
+  ];
+  const assignedWorkspaces = assignedWorkspaceIds.length
+    ? await db
+        .select({
+          id: workspaces.id,
+          organizationId: workspaces.organizationId,
+        })
+        .from(workspaces)
+        .where(inArray(workspaces.id, assignedWorkspaceIds))
+        .all()
+    : [];
 
-  if (!existingOrgMembership) {
-    await db.insert(orgMemberships).values({
-      id: crypto.randomUUID(),
-      userId: context.user.id,
-      organizationId: invitation.organizationId,
-      orgRole: invitation.orgRole,
-      invitedAt: invitation.createdAt,
-      acceptedAt: now,
-    });
+  if (
+    assignedWorkspaces.length !== assignedWorkspaceIds.length ||
+    assignedWorkspaces.some(
+      (workspace) => workspace.organizationId !== invitation.organizationId
+    )
+  ) {
+    throw new Error(
+      "Invitation includes a workspace outside its organization."
+    );
   }
 
-  for (const assignment of invitation.workspaceAssignments ?? []) {
-    const existingWorkspaceMembership = await db
-      .select()
-      .from(workspaceMemberships)
+  const now = new Date();
+  db.transaction((transaction) => {
+    const claim = transaction
+      .update(workspaceInvitations)
+      .set({ acceptedAt: now })
       .where(
         and(
-          eq(workspaceMemberships.userId, context.user.id),
-          eq(workspaceMemberships.workspaceId, assignment.workspaceId)
+          eq(workspaceInvitations.id, invitation.id),
+          isNull(workspaceInvitations.acceptedAt),
+          gt(workspaceInvitations.expiresAt, now)
+        )
+      )
+      .run();
+
+    if (claim.changes !== 1) {
+      throw new Error("Invitation is invalid or expired.");
+    }
+
+    const existingOrgMembership = transaction
+      .select()
+      .from(orgMemberships)
+      .where(
+        and(
+          eq(orgMemberships.organizationId, invitation.organizationId),
+          eq(orgMemberships.userId, context.user.id)
         )
       )
       .get();
 
-    if (existingWorkspaceMembership) {
-      await db
-        .update(workspaceMemberships)
-        .set({ workspaceRole: assignment.role })
-        .where(eq(workspaceMemberships.id, existingWorkspaceMembership.id));
-    } else {
-      await db.insert(workspaceMemberships).values({
-        id: crypto.randomUUID(),
-        userId: context.user.id,
-        workspaceId: assignment.workspaceId,
-        workspaceRole: assignment.role,
-        addedAt: now,
-      });
+    if (!existingOrgMembership) {
+      transaction
+        .insert(orgMemberships)
+        .values({
+          id: crypto.randomUUID(),
+          userId: context.user.id,
+          organizationId: invitation.organizationId,
+          orgRole: invitation.orgRole,
+          invitedAt: invitation.createdAt,
+          acceptedAt: now,
+        })
+        .run();
     }
-  }
 
-  await db
-    .update(workspaceInvitations)
-    .set({ acceptedAt: now })
-    .where(eq(workspaceInvitations.id, invitation.id));
-  await recordAuditEvent(context, {
-    action: "invitation.accept",
-    targetType: "workspace_invitation",
-    targetId: invitation.id,
-    workspaceId: invitation.workspaceAssignments?.[0]?.workspaceId ?? null,
-    metadata: { email: invitation.email },
+    for (const assignment of assignments) {
+      const existingWorkspaceMembership = transaction
+        .select()
+        .from(workspaceMemberships)
+        .where(
+          and(
+            eq(workspaceMemberships.userId, context.user.id),
+            eq(workspaceMemberships.workspaceId, assignment.workspaceId)
+          )
+        )
+        .get();
+
+      if (existingWorkspaceMembership) {
+        transaction
+          .update(workspaceMemberships)
+          .set({ workspaceRole: assignment.role })
+          .where(eq(workspaceMemberships.id, existingWorkspaceMembership.id))
+          .run();
+      } else {
+        transaction
+          .insert(workspaceMemberships)
+          .values({
+            id: crypto.randomUUID(),
+            userId: context.user.id,
+            workspaceId: assignment.workspaceId,
+            workspaceRole: assignment.role,
+            addedAt: now,
+          })
+          .run();
+      }
+    }
+
+    transaction
+      .insert(auditEvents)
+      .values({
+        id: crypto.randomUUID(),
+        organizationId: invitation.organizationId,
+        workspaceId: assignments[0]?.workspaceId ?? null,
+        actorUserId: context.user.id,
+        actorEmail: context.user.email,
+        action: "invitation.accept",
+        targetType: "workspace_invitation",
+        targetId: invitation.id,
+        metadata: { email: invitation.email },
+        createdAt: now,
+      })
+      .run();
   });
 
-  const firstWorkspaceId = invitation.workspaceAssignments?.[0]?.workspaceId;
+  const firstWorkspaceId = assignments[0]?.workspaceId;
   if (firstWorkspaceId) {
-    await switchCurrentWorkspace(firstWorkspaceId);
+    await persistCurrentWorkspaceSelection(context.user.id, firstWorkspaceId);
   }
 
   return invitation;

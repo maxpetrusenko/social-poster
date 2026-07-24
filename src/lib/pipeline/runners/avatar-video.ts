@@ -18,6 +18,7 @@ import {
   resolvePublishResultsStatus,
 } from "../status";
 import { getWorkspaceRssSettings } from "@/lib/rss-config";
+import { assertNoAiSlopCopy } from "@/lib/writing/no-ai-slop";
 
 export async function runAvatarVideoJob(
   schedule: typeof schedules.$inferSelect,
@@ -70,6 +71,7 @@ export async function runAvatarVideoJob(
     const s2 = step("script:write");
     steps.push(s2);
     const voiceScript = writeVoiceScript(story);
+    assertNoAiSlopCopy(voiceScript, { label: "avatar voice script" });
     complete(s2, { chars: voiceScript.length });
 
     // 3. TTS
@@ -110,16 +112,20 @@ export async function runAvatarVideoJob(
     // 7. Publish
     const s7 = step("publish");
     steps.push(s7);
-    const summary = await publishPlatformTargets(
-      targets.map((platform) => ({
+    const publishInputs = targets.map((platform) => ({
         platform,
         content: writePostCaption(story, platform.type, rssSettings ?? undefined),
         mediaUrl: videoUrl,
         mediaType: "video" as const,
         instagramContentType:
           platform.type === "instagram" ? getInstagramVideoType(scheduleConfig) : undefined,
-      }))
-    );
+      }));
+    for (const target of publishInputs) {
+      assertNoAiSlopCopy(target.content, {
+        label: `avatar ${target.platform.type} caption`,
+      });
+    }
+    const summary = await publishPlatformTargets(publishInputs);
     const results = summary.outcomes;
     const ok = results.filter((r) => r.success).map((r) => r.platform);
     const failed = results.filter(
@@ -150,15 +156,15 @@ export async function runAvatarVideoJob(
     // Persist post + per-platform targets
     const postId = crypto.randomUUID();
     const now = new Date();
-    const publishInputs = targets.map((platform) => ({
+    const persistedPublishInputs = targets.map((platform) => ({
       platform,
       content: writePostCaption(story, platform.type, rssSettings ?? undefined),
       mediaUrl: videoUrl,
     }));
     const firstContent =
-      publishInputs.find((t) =>
+      persistedPublishInputs.find((t) =>
         results.find((r) => r.platform === t.platform.type && r.success)
-      )?.content ?? publishInputs[0]?.content ?? story.title ?? "";
+      )?.content ?? persistedPublishInputs[0]?.content ?? story.title ?? "";
     const postStatus = resolvePostStatusFromTargetResults(results);
 
     await db.insert(posts).values({

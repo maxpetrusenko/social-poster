@@ -1,11 +1,16 @@
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { blogAutomationPosts, blogAutomationRuns } from "@/db/schema";
 import { ArticleEditor } from "@/components/articles/article-editor";
 import { BlogMarkdownRenderer } from "@/components/blog/markdown-renderer";
+import { isAdmin } from "@/lib/admin-auth";
+import {
+  canEditCurrentWorkspaceContent,
+  getTenantContext,
+} from "@/lib/tenancy";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -14,11 +19,25 @@ type Props = {
 export const dynamic = "force-dynamic";
 
 export default async function ArticleDetailPage({ params }: Props) {
+  const tenant = await getTenantContext();
+  if (!tenant) notFound();
+
+  const viewerEmail = tenant.user.email;
+  const viewerIsAdmin = isAdmin(viewerEmail);
+  if (!viewerIsAdmin && !canEditCurrentWorkspaceContent(tenant)) notFound();
+
   const { id } = await params;
   const [article] = await db
     .select()
     .from(blogAutomationPosts)
-    .where(eq(blogAutomationPosts.id, id))
+    .where(
+      and(
+        eq(blogAutomationPosts.id, id),
+        viewerIsAdmin
+          ? undefined
+          : eq(blogAutomationPosts.createdByEmail, viewerEmail)
+      )
+    )
     .limit(1);
 
   if (!article) notFound();

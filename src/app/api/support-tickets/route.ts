@@ -6,12 +6,25 @@ import {
   uploadLinearFileAsset,
   type SupportTicketSource,
 } from "@/lib/support/tickets";
+import { supportTicketRateLimiter } from "@/lib/support/rate-limit";
 import { requireTenantContext } from "@/lib/tenancy";
 
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+const MAX_TOPIC_LENGTH = 120;
+const MAX_EXPLANATION_LENGTH = 5000;
+
+const SUPPORT_CATEGORIES = {
+  bug: "Bug",
+  account_access: "Account access",
+  billing: "Billing",
+  feature_request: "Feature request",
+} as const;
+
+type SupportCategory = keyof typeof SUPPORT_CATEGORIES;
 
 type ParsedTicketRequest = {
   source: SupportTicketSource;
+  category?: string | null;
   topic: string;
   explanation: string;
   imageUrl?: string | null;
@@ -45,6 +58,41 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+    if (parsed.topic.length > MAX_TOPIC_LENGTH) {
+      return NextResponse.json(
+        { error: `Topic must be ${MAX_TOPIC_LENGTH} characters or fewer.` },
+        { status: 400 }
+      );
+    }
+    if (parsed.explanation.length > MAX_EXPLANATION_LENGTH) {
+      return NextResponse.json(
+        { error: `Explanation must be ${MAX_EXPLANATION_LENGTH} characters or fewer.` },
+        { status: 400 }
+      );
+    }
+    let category: SupportCategory | null = null;
+    if (parsed.category) {
+      if (!isSupportCategory(parsed.category)) {
+        return NextResponse.json(
+          { error: "Choose a valid support category." },
+          { status: 400 }
+        );
+      }
+      category = parsed.category;
+    }
+
+    if (session && tenant) {
+      const rateLimit = supportTicketRateLimiter.check(tenant.user.id);
+      if (!rateLimit.allowed) {
+        return NextResponse.json(
+          { error: "Too many support requests. Try again later." },
+          {
+            status: 429,
+            headers: { "Retry-After": String(rateLimit.retryAfterSeconds) },
+          }
+        );
+      }
+    }
 
     let imageUrl = parsed.imageUrl ?? null;
     if (parsed.imageFile) {
@@ -54,14 +102,16 @@ export async function POST(request: NextRequest) {
     }
 
     const ticket = await createSupportTicket({
-      source: parsed.source,
-      topic: parsed.topic,
+      source: session ? "from_user_triage" : parsed.source,
+      topic: category
+        ? `[${SUPPORT_CATEGORIES[category]}] ${parsed.topic}`
+        : parsed.topic,
       explanation: parsed.explanation,
       imageUrl,
       imageName: parsed.imageFile?.name ?? null,
       sourceUrl: parsed.sourceUrl,
       pageTitle: parsed.pageTitle,
-      autoRepair: parsed.autoRepair,
+      autoRepair: session ? false : parsed.autoRepair,
       reporter: tenant
         ? {
             email: tenant.user.email,
@@ -81,7 +131,14 @@ export async function POST(request: NextRequest) {
         : null,
     });
 
-    return NextResponse.json({ ...ticket, imageUrl });
+    if (!session) {
+      return NextResponse.json({ ...ticket, imageUrl });
+    }
+
+    return NextResponse.json({
+      issue: { identifier: ticket.issue.identifier },
+      attachment: { status: ticket.attachment.status },
+    });
   } catch (error) {
     if (error instanceof Error && /formdata|multipart/i.test(error.message)) {
       return NextResponse.json(
@@ -91,13 +148,8 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Support ticket could not be created.",
-      },
-      { status: 500 }
+      { error: "Support is temporarily unavailable. Try again in a moment." },
+      { status: 502 }
     );
   }
 }
@@ -108,6 +160,7 @@ async function parseTicketRequest(request: NextRequest): Promise<ParsedTicketReq
     const form = await request.formData();
     return {
       source: normalizeSupportTicketSource(form.get("source")),
+      category: readFormString(form, "category") || null,
       topic: readFormString(form, "topic"),
       explanation: readFormString(form, "explanation"),
       imageUrl: readFormString(form, "imageUrl") || null,
@@ -121,6 +174,7 @@ async function parseTicketRequest(request: NextRequest): Promise<ParsedTicketReq
   const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
   return {
     source: normalizeSupportTicketSource(body.source),
+    category: readString(body.category) || null,
     topic: readString(body.topic),
     explanation: readString(body.explanation),
     imageUrl: readString(body.imageUrl) || null,
@@ -151,7 +205,7 @@ async function uploadSupportImage(file: File): Promise<string | NextResponse> {
 
   if (!stored) {
     return NextResponse.json(
-      { error: "Linear file upload is not configured. Add LINEAR_API_KEY or send an image URL." },
+      { error: "Image upload is temporarily unavailable. Try again without the image." },
       { status: 503 }
     );
   }
@@ -190,4 +244,8 @@ function readBoolean(value: unknown) {
   if (typeof value === "boolean") return value;
   if (typeof value !== "string") return false;
   return ["1", "true", "yes", "on"].includes(value.trim().toLowerCase());
+}
+
+function isSupportCategory(value: string): value is SupportCategory {
+  return Object.prototype.hasOwnProperty.call(SUPPORT_CATEGORIES, value);
 }

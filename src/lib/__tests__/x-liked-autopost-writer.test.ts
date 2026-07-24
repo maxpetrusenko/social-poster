@@ -1,10 +1,21 @@
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
+vi.mock("@/lib/langsmith", () => ({
+  callOpenAIResponses: vi.fn(),
+}));
+vi.mock("@/lib/model-runtime", () => ({
+  resolveOpenAIResponsesRuntime: vi.fn(),
+}));
 
+import { callOpenAIResponses } from "@/lib/langsmith";
+import { resolveOpenAIResponsesRuntime } from "@/lib/model-runtime";
 import {
+  buildXLikedAutopostReviewPrompt,
   buildXLikedAutopostWriterPrompt,
+  draftXLikedAutopostContent,
   getXLikedAutopostContentRejection,
+  parseReviewerResponse,
   parseWriterResponse,
 } from "../x-liked-autopost-writer.ts";
 
@@ -19,11 +30,39 @@ describe("X liked autopost writer", () => {
     });
 
     expect(prompt).toContain("X Posting rules for Max Petrusenko");
-    expect(prompt).toContain("Reposting is usually curation");
+    expect(prompt).toContain("Reposting can be curation or analysis");
     expect(prompt).toContain("keep the original train of thought");
     expect(prompt).toContain("Change roughly 5-15 words");
-    expect(prompt).toContain("builder signal");
+    expect(prompt).toContain("Do not call generic editorial preferences “Max voice.”");
+    expect(prompt).toContain("generated_uncertain");
+    expect(prompt).toContain("Do not add automatic source replies or credit/source footer lines");
+    expect(prompt).toContain("Auto-publish requires an independent reviewer pass");
+    expect(prompt).toContain("Deterministic direct-copy and fallback paths cannot bypass the reviewer");
+    expect(prompt).toContain("Every source-backed factual/news repost needs a verification pass");
+    expect(prompt).toContain("Do not add an opinionated implication");
+    expect(prompt).toContain("not permanent Max-language rules");
     expect(prompt).toContain("Hard length budget: 1200 characters");
+    expect(prompt).toContain("petergyang/no-ai-slop");
+    expect(prompt).toContain("Instruction precedence:");
+    expect(prompt).toContain("<untrusted-source-data>");
+  });
+
+  it("builds an independent reviewer prompt from the same x-posting skill contract", () => {
+    const prompt = buildXLikedAutopostReviewPrompt({
+      authorHandle: "@IBMNews",
+      sourceUrl: "https://x.com/IBMNews/status/123",
+      sourceText: "IBM debuted 0.7nm chip research with 40% SRAM scaling.",
+      externalUrls: ["https://newsroom.ibm.com/example"],
+      hasMedia: false,
+      mediaType: null,
+      content: "IBM's 0.7nm chip research points at AI memory pressure.",
+    });
+
+    expect(prompt).toContain("independent reviewer");
+    expect(prompt).toContain("Do not rewrite it");
+    expect(prompt).toContain("send the exact failure packet back to the writer");
+    expect(prompt).toContain("language provenance");
+    expect(prompt).toContain("invents Max's opinion");
   });
 
   it("feeds rejection feedback into retry prompts", () => {
@@ -55,15 +94,96 @@ describe("X liked autopost writer", () => {
     expect(prompt).toContain("include the primary study URL");
   });
 
-  it("rejects generic fallback phrases before publish", () => {
+  it("rejects no-ai-slop patterns without turning them into Max voice rules", () => {
+    const base = {
+      sourceText: "IBM published 0.7nm chip research with 40% SRAM scaling.",
+      externalUrls: ["https://newsroom.ibm.com/example"],
+      hasMedia: false,
+      sourceUrl: "https://x.com/source/status/123",
+    };
+
     expect(
       getXLikedAutopostContentRejection({
-        content: "Builder signal worth tracking: workflow changes show up first.",
-        sourceText: "Codex as orchestrator and DeepSeek as executor.",
+        ...base,
+        content: "This is not about chip size. It is about memory density.",
+      })
+    ).toBe("writer used no-ai-slop pattern: binary_contrast");
+    expect(
+      getXLikedAutopostContentRejection({
+        ...base,
+        content: "The uncomfortable truth is that SRAM scaling drives the useful result.",
+      })
+    ).toBe("writer used no-ai-slop pattern: throat_clearing");
+    expect(
+      getXLikedAutopostContentRejection({
+        ...base,
+        content: "IBM's research marks a pivotal moment for chip design.",
+      })
+    ).toBe("writer used no-ai-slop pattern: importance_puffery");
+    expect(
+      getXLikedAutopostContentRejection({
+        ...base,
+        content: "IBM published 0.7nm research. SRAM scales by 40%. Density is the result.",
+      })
+    ).toBe("writer used no-ai-slop pattern: stacked_short_sentences");
+    expect(
+      getXLikedAutopostContentRejection({
+        ...base,
+        content: "IBM's 0.7nm research reports 40% SRAM scaling, which concentrates the result in memory density.",
+      })
+    ).toBeNull();
+  });
+
+  it("fails closed when a factual news repost has no external verification source", () => {
+    expect(
+      getXLikedAutopostContentRejection({
+        content: "IBM reportedly has a sub-1nm chip path that could matter for AI compute.",
+        sourceText: "IBM reportedly debuted a 0.7nm chip with 100B transistors and 70% lower power.",
         hasMedia: false,
         sourceUrl: "https://x.com/source/status/123",
       })
-    ).toMatch(/generic phrase/);
+    ).toBe("source-backed news claim needs external verification");
+
+    expect(
+      getXLikedAutopostContentRejection({
+        content: "REVIEW_NEEDED: verify central claim before publishing.",
+        sourceText: "IBM reportedly debuted a 0.7nm chip with 100B transistors and 70% lower power.",
+        hasMedia: false,
+        sourceUrl: "https://x.com/source/status/123",
+      })
+    ).toBe("writer requires source verification");
+
+    expect(
+      getXLikedAutopostContentRejection({
+        content: "IBM's chip research matters because AI compute is now an infrastructure constraint.",
+        sourceText: "IBM reportedly debuted a 0.7nm chip with 100B transistors and 70% lower power.",
+        externalUrls: ["https://newsroom.ibm.com/example"],
+        hasMedia: false,
+        sourceUrl: "https://x.com/source/status/123",
+      })
+    ).toBeNull();
+  });
+
+  it("rejects unsupported benchmark framing introduced by the writer", () => {
+    expect(
+      getXLikedAutopostContentRejection({
+        content: "GLM 5.2 scored 57.3% accuracy with reasoning off and 68.5% with reasoning on.",
+        sourceText: "GLM 5.2 scored 57.3% with reasoning off and 68.5% with reasoning on.",
+        externalUrls: ["https://docs.together.ai/docs/glm-5.2-quickstart"],
+        hasMedia: true,
+        sourceUrl: "https://x.com/source/status/123",
+      })
+    ).toBe("writer introduced unsupported accuracy framing");
+
+    expect(
+      getXLikedAutopostContentRejection({
+        content: "Same model, same problem set, same harness.",
+        sourceText: "Same model, same problem set, different harness settings.",
+        externalUrls: ["https://docs.together.ai/docs/glm-5.2-quickstart"],
+        hasMedia: true,
+        sourceUrl: "https://x.com/source/status/123",
+      })
+    ).toBe("writer contradicted harness setting difference");
   });
 
   it("rejects text-only source URLs and thread markers", () => {
@@ -84,6 +204,19 @@ describe("X liked autopost writer", () => {
         sourceUrl: "https://x.com/source/status/123",
       })
     ).toBe("writer included source URL for text-only repost");
+  });
+
+  it("rejects source and credit footer labels", () => {
+    for (const footer of ["Source: @tom_doerr", "Credit: @tom_doerr", "via @tom_doerr", "h/t @tom_doerr"]) {
+      expect(
+        getXLikedAutopostContentRejection({
+          content: ["Useful AI workflow note.", "", footer].join("\n"),
+          sourceText: "Useful AI workflow note.",
+          hasMedia: true,
+          sourceUrl: "https://x.com/source/status/123",
+        })
+      ).toBe("writer included source/credit label");
+    }
   });
 
   it("allows source embeds for long X article shares", () => {
@@ -211,7 +344,7 @@ describe("X liked autopost writer", () => {
         hasMedia: false,
         sourceUrl: "https://x.com/source/status/123",
       })
-    ).toBe("writer copied source-owned first person into Max voice");
+    ).toBe("writer copied source-owned first person as Max's statement");
   });
 
   it("rejects study drafts that omit a recovered primary source URL", () => {
@@ -329,5 +462,92 @@ describe("X liked autopost writer", () => {
         ],
       })
     ).toBe("Close to original.\n\nUseful.");
+  });
+
+  it("parses reviewer JSON content", () => {
+    expect(
+      parseReviewerResponse({
+        output: [
+          {
+            type: "message",
+            content: [{ text: JSON.stringify({ approved: false, issues: ["unsupported claim"], repairInstruction: "Remove the shipping claim." }) }],
+          },
+        ],
+      })
+    ).toEqual({
+      approved: false,
+      issues: ["unsupported claim"],
+      repairInstruction: "Remove the shipping claim.",
+    });
+  });
+
+  it("sends reviewer failures back to the writer before returning a publishable draft", async () => {
+    vi.mocked(resolveOpenAIResponsesRuntime).mockResolvedValue({
+      apiKey: "test-key",
+      model: "test-model",
+      source: "env",
+    });
+    vi.mocked(callOpenAIResponses)
+      .mockResolvedValueOnce({
+        data: {
+          output: [
+            {
+              type: "message",
+              content: [{ text: JSON.stringify({ content: "IBM released a shipping 0.7nm chip today.\n\nAI compute gets cheaper immediately." }) }],
+            },
+          ],
+        },
+        trace: { url: "writer-1" },
+      } as never)
+      .mockResolvedValueOnce({
+        data: {
+          output: [
+            {
+              type: "message",
+              content: [{ text: JSON.stringify({ approved: false, issues: ["draft turns research into a shipping chip"], repairInstruction: "Keep this framed as IBM research and remove immediate-cost claims." }) }],
+            },
+          ],
+        },
+        trace: { url: "reviewer-1" },
+      } as never)
+      .mockResolvedValueOnce({
+        data: {
+          output: [
+            {
+              type: "message",
+              content: [{ text: JSON.stringify({ content: "IBM's 0.7nm chip research points at the next AI infrastructure constraint.\n\nThe useful detail is SRAM scaling: memory movement keeps becoming a bigger part of the compute bill." }) }],
+            },
+          ],
+        },
+        trace: { url: "writer-2" },
+      } as never)
+      .mockResolvedValueOnce({
+        data: {
+          output: [
+            {
+              type: "message",
+              content: [{ text: JSON.stringify({ approved: true, issues: [], repairInstruction: "" }) }],
+            },
+          ],
+        },
+        trace: { url: "reviewer-2" },
+      } as never);
+
+    const result = await draftXLikedAutopostContent({
+      workspaceId: "workspace-1",
+      authorHandle: "@IBMNews",
+      sourceUrl: "https://x.com/IBMNews/status/123",
+      sourceText: "IBM debuted 0.7nm chip research with 40% SRAM scaling for AI workloads.",
+      externalUrls: ["https://newsroom.ibm.com/example"],
+      hasMedia: false,
+      mediaType: null,
+    });
+
+    expect(result.content).toContain("0.7nm chip research");
+    expect(result.content).toContain("SRAM scaling");
+    expect(result.review.approved).toBe(true);
+    expect(vi.mocked(callOpenAIResponses)).toHaveBeenCalledTimes(4);
+    expect(vi.mocked(callOpenAIResponses).mock.calls[2]?.[0].body.input).toContain("reviewer rejected draft");
+    expect(vi.mocked(callOpenAIResponses).mock.calls[2]?.[0].body.input).toContain("Keep this framed as IBM research");
   });
 });

@@ -8,12 +8,20 @@ import {
 } from "@/lib/app-url";
 
 describe("app url resolution", () => {
-  it("chooses the app domain from a comma-separated APP_URL", () => {
+  it("chooses the canonical app domain from a comma-separated APP_URL", () => {
     expect(
       getAppUrlFromEnv({
         APP_URL:
           "https://clawposter.app,https://social.maxpetrusenko.com,https://smmagent.app",
       } as unknown as NodeJS.ProcessEnv)
+    ).toBe("https://smmagent.app");
+  });
+
+  it("prefers the legacy app domain during dual-host transition when canonical is absent", () => {
+    expect(
+      normalizeAppUrl(
+        "https://clawposter.app,https://social.maxpetrusenko.com"
+      )
     ).toBe("https://social.maxpetrusenko.com");
   });
 
@@ -25,7 +33,7 @@ describe("app url resolution", () => {
 
   it("uses the canonical app origin for externally fetched media when env is unset", () => {
     expect(getPublicAppUrlFromEnv({} as NodeJS.ProcessEnv)).toBe(
-      "https://social.maxpetrusenko.com"
+      "https://smmagent.app"
     );
   });
 

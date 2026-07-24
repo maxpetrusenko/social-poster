@@ -18,7 +18,6 @@ import {
   resolvePostStatusFromTargetResults,
   resolvePublishResultsStatus,
 } from "../status";
-import { appendSourceLink, publishFirstComment } from "../first-comment";
 import { enrichSummaryIfNeeded } from "../enrich-summary";
 import type { Story } from "../feed-engine";
 import { getWorkspaceRssSettings } from "@/lib/rss-config";
@@ -191,14 +190,9 @@ export async function runImagePostJob(
         : resolveDraftForPlatform(humanDrafts?.contentByPlatform, platform.type) ??
           enrichedStory.title;
 
-      // Append source link for non-X platforms (X gets it as a first comment)
-      const content = story.link
-        ? appendSourceLink(rawContent, story.link, platform.type)
-        : rawContent;
-
       return {
         platform,
-        content,
+        content: rawContent,
         mediaUrl,
         mediaType: mediaUrl ? ("image" as const) : undefined,
         instagramContentType:
@@ -246,33 +240,6 @@ export async function runImagePostJob(
     };
     if (failed.length > 0) {
       s3.error = failed.map((result) => `${result.platform}: ${result.error}`).join("; ");
-    }
-
-    // 4. First comment (source link on X)
-    if (story.link) {
-      const commentTargets = publishTargets.filter((t) => {
-        const pType = t.platform.type.toLowerCase();
-        return pType === "x" || pType === "twitter";
-      });
-
-      for (const target of commentTargets) {
-        const result = results.find(
-          (r) => r.platform === target.platform.type && r.success
-        );
-        if (result) {
-          const commentResult = await publishFirstComment({
-            platform: target.platform,
-            publishResult: result,
-            sourceUrl: story.link,
-            sourceTitle: story.title,
-          });
-          if (commentResult.success) {
-            console.log(
-              `[image-post] first comment on X: ${commentResult.commentUrl}`
-            );
-          }
-        }
-      }
     }
 
     if (!scheduledContent) {

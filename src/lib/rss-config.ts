@@ -69,15 +69,16 @@ export const DEFAULT_RSS_SETTINGS: RssSettingsConfig = {
   minimumScore: 0,
   tractionWeight: 35,
   keywordBoostTerms: [],
-  xTemplate: "{{title}}. {{whyMatters}}",
+  xTemplate: "{{title}}\n\n{{whyMatters}}",
   linkedinTemplate:
     "{{title}}\n\n{{summarySentence}}\n\n{{whyMatters}}.",
   transformationPrompt: [
     "mode: source-faithful",
     "opener: none",
-    "x: one concrete claim, then why it matters",
-    "linkedin: claim, context, then why it matters",
-    "ban_phrases: wild|pay attention|been waiting for this|interesting",
+    "x: one concrete claim, blank line, then why it matters",
+    "linkedin: short spoken post, one concrete moment or source signal, 40-90 words",
+    "linkedin_agent_story: agent handles search/chase/organization; human keeps trust/judgment/decision",
+    "ban_phrases: wild|pay attention|been waiting for this|interesting|use case|less x, more y",
     "title_case_on_x: true",
   ].join("\n"),
   imageSelectionMode: "prefer_open_graph",
@@ -85,7 +86,10 @@ export const DEFAULT_RSS_SETTINGS: RssSettingsConfig = {
     "prefer verified open graph/source images first. fall back to a verified feed image only when OG is missing. never use screenshots or tiny thumbnails for scheduled posts.",
 };
 
-const LEGACY_X_TEMPLATE = "{{reaction}} {{titleLower}}. {{insight}}";
+const LEGACY_X_TEMPLATES = [
+  "{{reaction}} {{titleLower}}. {{insight}}",
+  "{{title}}. {{whyMatters}}",
+];
 const LEGACY_LINKEDIN_TEMPLATE =
   "{{reaction}} {{title}}.\n\n{{summarySentence}}\n\n{{whyMatters}}.";
 
@@ -109,10 +113,10 @@ function normalizeTemplate(value: unknown, fallback: string) {
 function normalizePostTemplate(
   value: unknown,
   fallback: string,
-  legacyTemplate: string
+  legacyTemplates: string[]
 ) {
   const template = normalizeTemplate(value, fallback);
-  return template === legacyTemplate ? fallback : template;
+  return legacyTemplates.includes(template) ? fallback : template;
 }
 
 function normalizeImageMode(value: unknown): ImageSelectionMode {
@@ -152,12 +156,12 @@ export function normalizeRssSettingsInput(
     xTemplate: normalizePostTemplate(
       input.xTemplate,
       DEFAULT_RSS_SETTINGS.xTemplate,
-      LEGACY_X_TEMPLATE
+      LEGACY_X_TEMPLATES
     ),
     linkedinTemplate: normalizePostTemplate(
       input.linkedinTemplate,
       DEFAULT_RSS_SETTINGS.linkedinTemplate,
-      LEGACY_LINKEDIN_TEMPLATE
+      [LEGACY_LINKEDIN_TEMPLATE]
     ),
     transformationPrompt: normalizeTemplate(
       input.transformationPrompt,

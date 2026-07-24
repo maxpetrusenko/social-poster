@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { blogAutomationPosts } from "@/db/schema";
+import { requireAdminApi } from "@/lib/admin-auth";
 import { requireApiWorkspaceEditor } from "@/lib/api-authorization";
 import { validateSourceOfTruthArticle, type BlogDraft } from "@/lib/blog/framework";
 
@@ -22,11 +23,11 @@ const patchSchema = z.object({
 });
 
 export async function GET(_request: Request, { params }: Params) {
-  const tenant = await requireApiWorkspaceEditor();
-  if (tenant instanceof NextResponse) return tenant;
+  const viewer = await requireArticleViewer();
+  if (viewer instanceof NextResponse) return viewer;
 
   const { id } = await params;
-  const post = await getArticle(id);
+  const post = await getArticle(id, viewer);
   if (!post) return NextResponse.json({ error: "Article not found" }, { status: 404 });
 
   return NextResponse.json({
@@ -60,8 +61,8 @@ export async function GET(_request: Request, { params }: Params) {
 }
 
 export async function PATCH(request: Request, { params }: Params) {
-  const tenant = await requireApiWorkspaceEditor();
-  if (tenant instanceof NextResponse) return tenant;
+  const viewer = await requireArticleViewer();
+  if (viewer instanceof NextResponse) return viewer;
 
   const parsed = patchSchema.safeParse(await request.json().catch(() => ({})));
   if (!parsed.success) {
@@ -72,7 +73,7 @@ export async function PATCH(request: Request, { params }: Params) {
   }
 
   const { id } = await params;
-  const post = await getArticle(id);
+  const post = await getArticle(id, viewer);
   if (!post) return NextResponse.json({ error: "Article not found" }, { status: 404 });
 
   const next = {
@@ -95,7 +96,7 @@ export async function PATCH(request: Request, { params }: Params) {
       },
       updatedAt: now,
     })
-    .where(eq(blogAutomationPosts.id, id));
+    .where(articleAccessWhere(id, viewer));
 
   return NextResponse.json({
     id,
@@ -104,11 +105,36 @@ export async function PATCH(request: Request, { params }: Params) {
   });
 }
 
-async function getArticle(id: string) {
+type ArticleViewer = {
+  email: string;
+  isAdmin: boolean;
+};
+
+async function requireArticleViewer(): Promise<ArticleViewer | NextResponse> {
+  const admin = await requireAdminApi();
+  if (admin) {
+    return { email: admin.email, isAdmin: true };
+  }
+
+  const tenant = await requireApiWorkspaceEditor();
+  if (tenant instanceof NextResponse) return tenant;
+  return { email: tenant.user.email, isAdmin: false };
+}
+
+function articleAccessWhere(id: string, viewer: ArticleViewer) {
+  return and(
+    eq(blogAutomationPosts.id, id),
+    viewer.isAdmin
+      ? undefined
+      : eq(blogAutomationPosts.createdByEmail, viewer.email)
+  );
+}
+
+async function getArticle(id: string, viewer: ArticleViewer) {
   const [post] = await db
     .select()
     .from(blogAutomationPosts)
-    .where(eq(blogAutomationPosts.id, id))
+    .where(articleAccessWhere(id, viewer))
     .limit(1);
   return post ?? null;
 }

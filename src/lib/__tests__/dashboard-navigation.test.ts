@@ -7,6 +7,7 @@ import {
   agenticShellNav,
   channelShellNav,
   footerShellNav,
+  isShellNavHrefActive,
   type ShellNavItem,
   utilityShellNav,
   workspaceShellNav,
@@ -57,8 +58,41 @@ describe("dashboard navigation", () => {
         "/dashboard/categories",
         "/dashboard/schedules",
         "/dashboard/pipeline",
+        "/dashboard/review",
+        "/dashboard/analytics",
         "/dashboard/workspace-settings/social-accounts",
       ])
     );
+  });
+
+  it("keeps the live website preview inside the Article Generation submenu", () => {
+    const articleGeneration = workspaceShellNav.find(
+      (item) => item.href === "/dashboard/articles"
+    );
+
+    expect(articleGeneration?.children).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          label: "Website Preview",
+          href: "/dashboard/articles/preview",
+        }),
+      ])
+    );
+  });
+
+  it("does not mark the Articles index child active while Website Preview is open", () => {
+    expect(
+      isShellNavHrefActive(
+        "/dashboard/articles/preview",
+        "/dashboard/articles",
+        true
+      )
+    ).toBe(false);
+    expect(
+      isShellNavHrefActive(
+        "/dashboard/articles/preview",
+        "/dashboard/articles/preview"
+      )
+    ).toBe(true);
   });
 });

@@ -44,5 +44,7 @@ describe("team settings access copy", () => {
     expect(panelsSource).toContain('title="Access Details"');
     expect(panelsSource).not.toContain("Accept invite");
     expect(panelsSource).not.toContain("Sign in to accept");
+    expect(panelsSource).toContain("Use a different Google account");
+    expect(panelsSource).toContain("switchAccountHref");
   });
 });

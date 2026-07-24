@@ -4,7 +4,7 @@ const networkLinks = [
   { label: "ClawPoster", href: "https://clawposter.app" },
   { label: "SMMClaw", href: "https://smmclaw.app" },
   { label: "SMM Agent", href: "https://smmagent.app" },
-  { label: "App", href: "https://social.maxpetrusenko.com" },
+  { label: "Dashboard", href: "https://smmagent.app/dashboard" },
   { label: "Max Tech", href: "https://www.maxpetrusenko.com/tech" },
 ];
 

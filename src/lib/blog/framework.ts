@@ -1,3 +1,5 @@
+import { findNoAiSlopIssues } from "@/lib/writing/no-ai-slop";
+
 export type BlogSource = {
   title: string;
   url: string;
@@ -170,6 +172,16 @@ export function validateSourceOfTruthArticle(draft: BlogDraft): FrameworkValidat
     label: "Forbidden phrases are absent",
     status: forbiddenHits.length === 0 ? "pass" : "fail",
     detail: forbiddenHits.length ? forbiddenHits.join(", ") : "No hits",
+  });
+
+  const noAiSlopIssues = findNoAiSlopIssues(content, { shortCopy: false });
+  checks.push({
+    key: "no_ai_slop",
+    label: "Named no-ai-slop patterns are absent",
+    status: noAiSlopIssues.length === 0 ? "pass" : "fail",
+    detail: noAiSlopIssues.length
+      ? noAiSlopIssues.map((issue) => issue.code).join(", ")
+      : "No named pattern hits",
   });
 
   const score = checks.reduce((total, check) => {

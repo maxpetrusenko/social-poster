@@ -3,14 +3,14 @@
 import { useEffect, useRef, useState, type DragEvent } from "react";
 import { Camera, LifeBuoy, Loader2, Send, X } from "lucide-react";
 
-type SupportSource = "from_user_triage" | "from_bot" | "from_github_issue" | "from_me";
+type SupportCategory = "bug" | "account_access" | "billing" | "feature_request";
 
 type SubmitState =
   | { status: "idle" }
   | { status: "submitting" }
   | {
       status: "success";
-      issue: { identifier: string; url: string };
+      issue: { identifier: string };
       attachment?: {
         status: "skipped" | "linked" | "failed";
         attachment?: { url: string };
@@ -21,22 +21,22 @@ type SubmitState =
   | { status: "error"; message: string };
 
 type SupportTicketResponse = {
-  issue?: { identifier: string; url: string };
+  issue?: { identifier: string };
   attachment?: Extract<SubmitState, { status: "success" }>["attachment"];
   imageUrl?: string | null;
   error?: string;
 };
 
-const SOURCE_OPTIONS: Array<{ value: SupportSource; label: string }> = [
-  { value: "from_user_triage", label: "User triage" },
-  { value: "from_bot", label: "Bot" },
-  { value: "from_github_issue", label: "GitHub issue" },
-  { value: "from_me", label: "Max" },
+const CATEGORY_OPTIONS: Array<{ value: SupportCategory; label: string }> = [
+  { value: "bug", label: "Bug" },
+  { value: "account_access", label: "Account access" },
+  { value: "billing", label: "Billing" },
+  { value: "feature_request", label: "Feature request" },
 ];
 
 export function SupportTicketButton() {
   const [open, setOpen] = useState(false);
-  const [source, setSource] = useState<SupportSource>("from_user_triage");
+  const [category, setCategory] = useState<SupportCategory>("bug");
   const [topic, setTopic] = useState("");
   const [explanation, setExplanation] = useState("");
   const [selectedImage, setSelectedImage] = useState<{
@@ -101,7 +101,7 @@ export function SupportTicketButton() {
     if (!trimmedTopic || !trimmedExplanation || state.status === "submitting") return;
 
     const formData = new FormData();
-    formData.set("source", source);
+    formData.set("category", category);
     formData.set("topic", trimmedTopic);
     formData.set("explanation", trimmedExplanation);
     formData.set("pageUrl", window.location.href);
@@ -153,11 +153,20 @@ export function SupportTicketButton() {
 
       {open ? (
         <div className="fixed inset-0 z-[80] flex items-start justify-center bg-[rgba(23,23,23,0.34)] px-4 py-5 backdrop-blur-sm md:py-12">
-          <section className="w-full max-w-[520px] overflow-hidden rounded-[1.1rem] border border-[#dccdb8] bg-[#fffaf2] shadow-[0_24px_70px_rgba(23,23,23,0.22)]">
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="support-dialog-title"
+            className="w-full max-w-[520px] overflow-hidden rounded-[1.1rem] border border-[#dccdb8] bg-[#fffaf2] shadow-[0_24px_70px_rgba(23,23,23,0.22)]"
+          >
             <header className="flex items-center justify-between gap-4 border-b border-[#eadfce] px-5 py-4">
               <div>
-                <p className="text-base font-semibold text-[#171717]">Support Ticket</p>
-                <p className="text-sm text-[#806f58]">Send context to Linear.</p>
+                <h2 id="support-dialog-title" className="text-base font-semibold text-[#171717]">
+                  Contact support
+                </h2>
+                <p className="text-sm text-[#806f58]">
+                  Tell us what happened. We include the current page for context.
+                </p>
               </div>
               <button
                 type="button"
@@ -172,14 +181,14 @@ export function SupportTicketButton() {
             <div className="space-y-4 px-5 py-5">
               <label className="block space-y-2">
                 <span className="text-xs font-semibold uppercase tracking-[0.14em] text-[#7b6b54]">
-                  Type
+                  Category
                 </span>
                 <select
-                  value={source}
-                  onChange={(event) => setSource(event.target.value as SupportSource)}
+                  value={category}
+                  onChange={(event) => setCategory(event.target.value as SupportCategory)}
                   className="h-11 w-full rounded-[0.85rem] border border-[#d8cab5] bg-white px-3 text-sm font-semibold text-[#171717] outline-none"
                 >
-                  {SOURCE_OPTIONS.map((option) => (
+                  {CATEGORY_OPTIONS.map((option) => (
                     <option key={option.value} value={option.value}>
                       {option.label}
                     </option>
@@ -194,6 +203,7 @@ export function SupportTicketButton() {
                 <input
                   value={topic}
                   onChange={(event) => setTopic(event.target.value)}
+                  maxLength={120}
                   placeholder="What broke?"
                   className="h-11 w-full rounded-[0.85rem] border border-[#d8cab5] bg-white px-3 text-sm text-[#171717] outline-none placeholder:text-[#a5947d]"
                 />
@@ -206,6 +216,7 @@ export function SupportTicketButton() {
                 <textarea
                   value={explanation}
                   onChange={(event) => setExplanation(event.target.value)}
+                  maxLength={5000}
                   rows={5}
                   placeholder="What happened, expected result, steps to reproduce."
                   className="min-h-[8rem] w-full resize-none rounded-[0.85rem] border border-[#d8cab5] bg-white px-3 py-2 text-sm leading-6 text-[#171717] outline-none placeholder:text-[#a5947d]"
@@ -266,15 +277,7 @@ export function SupportTicketButton() {
 
               {state.status === "success" ? (
                 <p className="rounded-[0.85rem] border border-[#b7ddc2] bg-[#e8f6ed] px-3 py-2 text-sm font-semibold text-[#2f7b4f]">
-                  Created{" "}
-                  <a
-                    href={state.issue.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="underline"
-                  >
-                    {state.issue.identifier}
-                  </a>
+                  Created <span>{state.issue.identifier}</span>
                   {state.attachment?.status === "linked" ? " with image attached" : null}
                 </p>
               ) : null}
@@ -302,6 +305,11 @@ export function SupportTicketButton() {
               <button
                 type="button"
                 onClick={() => void submit()}
+                aria-label={
+                  state.status === "submitting"
+                    ? "Sending support request"
+                    : "Send support request"
+                }
                 disabled={
                   state.status === "submitting" || !topic.trim() || !explanation.trim()
                 }

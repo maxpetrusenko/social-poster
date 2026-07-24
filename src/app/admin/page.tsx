@@ -135,7 +135,7 @@ export default async function AdminOverviewPage() {
           accent="#d2a35d"
         />
         <KpiCard
-          label="Waitlist"
+          label="Signup History"
           value={waitlistCount.count}
           accent="#a855f7"
         />
@@ -159,8 +159,8 @@ export default async function AdminOverviewPage() {
         />
         <QuickLink
           href="/admin/waitlist"
-          label="Waitlist"
-          description="Manage waitlist signups"
+          label="Signup History"
+          description="Review legacy and active access lists"
           icon={ClipboardList}
         />
         <QuickLink

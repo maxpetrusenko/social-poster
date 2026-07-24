@@ -16,6 +16,7 @@ import {
 } from "@/lib/supabase/config";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { isEmailAllowedForAuth } from "@/lib/auth-allowlist";
+import { sanitizeAppNextPath } from "@/lib/safe-next-path";
 
 export const metadata = {
   title: "SMM Agent — Sign In",
@@ -34,14 +35,6 @@ interface LoginPageProps {
   }>;
 }
 
-function sanitizeNextPath(candidate?: string | null) {
-  if (!candidate || !candidate.startsWith("/")) {
-    return "/dashboard";
-  }
-
-  return candidate.startsWith("/auth") ? "/dashboard" : candidate;
-}
-
 export default async function LoginPage({ searchParams }: LoginPageProps) {
   if (AUTH_MODE === "bypass") {
     const cookieStore = await cookies();
@@ -57,7 +50,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   }
 
   const params = searchParams ? await searchParams : undefined;
-  const nextPath = sanitizeNextPath(params?.next);
+  const nextPath = sanitizeAppNextPath(params?.next);
   const authErrorCode = params?.error ?? null;
   const supabasePublicEnv =
     AUTH_MODE === "supabase" && isSupabaseConfigured()
@@ -101,7 +94,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
           {shouldResetSession && supabasePublicEnv ? (
             <UnauthorizedSessionReset supabase={supabasePublicEnv} />
           ) : null}
-          <p className="section-eyebrow text-[#d2a35d]">Private App</p>
+          <p className="section-eyebrow text-[#d2a35d]">Open Access</p>
           <h1 className="mt-3 font-serif text-[2rem] leading-none text-[#f6ecdc]">
             SMM Agent
           </h1>

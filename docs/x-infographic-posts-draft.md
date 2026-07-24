@@ -152,7 +152,7 @@ Use source OG image.
 
 Draft:
 
-`pay attention. <headline in plain english>. the interesting part is not the announcement. it’s what this unlocks for small teams.`
+Draft from the verified headline and source facts. Add a personal implication only when Max supplied or approved it.
 
 ### C. Benchmark Claim
 

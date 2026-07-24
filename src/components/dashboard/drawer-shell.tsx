@@ -33,6 +33,7 @@ import {
   agenticShellNav,
   channelShellNav,
   footerShellNav,
+  isShellNavHrefActive,
   utilityShellNav,
   workspaceShellNav,
   type ShellNavItem,
@@ -116,6 +117,18 @@ const headerCopy: HeaderConfig[] = [
   { match: "/dashboard/inbox/dms", title: "DMs", description: "Pull direct messages where platform APIs allow it." },
   { match: "/dashboard/inbox", title: "Social Inbox", description: "Track replies, comments, DMs, and assigned follow-ups." },
   { match: "/dashboard/replies", title: "Replies", description: "Legacy alias for Social Inbox replies." },
+  {
+    match: "/dashboard/articles/preview",
+    title: "Website Preview",
+    description: "Review published articles on the live SMM Agent website.",
+  },
+  {
+    match: "/dashboard/articles",
+    title: "Articles",
+    description: "Generate, review, and publish long-form articles.",
+    createHref: "/dashboard/articles/new",
+    createLabel: "New article",
+  },
   { match: "/dashboard/notifications", title: "Notifications", description: "See alerts, failures, approvals, and watch items." },
   { match: "/dashboard/schedules", title: "Schedules", description: "Control cadence, timing, and scheduled runs." },
   { match: "/dashboard/categories", title: "Recurrent Posts", description: "Review recurring slots, themes, and content buckets." },
@@ -168,10 +181,11 @@ function NavItem({
   badges: Record<string, number>;
 }) {
   const Icon = iconMap[item.icon];
-  const active = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
+  const active = isShellNavHrefActive(pathname, item.href);
   const hasChildren = item.children && item.children.length > 0;
   const childActive = hasChildren && item.children!.some(
-    (child) => pathname === child.href || (child.href !== "/dashboard" && pathname.startsWith(child.href))
+    (child) =>
+      isShellNavHrefActive(pathname, child.href, child.href === item.href)
   );
   const isOpen = active || childActive;
   const [expanded, setExpanded] = useState(isOpen);
@@ -216,7 +230,11 @@ function NavItem({
           <div className={cn("ml-6 mt-1 space-y-0.5 border-l border-[#e5d9c8] pl-3", compact && "lg:ml-0 lg:border-0 lg:pl-0")}>
             {item.children!.map((child) => {
               const ChildIcon = iconMap[child.icon];
-              const childIsActive = pathname === child.href || (child.href !== "/dashboard" && pathname.startsWith(child.href));
+              const childIsActive = isShellNavHrefActive(
+                pathname,
+                child.href,
+                child.href === item.href
+              );
               const childBadgeCount = badges[child.href] ?? 0;
 
               return (

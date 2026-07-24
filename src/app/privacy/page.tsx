@@ -17,7 +17,7 @@ const sections = [
     title: "Who we are",
     body: [
       "SMM Agent is a social posting and automation product operated by Max Petrusenko. You can contact us at max.petrusenko@gmail.com.",
-      "This policy applies to clawposter.app, social.maxpetrusenko.com, and related SMM Agent services, dashboards, forms, integrations, and support channels.",
+      "This policy applies to smmagent.app, clawposter.app, social.maxpetrusenko.com during the migration window, and related SMM Agent services, dashboards, forms, integrations, and support channels.",
     ],
   },
   {
@@ -27,7 +27,7 @@ const sections = [
       "We collect workspace content such as drafts, scheduled posts, media URLs, publishing targets, comments, replies, direct messages where connected platform APIs allow access, generated outputs, support tickets, logs, and configuration needed to run the service.",
       "When you connect a social account, we may receive platform identifiers, profile details, handles, tokens, refresh tokens, scopes, pages, channels, post IDs, reply IDs, URLs, and publishing or inbox status. We use this data to authenticate, publish, read permitted inbox surfaces, refresh tokens, and show operational status.",
       "We collect technical information such as IP address, browser and device details, request metadata, cookies, session data, error logs, audit logs, pipeline runs, and security events.",
-      "If you join a waitlist, request support, or email us, we collect the information you provide, including your email address and message content.",
+      "If you joined the former SMM Agent waitlist, requested support, or emailed us, we collected the information you provided, including your email address and message content. Other product waitlists may still collect your email when you submit their forms.",
     ],
   },
   {

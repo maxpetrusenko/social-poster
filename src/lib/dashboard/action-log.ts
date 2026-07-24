@@ -82,7 +82,14 @@ export async function getLatestActionLogRows(input: {
     .limit(limit);
 
   const replyRows = await db
-    .select()
+    .select({
+      id: replyEvents.id,
+      tweetUrl: replyEvents.tweetUrl,
+      replyUrl: replyEvents.replyUrl,
+      authorHandle: replyEvents.authorHandle,
+      status: replyEvents.status,
+      createdAt: replyEvents.createdAt,
+    })
     .from(replyEvents)
     .where(eq(replyEvents.workspaceId, input.workspaceId))
     .orderBy(desc(replyEvents.createdAt))

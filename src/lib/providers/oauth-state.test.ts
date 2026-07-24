@@ -28,6 +28,28 @@ test("oauthCallbackUrl derives URL from request headers", () => {
   );
 });
 
+test("oauthCallbackUrl supports the new and legacy production hosts during migration", () => {
+  delete process.env.SOCIAL_POSTER_OAUTH_CALLBACK_URL;
+
+  for (const host of [
+    "smmagent.app",
+    "social.maxpetrusenko.com",
+  ]) {
+    const request = {
+      headers: new Headers({
+        "x-forwarded-proto": "https",
+        "x-forwarded-host": host,
+      }),
+    };
+
+    assert.equal(
+      oauthCallbackUrl("linkedin_personal", request),
+      `https://${host}/api/auth/callback`,
+      host
+    );
+  }
+});
+
 test("oauthCallbackUrl falls back to host header", () => {
   delete process.env.SOCIAL_POSTER_OAUTH_CALLBACK_URL;
   const request = {

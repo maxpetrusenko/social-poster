@@ -23,7 +23,7 @@ export const COMPOSER_PLATFORM_META: Record<PlatformType, ComposerPlatformMeta> 
     label: "X / Twitter",
     icon: "X",
     accent: "#1d9bf0",
-    charLimit: 280,
+    charLimit: 25000,
     formats: [
       { id: "tweet", label: "Tweet" },
       { id: "thread", label: "Thread" },

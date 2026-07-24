@@ -16,7 +16,7 @@ const sections = [
   {
     title: "Agreement",
     body: [
-      "These Terms of Service govern your access to and use of SMM Agent, including clawposter.app, social.maxpetrusenko.com, dashboards, APIs, automations, integrations, and related services.",
+      "These Terms of Service govern your access to and use of SMM Agent, including smmagent.app, clawposter.app, social.maxpetrusenko.com during the migration window, dashboards, APIs, automations, integrations, and related services.",
       "By using SMM Agent, you agree to these terms. If you use SMM Agent for a company, client, or workspace, you confirm that you have authority to bind that organization.",
     ],
   },

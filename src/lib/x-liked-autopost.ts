@@ -20,7 +20,6 @@ import {
   type XLikedAutopostWriterResult,
 } from "@/lib/x-liked-autopost-writer";
 import {
-  buildFaithfulXLikedFallbackPostContent,
   buildXLikedDedupKey,
   buildXLikedPlatformPostContent,
   getXLikedExternalUrls,
@@ -30,7 +29,6 @@ import {
   getXLikedAutopostSkipReason,
   pickXLikedMedia,
   resolveXLikedPlatformMedia,
-  shouldUseDirectXLikedTextCopy,
   type XLikedMedia,
 } from "@/lib/x-liked-autopost-format";
 import type { XLikedAutopostOperationalFailure } from "@/lib/x-liked-autopost-notifications";
@@ -55,11 +53,14 @@ export type XLikedAutopostResult = {
     postId: string;
     sourceUrl: string;
     authorHandle: string;
+    content?: string;
     mediaUrl: string | null;
+    mediaSourceUrl?: string | null;
     scheduledAt?: string;
     targets: Array<{
       platform: string;
       success: boolean;
+      content?: string;
       postUrl?: string;
       error?: string;
     }>;
@@ -125,7 +126,7 @@ function getDashboardRunUrl(runId: string) {
   const base = (
     process.env.APP_URL ||
     process.env.NEXT_PUBLIC_APP_URL ||
-    "https://social.maxpetrusenko.com"
+    "https://smmagent.app"
   ).replace(/\/+$/, "");
   return `${base}/dashboard/pipeline?runId=${encodeURIComponent(runId)}`;
 }
@@ -527,113 +528,77 @@ export async function runXLikedAutopost(options: RunOptions): Promise<XLikedAuto
     }
 
     let writer: XLikedAutopostWriterResult;
-    if (shouldUseDirectXLikedTextCopy({ sourceText: cleanText, hasMedia: Boolean(media) })) {
-      writer = {
-        content: buildXLikedPostContent({
-          authorHandle,
-          sourceUrl,
-          sourceText: cleanText,
-          includeSource: false,
-        }),
-        model: "deterministic-direct-copy",
-        modelSource: "local",
-        traceUrl: null,
-      };
+    try {
+      writer = await draftXLikedAutopostContent({
+        workspaceId: options.workspaceId,
+        authorHandle,
+        sourceUrl,
+        sourceText: cleanText,
+        externalUrls,
+        hasMedia: Boolean(media),
+        mediaType: media?.mediaType ?? null,
+        mediaSourceUrl: media?.sourceUrl ?? null,
+      });
       runSteps.push(
         completedStep("x-like:draft", new Date(), {
-          strategy: "deterministic-direct-copy",
-          note: "Self-contained text-like under budget. Preserved source wording instead of running interpretive writer.",
+          strategy: "ai",
+          model: writer.model,
+          modelSource: writer.modelSource,
+          traceUrl: writer.traceUrl,
         }),
-        completedStep("x-like:judge", new Date(), {
+        completedStep("x-like:reviewer", new Date(), {
           status: "passed",
-          rubric: ["source_fidelity", "direct_copy_policy", "platform_fit"],
+          model: writer.review.model,
+          modelSource: writer.review.modelSource,
+          traceUrl: writer.review.traceUrl,
+          rubric: [
+            "source_fidelity",
+            "factual_support",
+            "max_voice",
+            "banned_patterns",
+            "platform_fit",
+          ],
         })
       );
-    } else {
-      try {
-        writer = await draftXLikedAutopostContent({
-          workspaceId: options.workspaceId,
-          authorHandle,
-          sourceUrl,
-          sourceText: cleanText,
-          externalUrls,
-          hasMedia: Boolean(media),
-          mediaType: media?.mediaType ?? null,
-        });
-        runSteps.push(
-          completedStep("x-like:draft", new Date(), {
-            strategy: "ai",
-            model: writer.model,
-            modelSource: writer.modelSource,
-            traceUrl: writer.traceUrl,
-          }),
-          completedStep("x-like:judge", new Date(), {
-            status: "passed",
-            rubric: [
-              "source_fidelity",
-              "max_voice",
-              "specificity",
-              "platform_fit",
-            ],
-          })
-        );
-      } catch (error) {
-        const writerError =
-          error instanceof Error ? error.message : String(error);
-        const writerFailure: XLikedAutopostOperationalFailure =
-          error instanceof XLikedAutopostWriterError
-            ? buildWriterOperationalFailure({ error })
-            : {
-                platform: "writer",
-                classification: "writer_unavailable",
-                error: writerError,
-              };
-        const completedAt = new Date();
-        const fallbackContent = buildFaithfulXLikedFallbackPostContent({
-          authorHandle,
-          sourceUrl,
-          sourceText: cleanText,
-          hasMedia: Boolean(media),
-          externalUrls,
-        });
-        writer = {
-          content: fallbackContent,
-          model: "deterministic-fallback",
-          modelSource: "local",
-          traceUrl: null,
-        };
-        runSteps.push(
-          completedStep("x-like:draft", completedAt, {
-            strategy: "ai",
-            status: "rejected_or_unavailable",
-            error: writerError,
-          }),
-          completedStep("x-like:fallback-repaired", completedAt, {
-            reason:
-              error instanceof XLikedAutopostWriterError
-                ? error.code
-                : "writer_error",
-            sourceUrl,
-            externalUrls,
-            contentLength: fallbackContent.length,
-            note: "Like is the publish signal. Writer failure was repaired with faithful deterministic fallback and will still queue.",
-          })
-        );
+    } catch (error) {
+      const writerError =
+        error instanceof Error ? error.message : String(error);
+      const writerFailure: XLikedAutopostOperationalFailure =
+        error instanceof XLikedAutopostWriterError
+          ? buildWriterOperationalFailure({ error })
+          : {
+              platform: "writer",
+              classification: "writer_unavailable",
+              error: writerError,
+            };
+      const completedAt = new Date();
+      const failedSteps = [
+        ...runSteps,
+        completedStep("x-like:draft", completedAt, {
+          strategy: "ai",
+          status: "rejected_or_unavailable",
+          error: writerError,
+        }),
+        completedStep("x-like:reviewer", completedAt, {
+          status: "failed",
+          failures: [writerFailure],
+          note: "Writer and reviewer loop failed. No deterministic fallback was queued.",
+        }, writerError),
+      ];
 
-        if (!dryRun) {
-          await db.update(pipelineRuns).set({
-            status: "running",
-            steps: [
-              ...runSteps,
-              completedStep("x-like:repair-notify", completedAt, {
-                result: "skipped",
-                failures: [writerFailure],
-                note: "No failure alert sent because the post was repaired and queued.",
-              }),
-            ],
-          }).where(eq(pipelineRuns.id, runId));
-        }
+      if (!dryRun) {
+        await releaseDedupKey(dedupKey);
+        await db.update(pipelineRuns).set({
+          status: "failed",
+          steps: failedSteps,
+          error: writerError,
+          durationMs: Math.max(0, completedAt.getTime() - now.getTime()),
+          completedAt,
+        }).where(eq(pipelineRuns.id, runId));
       }
+
+      result.skipped.push({ url: sourceUrl, reason: `writer/reviewer failed: ${writerError}` });
+      continue;
     }
 
     const content = writer.content;
@@ -662,6 +627,7 @@ export async function runXLikedAutopost(options: RunOptions): Promise<XLikedAuto
       completedStep("x-like:packet-ready", new Date(), {
         contentLength: content.length,
         mediaUrl,
+        mediaSourceUrl: media?.sourceUrl ?? null,
         targets: publishTargets.map((target) => ({
           platform: target.platform.type,
           contentLength: target.content.length,
@@ -709,11 +675,14 @@ export async function runXLikedAutopost(options: RunOptions): Promise<XLikedAuto
         postId: "dry-run",
         sourceUrl,
         authorHandle,
+        content,
         mediaUrl,
+        mediaSourceUrl: media?.sourceUrl ?? null,
         scheduledAt: scheduledAt.toISOString(),
         targets: publishTargets.map((target) => ({
           platform: target.platform.type,
           success: true,
+          content: target.content,
         })),
       });
       continue;
@@ -755,14 +724,19 @@ export async function runXLikedAutopost(options: RunOptions): Promise<XLikedAuto
         mediaUrlsByPlatformId,
         contentMachine: {
           invariant: "like_creates_publishing_obligation",
-          fallbackAllowed: true,
-          lowQualityAction: "repair_and_queue",
+          fallbackAllowed: false,
+          lowQualityAction: "repair_or_fail_closed",
         },
         writer: {
           source: "ai",
           model: writer.model,
           modelSource: writer.modelSource,
           traceUrl: writer.traceUrl,
+          reviewer: {
+            model: writer.review.model,
+            modelSource: writer.review.modelSource,
+            traceUrl: writer.review.traceUrl,
+          },
         },
       },
       createdAt: now,

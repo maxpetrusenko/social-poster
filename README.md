@@ -124,7 +124,10 @@ npm run test:deploy-workflow
 
 ## Deployment
 
-Production is `https://social.maxpetrusenko.com`.
+Production is `https://smmagent.app`: the root remains the SMM Agent marketing
+page, while `/login`, `/auth/callback`, and `/dashboard` are served on the same
+origin. Keep `https://social.maxpetrusenko.com` available temporarily for legacy
+sessions and OAuth callbacks during the migration window.
 
 The deploy workflow:
 

@@ -1,4 +1,5 @@
 import { cleanRichText } from "./content-clean";
+import { findNoAiSlopIssues } from "../writing/no-ai-slop";
 
 export type PostQualityStory = {
   title: string;
@@ -47,6 +48,9 @@ const GENERIC_PHRASES = [
   "breaking",
   "interesting",
 ];
+
+const CREDIT_FOOTER_LINE = /^\s*(?:source|credit|credits|h\/t|via)\b\s*:?.*$/im;
+const CREDIT_FOOTER_LINES = /^\s*(?:source|credit|credits|h\/t|via)\b\s*:?.*$/gim;
 
 export function sanitizeHumanPostStory(
   story: PostQualityStory
@@ -102,6 +106,7 @@ export function assessPostQuality(
   }
   if (/\bsubmitted\s+by\s+\/?u\//i.test(text)) reasons.push("reddit_metadata");
   if (/\[(?:link|comments?)\]/i.test(text)) reasons.push("rss_link_comments_metadata");
+  if (CREDIT_FOOTER_LINE.test(content)) reasons.push("source_credit_label");
   if (/#\p{L}[\p{L}\p{N}_-]*/u.test(text)) reasons.push("hashtag");
   if (/\bBREAKING\b/i.test(text)) reasons.push("breaking");
   if (containsEmoji(text)) reasons.push("emoji");
@@ -120,6 +125,9 @@ export function assessPostQuality(
   }
 
   if (containsGenericPhrase(text)) reasons.push("generic_filler");
+  for (const issue of findNoAiSlopIssues(content)) {
+    reasons.push(`no_ai_slop:${issue.code}`);
+  }
 
   return {
     ok: reasons.length === 0,
@@ -130,6 +138,7 @@ export function assessPostQuality(
 export function cleanHumanPostDraft(value: string, platform: string) {
   let next = value
     .replace(/\b(source|link):\s*https?:\/\/\S+/gi, "")
+    .replace(CREDIT_FOOTER_LINES, "")
     .replace(/https?:\/\/\S+/g, "")
     .replace(/#[\p{L}\p{N}_-]+/gu, "")
     .replace(/\bBREAKING\b:?/gi, "")
@@ -158,23 +167,17 @@ export function buildDeterministicPostFallback(
   const detail = firstUsefulSummarySentence(sanitized.summary, sanitized.title);
 
   const observation = detail
-    ? `${sourceLabel} gives one concrete signal: ${shorten(stripTrailingPunctuation(detail), 150)}.`
-    : `${sourceLabel} has a narrow signal: ${title}.`;
+    ? `${sourceLabel}: ${shorten(stripTrailingPunctuation(detail), 150)}.`
+    : `${sourceLabel}: ${title}.`;
 
-  const implication =
-    "Builder takeaway: test the workflow constraint it changes before repeating the headline.";
-
-  const draft =
-    normalizePlatform(platform) === "twitter"
-      ? `${observation}\n\n${implication}`
-      : `${observation}\n\n${implication}\n\nThe source link can carry the citation; the post should carry the useful question.`;
+  const draft = observation;
 
   const cleaned = cleanHumanPostDraft(draft, platform);
   const quality = assessPostQuality(cleaned, sanitized, platform);
   if (quality.ok) return cleaned;
 
   return cleanHumanPostDraft(
-    `Concrete signal: ${title}.\n\nBuilder takeaway: test the real workflow constraint before repeating the headline.`,
+    `${title}.`,
     platform
   );
 }

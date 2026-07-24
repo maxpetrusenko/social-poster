@@ -40,25 +40,14 @@ function platformKey(type: string) {
   return normalized === "x" ? "twitter" : normalized;
 }
 
-function isFirstCommentPlatform(type: string) {
-  const normalized = type.toLowerCase();
-  return normalized === "x" || normalized === "twitter";
-}
-
-function sourceFirstComment(title: string, sourceUrl: string) {
-  return title ? `Source: ${title}\n${sourceUrl}` : `Source: ${sourceUrl}`;
-}
-
 function appendSourceLinkToPreview(
   content: string,
-  sourceUrl: string,
-  platformType: string
+  _sourceUrl: string,
+  _platformType: string
 ) {
-  const normalized = platformType.toLowerCase();
-  if (!sourceUrl || normalized === "x" || normalized === "twitter") {
-    return content;
-  }
-  return `${content}\n\nSource: ${sourceUrl}`;
+  void _sourceUrl;
+  void _platformType;
+  return content;
 }
 
 export function resolveDynamicSchedulePreview(
@@ -98,9 +87,7 @@ export function resolveDynamicSchedulePreview(
       candidate.link,
       platformType
     );
-    firstCommentByPlatform[key] = isFirstCommentPlatform(platformType)
-      ? sourceFirstComment(candidate.title, candidate.link)
-      : null;
+    firstCommentByPlatform[key] = null;
   }
 
   const firstContent =

@@ -79,7 +79,11 @@ export default async function BlogCategoryPage({ params }: Props) {
 
   return (
     <>
-      <LandingNav isLoggedIn={!!session} brandName={brandName} />
+      <LandingNav
+        isLoggedIn={!!session}
+        brandName={brandName}
+        accessMode={brandName === "SMM Agent" ? "login" : "waitlist"}
+      />
       <main className="pt-28 pb-20 px-6">
         <div className="container">
           <article className="max-w-4xl">

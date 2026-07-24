@@ -26,6 +26,7 @@ PROFILES_DIR.mkdir(exist_ok=True)
 
 CALLBACK_URIS = [
     "http://localhost:3000/api/auth/callback",
+    "https://smmagent.app/api/auth/callback",
     "https://social.maxpetrusenko.com/api/auth/callback",
 ]
 

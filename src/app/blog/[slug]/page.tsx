@@ -59,7 +59,11 @@ export default async function BlogPostPage({ params }: Props) {
 
   return (
     <>
-      <LandingNav isLoggedIn={!!session} brandName={brandName} />
+      <LandingNav
+        isLoggedIn={!!session}
+        brandName={brandName}
+        accessMode={brandName === "SMM Agent" ? "login" : "waitlist"}
+      />
       <main className="pt-28 pb-20 px-6">
         <article className="container max-w-2xl">
           <Link href="/blog" className="text-sm text-[var(--accent-tech)] hover:underline mb-6 inline-block">
@@ -98,15 +102,32 @@ export default async function BlogPostPage({ params }: Props) {
             </div>
           )}
 
-          {/* Inline waitlist CTA */}
           <div className="mt-16 rounded-2xl border border-[var(--line)] bg-[var(--paper)] p-8 text-center">
             <h3 className="text-xl font-semibold mb-2 font-[family-name:var(--font-sans)]">
               Ready to automate your social posting?
             </h3>
-            <p className="text-sm text-[var(--muted)] mb-6">Join the waitlist for early access to {brandName}.</p>
-            <div className="max-w-sm mx-auto">
-              <WaitlistForm source="blog" />
-            </div>
+            {brandName === "SMM Agent" ? (
+              <>
+                <p className="text-sm text-[var(--muted)] mb-6">
+                  Sign in to create, schedule, publish, and get help from the dashboard.
+                </p>
+                <Link
+                  href={session ? "/dashboard" : "/login"}
+                  className="inline-flex h-11 items-center justify-center rounded-xl bg-[var(--ink)] px-6 text-sm font-semibold text-[var(--sand)] transition-colors hover:bg-[var(--ink-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-tech)] focus-visible:ring-offset-2"
+                >
+                  {session ? "Open SMM Agent" : "Start using SMM Agent"}
+                </Link>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-[var(--muted)] mb-6">
+                  Join the waitlist for early access to {brandName}.
+                </p>
+                <div className="max-w-sm mx-auto">
+                  <WaitlistForm source="blog" />
+                </div>
+              </>
+            )}
           </div>
         </article>
       </main>

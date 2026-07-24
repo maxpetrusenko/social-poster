@@ -20,9 +20,167 @@ function addColumnIfMissing(
   column: string,
   definition: string
 ) {
+  const exists = sqlite.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(table);
+  if (!exists) return;
   if (!columnExists(sqlite, table, column)) {
-    sqlite.exec(`ALTER TABLE ${table} ADD COLUMN ${definition}`);
+    try {
+      sqlite.exec(`ALTER TABLE ${table} ADD COLUMN ${definition}`);
+    } catch (error) {
+      // Next.js build workers may initialize the same SQLite database in
+      // parallel. Another worker can add the column after our existence check.
+      if (!(error instanceof Error) || !error.message.includes(`duplicate column name: ${column}`)) {
+        throw error;
+      }
+    }
   }
+}
+
+function hasForeignKey(sqlite: Database.Database, table: string, from: string, target: string) {
+  return (sqlite.prepare(`PRAGMA foreign_key_list(${table})`).all() as Array<{ from: string; table: string }>)
+    .some((entry) => entry.from === from && entry.table === target);
+}
+
+function rebuildLegacyWorkToPostControls(sqlite: Database.Database) {
+  const needsReceipts = !hasForeignKey(sqlite, "command_receipts", "candidate_id", "content_candidates");
+  const needsDispatches = !hasForeignKey(sqlite, "dispatch_intents", "candidate_id", "content_candidates");
+  const needsDecisions = !hasForeignKey(sqlite, "content_decisions", "candidate_id", "content_candidates");
+  if (!needsReceipts && !needsDispatches && !needsDecisions) return;
+
+  sqlite.transaction(() => {
+    const workspaces = sqlite.prepare(`
+      SELECT workspace_id FROM command_receipts
+      UNION SELECT workspace_id FROM dispatch_intents
+      UNION SELECT workspace_id FROM content_decisions
+    `).all() as Array<{ workspace_id: string }>;
+    const insertCompletion = sqlite.prepare(`
+      INSERT OR IGNORE INTO work_completion_events
+        (id, workspace_id, source_agent, external_event_id, session_ref, project_ref, summary, privacy, status, occurred_at, created_at)
+      VALUES (?, ?, 'legacy', ?, 'legacy-migration', 'social-poster', 'Legacy control-row migration', 'public_safe', 'needs_proof', 0, 0)
+    `);
+    const insertCandidate = sqlite.prepare(`
+      INSERT OR IGNORE INTO content_candidates
+        (id, workspace_id, completion_event_id, status, current_revision, created_at, updated_at)
+      VALUES (?, ?, ?, 'needs_proof', 0, 0, 0)
+    `);
+    for (const { workspace_id: workspaceId } of workspaces) {
+      const suffix = Buffer.from(workspaceId).toString("hex").toUpperCase();
+      const completionId = `legacy-completion:${suffix}`;
+      const candidateId = `legacy-candidate:${suffix}`;
+      insertCompletion.run(completionId, workspaceId, `legacy-control:${suffix}`);
+      insertCandidate.run(candidateId, workspaceId, completionId);
+    }
+
+    sqlite.exec(`
+      DROP INDEX IF EXISTS command_receipts_replay_unique;
+      DROP INDEX IF EXISTS command_receipts_candidate_idx;
+      DROP INDEX IF EXISTS dispatch_intents_approval_unique;
+      DROP INDEX IF EXISTS content_decisions_replay_unique;
+      DROP INDEX IF EXISTS content_decisions_approval_unique;
+    `);
+
+    if (needsReceipts) sqlite.exec(`
+      ALTER TABLE command_receipts RENAME TO command_receipts_legacy;
+      CREATE TABLE command_receipts (
+        id TEXT PRIMARY KEY,
+        workspace_id TEXT NOT NULL,
+        operation TEXT NOT NULL,
+        idempotency_key TEXT NOT NULL,
+        candidate_id TEXT NOT NULL REFERENCES content_candidates(id) ON DELETE CASCADE,
+        revision_number INTEGER NOT NULL,
+        command_type TEXT NOT NULL,
+        scope_digest TEXT NOT NULL,
+        request_hash TEXT NOT NULL,
+        state TEXT NOT NULL,
+        lease_expires_at INTEGER,
+        attempts INTEGER NOT NULL,
+        response TEXT,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
+      INSERT INTO command_receipts
+      SELECT id, workspace_id, COALESCE(NULLIF(operation, ''), 'decision'), idempotency_key,
+        CASE WHEN candidate_id IS NOT NULL AND candidate_id != ''
+          AND EXISTS (SELECT 1 FROM content_candidates c WHERE c.id = command_receipts_legacy.candidate_id)
+          THEN candidate_id ELSE 'legacy-candidate:' || hex(workspace_id) END,
+        COALESCE(revision_number, 0), COALESCE(NULLIF(command_type, ''), 'unknown'),
+        COALESCE(scope_digest, ''), request_hash,
+        CASE WHEN response IS NOT NULL AND response != '' THEN 'completed' ELSE 'failed' END,
+        NULL, MAX(COALESCE(attempts, 1), 1), NULLIF(response, ''), created_at,
+        CASE WHEN updated_at IS NULL OR updated_at = 0 THEN created_at ELSE updated_at END
+      FROM command_receipts_legacy;
+      DROP TABLE command_receipts_legacy;
+    `);
+
+    if (needsDispatches) sqlite.exec(`
+      ALTER TABLE dispatch_intents RENAME TO dispatch_intents_legacy;
+      CREATE TABLE dispatch_intents (
+        id TEXT PRIMARY KEY,
+        workspace_id TEXT NOT NULL,
+        candidate_id TEXT NOT NULL REFERENCES content_candidates(id) ON DELETE CASCADE,
+        action TEXT NOT NULL,
+        status TEXT NOT NULL,
+        request_hash TEXT NOT NULL,
+        approval_digest TEXT NOT NULL,
+        created_at INTEGER NOT NULL
+      );
+      INSERT INTO dispatch_intents
+      SELECT id, workspace_id,
+        CASE WHEN candidate_id IS NOT NULL AND candidate_id != ''
+          AND EXISTS (SELECT 1 FROM content_candidates c WHERE c.id = dispatch_intents_legacy.candidate_id)
+          THEN candidate_id ELSE 'legacy-candidate:' || hex(workspace_id) END,
+        action, status, request_hash,
+        CASE
+          WHEN approval_digest IS NULL OR approval_digest = '' THEN 'legacy:' || id
+          WHEN (SELECT COUNT(*) FROM dispatch_intents_legacy d
+                WHERE d.workspace_id = dispatch_intents_legacy.workspace_id
+                  AND d.approval_digest = dispatch_intents_legacy.approval_digest) > 1
+            THEN approval_digest || ':legacy:' || id
+          ELSE approval_digest
+        END,
+        created_at
+      FROM dispatch_intents_legacy;
+      DROP TABLE dispatch_intents_legacy;
+    `);
+
+    if (needsDecisions) sqlite.exec(`
+      ALTER TABLE content_decisions RENAME TO content_decisions_legacy;
+      CREATE TABLE content_decisions (
+        id TEXT PRIMARY KEY,
+        workspace_id TEXT NOT NULL,
+        candidate_id TEXT NOT NULL REFERENCES content_candidates(id) ON DELETE CASCADE,
+        command_type TEXT NOT NULL,
+        request_hash TEXT NOT NULL,
+        approval_digest TEXT,
+        dispatch_id TEXT,
+        created_at INTEGER NOT NULL
+      );
+      INSERT INTO content_decisions
+      SELECT id, workspace_id,
+        CASE WHEN candidate_id IS NOT NULL AND candidate_id != ''
+          AND EXISTS (SELECT 1 FROM content_candidates c WHERE c.id = content_decisions_legacy.candidate_id)
+          THEN candidate_id ELSE 'legacy-candidate:' || hex(workspace_id) END,
+        command_type, request_hash,
+        CASE WHEN approval_digest IS NOT NULL AND approval_digest != ''
+          AND id = (SELECT MIN(d.id) FROM content_decisions_legacy d
+                    WHERE d.workspace_id = content_decisions_legacy.workspace_id
+                      AND d.approval_digest = content_decisions_legacy.approval_digest)
+          THEN approval_digest ELSE NULL END,
+        dispatch_id, created_at
+      FROM content_decisions_legacy;
+      DROP TABLE content_decisions_legacy;
+    `);
+
+    sqlite.exec(`
+      CREATE UNIQUE INDEX command_receipts_replay_unique ON command_receipts(workspace_id, operation, idempotency_key);
+      CREATE INDEX command_receipts_candidate_idx ON command_receipts(workspace_id, candidate_id, revision_number);
+      CREATE UNIQUE INDEX dispatch_intents_approval_unique ON dispatch_intents(workspace_id, approval_digest);
+      CREATE UNIQUE INDEX content_decisions_replay_unique ON content_decisions(workspace_id, request_hash);
+      CREATE UNIQUE INDEX content_decisions_approval_unique ON content_decisions(workspace_id, approval_digest) WHERE approval_digest IS NOT NULL;
+    `);
+  })();
+
+  const violations = sqlite.prepare("PRAGMA foreign_key_check").all();
+  if (violations.length) throw new Error(`Work-to-post migration left ${violations.length} foreign-key violation(s).`);
 }
 
 function ensureSchema(sqlite: Database.Database) {
@@ -137,6 +295,15 @@ function ensureSchema(sqlite: Database.Database) {
       used_at INTEGER,
       created_at INTEGER NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS waitlist_signups (
+      id TEXT PRIMARY KEY NOT NULL,
+      email TEXT NOT NULL,
+      source TEXT NOT NULL DEFAULT 'landing',
+      created_at INTEGER NOT NULL
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS waitlist_signups_email_unique
+    ON waitlist_signups(email);
 
     CREATE TABLE IF NOT EXISTS platforms (
       id TEXT PRIMARY KEY NOT NULL,
@@ -895,6 +1062,76 @@ function ensureSchema(sqlite: Database.Database) {
     CREATE INDEX IF NOT EXISTS blog_automation_runs_post_idx
     ON blog_automation_runs(post_id, started_at);
   `);
+
+  // Additive upgrades for databases created by the first work-to-post slice.
+  // SQLite cannot add foreign-key constraints in place; fresh databases carry
+  // them in the DDL below, while existing rows retain their original tables.
+  addColumnIfMissing(sqlite, "content_revisions", "assigned_account", "assigned_account TEXT");
+  addColumnIfMissing(sqlite, "content_revisions", "policy_version", "policy_version TEXT");
+  addColumnIfMissing(sqlite, "content_revisions", "approval_expires_at", "approval_expires_at INTEGER");
+  addColumnIfMissing(sqlite, "command_receipts", "operation", "operation TEXT NOT NULL DEFAULT 'decision'");
+  addColumnIfMissing(sqlite, "command_receipts", "candidate_id", "candidate_id TEXT");
+  addColumnIfMissing(sqlite, "command_receipts", "revision_number", "revision_number INTEGER NOT NULL DEFAULT 0");
+  addColumnIfMissing(sqlite, "command_receipts", "command_type", "command_type TEXT NOT NULL DEFAULT 'unknown'");
+  addColumnIfMissing(sqlite, "command_receipts", "scope_digest", "scope_digest TEXT NOT NULL DEFAULT ''");
+  addColumnIfMissing(sqlite, "command_receipts", "state", "state TEXT NOT NULL DEFAULT 'failed'");
+  addColumnIfMissing(sqlite, "command_receipts", "lease_expires_at", "lease_expires_at INTEGER");
+  addColumnIfMissing(sqlite, "command_receipts", "attempts", "attempts INTEGER NOT NULL DEFAULT 1");
+  addColumnIfMissing(sqlite, "command_receipts", "updated_at", "updated_at INTEGER NOT NULL DEFAULT 0");
+  addColumnIfMissing(sqlite, "dispatch_intents", "approval_digest", "approval_digest TEXT NOT NULL DEFAULT ''");
+  addColumnIfMissing(sqlite, "content_decisions", "approval_digest", "approval_digest TEXT");
+  addColumnIfMissing(sqlite, "content_decisions", "dispatch_id", "dispatch_id TEXT");
+  addColumnIfMissing(sqlite, "learning_proposals", "reason_codes", "reason_codes TEXT NOT NULL DEFAULT '[]'");
+  addColumnIfMissing(sqlite, "learning_proposals", "scope", "scope TEXT NOT NULL DEFAULT 'candidate'");
+  addColumnIfMissing(sqlite, "learning_proposals", "trait_key", "trait_key TEXT");
+  addColumnIfMissing(sqlite, "learning_proposals", "direction", "direction TEXT");
+  addColumnIfMissing(sqlite, "learning_proposals", "evidence_event_ids", "evidence_event_ids TEXT NOT NULL DEFAULT '[]'");
+  addColumnIfMissing(sqlite, "learning_proposals", "confidence", "confidence INTEGER NOT NULL DEFAULT 0");
+  addColumnIfMissing(sqlite, "learning_proposals", "expires_at", "expires_at INTEGER");
+  sqlite.exec("DROP INDEX IF EXISTS command_receipts_replay_unique; DROP INDEX IF EXISTS dispatch_intents_request_unique;");
+  if (sqlite.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'dispatch_intents'").get()) {
+    sqlite.exec("UPDATE dispatch_intents SET approval_digest = 'legacy:' || id WHERE approval_digest IS NULL OR approval_digest = ''");
+  }
+
+  // Isolated work-to-post domain. No foreign keys to posts/replies/schedules by design.
+  sqlite.exec(`
+    CREATE TABLE IF NOT EXISTS work_completion_events (id TEXT PRIMARY KEY, workspace_id TEXT NOT NULL, source_agent TEXT NOT NULL, external_event_id TEXT NOT NULL, session_ref TEXT NOT NULL, project_ref TEXT NOT NULL, summary TEXT NOT NULL, privacy TEXT NOT NULL, status TEXT NOT NULL, occurred_at INTEGER NOT NULL, created_at INTEGER NOT NULL);
+    CREATE UNIQUE INDEX IF NOT EXISTS work_completion_events_replay_unique ON work_completion_events(workspace_id, source_agent, external_event_id);
+    CREATE TABLE IF NOT EXISTS work_completion_proofs (id TEXT PRIMARY KEY, completion_event_id TEXT NOT NULL REFERENCES work_completion_events(id) ON DELETE CASCADE, type TEXT NOT NULL, uri TEXT NOT NULL, hash TEXT, verified_at INTEGER, created_at INTEGER NOT NULL);
+    CREATE TABLE IF NOT EXISTS content_candidates (id TEXT PRIMARY KEY, workspace_id TEXT NOT NULL, completion_event_id TEXT NOT NULL REFERENCES work_completion_events(id) ON DELETE CASCADE, status TEXT NOT NULL, current_revision INTEGER NOT NULL, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL);
+    CREATE UNIQUE INDEX IF NOT EXISTS content_candidates_completion_unique ON content_candidates(workspace_id, completion_event_id);
+    CREATE TABLE IF NOT EXISTS content_revisions (id TEXT PRIMARY KEY, candidate_id TEXT NOT NULL REFERENCES content_candidates(id) ON DELETE CASCADE, revision_number INTEGER NOT NULL, content_digest TEXT NOT NULL, media_digest TEXT, account_digest TEXT, policy_digest TEXT, assigned_account TEXT, policy_version TEXT, approval_expires_at INTEGER, created_at INTEGER NOT NULL);
+    CREATE UNIQUE INDEX IF NOT EXISTS content_revisions_number_unique ON content_revisions(candidate_id, revision_number);
+    CREATE TABLE IF NOT EXISTS content_lifecycle_events (id TEXT PRIMARY KEY, workspace_id TEXT NOT NULL, candidate_id TEXT NOT NULL, event_type TEXT NOT NULL, revision_number INTEGER NOT NULL, trace_ref TEXT, created_at INTEGER NOT NULL);
+    CREATE INDEX IF NOT EXISTS content_lifecycle_events_candidate_idx ON content_lifecycle_events(workspace_id, candidate_id, created_at);
+    CREATE TABLE IF NOT EXISTS content_trace_links (id TEXT PRIMARY KEY, candidate_id TEXT NOT NULL, stage TEXT NOT NULL, trace_ref TEXT NOT NULL, created_at INTEGER NOT NULL);
+    CREATE TABLE IF NOT EXISTS reference_examples (id TEXT PRIMARY KEY, workspace_id TEXT NOT NULL, source_url TEXT NOT NULL, author TEXT NOT NULL, captured_at INTEGER NOT NULL, mechanism TEXT NOT NULL, created_at INTEGER NOT NULL);
+    CREATE TABLE IF NOT EXISTS content_angles (id TEXT PRIMARY KEY, candidate_id TEXT NOT NULL, revision_number INTEGER NOT NULL, title TEXT NOT NULL, provenance TEXT NOT NULL, created_at INTEGER NOT NULL);
+    CREATE TABLE IF NOT EXISTS content_comments (id TEXT PRIMARY KEY, candidate_id TEXT NOT NULL, revision_number INTEGER NOT NULL, body TEXT NOT NULL, created_at INTEGER NOT NULL);
+    CREATE TABLE IF NOT EXISTS content_reviews (id TEXT PRIMARY KEY, candidate_id TEXT NOT NULL REFERENCES content_candidates(id) ON DELETE CASCADE, revision_number INTEGER NOT NULL, revision_digest TEXT NOT NULL, status TEXT NOT NULL, created_at INTEGER NOT NULL);
+    CREATE UNIQUE INDEX IF NOT EXISTS content_reviews_revision_digest_unique ON content_reviews(candidate_id, revision_number, revision_digest);
+    CREATE TABLE IF NOT EXISTS content_decisions (id TEXT PRIMARY KEY, workspace_id TEXT NOT NULL, candidate_id TEXT NOT NULL REFERENCES content_candidates(id) ON DELETE CASCADE, command_type TEXT NOT NULL, request_hash TEXT NOT NULL, approval_digest TEXT, dispatch_id TEXT, created_at INTEGER NOT NULL);
+    CREATE UNIQUE INDEX IF NOT EXISTS content_decisions_replay_unique ON content_decisions(workspace_id, request_hash);
+    CREATE UNIQUE INDEX IF NOT EXISTS content_decisions_approval_unique ON content_decisions(workspace_id, approval_digest) WHERE approval_digest IS NOT NULL;
+    CREATE TABLE IF NOT EXISTS command_receipts (id TEXT PRIMARY KEY, workspace_id TEXT NOT NULL, operation TEXT NOT NULL, idempotency_key TEXT NOT NULL, candidate_id TEXT NOT NULL REFERENCES content_candidates(id) ON DELETE CASCADE, revision_number INTEGER NOT NULL, command_type TEXT NOT NULL, scope_digest TEXT NOT NULL, request_hash TEXT NOT NULL, state TEXT NOT NULL DEFAULT 'processing', lease_expires_at INTEGER, attempts INTEGER NOT NULL DEFAULT 1, response TEXT, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL);
+    CREATE UNIQUE INDEX IF NOT EXISTS command_receipts_replay_unique ON command_receipts(workspace_id, operation, idempotency_key);
+    CREATE INDEX IF NOT EXISTS command_receipts_candidate_idx ON command_receipts(workspace_id, candidate_id, revision_number);
+    CREATE TABLE IF NOT EXISTS dispatch_intents (id TEXT PRIMARY KEY, workspace_id TEXT NOT NULL, candidate_id TEXT NOT NULL REFERENCES content_candidates(id) ON DELETE CASCADE, action TEXT NOT NULL, status TEXT NOT NULL, request_hash TEXT NOT NULL, approval_digest TEXT NOT NULL, created_at INTEGER NOT NULL);
+    CREATE UNIQUE INDEX IF NOT EXISTS dispatch_intents_approval_unique ON dispatch_intents(workspace_id, approval_digest);
+    CREATE TABLE IF NOT EXISTS learning_proposals (id TEXT PRIMARY KEY, workspace_id TEXT NOT NULL, candidate_id TEXT NOT NULL REFERENCES content_candidates(id) ON DELETE CASCADE, status TEXT NOT NULL, reason_codes TEXT NOT NULL DEFAULT '[]', scope TEXT NOT NULL DEFAULT 'candidate', trait_key TEXT, direction TEXT, evidence_event_ids TEXT NOT NULL DEFAULT '[]', confidence INTEGER NOT NULL DEFAULT 0, expires_at INTEGER, created_at INTEGER NOT NULL);
+    CREATE INDEX IF NOT EXISTS learning_proposals_candidate_idx ON learning_proposals(workspace_id, candidate_id, created_at);
+    CREATE TABLE IF NOT EXISTS learning_rule_versions (id TEXT PRIMARY KEY, workspace_id TEXT NOT NULL, proposal_id TEXT NOT NULL REFERENCES learning_proposals(id) ON DELETE CASCADE, version_number INTEGER NOT NULL, status TEXT NOT NULL, scope TEXT NOT NULL DEFAULT 'candidate', trait TEXT, direction TEXT, evidence TEXT NOT NULL DEFAULT '[]', confidence INTEGER NOT NULL DEFAULT 0, expires_at INTEGER, created_at INTEGER NOT NULL);
+    CREATE TABLE IF NOT EXISTS content_outcomes (id TEXT PRIMARY KEY, candidate_id TEXT NOT NULL, captured_at INTEGER NOT NULL, metrics TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS person_dossiers (id TEXT PRIMARY KEY, workspace_id TEXT NOT NULL, canonical_identity_key TEXT NOT NULL, display_name TEXT NOT NULL, status TEXT NOT NULL, current_version INTEGER NOT NULL, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL);
+    CREATE UNIQUE INDEX IF NOT EXISTS person_dossiers_identity_unique ON person_dossiers(workspace_id, canonical_identity_key);
+    CREATE TABLE IF NOT EXISTS person_dossier_versions (id TEXT PRIMARY KEY, dossier_id TEXT NOT NULL, version_number INTEGER NOT NULL, status TEXT NOT NULL, created_at INTEGER NOT NULL);
+    CREATE UNIQUE INDEX IF NOT EXISTS person_dossier_versions_number_unique ON person_dossier_versions(dossier_id, version_number);
+    CREATE TABLE IF NOT EXISTS person_dossier_sources (id TEXT PRIMARY KEY, dossier_version_id TEXT NOT NULL, url TEXT NOT NULL, kind TEXT NOT NULL, captured_at INTEGER NOT NULL, created_at INTEGER NOT NULL);
+    CREATE TABLE IF NOT EXISTS person_dossier_claims (id TEXT PRIMARY KEY, dossier_version_id TEXT NOT NULL, statement TEXT NOT NULL, source_urls TEXT NOT NULL, created_at INTEGER NOT NULL);
+    CREATE TABLE IF NOT EXISTS person_relationship_events (id TEXT PRIMARY KEY, workspace_id TEXT NOT NULL, dossier_id TEXT NOT NULL, event_type TEXT NOT NULL, created_at INTEGER NOT NULL);
+    CREATE TABLE IF NOT EXISTS content_person_dossiers (id TEXT PRIMARY KEY, candidate_id TEXT NOT NULL, dossier_version_id TEXT NOT NULL, created_at INTEGER NOT NULL);
+  `);
+  rebuildLegacyWorkToPostControls(sqlite);
 
   collapseDuplicatePlatformConnections(sqlite);
   try {

@@ -3,6 +3,7 @@ import type { BirdTweet } from "@/lib/replies/bird";
 export type XLikedMedia = {
   url: string;
   mediaType: "image" | "video";
+  sourceUrl?: string;
 };
 
 type JsonRecord = Record<string, unknown>;
@@ -79,7 +80,6 @@ export function shouldUseDirectXLikedTextCopy(input: {
   hasMedia?: boolean;
 }) {
   const text = cleanXLikedText(input.sourceText, { hasMedia: input.hasMedia });
-  if (input.hasMedia) return false;
   if (!text.trim() || text.length > 1200) return false;
   if (hasFirstPersonClaim(text)) return false;
   if (hasSourceOwnedLaunchSignal(text)) return false;
@@ -377,25 +377,17 @@ function hasSourceOwnedLaunchSignal(text: string) {
 
 function buildSourceOwnedLaunchTake(input: {
   handle: string;
-  sourceUrl: string;
   sourceText: string;
-  includeSource?: boolean;
 }) {
   const source = `@${input.handle}`;
   const shipped = /\b(shipped|released|rolled out)\b/i.test(input.sourceText);
   const verb = shipped ? "shipped" : "launched";
 
-  const lines = [
+  return [
     `${source} ${verb} this.`,
     "",
     "Looks worth testing inside a real workflow. Strong take after hands-on time.",
-  ];
-
-  if (input.includeSource !== false) {
-    lines.push("", `Source: ${source} ${input.sourceUrl}`);
-  }
-
-  return lines.join("\n");
+  ].join("\n");
 }
 
 export function buildXLikedPostContent(input: {
@@ -418,21 +410,13 @@ export function buildXLikedPostContent(input: {
   }
 
   if (angle.label === "video benchmark") {
-    return input.includeSource === false
-      ? angle.take
-      : [
-          angle.take,
-          "",
-          `Source: @${handle} ${input.sourceUrl}`,
-        ].join("\n");
+    return angle.take;
   }
 
   if (hasSourceOwnedLaunchSignal(input.sourceText)) {
     return buildSourceOwnedLaunchTake({
       handle,
-      sourceUrl: input.sourceUrl,
       sourceText: input.sourceText,
-      includeSource: input.includeSource,
     });
   }
 
@@ -567,14 +551,6 @@ function sourceFirstPersonToRule(line: string, handle: string) {
   return `@${handle}'s workflow: ${cleaned}`;
 }
 
-export function buildXLikedSourceComment(input: {
-  authorHandle: string;
-  sourceUrl: string;
-}) {
-  const handle = normalizeHandle(input.authorHandle || "unknown");
-  return `Source: @${handle} ${input.sourceUrl}`;
-}
-
 export function buildXLikedPlatformPostContent(input: {
   baseContent: string;
   platformType: string;
@@ -588,23 +564,21 @@ export function buildXLikedPlatformPostContent(input: {
     (normalized === "x" || normalized === "twitter");
 
   if (!shouldEmbedSourceVideo) {
-    const handle = normalizeHandle(input.authorHandle || "");
-    const attribution = handle ? `via @${handle}` : "";
-    if (!input.media || !attribution || input.baseContent.includes(attribution)) {
-      return input.baseContent;
-    }
-    return [input.baseContent.trim(), "", attribution].join("\n");
+    return input.baseContent;
   }
 
-  if (input.baseContent.includes(input.sourceUrl)) return input.baseContent;
-  return [input.baseContent.trim(), "", input.sourceUrl].join("\n");
+  const embedUrl = input.media?.sourceUrl || input.sourceUrl;
+  if (input.baseContent.includes(embedUrl)) return input.baseContent;
+  return [input.baseContent.trim(), "", embedUrl].join("\n");
 }
 
 function pickTweetMedia(tweet: BirdTweet): XLikedMedia | null {
+  const sourceUrl = buildXLikedSourceUrl(tweet);
+
   for (const media of tweet.media ?? []) {
     const videoUrl = asString(media.videoUrl);
     if (videoUrl) {
-      return { url: videoUrl, mediaType: "video" };
+      return { url: videoUrl, mediaType: "video", sourceUrl };
     }
 
     const url = asString(media.url) ?? asString(media.previewUrl);
@@ -613,7 +587,7 @@ function pickTweetMedia(tweet: BirdTweet): XLikedMedia | null {
         media.type?.toLowerCase().includes("video") || /\.(mp4|mov|webm)(\?|$)/i.test(url)
           ? "video"
           : "image";
-      return { url, mediaType };
+      return { url, mediaType, sourceUrl };
     }
   }
 
@@ -628,7 +602,7 @@ export function pickXLikedMedia(tweet: BirdTweet, fallbackImageUrl?: string | nu
   if (quoted) return quoted;
 
   if (fallbackImageUrl?.trim()) {
-    return { url: fallbackImageUrl.trim(), mediaType: "image" };
+    return { url: fallbackImageUrl.trim(), mediaType: "image", sourceUrl: buildXLikedSourceUrl(tweet) };
   }
 
   return null;

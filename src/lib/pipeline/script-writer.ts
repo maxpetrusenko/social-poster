@@ -1,6 +1,6 @@
 /**
  * Template voice scripts + social captions.
- * Max voice: personal take first, fragments ok, no hashtags/emoji/BREAKING.
+ * Source-faithful template scripts. No personal-language claim is inferred.
  *
  * Token resolution uses the story summary directly. When the summary is
  * empty or garbage (e.g. "Comments."), tokens that depend on it resolve
@@ -95,7 +95,7 @@ export function writePostCaption(
   const s = cleanRichText(story.summary);
   const prompt = parseTransformationPrompt(options?.transformationPrompt);
   const seed = options?.seed ?? 0;
-  const xTemplate = options?.xTemplate || "{{title}}. {{whyMatters}}";
+  const xTemplate = options?.xTemplate || "{{title}}\n\n{{whyMatters}}";
   const linkedinTemplate =
     options?.linkedinTemplate ||
     "{{title}}\n\n{{summarySentence}}\n\n{{whyMatters}}.";

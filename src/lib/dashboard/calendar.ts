@@ -310,11 +310,6 @@ function buildPlatformBadge(
     return null;
   })();
 
-  const inferredFirstComment =
-    options.sourceUrl && normalizePlatformType(type) === "x"
-      ? `Source: ${options.sourceUrl}`
-      : null;
-
   return {
     id: platform?.id ?? options.fallbackId ?? `${type}-${meta.shortLabel}`,
     type: normalizePlatformType(type),
@@ -331,7 +326,7 @@ function buildPlatformBadge(
     publishedUrl: options.publishedUrl ?? null,
     sourceUrl: options.sourceUrl ?? null,
     sourceHost: getUrlHost(options.sourceUrl ?? null),
-    firstComment: options.firstComment ?? inferredFirstComment,
+    firstComment: options.firstComment ?? null,
     error: options.error ?? null,
   };
 }

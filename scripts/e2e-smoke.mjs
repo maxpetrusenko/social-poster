@@ -104,7 +104,23 @@ try {
   assert.match(html, /property="og:title" content="AI Social Media Agent for Operators — SMM Agent"/);
   assert.match(html, /property="og:image" content="https:\/\/smmagent\.app\/opengraph-image"/);
   assert.match(html, /rel="manifest" href="\/site\.webmanifest"/);
+  assert.match(html, /Start using SMM Agent/);
+  assert.doesNotMatch(html, /Join Waitlist|you@company\.com/);
   assert.doesNotMatch(html, /Max Petrusenko Studio|SMMAgent/);
+
+  const retiredWaitlist = await fetch(`${server.baseUrl}/api/waitlist`, {
+    method: "POST",
+    headers: {
+      ...smmAgentHeaders,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({ email: "smoke@example.com", source: "smoke" }),
+  });
+  assert.equal(retiredWaitlist.status, 410);
+  assert.deepEqual(await retiredWaitlist.json(), {
+    error: "Waitlist registration is closed. Sign in to use SMM Agent.",
+    loginUrl: "/login",
+  });
 
   const manifestResponse = await fetch(`${server.baseUrl}/site.webmanifest`);
   const manifest = await manifestResponse.json();

@@ -22,7 +22,7 @@ const PLATFORM_META: Record<
     icon: "𝕏",
     accent: "#0f1419",
     accentBg: "rgba(15,20,25,0.08)",
-    charLimit: 280,
+    charLimit: 25000,
     formats: ["Post", "Thread"],
   },
   linkedin: {

@@ -14,7 +14,7 @@ const defaultProps: AiNewsVideoProps = {
 };
 
 const tiktokDemoProps: TikTokDemoProps = {
-  appDomain: "social.maxpetrusenko.com",
+  appDomain: "smmagent.app",
   tiktokHandle: "max_petrusenko",
   displayName: "Max Petrusenko",
   followerCount: "1.2K",

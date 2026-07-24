@@ -36,8 +36,16 @@ vi.mock("@/lib/x-liked-autopost-writer", () => ({
               content:
                 "System prompts are product specs now. The useful part is seeing where behavior, tool routing, and policy actually live.",
               model: "test-model",
-              modelSource: "test",
+              modelSource: "env",
               traceUrl: null,
+              review: {
+                approved: true,
+                issues: [],
+                repairInstruction: "",
+                model: "test-model",
+                modelSource: "env",
+                traceUrl: null,
+              },
             }),
           25
         );

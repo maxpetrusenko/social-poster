@@ -42,7 +42,11 @@ export default async function BlogPage() {
 
   return (
     <>
-      <LandingNav isLoggedIn={!!session} brandName={brandName} />
+      <LandingNav
+        isLoggedIn={!!session}
+        brandName={brandName}
+        accessMode={brandName === "SMM Agent" ? "login" : "waitlist"}
+      />
       <main className="pt-28 pb-20 px-6">
         <div className="container">
           <p className="section-eyebrow text-[var(--accent-tech)] mb-3">Blog</p>

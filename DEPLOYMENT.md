@@ -5,8 +5,10 @@
 - **Server**: Contabo VPS `173.249.52.27`
 - **SSH**: `ssh -i ~/.ssh/contabo_vmi3203669_ed25519 root@173.249.52.27`
 - **Reverse proxy**: Traefik (managed by Coolify) with Let's Encrypt TLS
-- **Primary domain**: `social.maxpetrusenko.com`
-- **Landing domains**: `clawposter.app`, `www.clawposter.app`, `smmclaw.app`, `www.smmclaw.app`, `smmagent.app`, `www.smmagent.app`
+- **Primary domain**: `smmagent.app` (marketing root plus app routes)
+- **Additional landing domains**: `clawposter.app`, `www.clawposter.app`, `smmclaw.app`, `www.smmclaw.app`
+- **Primary alias**: `www.smmagent.app` redirects to `smmagent.app`
+- **Legacy compatibility domain**: `social.maxpetrusenko.com` remains attached during the callback and redirect observation window
 - **Coolify path**: `Root Team -> social-poster -> production -> social-poster`
 - **App**: Coolify-managed `social-poster` service
 - **DB**: SQLite (WAL mode) at `/data/social-poster.db`, backed by the Coolify volume mount
@@ -71,8 +73,9 @@ Target state:
 - server-side Supabase calls should use `SUPABASE_INTERNAL_URL=http://supabase-kong:8000` in Coolify to avoid routing dashboard session checks through Cloudflare/Traefik
 - required reply env vars in Coolify: `X_AUTH_TOKEN`, `X_CT0`, `BIRD_RUNNER=bird`
 - optional Bird health interval: `BIRD_SESSION_CHECK_HOURS=24`
-- `APP_URL` is optional in Coolify; when set, use the single dashboard origin `https://social.maxpetrusenko.com`. Do not paste the comma-separated Coolify domain list into `APP_URL`.
-- `PUBLIC_APP_URL` is optional; use it only if social-platform media fetch URLs should differ from `APP_URL`. Default fallback is `https://social.maxpetrusenko.com`.
+- `APP_URL` is optional in Coolify; when set, use the single dashboard origin `https://smmagent.app`. Do not paste the comma-separated Coolify domain list into `APP_URL`.
+- `PUBLIC_APP_URL` is optional; use it only if social-platform media fetch URLs should differ from `APP_URL`. Default fallback is `https://smmagent.app`.
+- Keep legacy provider callback registrations for `https://social.maxpetrusenko.com/api/auth/callback` during the observation window. Add `https://smmagent.app/api/auth/callback` before switching provider traffic.
 - X/Bird image posts should use PNG/JPG/WebP assets, not SVG
 - Coolify should deploy from the prebuilt GHCR image, not build the repo on the VPS.
 - Keep Coolify health checks and rolling deployment enabled. Health path: `/api/health`.
@@ -103,8 +106,8 @@ After GHCR push, the workflow validates the Coolify API token and SSH key, reads
 
 The deploy job polls the returned deployment UUID and verifies `/api/health` through SSH inside the running app container before reporting the Coolify rollout as finished. After that, a separate public canary checks:
 
-- `https://social.maxpetrusenko.com/health`
-- `https://social.maxpetrusenko.com/api/health`
+- `https://smmagent.app/health`
+- `https://smmagent.app/api/health`
 
 The public canary must see app status `ok` and schedule drift `0`. If the public canary fails and the previous image tag was captured, the workflow automatically patches Coolify back to that previous tag, triggers another deploy, polls it, then reruns both the private container healthcheck and the public canary. The workflow still stays red after rollback so the failed release is visible.
 
@@ -142,8 +145,8 @@ git add -A && git commit -m "feat: ..." && git push origin main
 # Coolify pulls the image and rolls traffic after private /api/health passes.
 
 # 4. The workflow verifies public health and scheduler drift.
-curl -sk https://social.maxpetrusenko.com/api/health
-curl -I -L https://social.maxpetrusenko.com/dashboard/calendar
+curl -sk https://smmagent.app/api/health
+curl -I -L https://smmagent.app/dashboard/calendar
 ```
 
 Fallback only if Coolify is down:
@@ -178,7 +181,7 @@ ssh root@173.249.52.27 'docker logs social-poster --tail 20'
 1. bird mentions pull
 2. optional safe-topic search fallback
 3. risk scoring + manual-only account filter
-4. fallback draft generation in Max voice
+4. source-faithful fallback draft generation without inferred personal language
 5. bird reply send on X
 6. reply event log in `reply_events`
 
@@ -218,10 +221,10 @@ console.log(db.prepare('SELECT * FROM pipeline_runs ORDER BY started_at DESC LIM
 "
 
 # Manual trigger
-curl -sk https://social.maxpetrusenko.com/api/schedules/<id>/run -X POST
+curl -sk https://smmagent.app/api/schedules/<id>/run -X POST
 
 # Health check
-curl -sk https://social.maxpetrusenko.com/api/health
+curl -sk https://smmagent.app/api/health
 ```
 
 ## Key Files

@@ -16,11 +16,11 @@ export const metadata: Metadata = {
   description:
     "Use SMM Agent from external agents and scripts to create, schedule, and publish social posts.",
   alternates: {
-    canonical: "https://social.maxpetrusenko.com/docs",
+    canonical: "https://smmagent.app/docs",
   },
 };
 
-const baseUrl = "https://social.maxpetrusenko.com";
+const baseUrl = "https://smmagent.app";
 
 const createDraft = `curl -X POST ${baseUrl}/api/posts \\
   -H "Authorization: Bearer sk_YOUR_KEY" \\

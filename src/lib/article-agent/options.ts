@@ -59,7 +59,7 @@ const FORMAT_PRESETS = [
     id: "source-of-truth",
     label: "Source-of-truth",
     description: "Direct answer, thesis/tension, definitions, comparison, checklist, FAQ, action close.",
-    prompt: "Use the source-of-truth structure: direct answer, thesis/tension, definitions, evidence map, comparison, checklist, FAQ, limitations, and action close.",
+    prompt: "Use source-of-truth evidence and answerability. Include definitions, comparisons, checklists, FAQs, limits, or actions only when each form helps this article's specific reader; do not force every container into one draft.",
   },
   {
     id: "builder-guide",
@@ -88,8 +88,8 @@ const FORMAT_PRESETS = [
   {
     id: "thread-seed",
     label: "Thread seed",
-    description: "Article optimized to repurpose into X/LinkedIn hooks and threads.",
-    prompt: "Write the article so it can be repurposed into X/LinkedIn: strong section hooks, quotable claims, concrete examples, and short recap bullets.",
+    description: "Article built from concrete, source-grounded units that can be excerpted later.",
+    prompt: "Write connected article prose with concrete examples, evidence, and self-contained sections that can be excerpted later. Do not manufacture hooks, quotable claims, punch lines, or recap bullets.",
   },
 ];
 
@@ -211,7 +211,7 @@ export const DEFAULT_ARTICLE_GENERATION_SETTINGS: ArticleGenerationSettings = {
       kind: "select",
       value: "max-builder",
       options: [
-        { value: "max-builder", label: "Max builder" },
+        { value: "max-builder", label: "Source-faithful" },
         { value: "technical-explainer", label: "Technical explainer" },
         { value: "founder-essay", label: "Founder essay" },
         { value: "practical-guide", label: "Practical guide" },
@@ -451,6 +451,6 @@ function getToneInstruction(tone: string) {
       return "practical guide: stepwise, examples-first, low fluff";
     case "max-builder":
     default:
-      return "Max builder: pragmatic, direct, technical, useful";
+      return "source-faithful: direct and concrete; use Max's personal wording only when it is supplied or approved";
   }
 }

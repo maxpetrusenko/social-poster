@@ -6,6 +6,15 @@ export type ShellNavItem = {
   children?: ShellNavItem[];
 };
 
+export function isShellNavHrefActive(
+  pathname: string,
+  href: string,
+  exact = false
+) {
+  if (pathname === href) return true;
+  return !exact && href !== "/dashboard" && pathname.startsWith(`${href}/`);
+}
+
 export const workspaceShellNav: ShellNavItem[] = [
   {
     label: "Calendar",
@@ -90,6 +99,12 @@ export const workspaceShellNav: ShellNavItem[] = [
         icon: "create",
       },
       {
+        label: "Website Preview",
+        href: "/dashboard/articles/preview",
+        blurb: "Review published articles on smmagent.app.",
+        icon: "articles",
+      },
+      {
         label: "Settings",
         href: "/dashboard/articles/settings",
         blurb: "Prompt, skills, API keys.",
@@ -146,6 +161,18 @@ export const utilityShellNav: ShellNavItem[] = [
     icon: "overview",
   },
   {
+    label: "Work review",
+    href: "/dashboard/review",
+    blurb: "Review proven work before release.",
+    icon: "posts",
+  },
+  {
+    label: "Work analytics",
+    href: "/dashboard/analytics",
+    blurb: "Approval, learning, and trace signals.",
+    icon: "pipeline",
+  },
+  {
     label: "Pipeline",
     href: "/dashboard/pipeline",
     blurb: "Run history and step truth.",
@@ -162,8 +189,8 @@ export const agenticShellNav: ShellNavItem[] = [
   },
   {
     label: "Review",
-    href: "/dashboard/posts",
-    blurb: "Approve drafts, replies, and blocked actions.",
+    href: "/dashboard/review",
+    blurb: "Approve proven work and blocked actions.",
     icon: "posts",
   },
   {
@@ -206,9 +233,17 @@ export const agenticShellNav: ShellNavItem[] = [
   },
   {
     label: "Results",
-    href: "/dashboard/pipeline",
-    blurb: "Runs, logs, and performance truth.",
+    href: "/dashboard/analytics",
+    blurb: "Approval, learning, traces, and outcomes.",
     icon: "pipeline",
+    children: [
+      {
+        label: "Pipeline",
+        href: "/dashboard/pipeline",
+        blurb: "Runs, logs, and execution truth.",
+        icon: "pipeline",
+      },
+    ],
   },
 ];
 

@@ -11,22 +11,32 @@ import {
 } from "@/lib/supabase/config";
 import {
   SITE_DOMAINS,
+  getAppHostKind,
   getRedirectHost,
+  isAppHost,
   isPublicMarketingHost,
   normalizeHost,
 } from "@/lib/site-domains";
 
 const PUBLIC_PRODUCT_PATHS = [
-  "/blog",
   "/social-media-bot",
   "/sitemap.xml",
   "/robots.txt",
 ];
+const PUBLIC_APP_PATHS = ["/blog"];
 
-function isProductPath(pathname: string) {
-  return PUBLIC_PRODUCT_PATHS.some(
+function matchesPathPrefix(pathname: string, paths: readonly string[]) {
+  return paths.some(
     (path) => pathname === path || pathname.startsWith(`${path}/`)
   );
+}
+
+function isProductPath(pathname: string) {
+  return matchesPathPrefix(pathname, PUBLIC_PRODUCT_PATHS);
+}
+
+function isAppPublicPath(pathname: string) {
+  return matchesPathPrefix(pathname, PUBLIC_APP_PATHS);
 }
 
 function permanentHostRedirect(request: NextRequest, host: string) {
@@ -79,7 +89,14 @@ export async function middleware(request: NextRequest) {
   }
 
   if (
-    host === SITE_DOMAINS.app &&
+    getAppHostKind(host) === "legacy" &&
+    isAppPublicPath(request.nextUrl.pathname)
+  ) {
+    return permanentHostRedirect(request, SITE_DOMAINS.app);
+  }
+
+  if (
+    getAppHostKind(host) === "legacy" &&
     isProductPath(request.nextUrl.pathname)
   ) {
     return permanentHostRedirect(request, SITE_DOMAINS.product);
@@ -87,7 +104,7 @@ export async function middleware(request: NextRequest) {
 
   if (
     host &&
-    host !== SITE_DOMAINS.app &&
+    !isAppHost(host) &&
     isPublicMarketingHost(host) &&
     isAppOnlyPath(request.nextUrl.pathname)
   ) {

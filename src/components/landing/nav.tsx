@@ -13,11 +13,15 @@ const NAV_LINKS = [
 export function LandingNav({
   isLoggedIn,
   brandName = "SMM Agent",
+  accessMode = "waitlist",
 }: {
   isLoggedIn: boolean;
   brandName?: string;
+  accessMode?: "login" | "waitlist";
 }) {
   const [open, setOpen] = useState(false);
+  const signedOutHref = accessMode === "login" ? "/login" : "#waitlist";
+  const signedOutLabel = accessMode === "login" ? "Sign in" : "Join Waitlist";
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-[var(--sand)]/80 backdrop-blur-md border-b border-[var(--line)]">
@@ -34,10 +38,10 @@ export function LandingNav({
             </a>
           ))}
           <Link
-            href={isLoggedIn ? "/dashboard" : "#waitlist"}
+            href={isLoggedIn ? "/dashboard" : signedOutHref}
             className="h-10 px-6 inline-flex items-center rounded-xl bg-[var(--ink)] text-[var(--sand)] text-sm font-semibold hover:bg-[var(--ink-soft)] transition-colors"
           >
-            {isLoggedIn ? "Open SMM Agent" : "Join Waitlist"}
+            {isLoggedIn ? "Open SMM Agent" : signedOutLabel}
           </Link>
         </div>
 
@@ -58,11 +62,11 @@ export function LandingNav({
             </a>
           ))}
           <Link
-            href={isLoggedIn ? "/dashboard" : "#waitlist"}
+            href={isLoggedIn ? "/dashboard" : signedOutHref}
             onClick={() => setOpen(false)}
             className="mt-2 h-10 w-full inline-flex items-center justify-center rounded-xl bg-[var(--ink)] text-[var(--sand)] text-sm font-semibold"
           >
-            {isLoggedIn ? "Open SMM Agent" : "Join Waitlist"}
+            {isLoggedIn ? "Open SMM Agent" : signedOutLabel}
           </Link>
         </div>
       )}

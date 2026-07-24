@@ -13,6 +13,12 @@ function requireIncludes(sourceName, source, needle, reason) {
   }
 }
 
+function requireExcludes(sourceName, source, needle, reason) {
+  if (source.includes(needle)) {
+    failures.push(`${sourceName}: found forbidden ${JSON.stringify(needle)} (${reason})`);
+  }
+}
+
 function requireMatches(sourceName, source, pattern, reason) {
   if (!pattern.test(source)) {
     failures.push(`${sourceName}: missing pattern ${pattern} (${reason})`);
@@ -41,6 +47,24 @@ requireMatches(
   "only the image build job should get package write access",
 );
 requireIncludes(workflowPath, workflow, "environment:\n      name: production", "GitHub production environment marker");
+requireIncludes(
+  workflowPath,
+  workflow,
+  "PRODUCTION_URL: https://smmagent.app",
+  "public canaries and deploy reports must use the canonical app domain",
+);
+requireExcludes(
+  workflowPath,
+  workflow,
+  "PRODUCTION_URL: https://smmagent.com",
+  "the unavailable .com hostname must not be the production canary target",
+);
+requireExcludes(
+  workflowPath,
+  workflow,
+  "PRODUCTION_URL: https://social.maxpetrusenko.com",
+  "legacy callback host must not remain the production canary target",
+);
 requireIncludes(workflowPath, workflow, "READ_PREVIOUS_IMAGE_TAG: \"true\"", "deploy captures previous image for rollback");
 requireIncludes(workflowPath, workflow, "BACKUP_SQLITE_BEFORE_DEPLOY: \"true\"", "deploy backs up SQLite before image change");
 requireIncludes(workflowPath, workflow, "run: bash scripts/ci/coolify-image-deploy.sh", "deploy and rollback use shared Coolify helper");

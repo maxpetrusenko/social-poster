@@ -5,7 +5,7 @@
 Social automation dashboard + agent. Dashboard first, agent second.
 
 - Stack: Next.js 15, Tailwind 4, Drizzle ORM, SQLite, TypeScript
-- Domain: social.maxpetrusenko.com
+- Domain: smmagent.app
 - Deploy: Contabo VPS via Coolify
 - Status doc: docs/tasks.md (keep updated)
 - Schema: src/db/schema.ts (source of truth)

@@ -45,7 +45,7 @@ test("resolveFixedScheduleContent can pin rotation to calendar weeks", () => {
   assert.equal(content?.contentByPlatform.twitter, "week4");
   assert.equal(
     content?.mediaUrlByPlatform.instagram,
-    "https://social.maxpetrusenko.com/campaigns/referral/story-04.png"
+    "https://smmagent.app/campaigns/referral/story-04.png"
   );
 });
 

@@ -20,6 +20,7 @@ test("writePostCaption defaults stay source-faithful and avoid banned hype phras
   });
 
   assert.match(xPost, /Claude now requires government ID verification before subscription/);
+  assert.match(xPost, /\n\n/);
   assert.doesNotMatch(xPost, /\bwild\b/i);
   assert.doesNotMatch(xPost, /pay attention/i);
 });

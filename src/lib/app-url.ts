@@ -1,4 +1,7 @@
-import { APP_ORIGIN, SITE_DOMAINS } from "@/lib/site-domains";
+import {
+  APP_ORIGIN,
+  getAppHostKind,
+} from "@/lib/site-domains";
 
 const DEFAULT_APP_URL = "http://localhost:3000";
 
@@ -34,7 +37,9 @@ function parseAppOrigins(value?: string | null): ParsedAppOrigin[] {
 export function normalizeAppUrl(value?: string | null): string | null {
   const origins = parseAppOrigins(value);
   return (
-    origins.find((url) => url.hostname === SITE_DOMAINS.app)?.origin ??
+    origins.find((url) => getAppHostKind(url.hostname) === "canonical")
+      ?.origin ??
+    origins.find((url) => getAppHostKind(url.hostname) === "legacy")?.origin ??
     origins[0]?.origin ??
     null
   );

@@ -64,7 +64,7 @@ export default async function AdminMarketingPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card label="Waitlist" value={waitlist.count} />
+        <Card label="Signup History" value={waitlist.count} />
         <Card label="Marketing Opt-ins" value={marketingPrefs.count} />
         <Card label="Suppressions" value={suppressed.count} />
         <Card label="Lead Magnets" value={leadMagnets.count} />

@@ -136,7 +136,7 @@ async function runBirdSessionCheck(
 
   const runtime = buildBirdRuntime(platform);
   const commandArgs = [...runtime.args, "whoami"];
-  const runner = process.env.BIRD_RUNNER || "npx";
+  const runner = process.env.BIRD_RUNNER || "bird";
   const runnerArgs =
     runner === "npx" ? ["-y", BIRD_PACKAGE, ...commandArgs] : commandArgs;
 

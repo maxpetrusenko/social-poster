@@ -33,7 +33,7 @@ The old way is one draft, one calendar, one publish button. The new way is one i
 - Generates platform-specific drafts instead of one universal caption.
 - Routes drafts through review, edit, approval, scheduling, and publishing states.
 - Logs each run so a failed post is a visible operations event, not a silent gap.
-- Keeps related surfaces connected: [ClawPoster](https://clawposter.app), [SMMClaw](https://smmclaw.app), [SMM Agent](https://smmagent.app), the [app dashboard](https://social.maxpetrusenko.com), and the [Max Petrusenko tech projects page](https://www.maxpetrusenko.com/tech).
+- Keeps related surfaces connected: [ClawPoster](https://clawposter.app), [SMMClaw](https://smmclaw.app), [SMM Agent](https://smmagent.app), the [app dashboard](https://smmagent.app/dashboard), and the [Max Petrusenko tech projects page](https://www.maxpetrusenko.com/tech).
 
 ## Old way vs new way
 
@@ -180,7 +180,7 @@ Secondary actions:
 
 ## Related pages
 
-Read the product surface at [ClawPoster](https://clawposter.app), the agency surface at [SMMClaw](https://smmclaw.app), the agent surface at [SMM Agent](https://smmagent.app), the app dashboard at [social.maxpetrusenko.com](https://social.maxpetrusenko.com), and the broader tech portfolio at [Max Petrusenko Tech](https://www.maxpetrusenko.com/tech).
+Read the product surface at [ClawPoster](https://clawposter.app), the agency surface at [SMMClaw](https://smmclaw.app), the agent surface at [SMM Agent](https://smmagent.app), the [app dashboard](https://smmagent.app/dashboard), and the broader tech portfolio at [Max Petrusenko Tech](https://www.maxpetrusenko.com/tech).
 
 ## Conclusion
 
@@ -219,7 +219,7 @@ The wrong promise is "do more posts with fewer people." That attracts churn. The
 - Review queue: edit, approve, reject, or request revision.
 - Schedule: recurring jobs and campaign drops.
 - Publish log: account, platform, post, status, failure reason.
-- Backlinks and surfaces: [SMMClaw](https://smmclaw.app), [ClawPoster](https://clawposter.app), [SMM Agent](https://smmagent.app), [social.maxpetrusenko.com](https://social.maxpetrusenko.com), and [Max Petrusenko Tech](https://www.maxpetrusenko.com/tech).
+- Backlinks and surfaces: [SMMClaw](https://smmclaw.app), [ClawPoster](https://clawposter.app), [SMM Agent](https://smmagent.app), the [SMM Agent dashboard](https://smmagent.app/dashboard), and [Max Petrusenko Tech](https://www.maxpetrusenko.com/tech).
 
 ## Evidence from platform constraints
 
@@ -363,7 +363,7 @@ Secondary actions:
 
 ## Related pages
 
-Use [SMM Agent](https://smmagent.app) for agent workflows, [ClawPoster](https://clawposter.app) for the product home, [SMMClaw](https://smmclaw.app) for agency use cases, [social.maxpetrusenko.com](https://social.maxpetrusenko.com) for the app, and [Max Petrusenko Tech](https://www.maxpetrusenko.com/tech) for the portfolio context.
+Use [SMM Agent](https://smmagent.app) for agent workflows and its [dashboard](https://smmagent.app/dashboard), [ClawPoster](https://clawposter.app) for the product home, [SMMClaw](https://smmclaw.app) for agency use cases, and [Max Petrusenko Tech](https://www.maxpetrusenko.com/tech) for the portfolio context.
 
 ## Conclusion
 
@@ -464,7 +464,7 @@ Secondary actions:
 
 ## Related pages
 
-Model-key workflows live on [SMM Agent](https://smmagent.app). The product surface is [ClawPoster](https://clawposter.app), agencies can start from [SMMClaw](https://smmclaw.app), the app runs at [social.maxpetrusenko.com](https://social.maxpetrusenko.com), and the project belongs in [Max Petrusenko Tech](https://www.maxpetrusenko.com/tech).
+Model-key workflows live on [SMM Agent](https://smmagent.app) and its [dashboard](https://smmagent.app/dashboard). The product surface is [ClawPoster](https://clawposter.app), agencies can start from [SMMClaw](https://smmclaw.app), and the project belongs in [Max Petrusenko Tech](https://www.maxpetrusenko.com/tech).
 
 ## Conclusion
 

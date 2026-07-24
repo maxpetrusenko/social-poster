@@ -79,7 +79,7 @@ export class MastodonProvider extends OAuthProvider {
           client_name: "Social Poster",
           redirect_uris: redirectUri,
           scopes: this.requiredScopes.join(" "),
-          website: "https://social.maxpetrusenko.com",
+          website: "https://smmagent.app",
         },
       }
     );

@@ -639,6 +639,7 @@ export function InvitationAcceptPanel({
   token,
   canAccept,
   loginHref,
+  switchAccountHref,
 }: {
   organizationName: string;
   email: string;
@@ -646,6 +647,7 @@ export function InvitationAcceptPanel({
   token: string;
   canAccept: boolean;
   loginHref: string;
+  switchAccountHref: string | null;
 }) {
   return (
     <div className="mx-auto max-w-3xl space-y-6 px-4 py-10 md:px-6">
@@ -659,6 +661,12 @@ export function InvitationAcceptPanel({
               <input type="hidden" name="token" value={token} />
               <button className="rounded-[14px] bg-[var(--paper)] px-5 py-3 text-sm font-semibold text-[var(--ink)] shadow-[0_10px_24px_rgba(12,17,21,0.24)]">
                 Open SMM Agent
+              </button>
+            </form>
+          ) : switchAccountHref ? (
+            <form action={switchAccountHref} method="post">
+              <button className="rounded-[14px] bg-[var(--paper)] px-5 py-3 text-sm font-semibold text-[var(--ink)] shadow-[0_10px_24px_rgba(12,17,21,0.24)]">
+                Use a different Google account
               </button>
             </form>
           ) : (

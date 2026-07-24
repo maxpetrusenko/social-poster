@@ -245,10 +245,10 @@ function buildSetupGuide(
           ],
       steps: [
         "Open Meta Developers and select the app used by Social Poster.",
-        "In Settings > Basic, set App Domains to social.maxpetrusenko.com and maxpetrusenko.com.",
-        "In Settings > Basic, set Website URL to https://social.maxpetrusenko.com/.",
-        "In Settings > Basic, set Privacy Policy URL to https://social.maxpetrusenko.com/privacy.",
-        "In Settings > Basic, set Terms of Service URL to https://social.maxpetrusenko.com/terms.",
+        "In Settings > Basic, set App Domains to smmagent.app and social.maxpetrusenko.com during the callback migration window.",
+        "In Settings > Basic, set Website URL to https://smmagent.app/.",
+        "In Settings > Basic, set Privacy Policy URL to https://smmagent.app/privacy.",
+        "In Settings > Basic, set Terms of Service URL to https://smmagent.app/terms.",
         "Confirm App Purpose, category, contact email, and app icon are filled in, then save Basic settings.",
         "Open Facebook Login, then Settings.",
         "Turn Client OAuth Login on.",
@@ -256,7 +256,7 @@ function buildSetupGuide(
         callbackUrl
           ? "Paste the Redirect URI below into Valid OAuth Redirect URIs exactly as shown."
           : "Paste this app's callback URL into Valid OAuth Redirect URIs exactly as shown.",
-        "Also add the app domain, for example social.maxpetrusenko.com, in the app's domain settings.",
+        "Keep social.maxpetrusenko.com registered alongside smmagent.app until legacy OAuth callbacks have drained.",
         "In App Review > Permissions and Features, make sure public_profile has Advanced Access and there is no pending Data Use Checkup.",
         "Request only the Page permissions listed below until comments or inbox features are app-reviewed.",
         "Save changes, then return here and connect Facebook again.",

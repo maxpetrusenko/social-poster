@@ -3,6 +3,7 @@ import { expect, test } from "vitest";
 import {
   assessPostQuality,
   buildDeterministicPostFallback,
+  cleanHumanPostDraft,
   sanitizeHumanPostStory,
 } from "../pipeline/human-post-quality.ts";
 
@@ -47,6 +48,67 @@ test("assessPostQuality rejects hype, hashtags, emoji, and empty generic filler"
   expect(quality.reasons).toContain("generic_filler");
 });
 
+test("assessPostQuality rejects named no-ai-slop patterns", () => {
+  const story = {
+    title: "Agent evaluations need independent review",
+    summary: "A separate evaluator catches errors missed by the generating model.",
+  };
+
+  expect(
+    assessPostQuality(
+      "This is not about the model. It is about the eval.",
+      story,
+      "linkedin"
+    ).reasons
+  ).toContain("no_ai_slop:binary_contrast");
+  expect(
+    assessPostQuality(
+      "Here is the thing: a separate evaluator catches unsupported claims.",
+      story,
+      "linkedin"
+    ).reasons
+  ).toContain("no_ai_slop:throat_clearing");
+  expect(
+    assessPostQuality(
+      "The launch marks a pivotal moment for agent evaluation.",
+      story,
+      "linkedin"
+    ).reasons
+  ).toContain("no_ai_slop:importance_puffery");
+  expect(
+    assessPostQuality(
+      "A reviewer checks the evidence. It records failures. Teams repair them.",
+      story,
+      "linkedin"
+    ).reasons
+  ).toContain("no_ai_slop:stacked_short_sentences");
+});
+
+test("cleanHumanPostDraft strips source and credit footer lines", () => {
+  const cleaned = cleanHumanPostDraft(
+    [
+      "AI tools are becoming workflow routers.",
+      "",
+      "The useful part is the handoff boundary.",
+      "",
+      "via @tom_doerr",
+      "Source: https://example.com/story",
+    ].join("\n"),
+    "x"
+  );
+
+  expect(cleaned).toBe(
+    [
+      "AI tools are becoming workflow routers.",
+      "",
+      "The useful part is the handoff boundary.",
+    ].join("\n")
+  );
+  expect(
+    assessPostQuality("Useful post.\n\nvia @tom_doerr", redditStory, "x").reasons
+  ).toContain("source_credit_label");
+});
+
 test("buildDeterministicPostFallback produces a usable title-only post", () => {
   const content = buildDeterministicPostFallback(
     {
@@ -70,4 +132,7 @@ test("buildDeterministicPostFallback produces a usable title-only post", () => {
   expect(quality.ok).toBe(true);
   expect(content.length).toBeLessThanOrEqual(275);
   expect(content).not.toMatch(/submitted by|\[link\]|\[comments\]|#/i);
+  expect(content).not.toMatch(
+    /builder takeaway|what stands out|interesting part|gives one concrete signal|narrow signal/i
+  );
 });

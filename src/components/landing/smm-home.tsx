@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 const AUDIENCE = [
   {
     title: "Agencies",
@@ -99,7 +101,7 @@ export function SmmHome() {
   );
 }
 
-export function SmmAgentHome() {
+export function SmmAgentHome({ isLoggedIn = false }: { isLoggedIn?: boolean }) {
   return (
     <main className="pt-28 pb-20 px-6">
       <div className="container">
@@ -113,11 +115,14 @@ export function SmmAgentHome() {
           </p>
 
           <div className="mt-10 flex flex-wrap gap-3">
-            <a href="https://smmagent.app/blog" className="h-11 inline-flex items-center rounded-xl bg-[var(--ink)] px-5 text-sm font-semibold text-[var(--sand)] hover:bg-[var(--ink-soft)] transition-colors">
+            <Link
+              href={isLoggedIn ? "/dashboard" : "/login"}
+              className="h-11 inline-flex items-center rounded-xl bg-[var(--ink)] px-5 text-sm font-semibold text-[var(--sand)] hover:bg-[var(--ink-soft)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-tech)] focus-visible:ring-offset-2"
+            >
+              {isLoggedIn ? "Open SMM Agent" : "Start using SMM Agent"}
+            </Link>
+            <a href="https://smmagent.app/blog" className="h-11 inline-flex items-center rounded-xl border border-[var(--line)] bg-[var(--paper)] px-5 text-sm font-semibold text-[var(--ink)] hover:border-[var(--accent-tech)]/30 transition-colors">
               Read agent articles
-            </a>
-            <a href="https://clawposter.app" className="h-11 inline-flex items-center rounded-xl border border-[var(--line)] bg-[var(--paper)] px-5 text-sm font-semibold text-[var(--ink)] hover:border-[var(--accent-tech)]/30 transition-colors">
-              Product home
             </a>
           </div>
         </section>

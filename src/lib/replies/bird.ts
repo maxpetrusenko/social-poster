@@ -11,7 +11,7 @@ import {
 const execFileAsync = promisify(execFile);
 
 const BIRD_PACKAGE = "@steipete/bird";
-const BIRD_RUNNER = process.env.BIRD_RUNNER || "npx";
+const BIRD_RUNNER = process.env.BIRD_RUNNER || "bird";
 
 export type BirdTweet = {
   id?: string;

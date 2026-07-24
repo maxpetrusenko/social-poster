@@ -6,18 +6,11 @@ import {
 } from "@/lib/supabase/config";
 import { getRequestAppUrl } from "@/lib/app-url";
 import { isEmailAllowedForAuth } from "@/lib/auth-allowlist";
-
-function sanitizeNextPath(candidate: string | null): string {
-  if (!candidate || !candidate.startsWith("/")) {
-    return "/dashboard";
-  }
-
-  return candidate.startsWith("/auth") ? "/dashboard" : candidate;
-}
+import { sanitizeAppNextPath } from "@/lib/safe-next-path";
 
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get("code");
-  const nextPath = sanitizeNextPath(request.nextUrl.searchParams.get("next"));
+  const nextPath = sanitizeAppNextPath(request.nextUrl.searchParams.get("next"));
   const appUrl = getRequestAppUrl(request);
 
   if (!code || !isSupabaseConfigured()) {
