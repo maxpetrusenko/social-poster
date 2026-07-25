@@ -19,6 +19,7 @@ const completedWork = {
   proof: [{ type: "test" as const, uri: "https://github.com/maxpetrusenko/social-poster/actions/runs/42", verifiedAt: "2026-07-24T12:01:00.000Z" }],
   transcript: "this raw transcript must never cross the boundary",
 };
+const futureTimestamp = (offsetMs = 60 * 60 * 1000) => new Date(Date.now() + offsetMs).toISOString();
 
 describe("work-to-post core walking skeleton", () => {
   it("replays a completion event without creating a second candidate or storing a transcript", async () => {
@@ -64,9 +65,12 @@ describe("work-to-post core walking skeleton", () => {
     expect(state).not.toContain("untrusted-proof");
   });
 
-  it("rejects disabled adapters and unsafe proof URIs before they can become eligible", async () => {
+  it("accepts enabled thread adapters and rejects unsafe proof URIs before they can become eligible", async () => {
     const repository = createInMemoryWorkToPostRepository();
-    await expect(ingestCompletedWork(repository, "workspace-a", { ...completedWork, sourceAgent: "cursor" })).rejects.toThrow("not enabled");
+    const cursor = await ingestCompletedWork(repository, "workspace-a", { ...completedWork, sourceAgent: "cursor", externalEventId: "cursor-session" }, fixtureResolver);
+    const hermes = await ingestCompletedWork(repository, "workspace-a", { ...completedWork, sourceAgent: "hermes", externalEventId: "hermes-session" }, fixtureResolver);
+    expect(cursor.status).toBe("eligible");
+    expect(hermes.status).toBe("eligible");
     const unsafe = await ingestCompletedWork(repository, "workspace-a", { ...completedWork, externalEventId: "unsafe", proof: [{ type: "artifact", uri: "https://token@example.com/private/log?token=secret" }] });
     expect(unsafe.status).toBe("blocked_privacy");
   });
@@ -104,7 +108,7 @@ describe("work-to-post core walking skeleton", () => {
 
     const input = {
       type: "approve_schedule" as const,
-      scheduledAt: "2026-07-25T12:00:00.000Z",
+      scheduledAt: futureTimestamp(),
     };
     const first = await recordDecision(repository, "workspace-a", intake.candidateId, input, {
       idempotencyKey: "schedule-1",
@@ -196,7 +200,7 @@ describe("work-to-post core walking skeleton", () => {
     const repository = createInMemoryWorkToPostRepository();
     const intake = await ingestCompletedWork(repository, "workspace-a", completedWork, fixtureResolver);
     if (!intake.candidateId) throw new Error("expected candidate");
-    await recordDecision(repository, "workspace-a", intake.candidateId, { type: "approve_schedule", scheduledAt: "2026-07-25T12:00:00.000Z" }, { idempotencyKey: "same-key", expectedRevision: 1 });
-    await expect(recordDecision(repository, "workspace-a", intake.candidateId, { type: "approve_schedule", scheduledAt: "2026-07-26T12:00:00.000Z" }, { idempotencyKey: "same-key", expectedRevision: 1 })).rejects.toThrow("different request");
+    await recordDecision(repository, "workspace-a", intake.candidateId, { type: "approve_schedule", scheduledAt: futureTimestamp() }, { idempotencyKey: "same-key", expectedRevision: 1 });
+    await expect(recordDecision(repository, "workspace-a", intake.candidateId, { type: "approve_schedule", scheduledAt: futureTimestamp(2 * 60 * 60 * 1000) }, { idempotencyKey: "same-key", expectedRevision: 1 })).rejects.toThrow("different request");
   });
 });

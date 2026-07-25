@@ -6,13 +6,13 @@ import { WorkToPostReviewBoard } from "./work-to-post-review-board";
 describe("work-to-post fixture demo", () => {
   afterEach(() => vi.restoreAllMocks());
 
-  it("keeps Fixture demo as the safe default without fetching", () => {
-    const fetchSpy = vi.spyOn(globalThis, "fetch");
+  it("uses Live workspace as the default review surface", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ candidates: [] }), { status: 200 }));
     render(<WorkToPostReviewBoard />);
 
-    expect(screen.getByRole("button", { name: "Fixture demo" }).getAttribute("aria-pressed")).toBe("true");
-    expect(screen.getByText(/Actions change only browser state/i)).toBeTruthy();
-    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Live workspace" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByText(/Live workspace data is session-authenticated/i)).toBeTruthy();
+    await waitFor(() => expect(fetchSpy).toHaveBeenCalledWith("/api/work-to-post/candidates", undefined));
   });
 
   it("loads a live workspace and only maps a server-confirmed comment revision", async () => {
@@ -28,11 +28,10 @@ describe("work-to-post fixture demo", () => {
     });
     render(<WorkToPostReviewBoard />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Live workspace" }));
     await screen.findAllByText("candidate-live");
     await screen.findByText(/Live workspace data is session-authenticated/i);
     fireEvent.change(screen.getByLabelText("Add review comment"), { target: { value: "Tighten the proof line." } });
-    fireEvent.click(screen.getByRole("button", { name: "Add comment" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add comment and revise" }));
 
     await waitFor(() => expect(screen.getByText(/Server-confirmed revision: 3/i)).toBeTruthy());
     expect(fetchSpy).toHaveBeenCalledWith("/api/work-to-post/candidates/candidate-live/comments", expect.objectContaining({ method: "POST" }));
@@ -48,10 +47,9 @@ describe("work-to-post fixture demo", () => {
     });
     render(<WorkToPostReviewBoard />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Live workspace" }));
     await screen.findAllByText("candidate-live");
     fireEvent.change(screen.getByLabelText("Add review comment"), { target: { value: "Tighten the proof line." } });
-    fireEvent.click(screen.getByRole("button", { name: "Add comment" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add comment and revise" }));
 
     await screen.findByRole("alert", { name: /Candidate revision is stale/i });
     expect(screen.getByText(/Server-confirmed revision: 2/i)).toBeTruthy();
@@ -73,7 +71,6 @@ describe("work-to-post fixture demo", () => {
     });
     render(<WorkToPostReviewBoard />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Live workspace" }));
     await screen.findAllByText("candidate-live");
     await waitFor(() => expect(screen.getByRole("button", { name: "Post now" })).toHaveProperty("disabled", false));
     fireEvent.click(screen.getByRole("button", { name: "Post now" }));
@@ -96,7 +93,6 @@ describe("work-to-post fixture demo", () => {
     });
     render(<WorkToPostReviewBoard />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Live workspace" }));
     await screen.findAllByText("candidate-live");
     const input = screen.getByLabelText("Schedule timestamp");
     fireEvent.change(input, { target: { value: exactTimestamp } });
@@ -120,7 +116,6 @@ describe("work-to-post fixture demo", () => {
     });
     render(<WorkToPostReviewBoard />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Live workspace" }));
     await screen.findAllByText("candidate-live");
     await waitFor(() => expect(screen.getByRole("button", { name: "Deny" })).toHaveProperty("disabled", false));
     fireEvent.click(screen.getByRole("button", { name: "Deny" }));
@@ -134,14 +129,14 @@ describe("work-to-post fixture demo", () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ error: "Workspace access is required." }), { status: 403 }));
     render(<WorkToPostReviewBoard />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Live workspace" }));
-
     await screen.findByRole("alert", { name: /Workspace access is required/i });
     expect(screen.queryByText("Artifact proof changed the release conversation")).toBeNull();
   });
 
   it("keeps decisions local and invalidates approval when a comment creates a revision", () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ candidates: [] }), { status: 200 }));
     render(<WorkToPostReviewBoard />);
+    fireEvent.click(screen.getByRole("button", { name: "Fixture demo" }));
 
     expect(screen.getByRole("heading", { name: "Review" })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Scheduled" })).toBeTruthy();
