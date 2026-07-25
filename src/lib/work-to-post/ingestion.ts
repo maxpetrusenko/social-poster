@@ -5,7 +5,7 @@ import { createFixtureProofResolver, type ProofResolver } from "./proof-resolver
 import { scanCompletionPrivacy } from "./privacy-scan";
 
 const PRIVATE_PRIVACY = new Set(["contains_secret", "contains_pii", "private_client"]);
-const ENABLED_SOURCES = new Set(["codex", "claude"]);
+const ENABLED_SOURCES = new Set(["codex", "claude", "cursor", "hermes"]);
 
 function allowedProjects() {
   return new Set((process.env.WORK_TO_POST_ALLOWED_PROJECTS ?? "social-poster").split(",").map((value) => value.trim()).filter(Boolean));

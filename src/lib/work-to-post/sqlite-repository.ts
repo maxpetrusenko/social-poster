@@ -194,13 +194,45 @@ export function createSqliteWorkToPostRepository(): WorkToPostRepository {
 
 function digest(value: string) { return crypto.createHash("sha256").update(value).digest("hex"); }
 
+async function completionPayload(completionEventId: string) {
+  const completion = await db.select().from(workCompletionEvents).where(eq(workCompletionEvents.id, completionEventId)).get();
+  if (!completion) return null;
+  const proof = await db.select().from(workCompletionProofs).where(eq(workCompletionProofs.completionEventId, completionEventId));
+  return {
+    sourceAgent: completion.sourceAgent,
+    projectRef: completion.projectRef,
+    summary: completion.summary,
+    occurredAt: completion.occurredAt.toISOString(),
+    privacy: completion.privacy,
+    proof: proof.map((item) => ({
+      type: item.type,
+      uri: item.uri,
+      hash: item.hash,
+      verifiedAt: item.verifiedAt?.toISOString() ?? null,
+    })),
+  };
+}
+
 export async function listCandidates(workspaceId: string) {
-  return db.select().from(contentCandidates).where(eq(contentCandidates.workspaceId, workspaceId)).orderBy(asc(contentCandidates.createdAt));
+  const rows = await db.select().from(contentCandidates).where(eq(contentCandidates.workspaceId, workspaceId)).orderBy(asc(contentCandidates.createdAt));
+  return Promise.all(rows.map(async (candidate) => {
+    const completion = await completionPayload(candidate.completionEventId);
+    return {
+      ...candidate,
+      sourceAgent: completion?.sourceAgent ?? null,
+      projectRef: completion?.projectRef ?? null,
+      summary: completion?.summary ?? null,
+      occurredAt: completion?.occurredAt ?? null,
+      privacy: completion?.privacy ?? null,
+      proof: completion?.proof ?? [],
+    };
+  }));
 }
 
 export async function getCandidateTimeline(workspaceId: string, candidateId: string) {
   const candidate = await db.select().from(contentCandidates).where(and(eq(contentCandidates.workspaceId, workspaceId), eq(contentCandidates.id, candidateId))).get();
   if (!candidate) return null;
+  const completion = await completionPayload(candidate.completionEventId);
   const timeline = await db.select().from(contentLifecycleEvents).where(and(eq(contentLifecycleEvents.workspaceId, workspaceId), eq(contentLifecycleEvents.candidateId, candidateId))).orderBy(asc(contentLifecycleEvents.createdAt));
   const [angles, comments, revisions, currentRevision] = await Promise.all([
     db.select().from(contentAngles).where(eq(contentAngles.candidateId, candidateId)),
@@ -236,7 +268,16 @@ export async function getCandidateTimeline(workspaceId: string, candidateId: str
           ? "A concrete account assignment is required."
           : "The server approval scope is missing or expired.";
   return {
-    candidate,
+    candidate: {
+      ...candidate,
+      sourceAgent: completion?.sourceAgent ?? null,
+      projectRef: completion?.projectRef ?? null,
+      summary: completion?.summary ?? null,
+      occurredAt: completion?.occurredAt ?? null,
+      privacy: completion?.privacy ?? null,
+      proof: completion?.proof ?? [],
+    },
+    completion,
     timeline,
     angles,
     comments,

@@ -1,6 +1,32 @@
-export type UiLiveCandidate = { id: string; status: string; currentRevision: number; createdAt?: string };
+export type UiCompletionProof = {
+  type: string;
+  uri: string;
+  hash?: string | null;
+  verifiedAt?: string | null;
+};
+
+export type UiLiveCandidate = {
+  id: string;
+  status: string;
+  currentRevision: number;
+  createdAt?: string;
+  sourceAgent?: string | null;
+  projectRef?: string | null;
+  summary?: string | null;
+  occurredAt?: string | null;
+  privacy?: string | null;
+  proof?: UiCompletionProof[];
+};
 export type UiLiveTimeline = {
   candidate: UiLiveCandidate;
+  completion?: {
+    sourceAgent: string;
+    projectRef: string;
+    summary: string;
+    occurredAt: string;
+    privacy: string;
+    proof: UiCompletionProof[];
+  } | null;
   timeline: Array<{ id?: string; eventType?: string; revisionNumber?: number; createdAt?: string; traceRef?: string | null }>;
   angles: Array<{ id?: string; title?: string; provenance?: string }>;
   comments: Array<{ id?: string; body?: string; revisionNumber?: number; createdAt?: string }>;

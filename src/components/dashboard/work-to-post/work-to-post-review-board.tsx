@@ -13,12 +13,12 @@ const columns: Array<{ id: Exclude<DemoColumn, "rejected">; label: string; descr
 ];
 
 export function WorkToPostReviewBoard() {
-  const [mode, setMode] = useState<"fixture" | "live">("fixture");
+  const [mode, setMode] = useState<"fixture" | "live">("live");
   return <div className="space-y-5"><ModeSwitch mode={mode} onChange={setMode} />{mode === "fixture" ? <FixtureReviewBoard /> : <LiveReviewBoard />}</div>;
 }
 
 function ModeSwitch({ mode, onChange }: { mode: "fixture" | "live"; onChange: (value: "fixture" | "live") => void }) {
-  return <div className="flex flex-wrap gap-2" role="group" aria-label="Workspace data mode"><button type="button" aria-pressed={mode === "fixture"} onClick={() => onChange("fixture")} className="rounded-full border border-[#b8d4dd] bg-white px-3 py-2 text-sm font-bold text-[#15323d]">Fixture demo</button><button type="button" aria-pressed={mode === "live"} onClick={() => onChange("live")} className="rounded-full border border-[#0f7ea9] bg-[#e8f4f7] px-3 py-2 text-sm font-bold text-[#0b5d7d]">Live workspace</button></div>;
+  return <div className="flex flex-wrap gap-2" role="group" aria-label="Workspace data mode"><button type="button" aria-pressed={mode === "live"} onClick={() => onChange("live")} className="rounded-full border border-[#0f7ea9] bg-[#e8f4f7] px-3 py-2 text-sm font-bold text-[#0b5d7d]">Live workspace</button><button type="button" aria-pressed={mode === "fixture"} onClick={() => onChange("fixture")} className="rounded-full border border-[#b8d4dd] bg-white px-3 py-2 text-sm font-bold text-[#15323d]">Fixture demo</button></div>;
 }
 
 function FixtureReviewBoard() {
@@ -90,6 +90,7 @@ function FixtureReviewBoard() {
 function LiveReviewBoard() {
   const [candidates, setCandidates] = useState<UiLiveCandidate[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [draggedId, setDraggedId] = useState<string | null>(null);
   const [timeline, setTimeline] = useState<UiLiveTimeline | null>(null);
   const [comment, setComment] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -124,11 +125,12 @@ function LiveReviewBoard() {
     return () => { active = false; };
   }, [selected?.id]);
 
-  async function mutate(url: string, body: unknown, onConfirmed: (result: Record<string, unknown>) => void) {
-    if (!selected || !revision) return;
+  async function mutate(target: UiLiveCandidate | null, url: string, body: unknown, onConfirmed: (result: Record<string, unknown>) => void) {
+    const expectedRevision = candidateRevision(target);
+    if (!target || !expectedRevision) return;
     setPending(true); setError(null);
     try {
-      const result = await workToPostFetch<Record<string, unknown>>(url, { method: "POST", headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey(), "If-Match-Revision": String(revision) }, body: JSON.stringify(body) });
+      const result = await workToPostFetch<Record<string, unknown>>(url, { method: "POST", headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey(), "If-Match-Revision": String(expectedRevision) }, body: JSON.stringify(body) });
       onConfirmed(result);
     } catch (cause) { setError(messageFor(cause)); }
     finally { setPending(false); }
@@ -137,7 +139,7 @@ function LiveReviewBoard() {
   function addComment() {
     const body = comment.trim();
     if (!selected || !body) return;
-    void mutate(`/api/work-to-post/candidates/${encodeURIComponent(selected.id)}/comments`, { body }, (result) => {
+    void mutate(selected, `/api/work-to-post/candidates/${encodeURIComponent(selected.id)}/comments`, { body }, (result) => {
       const nextRevision = typeof result.revision === "number" ? result.revision : null;
       if (!nextRevision) { setError("The server confirmed the comment without a revision; refresh before making another decision."); return; }
       setCandidates((current) => current.map((candidate) => candidate.id === selected.id ? { ...candidate, currentRevision: nextRevision, status: "draft_review" } : candidate));
@@ -160,15 +162,15 @@ function LiveReviewBoard() {
     });
   }
 
-  function deny() {
-    if (!selected) return;
-    void mutate(`/api/work-to-post/candidates/${encodeURIComponent(selected.id)}/feedback`, { type: "deny", reasonCodes: ["reviewer_denied"] }, (result) => {
+  function deny(target = selected) {
+    if (!target) return;
+    void mutate(target, `/api/work-to-post/candidates/${encodeURIComponent(target.id)}/feedback`, { type: "deny", reasonCodes: ["reviewer_denied"] }, (result) => {
       const candidate = isRecord(result.candidate) ? result.candidate : null;
-      if (!candidate || candidate.id !== selected.id || candidate.status !== "rejected" || !Number.isInteger(candidate.currentRevision)) {
+      if (!candidate || candidate.id !== target.id || candidate.status !== "rejected" || !Number.isInteger(candidate.currentRevision)) {
         setError("The server confirmed denial without a rejected candidate state.");
         return;
       }
-      setCandidates((current) => current.map((entry) => entry.id === selected.id ? { ...entry, status: "rejected", currentRevision: Number(candidate.currentRevision) } : entry));
+      setCandidates((current) => current.map((entry) => entry.id === target.id ? { ...entry, status: "rejected", currentRevision: Number(candidate.currentRevision) } : entry));
       setTimeline((current) => current ? {
         ...current,
         candidate: { ...current.candidate, status: "rejected", currentRevision: Number(candidate.currentRevision) },
@@ -185,9 +187,9 @@ function LiveReviewBoard() {
     });
   }
 
-  function submitDecision(command: { type: "approve_schedule"; scheduledAt: string } | { type: "approve_now" }) {
-    if (!selected) return;
-    void mutate(`/api/work-to-post/candidates/${encodeURIComponent(selected.id)}/decisions`, command, (result) => {
+  function submitDecision(command: { type: "approve_schedule"; scheduledAt: string } | { type: "approve_now" }, target = selected) {
+    if (!target) return;
+    void mutate(target, `/api/work-to-post/candidates/${encodeURIComponent(target.id)}/decisions`, command, (result) => {
       const dispatch = isRecord(result.dispatch) ? result.dispatch : null;
       if (!dispatch || typeof dispatch.action !== "string") {
         setError("The server confirmed the decision without a dispatch result.");
@@ -197,23 +199,115 @@ function LiveReviewBoard() {
     });
   }
 
+  function handleDrop(column: LiveColumnId) {
+    const candidate = candidates.find((entry) => entry.id === draggedId);
+    setDraggedId(null);
+    if (!candidate) return;
+    setSelectedId(candidate.id);
+    if (column === "needs_work") {
+      setError("Add a comment in the drawer to request an angle or copy change. The server will create a new revision.");
+      return;
+    }
+    if (column === "review") {
+      setError(null);
+      return;
+    }
+    if (column === "rejected") {
+      deny(candidate);
+      return;
+    }
+    if (column === "scheduled") {
+      if (releaseBlocked) {
+        setError(`Schedule is blocked: ${releaseReason}`);
+        return;
+      }
+      if (!isExactFutureTimestamp(scheduledAt)) {
+        setError("Schedule needs an exact future ISO timestamp with timezone.");
+        return;
+      }
+      submitDecision({ type: "approve_schedule", scheduledAt }, candidate);
+    }
+  }
+
   const releaseBlocked = !timeline?.release?.allowed || pending;
   const releaseReason = timeline?.release?.reason ?? "An exact passing independent review is required.";
   const scheduleBlocked = releaseBlocked || !isExactFutureTimestamp(scheduledAt);
+  const liveColumns = groupLiveCandidates(candidates);
   return <div className="space-y-5">
     <div className="rounded-[18px] border border-[#d8e3e7] bg-[#f3f8f9] px-4 py-3 text-sm text-[#38505a]"><strong className="text-[#15323d]">Live workspace data is session-authenticated.</strong> Browser actions call only work-to-post routes. Provider and scheduler actions remain unavailable here.</div>
     {error ? <p role="alert" aria-label={error} className="rounded-xl border border-[#edc4bd] bg-[#fff5f2] px-4 py-3 text-sm font-semibold text-[#9d2f20]">{error}</p> : null}
     {loading ? <p className="rounded-xl border border-[#d8e3e7] bg-white p-4 text-sm text-[var(--muted)]">Loading workspace candidates…</p> : null}
     {!loading && candidates.length === 0 ? <p className="rounded-xl border border-[#d8e3e7] bg-white p-4 text-sm text-[var(--muted)]">No candidate records were returned by this workspace.</p> : null}
-    <div className="grid gap-4 xl:grid-cols-[0.75fr_1.25fr]">
-      <section className="rounded-[24px] border border-[#d6e3e7] bg-white/85 p-4"><h2 className="font-serif text-2xl text-[var(--ink)]">Live candidates</h2><div className="mt-4 space-y-2">{candidates.map((candidate) => <button key={candidate.id} type="button" onClick={() => setSelectedId(candidate.id)} className={cn("w-full rounded-xl border p-3 text-left", candidate.id === selected?.id ? "border-[#0f7ea9] bg-[#edf7fa]" : "border-[#d8e3e7] bg-white")}><p className="font-semibold text-[#15323d]">{candidate.id}</p><p className="mt-1 text-xs text-[var(--muted)]">{candidate.status || "status unavailable"} · revision {candidateRevision(candidate) ?? "unavailable"}</p></button>)}</div></section>
-      <section role="dialog" aria-modal="false" aria-labelledby="live-candidate-title" className="rounded-[24px] border border-[#d6e3e7] bg-[#f9fcfc] p-5"><p className="section-eyebrow text-[#0f7ea9]">Review drawer · live workspace</p><h2 id="live-candidate-title" className="mt-2 font-serif text-3xl text-[var(--ink)]">{selected?.id ?? "Select a candidate"}</h2><p className="mt-3 text-sm text-[var(--muted)]">Status: {selected?.status || "unavailable"}. Server-confirmed revision: {revision ?? "unavailable"}.</p>{dispatchLabel ? <p className="mt-3 rounded-full bg-[#dff3ed] px-3 py-1.5 text-xs font-bold text-[#0f766e]">{dispatchLabel}</p> : null}
-        <InfoPanel title="Timeline, angles, comments, and revisions">{!timeline ? <p className="text-sm text-[var(--muted)]">Loading selected timeline…</p> : <div className="space-y-3 text-sm"><p>{timeline.timeline.length} timeline events · {timeline.angles.length} angles · {timeline.comments.length} comments · {timeline.revisions.length} revisions</p>{timeline.angles.length ? <ul>{timeline.angles.map((angle, index) => <li key={angle.id ?? index}>{angle.title || "Angle title unavailable"}</li>)}</ul> : <p>Angles unavailable from this candidate.</p>}{timeline.comments.map((entry, index) => <p key={entry.id ?? index}>{entry.body || "Comment text unavailable"}</p>)}</div>}</InfoPanel>
-        <InfoPanel title="Comments"><label htmlFor="review-comment" className="sr-only">Add review comment</label><textarea id="review-comment" value={comment} onChange={(event) => setComment(event.target.value)} disabled={!revision || pending} className="min-h-24 w-full rounded-xl border border-[#cbdde2] bg-white p-3 text-sm" /><button type="button" onClick={addComment} disabled={!comment.trim() || !revision || pending} className="mt-3 rounded-xl bg-[#15323d] px-4 py-2.5 text-sm font-bold text-white disabled:opacity-45">{pending ? "Saving…" : "Add comment"}</button></InfoPanel>
-        <div className="mt-5 rounded-[18px] bg-[#15323d] p-4 text-[#eef6f7]"><p className="text-xs font-bold uppercase tracking-[0.14em] text-[#8cc8dd]">Exact server intent</p><label className="mt-3 block text-xs font-bold text-[#d7f1eb]" htmlFor="schedule-timestamp">Schedule timestamp</label><input id="schedule-timestamp" aria-describedby="schedule-timezone" value={scheduledAt} onChange={(event) => setScheduledAt(event.target.value)} disabled={pending} spellCheck={false} className="mt-1 w-full rounded-lg border border-white/30 bg-[#10282f] px-3 py-2 font-mono text-xs text-white disabled:opacity-45" /><p id="schedule-timezone" className="mt-2 text-xs text-[#b6ccd1]">Timezone: {timezoneFor(scheduledAt)}. This exact value is submitted unchanged.</p><div className="mt-3 grid gap-2 sm:grid-cols-3"><button type="button" onClick={deny} disabled={!revision || pending} className="rounded-lg border border-red-300/40 bg-red-400/10 px-3 py-2 text-sm font-bold text-red-100 disabled:opacity-45">Deny</button><button type="button" onClick={() => submitDecision({ type: "approve_schedule", scheduledAt })} disabled={scheduleBlocked} title={scheduleBlocked && !releaseBlocked ? "Enter an exact future ISO timestamp with timezone." : releaseReason} className="rounded-lg bg-[#d7f1eb] px-3 py-2 text-sm font-bold text-[#13433d] disabled:opacity-45">Schedule</button><button type="button" onClick={() => submitDecision({ type: "approve_now" })} disabled={releaseBlocked} title={releaseReason} className="rounded-lg border border-white/20 px-3 py-2 text-sm font-bold text-white disabled:opacity-45">Post now</button></div><p className="mt-3 text-xs text-[#b6ccd1]">{timeline?.release?.allowed ? `Bound to ${timeline.release.account} under ${timeline.release.policyVersion}.` : `Schedule and Post now are disabled: ${releaseReason}`}</p></div>
+    <div className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
+      <section aria-label="Live work-to-post Kanban" className="grid gap-4 lg:grid-cols-2 2xl:grid-cols-4">
+        {liveColumnDefs.map((column) => {
+          const columnCards = liveColumns[column.id] ?? [];
+          return <section key={column.id} onDragOver={(event) => event.preventDefault()} onDrop={() => handleDrop(column.id)} className="min-h-64 rounded-[24px] border border-[rgba(12,17,21,0.09)] bg-white/85 p-4 shadow-[0_16px_38px_rgba(12,17,21,0.07)]">
+            <div className="mb-4 flex items-start justify-between gap-3"><div><h2 className="font-serif text-2xl text-[var(--ink)]">{column.label}</h2><p className="mt-1 text-xs text-[var(--muted)]">{column.description}</p></div><span className="rounded-full px-2.5 py-1 text-xs font-bold" style={{ color: column.accent, background: `${column.accent}14` }}>{columnCards.length}</span></div>
+            <div className="space-y-3">{columnCards.map((candidate) => <LiveCandidateCard key={candidate.id} candidate={candidate} selected={candidate.id === selected?.id} onOpen={() => { setSelectedId(candidate.id); setError(null); }} onDragStart={() => setDraggedId(candidate.id)} />)}</div>
+            {!columnCards.length ? <p className="rounded-xl border border-dashed border-[#cbdde2] bg-[#f8fbfb] p-3 text-xs text-[var(--muted)]">Drop a card here. Publish remains blocked from drag and drop.</p> : null}
+          </section>;
+        })}
+      </section>
+      <section role="dialog" aria-modal="false" aria-labelledby="live-candidate-title" className="rounded-[24px] border border-[#d6e3e7] bg-[#f9fcfc] p-5"><p className="section-eyebrow text-[#0f7ea9]">Review drawer · live workspace</p><h2 id="live-candidate-title" className="mt-2 font-serif text-3xl text-[var(--ink)]">{candidateTitle(selected)}</h2><p className="mt-3 text-sm text-[var(--muted)]">Status: {selected?.status || "unavailable"}. Server-confirmed revision: {revision ?? "unavailable"}.</p>{dispatchLabel ? <p className="mt-3 rounded-full bg-[#dff3ed] px-3 py-1.5 text-xs font-bold text-[#0f766e]">{dispatchLabel}</p> : null}
+        <InfoPanel title="Completed work proof">{!selected ? <p className="text-sm text-[var(--muted)]">Select a candidate from the board.</p> : <div className="space-y-3 text-sm"><p className="leading-6 text-[#38505a]">{selected.summary ?? timeline?.completion?.summary ?? "Summary unavailable."}</p><div className="grid gap-2 text-xs text-[#49636c]"><span><strong>Source:</strong> {selected.sourceAgent ?? timeline?.completion?.sourceAgent ?? "unknown"}</span><span><strong>Project:</strong> {selected.projectRef ?? timeline?.completion?.projectRef ?? "unknown"}</span><span><strong>Occurred:</strong> {formatDate(selected.occurredAt ?? timeline?.completion?.occurredAt)}</span><span><strong>Privacy:</strong> {selected.privacy ?? timeline?.completion?.privacy ?? "unknown"}</span></div><ProofList proof={selected.proof ?? timeline?.completion?.proof ?? []} /></div>}</InfoPanel>
+        <InfoPanel title="Timeline, angles, comments, and revisions">{!timeline ? <p className="text-sm text-[var(--muted)]">Loading selected timeline…</p> : <div className="space-y-3 text-sm"><p>{timeline.timeline.length} timeline events · {timeline.angles.length} angles · {timeline.comments.length} comments · {timeline.revisions.length} revisions</p>{timeline.angles.length ? <ul className="space-y-2">{timeline.angles.map((angle, index) => <li key={angle.id ?? index} className="rounded-xl border border-[#dce8eb] bg-white p-3"><p className="font-semibold text-[#15323d]">{angle.title || "Angle title unavailable"}</p>{angle.provenance ? <p className="mt-1 text-xs text-[#0f7ea9]">{angle.provenance}</p> : null}</li>)}</ul> : <p>Angles unavailable from this candidate.</p>}{timeline.comments.map((entry, index) => <p key={entry.id ?? index} className="rounded-xl bg-[#edf7fa] p-3">{entry.body || "Comment text unavailable"}</p>)}</div>}</InfoPanel>
+        <InfoPanel title="Comment to improve"><label htmlFor="review-comment" className="sr-only">Add review comment</label><textarea id="review-comment" value={comment} onChange={(event) => setComment(event.target.value)} disabled={!revision || pending} placeholder="Example: make the angle more boardy, less changelog, cite the deploy proof first." className="min-h-24 w-full rounded-xl border border-[#cbdde2] bg-white p-3 text-sm" /><button type="button" onClick={addComment} disabled={!comment.trim() || !revision || pending} className="mt-3 rounded-xl bg-[#15323d] px-4 py-2.5 text-sm font-bold text-white disabled:opacity-45">{pending ? "Saving…" : "Add comment and revise"}</button></InfoPanel>
+        <div className="mt-5 rounded-[18px] bg-[#15323d] p-4 text-[#eef6f7]"><p className="text-xs font-bold uppercase tracking-[0.14em] text-[#8cc8dd]">Exact server intent</p><label className="mt-3 block text-xs font-bold text-[#d7f1eb]" htmlFor="schedule-timestamp">Schedule timestamp</label><input id="schedule-timestamp" aria-describedby="schedule-timezone" value={scheduledAt} onChange={(event) => setScheduledAt(event.target.value)} disabled={pending} spellCheck={false} className="mt-1 w-full rounded-lg border border-white/30 bg-[#10282f] px-3 py-2 font-mono text-xs text-white disabled:opacity-45" /><p id="schedule-timezone" className="mt-2 text-xs text-[#b6ccd1]">Timezone: {timezoneFor(scheduledAt)}. This exact value is submitted unchanged.</p><div className="mt-3 grid gap-2 sm:grid-cols-3"><button type="button" onClick={() => deny()} disabled={!revision || pending} className="rounded-lg border border-red-300/40 bg-red-400/10 px-3 py-2 text-sm font-bold text-red-100 disabled:opacity-45">Deny</button><button type="button" onClick={() => submitDecision({ type: "approve_schedule", scheduledAt })} disabled={scheduleBlocked} title={scheduleBlocked && !releaseBlocked ? "Enter an exact future ISO timestamp with timezone." : releaseReason} className="rounded-lg bg-[#d7f1eb] px-3 py-2 text-sm font-bold text-[#13433d] disabled:opacity-45">Schedule</button><button type="button" onClick={() => submitDecision({ type: "approve_now" })} disabled={releaseBlocked} title={releaseReason} className="rounded-lg border border-white/20 px-3 py-2 text-sm font-bold text-white disabled:opacity-45">Post now</button></div><p className="mt-3 text-xs text-[#b6ccd1]">{timeline?.release?.allowed ? `Bound to ${timeline.release.account} under ${timeline.release.policyVersion}.` : `Schedule and Post now are disabled: ${releaseReason}`}</p></div>
       </section>
     </div>
   </div>;
+}
+
+type LiveColumnId = "review" | "needs_work" | "scheduled" | "rejected";
+
+const liveColumnDefs: Array<{ id: LiveColumnId; label: string; description: string; accent: string }> = [
+  { id: "review", label: "Review", description: "Completed work waiting on proof and angle review", accent: "#0f7ea9" },
+  { id: "needs_work", label: "Needs work", description: "Comment-driven revisions and angle changes", accent: "#9a6700" },
+  { id: "scheduled", label: "Scheduled intent", description: "Guarded server decision, not provider publish", accent: "#0f766e" },
+  { id: "rejected", label: "Rejected", description: "Denied candidates stay inspectable", accent: "#b5473d" },
+];
+
+function groupLiveCandidates(candidates: UiLiveCandidate[]) {
+  return liveColumnDefs.reduce<Record<LiveColumnId, UiLiveCandidate[]>>((acc, column) => {
+    acc[column.id] = candidates.filter((candidate) => liveColumnFor(candidate) === column.id);
+    return acc;
+  }, { review: [], needs_work: [], scheduled: [], rejected: [] });
+}
+
+function liveColumnFor(candidate: UiLiveCandidate): LiveColumnId {
+  if (candidate.status === "rejected") return "rejected";
+  if (candidate.status === "draft_review") return "needs_work";
+  if (candidate.status === "scheduled" || candidate.status === "published") return "scheduled";
+  return "review";
+}
+
+function candidateTitle(candidate: UiLiveCandidate | null | undefined) {
+  if (!candidate) return "Select a candidate";
+  if (candidate.summary) return candidate.summary.length > 86 ? `${candidate.summary.slice(0, 83)}...` : candidate.summary;
+  return candidate.id;
+}
+
+function formatDate(value: string | null | undefined) {
+  if (!value) return "unavailable";
+  const parsed = new Date(value);
+  return Number.isFinite(parsed.getTime()) ? parsed.toLocaleString() : value;
+}
+
+function LiveCandidateCard({ candidate, selected, onOpen, onDragStart }: { candidate: UiLiveCandidate; selected: boolean; onOpen: () => void; onDragStart: () => void }) {
+  return <article draggable onDragStart={onDragStart} className={cn("rounded-[18px] border p-4 transition", selected ? "border-[#68a7bf] bg-[#edf7fa] shadow-[0_10px_24px_rgba(15,126,169,0.12)]" : "border-[rgba(12,17,21,0.09)] bg-white hover:border-[#9dbec9]")}>
+    <button type="button" onClick={onOpen} className="w-full text-left" aria-label={`Open ${candidate.id}`}>
+      <div className="flex items-start justify-between gap-3"><span className="rounded-full bg-[#edf3f4] px-2 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-[#42626d]">{candidate.status || "unknown"}</span><ChevronRight className="h-4 w-4 shrink-0 text-[#55747e]" /></div>
+      <h3 className="mt-3 font-serif text-[1.05rem] leading-5 text-[var(--ink)]">{candidateTitle(candidate)}</h3>
+      <div className="mt-4 grid gap-2 text-xs text-[#49636c]"><span className="inline-flex items-center gap-1.5"><FileCheck2 className="h-3.5 w-3.5" /> {candidate.proof?.length ?? 0} proof link(s)</span><span className="inline-flex items-center gap-1.5"><Clock3 className="h-3.5 w-3.5" /> {formatDate(candidate.occurredAt)}</span><span className="truncate">{candidate.sourceAgent ?? "unknown source"} · {candidate.projectRef ?? "unknown project"}</span></div>
+      <div className="mt-3 flex flex-wrap gap-2"><span className="rounded-full bg-[#e8f4f7] px-2 py-1 text-[10px] font-bold text-[#0b5d7d]">rev {candidateRevision(candidate) ?? "?"}</span>{candidate.privacy ? <span className="rounded-full bg-[#eef4f2] px-2 py-1 text-[10px] font-bold text-[#38505a]">{candidate.privacy}</span> : null}</div>
+    </button>
+  </article>;
+}
+
+function ProofList({ proof }: { proof: NonNullable<UiLiveCandidate["proof"]> }) {
+  if (!proof.length) return <p className="rounded-xl border border-dashed border-[#cbdde2] bg-white p-3 text-xs text-[var(--muted)]">No public proof link is attached yet.</p>;
+  return <ul className="space-y-2">{proof.slice(0, 3).map((item, index) => <li key={`${item.uri}-${index}`} className="rounded-xl border border-[#dce8eb] bg-white p-3 text-xs"><a className="font-semibold text-[#0f7ea9] underline underline-offset-2" href={item.uri} target="_blank" rel="noreferrer">{item.type || "proof"} · {item.uri}</a>{item.verifiedAt ? <p className="mt-1 text-[#49636c]">verified {formatDate(item.verifiedAt)}</p> : null}</li>)}</ul>;
 }
 
 function messageFor(cause: unknown) { return cause instanceof WorkToPostUiError ? `${cause.message}${cause.status === 409 ? " Refresh the candidate and retry." : ""}` : "Unable to reach the live workspace. Check your session and retry."; }

@@ -38,13 +38,14 @@ RUN --mount=type=cache,target=/root/.npm \
   && npm install -g https://github.com/maxpetrusenko/steipete-bird/tarball/feat/social-poster-inbox-analytics \
   && rm -rf /var/lib/apt/lists/*
 
-RUN mkdir -p /data
+RUN mkdir -p /data scripts
 
 # Next standalone already contains the production server and required packages.
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/scripts/container-entrypoint.sh ./container-entrypoint.sh
+COPY --from=builder /app/scripts/seed-work-to-post-recent-work.mjs ./scripts/seed-work-to-post-recent-work.mjs
 
 RUN chmod +x ./container-entrypoint.sh
 
