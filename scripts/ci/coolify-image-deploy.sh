@@ -119,6 +119,111 @@ REMOTE
   log "Private production healthcheck passed in $(format_duration "${healthcheck_seconds}")"
 }
 
+assert_supabase_auth_redirects() {
+  if [ "${VERIFY_SUPABASE_AUTH_REDIRECTS:-false}" != "true" ]; then
+    return
+  fi
+
+  log "Checking shared Supabase Auth redirect allowlist"
+  ssh "${ssh_opts[@]}" "${ssh_target}" bash -s <<'REMOTE'
+set -euo pipefail
+env_file="/opt/supabase/.env"
+
+if [ ! -r "${env_file}" ]; then
+  echo "Supabase Auth configuration is not readable at ${env_file}" >&2
+  exit 1
+fi
+
+if ! auth_container_output="$(
+  docker compose --env-file "${env_file}" \
+    -f "/opt/supabase/docker-compose.yml" ps -q auth 2>/dev/null
+)"; then
+  echo "Could not resolve the /opt/supabase Compose auth service" >&2
+  exit 1
+fi
+
+auth_container_ids=()
+while IFS= read -r container_id; do
+  [ -n "${container_id}" ] && auth_container_ids+=("${container_id}")
+done <<<"${auth_container_output}"
+
+if [ "${#auth_container_ids[@]}" -ne 1 ]; then
+  echo "Expected exactly one running /opt/supabase Compose auth container" >&2
+  exit 1
+fi
+
+python3 - "${env_file}" "${auth_container_ids[0]}" <<'PY'
+import json
+import subprocess
+import sys
+
+env_file = sys.argv[1]
+auth_container_id = sys.argv[2]
+required = {"https://smmagent.app", "https://smmagent.app/**"}
+
+
+def assert_required(value, source):
+    value = value.strip()
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
+        value = value[1:-1]
+    configured = {entry.strip() for entry in value.split(",") if entry.strip()}
+    missing = sorted(required - configured)
+    if missing:
+        print(
+            f"{source} is missing required smmagent.app entries: " + ", ".join(missing),
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
+
+
+file_value = None
+with open(env_file, encoding="utf-8") as handle:
+    for raw_line in handle:
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith("export "):
+            line = line[7:].lstrip()
+        key, separator, value = line.partition("=")
+        if separator and key.strip() == "ADDITIONAL_REDIRECT_URLS":
+            file_value = value
+
+if file_value is None:
+    print("Supabase Auth file config is missing ADDITIONAL_REDIRECT_URLS", file=sys.stderr)
+    raise SystemExit(1)
+assert_required(file_value, "Supabase Auth file config ADDITIONAL_REDIRECT_URLS")
+
+try:
+    inspection = subprocess.run(
+        ["docker", "inspect", auth_container_id],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    container = json.loads(inspection.stdout)[0]
+except (subprocess.CalledProcessError, json.JSONDecodeError, IndexError):
+    print("Could not inspect the /opt/supabase Compose auth runtime", file=sys.stderr)
+    raise SystemExit(1)
+
+runtime_value = None
+for entry in container.get("Config", {}).get("Env") or []:
+    key, separator, value = entry.partition("=")
+    if separator and key == "GOTRUE_URI_ALLOW_LIST":
+        runtime_value = value
+        break
+
+if runtime_value is None:
+    print(
+        "No running Supabase Auth runtime exposes GOTRUE_URI_ALLOW_LIST",
+        file=sys.stderr,
+    )
+    raise SystemExit(1)
+assert_required(runtime_value, "Supabase Auth runtime GOTRUE_URI_ALLOW_LIST")
+PY
+REMOTE
+  log "Shared Supabase Auth redirect allowlist passed"
+}
+
 assert_public_health() {
   if [ "${VERIFY_PUBLIC:-false}" != "true" ]; then
     return
@@ -242,6 +347,8 @@ ssh_opts=(
 
 token_b64="$(printf '%s' "${COOLIFY_API_TOKEN}" | base64 | tr -d '\n')"
 ssh_target="${COOLIFY_SSH_USER}@${COOLIFY_SSH_HOST}"
+
+assert_supabase_auth_redirects
 
 if [ "${READ_PREVIOUS_IMAGE_TAG:-false}" = "true" ]; then
   log "Reading current Coolify image tag before deploy"

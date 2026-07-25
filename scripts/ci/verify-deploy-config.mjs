@@ -67,6 +67,12 @@ requireExcludes(
 );
 requireIncludes(workflowPath, workflow, "READ_PREVIOUS_IMAGE_TAG: \"true\"", "deploy captures previous image for rollback");
 requireIncludes(workflowPath, workflow, "BACKUP_SQLITE_BEFORE_DEPLOY: \"true\"", "deploy backs up SQLite before image change");
+requireIncludes(
+  workflowPath,
+  workflow,
+  "VERIFY_SUPABASE_AUTH_REDIRECTS: \"true\"",
+  "production deploy must reject shared Supabase Auth redirect drift",
+);
 requireIncludes(workflowPath, workflow, "run: bash scripts/ci/coolify-image-deploy.sh", "deploy and rollback use shared Coolify helper");
 requireIncludes(workflowPath, workflow, "Public Production Canary", "public post-deploy canary is required");
 requireIncludes(workflowPath, workflow, "schedule drift is", "public canary must reject scheduler drift");
@@ -82,6 +88,96 @@ requireIncludes(deployScriptPath, deployScript, "FORCE_REDEPLOY_SAME_IMAGE", "sa
 requireIncludes(deployScriptPath, deployScript, "VERIFY_PUBLIC", "rollback can verify public health");
 requireIncludes(deployScriptPath, deployScript, "backup_sqlite_database", "SQLite backup helper is required");
 requireIncludes(deployScriptPath, deployScript, "assert_private_health", "same-image no-ops still need private health verification");
+requireIncludes(
+  deployScriptPath,
+  deployScript,
+  "assert_supabase_auth_redirects",
+  "shared Supabase Auth redirect verification helper is required",
+);
+requireIncludes(
+  deployScriptPath,
+  deployScript,
+  "VERIFY_SUPABASE_AUTH_REDIRECTS",
+  "shared Supabase Auth redirect verification must be optional",
+);
+requireIncludes(
+  deployScriptPath,
+  deployScript,
+  "/opt/supabase/.env",
+  "verification must inspect the self-hosted Supabase environment",
+);
+requireIncludes(
+  deployScriptPath,
+  deployScript,
+  'docker compose --env-file "${env_file}"',
+  "runtime discovery must use the /opt/supabase Compose project environment",
+);
+requireIncludes(
+  deployScriptPath,
+  deployScript,
+  '-f "/opt/supabase/docker-compose.yml" ps -q auth',
+  "runtime discovery must resolve only the /opt/supabase auth service",
+);
+requireIncludes(
+  deployScriptPath,
+  deployScript,
+  '"${#auth_container_ids[@]}" -ne 1',
+  "runtime verification must fail closed on zero or multiple auth containers",
+);
+requireIncludes(
+  deployScriptPath,
+  deployScript,
+  '["docker", "inspect", auth_container_id]',
+  "verification must inspect the running Supabase Auth container",
+);
+requireExcludes(
+  deployScriptPath,
+  deployScript,
+  '["docker", "ps", "--quiet"]',
+  "runtime discovery must not scan unrelated Docker stacks",
+);
+requireIncludes(
+  deployScriptPath,
+  deployScript,
+  "GOTRUE_URI_ALLOW_LIST",
+  "verification must prove the live Auth redirect allowlist",
+);
+requireIncludes(
+  deployScriptPath,
+  deployScript,
+  "Supabase Auth runtime",
+  "live Auth drift failures must identify the runtime proof surface",
+);
+requireIncludes(
+  deployScriptPath,
+  deployScript,
+  'assert_required(file_value, "Supabase Auth file config ADDITIONAL_REDIRECT_URLS")',
+  "persisted Auth configuration must be validated",
+);
+requireIncludes(
+  deployScriptPath,
+  deployScript,
+  'assert_required(runtime_value, "Supabase Auth runtime GOTRUE_URI_ALLOW_LIST")',
+  "running Auth configuration must be validated independently",
+);
+requireIncludes(
+  deployScriptPath,
+  deployScript,
+  "https://smmagent.app",
+  "canonical OAuth redirect must be allowlisted",
+);
+requireIncludes(
+  deployScriptPath,
+  deployScript,
+  "https://smmagent.app/**",
+  "canonical OAuth wildcard redirect must be allowlisted",
+);
+requireExcludes(
+  deployScriptPath,
+  deployScript,
+  "cat /opt/supabase/.env",
+  "deploy logs must not print the Supabase environment or its secrets",
+);
 requireIncludes(deployScriptPath, deployScript, "better-sqlite3", "SQLite backup must use the database backup API");
 requireIncludes(deployScriptPath, deployScript, "/data/backups", "SQLite backups must land on the persistent data volume");
 requireIncludes(deployScriptPath, deployScript, "docker_registry_image_tag", "Coolify image tag patch");

@@ -178,6 +178,7 @@ jobs:
           BACKUP_LABEL: deploy-${{ github.sha }}
           BACKUP_SQLITE_BEFORE_DEPLOY: "true"
           READ_PREVIOUS_IMAGE_TAG: "true"
+          VERIFY_SUPABASE_AUTH_REDIRECTS: "true"
         run: bash scripts/ci/coolify-image-deploy.sh
 
       - name: Summarize deploy timing
