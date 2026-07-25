@@ -8,6 +8,7 @@
     "dev:x-bridge": "node scripts/x-oauth-bridge.mjs",
     "pretest": "node scripts/check-node-version.mjs",
     "build": "next build",
+    "build:docker": "next build --no-lint",
     "start": "next start",
     "test": "vitest run",
     "test:unit": "vitest run",

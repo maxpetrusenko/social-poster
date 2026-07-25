@@ -16,7 +16,7 @@ COPY . .
 RUN --mount=type=cache,target=/app/.next/cache \
   (while true; do sleep 10; echo "next build still running"; done) & \
   heartbeat_pid="$!"; \
-  npm run build; \
+  npm run build:docker; \
   build_status="$?"; \
   kill "$heartbeat_pid"; \
   exit "$build_status"
