@@ -1,9 +1,10 @@
 import { createHash } from "node:crypto";
 
 export type ExternalBlogPublishPayload = {
-  contractVersion?: 1 | 2;
+  contractVersion?: 1 | 2 | 3;
   runId: string;
   packageId: string;
+  publicationDate?: string;
   article: string;
   articleSha256: string;
   review: string;
@@ -19,6 +20,7 @@ export type ValidatedExternalBlogArticle = {
 
 const RUN_ID_PATTERN = /^[a-zA-Z0-9._-]{6,160}$/;
 const SHA256_PATTERN = /^[a-f0-9]{64}$/;
+const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 export const INLINE_LINK_PATTERN = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
 const COMMONS_IMAGE_PATTERN = /^!\[[^\]]+\]\(https:\/\/upload\.wikimedia\.org\/[^\s)]+\)$/m;
 const COMMONS_SOURCE_PATTERN = /\[[^\]]+\]\(https:\/\/commons\.wikimedia\.org\/wiki\/File:[^\s)]+\)/i;
@@ -39,14 +41,22 @@ export function validateExternalBlogPublishPayload(
   }
   const payload = value as Partial<ExternalBlogPublishPayload>;
   const contractVersion = payload.contractVersion ?? 1;
-  if (![1, 2].includes(contractVersion)) {
-    throw new Error("Article contract version must be 1 or 2.");
+  if (![1, 2, 3].includes(contractVersion)) {
+    throw new Error("Article contract version must be 1, 2, or 3.");
   }
   if (!payload.runId || !RUN_ID_PATTERN.test(payload.runId)) {
     throw new Error("A valid Hermes run ID is required.");
   }
   if (!payload.packageId || !RUN_ID_PATTERN.test(payload.packageId)) {
     throw new Error("A valid Hermes package ID is required.");
+  }
+  if (
+    contractVersion >= 3 &&
+    (!payload.publicationDate ||
+      !DATE_PATTERN.test(payload.publicationDate) ||
+      !Number.isFinite(Date.parse(`${payload.publicationDate}T00:00:00Z`)))
+  ) {
+    throw new Error("Version 3 articles require a valid publication date.");
   }
   if (!payload.article || payload.article.length > 150_000) {
     throw new Error("Article content is required and must be under 150 KB.");

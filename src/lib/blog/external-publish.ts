@@ -61,7 +61,7 @@ export async function publishExternalBlogArticle(value: unknown) {
       exactHashReview: true,
       minimumInlineSources: true,
       minimumWordCount: true,
-      licensedCommonsImage: payload.contractVersion === 2,
+      licensedCommonsImage: (payload.contractVersion ?? 1) >= 2,
     },
     validationStatus: "pass",
     validationScore: 100,

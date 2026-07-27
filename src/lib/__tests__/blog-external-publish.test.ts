@@ -37,6 +37,14 @@ function versionTwoPayload() {
   };
 }
 
+function versionThreePayload() {
+  return {
+    ...versionTwoPayload(),
+    contractVersion: 3 as const,
+    publicationDate: "2026-07-27",
+  };
+}
+
 describe("external Hermes blog publishing", () => {
   it("accepts an exact-hash reviewed article with citations", () => {
     const result = validateExternalBlogPublishPayload(validPayload());
@@ -75,6 +83,21 @@ describe("external Hermes blog publishing", () => {
 
   it("accepts a version two article with licensed image attribution", () => {
     expect(validateExternalBlogPublishPayload(versionTwoPayload()).warnings).toEqual([]);
+  });
+
+  it("accepts a version three article with a publication date", () => {
+    expect(validateExternalBlogPublishPayload(versionThreePayload()).warnings).toEqual([]);
+  });
+
+  it("requires a publication date for version three payloads", () => {
+    expect(() =>
+      validateExternalBlogPublishPayload({
+        ...versionThreePayload(),
+        publicationDate: undefined,
+      }),
+    ).toThrow(
+      /valid publication date/i,
+    );
   });
 
   it("rejects an article whose supplied hash does not match", () => {
