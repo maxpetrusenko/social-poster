@@ -539,7 +539,7 @@ async function main() {
           `Dashboard page ${index + 1} did not render the default SaaS navigation.\n${body.slice(0, 1000)}`
         );
       }
-      if (body.includes("Review")) {
+      if (body.includes("Sources") || body.includes("Results")) {
         throw new Error(
           `Dashboard page ${index + 1} rendered agentic navigation by default.`
         );
