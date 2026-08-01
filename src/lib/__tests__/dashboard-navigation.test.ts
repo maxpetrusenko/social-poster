@@ -65,12 +65,12 @@ describe("dashboard navigation", () => {
     );
   });
 
-  it("keeps work review surfaces out of the default SaaS utility navigation", () => {
+  it("keeps the work review Kanban visible in default SaaS navigation", () => {
     const defaultUtilityHrefs = new Set(
       flattenNav(utilityShellNav).map((item) => item.href)
     );
 
-    expect(defaultUtilityHrefs.has("/dashboard/review")).toBe(false);
+    expect(defaultUtilityHrefs.has("/dashboard/review")).toBe(true);
     expect(defaultUtilityHrefs.has("/dashboard/analytics")).toBe(false);
   });
 

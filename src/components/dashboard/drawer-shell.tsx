@@ -133,6 +133,7 @@ const headerCopy: HeaderConfig[] = [
   { match: "/dashboard/schedules", title: "Schedules", description: "Control cadence, timing, and scheduled runs." },
   { match: "/dashboard/categories", title: "Recurrent Posts", description: "Review recurring slots, themes, and content buckets." },
   { match: "/dashboard/rss", title: "RSS", description: "Manage feed sources, candidate scoring, rewrite templates, and image selection." },
+  { match: "/dashboard/review", title: "Review Kanban", description: "Approve, revise, reject, or schedule guarded work-to-post candidates." },
   { match: "/dashboard/pipeline", title: "Pipeline", description: "Inspect run history, logs, and execution status." },
   { match: "/dashboard", title: "SMM Agent", description: "See the main board, current metrics, and workspace status." },
 ];

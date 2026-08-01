@@ -161,6 +161,12 @@ export const utilityShellNav: ShellNavItem[] = [
     icon: "overview",
   },
   {
+    label: "Review",
+    href: "/dashboard/review",
+    blurb: "Kanban for work-derived post candidates.",
+    icon: "posts",
+  },
+  {
     label: "Pipeline",
     href: "/dashboard/pipeline",
     blurb: "Run history and step truth.",
