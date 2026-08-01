@@ -15,7 +15,7 @@ function assertDecisionScope(candidateStatus: string, command: DecisionCommand, 
   if (command.type === "approve_schedule" && Date.parse(command.scheduledAt) <= Date.now()) throw new Error("Scheduled time must be in the future.");
 }
 
-export async function recordDecision(repository: WorkToPostRepository, workspaceId: string, candidateId: string, command: DecisionCommand, options: DecisionOptions, adapter: DispatchAdapter = createFakeDispatchAdapter((targetWorkspaceId, targetCandidateId, action, digest) => repository.createDispatch(targetWorkspaceId, targetCandidateId, action, digest))): Promise<{ replayed: boolean; dispatch: LocalDispatch }> {
+export async function recordDecision(repository: WorkToPostRepository, workspaceId: string, candidateId: string, command: DecisionCommand, options: DecisionOptions, adapter: DispatchAdapter = createFakeDispatchAdapter((targetWorkspaceId, targetCandidateId, action, digest) => repository.createDispatch(targetWorkspaceId, targetCandidateId, action, digest))): Promise<{ replayed: boolean; dispatch: LocalDispatch; candidate?: { id: string; status: "scheduled" | "published"; currentRevision: number } }> {
   // The receipt identity contains only caller-supplied immutable input. This
   // allows a completed retry to replay even after the candidate's mutable
   // revision, review, policy, or expiry state has changed.
@@ -47,8 +47,9 @@ export async function recordDecision(repository: WorkToPostRepository, workspace
       approvalDigest: digest,
     };
     await repository.completeDecision(decision);
+    const decidedCandidate = await repository.markDecisionCandidate(workspaceId, candidateId, candidate.revision, command);
     await repository.appendLifecycle({ workspaceId, candidateId, eventType: `decision.${command.type}`, revision: candidate.revision, traceRef: `local-dispatch:${dispatched.dispatchId}` });
-    return { replayed: false, dispatch: { mode: "local_fake", action, dispatchId: dispatched.dispatchId } };
+    return { replayed: false, dispatch: { mode: "local_fake", action, dispatchId: dispatched.dispatchId }, ...(decidedCandidate ? { candidate: decidedCandidate } : {}) };
   } catch (error) {
     await repository.abandonDecision(workspaceId, options.idempotencyKey, requestHash);
     throw error;

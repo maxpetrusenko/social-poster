@@ -120,6 +120,11 @@ describe("work-to-post core walking skeleton", () => {
     });
 
     expect(first.dispatch).toMatchObject({ mode: "local_fake", action: "simulated_scheduled" });
+    expect(first.candidate).toMatchObject({ id: intake.candidateId, status: "scheduled", currentRevision: 1 });
+    await expect(recordDecision(repository, "workspace-a", intake.candidateId, { type: "approve_now" }, {
+      idempotencyKey: "publish-after-schedule",
+      expectedRevision: 1,
+    })).rejects.toThrow("Candidate is not eligible");
     expect(replay.replayed).toBe(true);
     expect(await repository.count("dispatches")).toBe(1);
     expect(await repository.serializedState()).not.toContain("bird");

@@ -6,6 +6,7 @@ export type CandidateRecord = { id: string; workspaceId: string; completionEvent
 export type LifecycleRecord = { id: string; workspaceId: string; candidateId: string; eventType: string; revision: number; traceRef: string | null; createdAt: string };
 export type DispatchScope = { revisionDigest: string; mediaDigest: string; assignedAccount: string | null; policyVersion: string | null; approvalExpiresAt: string | null; reviewStatus: string | null; reviewDigest: string | null; candidateStatus: string };
 export type DecisionRecord = { id: string; workspaceId: string; candidateId: string; idempotencyKey: string; requestHash: string; command: DecisionCommand; dispatchId: string };
+export type DecisionResultCandidate = { id: string; status: "scheduled" | "published"; currentRevision: number };
 export type DecisionClaim = { kind: "claimed" } | { kind: "replay"; decision: DecisionRecord };
 
 export interface WorkToPostRepository {
@@ -18,6 +19,7 @@ export interface WorkToPostRepository {
   appendLifecycle(record: Omit<LifecycleRecord, "id" | "createdAt">): Promise<LifecycleRecord>;
   claimDecision(input: Omit<DecisionRecord, "id" | "dispatchId">): Promise<DecisionClaim>;
   completeDecision(input: Omit<DecisionRecord, "id">): Promise<DecisionRecord>;
+  markDecisionCandidate(workspaceId: string, candidateId: string, revision: number, command: DecisionCommand): Promise<DecisionResultCandidate | null>;
   abandonDecision(workspaceId: string, idempotencyKey: string, requestHash: string): Promise<void>;
   createDispatch(workspaceId: string, candidateId: string, action: "simulated_scheduled" | "simulated_published" | "denied", approvalDigest: string): Promise<string>;
   getDispatchScope(workspaceId: string, candidateId: string, revision: number): Promise<DispatchScope | null>;
@@ -44,6 +46,12 @@ export function createInMemoryWorkToPostRepository(): WorkToPostRepository & { c
     async appendLifecycle(record) { const saved = { ...record, id: crypto.randomUUID(), createdAt: new Date().toISOString() }; lifecycle.push(saved); return saved; },
     async claimDecision(input) { return exclusive(async () => { const key = `${input.workspaceId}:${input.idempotencyKey}`; const claimed = claims.get(key); if (claimed) { if (claimed.requestHash !== input.requestHash || claimed.candidateId !== input.candidateId || JSON.stringify(claimed.command) !== JSON.stringify(input.command)) throw new Error("Idempotency key was already used for a different request."); const decision = decisions.find((item) => item.workspaceId === input.workspaceId && item.idempotencyKey === input.idempotencyKey); if (!decision) throw new Error("Idempotency request is in progress."); return { kind: "replay", decision }; } claims.set(key, input); return { kind: "claimed" }; }); },
     async completeDecision(input) { return exclusive(async () => { const existing = decisions.find((item) => item.workspaceId === input.workspaceId && item.idempotencyKey === input.idempotencyKey); if (existing) return existing; const saved = { ...input, id: crypto.randomUUID() }; decisions.push(saved); return saved; }); },
+    async markDecisionCandidate(workspaceId, candidateId, revision, command) { return exclusive(async () => {
+      const candidate = candidates.find((entry) => entry.workspaceId === workspaceId && entry.id === candidateId && entry.revision === revision);
+      if (!candidate || command.type === "deny") return null;
+      candidate.status = command.type === "approve_schedule" ? "scheduled" : "published";
+      return { id: candidate.id, status: candidate.status as "scheduled" | "published", currentRevision: candidate.revision };
+    }); },
     async abandonDecision(workspaceId, idempotencyKey, requestHash) { return exclusive(async () => { const key = `${workspaceId}:${idempotencyKey}`; const claimed = claims.get(key); const completed = decisions.some((decision) => decision.workspaceId === workspaceId && decision.idempotencyKey === idempotencyKey && decision.requestHash === requestHash); if (!completed && claimed?.requestHash === requestHash) claims.delete(key); }); },
     async createDispatch(workspaceId, candidateId, action, approvalDigest) { return exclusive(async () => { const existing = dispatches.find((entry) => entry.workspaceId === workspaceId && entry.approvalDigest === approvalDigest); if (existing) return existing.id; const id = crypto.randomUUID(); dispatches.push({ id, workspaceId, candidateId, action, approvalDigest }); return id; }); },
     async getDispatchScope(workspaceId, candidateId, revision) { const candidate = candidates.find((entry) => entry.workspaceId === workspaceId && entry.id === candidateId && entry.revision === revision); return candidate ? { revisionDigest: `revision:${candidate.id}:${revision}`, mediaDigest: "media:fixture", assignedAccount: "fixture-account", policyVersion: "v1", approvalExpiresAt: "2099-01-01T00:00:00.000Z", reviewStatus: "pass", reviewDigest: `revision:${candidate.id}:${revision}`, candidateStatus: candidate.status } : null; },

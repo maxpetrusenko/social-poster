@@ -65,7 +65,11 @@ describe("work-to-post fixture demo", () => {
         release: { allowed: true, reason: null, account: "max-x", policyVersion: "v1", approvalExpiresAt: "2099-01-01T00:00:00.000Z", reviewStatus: "pass" },
       }), { status: 200 });
       if (url === "/api/work-to-post/candidates/candidate-live/decisions") {
-        return new Response(JSON.stringify({ replayed: false, dispatch: { mode: "local_fake", action: "simulated_published", dispatchId: "dispatch-1" } }), { status: 200 });
+        return new Response(JSON.stringify({
+          replayed: false,
+          dispatch: { mode: "local_fake", action: "simulated_published", dispatchId: "dispatch-1" },
+          candidate: { id: "candidate-live", status: "published", currentRevision: 2 },
+        }), { status: 200 });
       }
       throw new Error(`Unexpected request: ${url}`);
     });
@@ -76,6 +80,7 @@ describe("work-to-post fixture demo", () => {
     fireEvent.click(screen.getByRole("button", { name: "Post now" }));
 
     await screen.findByText("simulated_published");
+    expect(screen.getByText(/Status: published/i)).toBeTruthy();
     expect(fetchSpy).toHaveBeenCalledWith("/api/work-to-post/candidates/candidate-live/decisions", expect.objectContaining({ method: "POST" }));
     const decisionCall = fetchSpy.mock.calls.find(([url]) => String(url).endsWith("/decisions"));
     expect(decisionCall?.[1]?.headers).toEqual(expect.objectContaining({ "Idempotency-Key": expect.any(String), "If-Match-Revision": "2" }));
@@ -88,7 +93,11 @@ describe("work-to-post fixture demo", () => {
       const url = String(input);
       if (url === "/api/work-to-post/candidates") return new Response(JSON.stringify({ candidates: [{ id: "candidate-live", status: "eligible", currentRevision: 2 }] }), { status: 200 });
       if (url === "/api/work-to-post/candidates/candidate-live/timeline") return new Response(JSON.stringify({ candidate: { id: "candidate-live", status: "eligible", currentRevision: 2 }, timeline: [], angles: [], comments: [], revisions: [], release: { allowed: true, reason: null, account: "max-x", policyVersion: "v1", approvalExpiresAt: "2099-01-01T00:00:00.000Z", reviewStatus: "pass" } }), { status: 200 });
-      if (url === "/api/work-to-post/candidates/candidate-live/decisions") return new Response(JSON.stringify({ replayed: false, dispatch: { mode: "local_fake", action: "simulated_scheduled", dispatchId: "dispatch-schedule" } }), { status: 201 });
+      if (url === "/api/work-to-post/candidates/candidate-live/decisions") return new Response(JSON.stringify({
+        replayed: false,
+        dispatch: { mode: "local_fake", action: "simulated_scheduled", dispatchId: "dispatch-schedule" },
+        candidate: { id: "candidate-live", status: "scheduled", currentRevision: 2 },
+      }), { status: 201 });
       throw new Error(`Unexpected request: ${url}`);
     });
     render(<WorkToPostReviewBoard />);
@@ -102,6 +111,7 @@ describe("work-to-post fixture demo", () => {
     fireEvent.click(screen.getByRole("button", { name: "Schedule" }));
 
     await screen.findByText("simulated_scheduled");
+    expect(screen.getByText(/Status: scheduled/i)).toBeTruthy();
     const decisionCall = fetchSpy.mock.calls.find(([url]) => String(url).endsWith("/decisions"));
     expect(JSON.parse(String(decisionCall?.[1]?.body))).toEqual({ type: "approve_schedule", scheduledAt: exactTimestamp });
   });

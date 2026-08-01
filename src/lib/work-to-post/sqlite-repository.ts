@@ -160,6 +160,19 @@ export function createSqliteWorkToPostRepository(): WorkToPostRepository {
       await finishReceipt();
       return saved;
     },
+    async markDecisionCandidate(workspaceId, candidateId, revision, command) {
+      if (command.type === "deny") return null;
+      const status = command.type === "approve_schedule" ? "scheduled" : "published";
+      const updated = await db.update(contentCandidates)
+        .set({ status, updatedAt: new Date() })
+        .where(and(
+          eq(contentCandidates.workspaceId, workspaceId),
+          eq(contentCandidates.id, candidateId),
+          eq(contentCandidates.currentRevision, revision),
+        ));
+      if (updated.changes === 0) return null;
+      return { id: candidateId, status, currentRevision: revision };
+    },
     async abandonDecision(workspaceId: string, idempotencyKey: string, requestHash: string) {
       await db.update(commandReceipts).set({ state: "failed", leaseExpiresAt: null, updatedAt: new Date() }).where(and(eq(commandReceipts.workspaceId, workspaceId), eq(commandReceipts.operation, "decision"), eq(commandReceipts.idempotencyKey, idempotencyKey), eq(commandReceipts.requestHash, requestHash), eq(commandReceipts.state, "processing")));
     },

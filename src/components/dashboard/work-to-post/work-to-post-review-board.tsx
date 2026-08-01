@@ -195,6 +195,14 @@ function LiveReviewBoard() {
         setError("The server confirmed the decision without a dispatch result.");
         return;
       }
+      const candidate = isRecord(result.candidate) ? result.candidate : null;
+      if (candidate && candidate.id === target.id && typeof candidate.status === "string" && Number.isInteger(candidate.currentRevision)) {
+        setCandidates((current) => current.map((entry) => entry.id === target.id ? { ...entry, status: String(candidate.status), currentRevision: Number(candidate.currentRevision) } : entry));
+        setTimeline((current) => current ? {
+          ...current,
+          candidate: { ...current.candidate, status: String(candidate.status), currentRevision: Number(candidate.currentRevision) },
+        } : current);
+      }
       setDispatchLabel(dispatch.action);
     });
   }
@@ -234,7 +242,7 @@ function LiveReviewBoard() {
   const scheduleBlocked = releaseBlocked || !isExactFutureTimestamp(scheduledAt);
   const liveColumns = groupLiveCandidates(candidates);
   return <div className="space-y-5">
-    <div className="rounded-[18px] border border-[#d8e3e7] bg-[#f3f8f9] px-4 py-3 text-sm text-[#38505a]"><strong className="text-[#15323d]">Live workspace data is session-authenticated.</strong> Browser actions call only work-to-post routes. Provider and scheduler actions remain unavailable here.</div>
+    <div className="rounded-[18px] border border-[#d8e3e7] bg-[#f3f8f9] px-4 py-3 text-sm text-[#38505a]"><strong className="text-[#15323d]">Live workspace data is session-authenticated.</strong> Schedule and Post now create guarded work-to-post intents only. They do not create scheduled posts or call X until the real provider lane is connected.</div>
     {error ? <p role="alert" aria-label={error} className="rounded-xl border border-[#edc4bd] bg-[#fff5f2] px-4 py-3 text-sm font-semibold text-[#9d2f20]">{error}</p> : null}
     {loading ? <p className="rounded-xl border border-[#d8e3e7] bg-white p-4 text-sm text-[var(--muted)]">Loading workspace candidates…</p> : null}
     {!loading && candidates.length === 0 ? <p className="rounded-xl border border-[#d8e3e7] bg-white p-4 text-sm text-[var(--muted)]">No candidate records were returned by this workspace.</p> : null}
