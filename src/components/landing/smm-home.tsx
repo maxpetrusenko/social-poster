@@ -97,6 +97,19 @@ export function SmmHome() {
             </ul>
           </aside>
         </section>
+
+        <section className="mt-16 rounded-2xl border border-[var(--line)] bg-[var(--paper)] p-8">
+          <p className="section-eyebrow text-[var(--accent-tech)] mb-3">Reviews</p>
+          <h2 className="text-2xl md:text-3xl font-bold leading-tight">
+            Proof over promises — reviews publish with receipts.
+          </h2>
+          <p className="mt-4 text-[0.98rem] leading-7 text-[var(--muted)] max-w-2xl">
+            We do not fabricate reviews or buy ratings. Every workflow this product ships
+            is backed by observable output — published posts, approval receipts, and
+            platform confirmation. Client reviews will be published here as they arrive,
+            with consent, tied to the campaigns they came from.
+          </p>
+        </section>
       </div>
     </main>
   );
@@ -156,6 +169,19 @@ export function SmmAgentHome({ isLoggedIn = false }: { isLoggedIn?: boolean }) {
               <p className="text-sm leading-relaxed text-[var(--muted)]">{body}</p>
             </article>
           ))}
+        </section>
+
+        <section className="mt-16 rounded-2xl border border-[var(--line)] bg-[var(--paper)] p-8">
+          <p className="section-eyebrow text-[var(--accent-mindfold)] mb-3">Reviews</p>
+          <h2 className="text-2xl md:text-3xl font-bold leading-tight">
+            Proof over promises — reviews publish with receipts.
+          </h2>
+          <p className="mt-4 text-[0.98rem] leading-7 text-[var(--muted)] max-w-2xl">
+            We do not fabricate reviews or buy ratings. Every post this agent ships is
+            backed by observable output — source-backed drafts, approval receipts, and
+            platform confirmation. Client reviews will be published here as they arrive,
+            with consent, tied to the campaigns they came from.
+          </p>
         </section>
       </div>
     </main>
