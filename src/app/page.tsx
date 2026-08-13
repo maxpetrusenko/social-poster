@@ -18,6 +18,7 @@ import { HowItWorks } from "@/components/landing/how-it-works";
 import { FeaturesGrid } from "@/components/landing/features";
 import { CtaSection } from "@/components/landing/cta-section";
 import { LandingFooter } from "@/components/landing/footer";
+import { HonestReviews } from "@/components/landing/honest-reviews";
 import { SmmAgentHome, SmmHome } from "@/components/landing/smm-home";
 
 function isLocalHost(host: string | null) {
@@ -170,6 +171,9 @@ export default async function HomePage() {
       <WhoIsThisFor />
       <HowItWorks />
       <FeaturesGrid />
+      <div className="container">
+        <HonestReviews />
+      </div>
       <CtaSection />
       <LandingFooter />
     </>
