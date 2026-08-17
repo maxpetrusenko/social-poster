@@ -134,7 +134,10 @@ describe("X liked autopost writer", () => {
     ).toBeNull();
   });
 
-  it("fails closed when a factual news repost has no external verification source", () => {
+  it("passes a factual-news liked post without off-X verification (social-source lane)", () => {
+    // Source matches the factual/news heuristic but Max already pre-vouched by
+    // liking it. The deterministic gate should NOT block on missing external
+    // URLs; the independent reviewer is the safety backstop.
     expect(
       getXLikedAutopostContentRejection({
         content: "IBM reportedly has a sub-1nm chip path that could matter for AI compute.",
@@ -142,8 +145,32 @@ describe("X liked autopost writer", () => {
         hasMedia: false,
         sourceUrl: "https://x.com/source/status/123",
       })
-    ).toBe("source-backed news claim needs external verification");
+    ).toBeNull();
 
+    // Quote-tweet whose only URL is the X source itself still passes.
+    expect(
+      getXLikedAutopostContentRejection({
+        content: "Reposting: solid point on the agent loop.",
+        sourceText: "Models are now agents. Stop calling them tools.",
+        hasMedia: false,
+        sourceUrl: "https://x.com/source/status/123",
+      })
+    ).toBeNull();
+  });
+
+  it("still keeps the study-URL requirement when a study URL is recovered", () => {
+    expect(
+      getXLikedAutopostContentRejection({
+        content: "GLM 5.2 scored 57.3% on the new benchmark.",
+        sourceText: "GLM 5.2 scored 57.3% on a new benchmark. See the paper.",
+        externalUrls: ["https://arxiv.org/abs/2026.01234"],
+        hasMedia: true,
+        sourceUrl: "https://x.com/source/status/123",
+      })
+    ).toBe("writer omitted recovered primary study URL");
+  });
+
+  it("still rejects REVIEW_NEEDED drafts", () => {
     expect(
       getXLikedAutopostContentRejection({
         content: "REVIEW_NEEDED: verify central claim before publishing.",
@@ -152,16 +179,6 @@ describe("X liked autopost writer", () => {
         sourceUrl: "https://x.com/source/status/123",
       })
     ).toBe("writer requires source verification");
-
-    expect(
-      getXLikedAutopostContentRejection({
-        content: "IBM's chip research matters because AI compute is now an infrastructure constraint.",
-        sourceText: "IBM reportedly debuted a 0.7nm chip with 100B transistors and 70% lower power.",
-        externalUrls: ["https://newsroom.ibm.com/example"],
-        hasMedia: false,
-        sourceUrl: "https://x.com/source/status/123",
-      })
-    ).toBeNull();
   });
 
   it("rejects unsupported benchmark framing introduced by the writer", () => {

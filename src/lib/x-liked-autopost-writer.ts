@@ -149,6 +149,16 @@ export async function draftXLikedAutopostContent(input: {
         };
       }
 
+      // Deterministic content-policy rejections are not model-correctable.
+      // Retrying with the same source would just burn API calls. Bail out now
+      // so the failure surfaces cleanly with the actual reason instead of
+      // masking it behind three identical attempts.
+      if (isDeterministicPolicyRejection(rejection)) {
+        throw new XLikedAutopostWriterError(rejection, {
+          code: "quality_rejected",
+        });
+      }
+
       lastRejection = rejection;
     }
 
@@ -454,13 +464,14 @@ export function getXLikedAutopostContentRejection(input: {
   }
 
   if (/^REVIEW_NEEDED:/i.test(content)) return "writer requires source verification";
-  if (
-    looksLikeFactualNewsClaim(input.sourceText) &&
-    !shouldEmbedSource &&
-    !hasCredibleExternalSource(input.externalUrls ?? [])
-  ) {
-    return "source-backed news claim needs external verification";
-  }
+
+  // Liked posts are social-source lane content: Max has already pre-vouched by
+  // liking them, so an off-X corroborating URL is NOT a hard prerequisite.
+  // The independent reviewer (below) remains the safety backstop and rejects
+  // any draft that adds a factual/news claim not grounded in source text or
+  // recovered external URLs. We keep only the study-URL requirement here, since
+  // it covers the narrow case where a study URL WAS recovered and the writer
+  // dropped it.
 
   if (/\bprefrontal cortex\b/.test(source) && /\bcerebellum\b/.test(source)) {
     if (!/\bprefrontal cortex\b/i.test(content) || !/\bcerebellum\b/i.test(content)) {
@@ -502,6 +513,24 @@ export function getXLikedAutopostContentRejection(input: {
 
 function hasSourceOwnedFirstPerson(text: string) {
   return /\b(I|I'm|I’m|I've|I’ve|my|we|we're|we’re|we've|we’ve|our)\b/.test(text);
+}
+
+/**
+ * Rejections that depend only on input shape (not on generated wording) cannot
+ * be fixed by retrying the model. Failing fast on these saves three identical
+ * API calls per rejected source and surfaces the real reason cleanly.
+ */
+function isDeterministicPolicyRejection(rejection: string): boolean {
+  return (
+    rejection === "writer returned empty content" ||
+    rejection === "writer returned thread numbering" ||
+    rejection === "writer included source/credit label" ||
+    rejection === "writer returned source verbatim" ||
+    rejection === "writer copied source-owned first person as Max's statement" ||
+    rejection === "writer introduced unsupported accuracy framing" ||
+    rejection === "writer contradicted harness setting difference" ||
+    rejection === "writer requires source verification"
+  );
 }
 
 function hasCreditFooterLine(text: string) {
