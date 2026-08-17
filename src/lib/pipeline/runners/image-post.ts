@@ -109,7 +109,7 @@ export async function runImagePostJob(
         }
       : await (async () => {
           const stories = await getTopStories(
-            schedule.jobType === "image_post" ? 8 : 1,
+            schedule.jobType === "image_post" ? 12 : 1,
             { workspaceId: schedule.workspaceId }
           );
           const resolvedStories = await resolveStoryImages(stories, {
@@ -121,6 +121,7 @@ export async function runImagePostJob(
           });
           const selectedStory = selectFeedStoryForSchedule(resolvedStories, {
             requireImage: schedule.jobType === "image_post",
+            aiTopicGate: schedule.jobType === "image_post",
           });
           if (!selectedStory) {
             throw new Error(
