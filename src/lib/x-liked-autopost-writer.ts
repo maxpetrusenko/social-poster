@@ -543,19 +543,8 @@ function looksLikeStudyClaim(text: string) {
   return /\b(study|paper|research|participants|people|subjects|respondents|experiment|arxiv|doi)\b/i.test(text);
 }
 
-function looksLikeFactualNewsClaim(text: string) {
-  return /\b(reportedly|according to|announced|launched|debuts?|unveiled|revealed|raised|acquired|funding|valuation|ipo|chip|model|benchmark|research|study|paper|lawsuit|regulator|government|export controls?|data center|energy|gpu|nvidia|openai|anthropic|google|meta|microsoft|ibm|alibaba|deepseek|china)\b/i.test(text);
-}
-
 function pickPrimaryStudyUrl(urls: string[]) {
   return urls.find((url) =>
     /\b(arxiv\.org|doi\.org|papers\.ssrn\.com|openreview\.net|nature\.com|science\.org|acm\.org|ieee\.org)\b/i.test(url)
   ) ?? null;
-}
-
-function hasCredibleExternalSource(urls: string[]) {
-  return urls.some((url) =>
-    /^https?:\/\//i.test(url) &&
-    !/^https:\/\/(?:x|twitter)\.com\//i.test(url)
-  );
 }
