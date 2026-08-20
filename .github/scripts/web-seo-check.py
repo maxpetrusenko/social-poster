@@ -155,11 +155,17 @@ class Checker:
             "hreflang": [],
             "jsonld": [],
             "http_equiv": [],
+            "viewport": None,
         }
         # title
         m = re.search(r"<title[^>]*>(.*?)</title>", html, re.I | re.S)
         if m:
             out["title"] = re.sub(r"\s+", " ", m.group(1)).strip()
+        # viewport (mobile usability)
+        m = re.search(r'<meta[^>]*name=["\']viewport["\'][^>]*>', html, re.I)
+        if m:
+            c = re.search(r'content=["\']([^"\']+)["\']', m.group(0), re.I)
+            out["viewport"] = c.group(1) if c else ""
         # canonical
         for m in re.finditer(r'<link[^>]*rel=["\']canonical["\'][^>]*>', html, re.I):
             href = re.search(r'href=["\']([^"\']+)["\']', m.group(0), re.I)
@@ -454,6 +460,18 @@ class Checker:
         elif og.startswith("http://"):
             self.warn("og-image-http", url, f"og:image uses http:// — https required: {og}")
 
+    def check_mobile_usability(self, url, meta, html=""):
+        """Mobile usability: viewport meta present + width=device-width.
+        Without it Google treats the page as desktop-only and may demote it.
+        """
+        vp = meta.get("viewport")
+        if vp is None:
+            self.err("mobile-viewport-missing", url, "no viewport meta — page is not mobile-friendly")
+        elif "width=device-width" not in vp:
+            self.err("mobile-viewport-wrong", url, f"viewport meta lacks width=device-width: {vp!r}")
+        elif "initial-scale=1" not in vp and "initial-scale = 1" not in vp:
+            self.warn("mobile-viewport-scale", url, f"viewport meta lacks initial-scale=1: {vp!r}")
+
     def check_hreflang(self, url, meta, html=""):
         """Check 12: hreflang alternates consistent."""
         if not meta["hreflang"]:
@@ -502,6 +520,7 @@ class Checker:
         self.check_jsonld(url, meta, html)
         self.check_favicon(url, meta, html)
         self.check_ogimage(url, meta, html)
+        self.check_mobile_usability(url, meta, html)
         self.check_hreflang(url, meta, html)
         self.check_host_consistency(url, meta, html)
         return meta
@@ -648,6 +667,7 @@ class Checker:
             self.check_jsonld(url, meta, html)
             self.check_favicon(url, meta, html, local_dir=d)
             self.check_ogimage(url, meta, html)
+            self.check_mobile_usability(url, meta, html)
             self.check_hreflang(url, meta, html)
             if meta["title"]:
                 titles.setdefault(meta["title"], []).append(url)
