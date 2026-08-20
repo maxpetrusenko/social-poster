@@ -343,6 +343,30 @@ jobs:
             echo "- Checked: ${api_health_url}"
           } >> "${GITHUB_STEP_SUMMARY}"
 
+      - name: SEO indexing gate (live)
+        shell: bash
+        run: |
+          set -euo pipefail
+          log() { printf '[%s] %s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "$*"; }
+
+          log "Running SEO indexing gate against ${PRODUCTION_URL}"
+          # serial crawl + 503 retry (Cloudflare rate-limit safe); capped so the
+          # deploy pipeline stays fast. Errors fail the canary → rollback.
+          python3 .github/scripts/web-seo-check.py \
+            --url "${PRODUCTION_URL}" \
+            --delay 0.3 \
+            --max 60 \
+            --json /tmp/seo-live-report.json
+          log "SEO indexing gate passed"
+
+      - name: Upload SEO report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: seo-report-${{ github.run_id }}
+          path: /tmp/seo-live-report.json
+          retention-days: 30
+
   rollback:
     name: Roll Back Failed Canary
     runs-on: ubuntu-latest
