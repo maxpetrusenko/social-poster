@@ -5,6 +5,7 @@ import { getPublishedDynamicBlogPosts } from "@/lib/blog/automation";
 import {
   getAppCanonicalUrl,
   getCanonicalUrl,
+  getProductCanonicalUrl,
   SITE_DOMAINS,
   normalizeHost,
   getPublicSiteKey,
@@ -97,11 +98,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "weekly",
       priority: 0.8,
     },
+    // /social-media-bot page canonicals to clawposter.app on every host
+    // (product brand page) — emit it on that host only, or Google sees an
+    // "Alternate page with proper canonical tag" mismatch.
     {
-      url: urlFor("/social-media-bot"),
+      url: getProductCanonicalUrl("/social-media-bot"),
       changeFrequency: "weekly",
       priority: 0.85,
     },
+    // /docs canonicals to smmagent.app on every host (app docs).
     {
       url: getAppCanonicalUrl("/docs"),
       changeFrequency: "weekly",
