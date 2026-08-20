@@ -228,10 +228,13 @@ jobs:
     name: Public Production Canary
     runs-on: ubuntu-latest
     needs: deploy
-    timeout-minutes: 5
+    timeout-minutes: 15
     outputs:
       duration_seconds: ${{ steps.public-canary.outputs.duration_seconds }}
     steps:
+      - name: Checkout (needed by SEO indexing gate script)
+        uses: actions/checkout@v4
+
       - name: Verify public production routes
         id: public-canary
         shell: bash
