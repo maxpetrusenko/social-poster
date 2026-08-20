@@ -65,6 +65,8 @@ class Checker:
         self.infos = []
         self.ctx = ssl.create_default_context()
         self.ctx.check_hostname = True
+        self._probe_cache = {}
+        self.skip_sitemap_files = False
 
     # -- result recording -------------------------------------------------
 
@@ -346,7 +348,7 @@ class Checker:
             if t == "FAQPage" and types_seen.count(t) > 1:
                 self.warn("jsonld-dup-faqpage", url, f"duplicate FAQPage type ({types_seen.count(t)}x) — GSC 'Duplicate field FAQPage'")
 
-    def check_favicon(self, url, meta, html=""):
+    def check_favicon(self, url, meta, html="", local_dir=None):
         """Check 10: PNG/ICO >=48px favicon present (not SVG-only)."""
         favs = meta["favicons"]
         if not favs:
@@ -357,26 +359,89 @@ class Checker:
         for f in favs:
             href = f["href"].lower()
             typ = (f["type"] or "").lower()
-            if ".png" in href or ".ico" in href or "image/x-icon" in typ or "png" in typ:
-                size = 0
-                if f["sizes"] and "x" in f["sizes"]:
-                    try:
-                        w, h = f["sizes"].split("x")[:2]
-                        size = min(int(w), int(h))
-                    except Exception:
-                        size = 0
-                # unknown size counts as present but not provably >=48
-                if size == 0 and f["sizes"] is None:
-                    size = 32
-                largest = max(largest, size)
-                if size == 0 or size >= 48:
-                    has_png_ico = True
+            is_png_ico = ".png" in href or ".ico" in href or "image/x-icon" in typ or "png" in typ
+            if not is_png_ico:
+                continue
+            size = 0
+            if f["sizes"] and "x" in f["sizes"]:
+                try:
+                    w, h = f["sizes"].split("x")[:2]
+                    size = min(int(w), int(h))
+                except Exception:
+                    size = 0
+            if size == 0:
+                # No declared sizes — read the real image dimensions so we
+                # don't flag a valid 1024px PNG or multi-size .ico.
+                size = self.probe_image_size(f["href"], local_dir=local_dir)
+            largest = max(largest, size)
+            # Absolute cross-domain href in dir mode can't be probed without
+            # network — presence of a PNG/ICO link is accepted; live mode
+            # verifies the actual size.
+            if size >= 48 or (size == 0 and local_dir is not None and href.startswith(("http://", "https://"))):
+                has_png_ico = True
         if not has_png_ico:
             self.err(
                 "favicon-svg-only",
                 url,
-                f"no PNG/ICO favicon >=48px (largest PNG/ICO declared: {largest}px) — Google SERP shows default icon",
+                f"no PNG/ICO favicon >=48px (largest PNG/ICO: {largest}px) — Google SERP shows default icon",
             )
+
+    def probe_image_size(self, href, local_dir=None):
+        """Read real PNG/ICO dimensions. Returns 0 if unknown/failed.
+        dir mode (local_dir set): read the local file, no network.
+        live mode: fetch the url once.
+        """
+        cached = self._probe_cache.get(href)
+        if cached is not None:
+            return cached
+        # local-first: relative href resolved under local_dir
+        if local_dir is not None and not href.startswith(("http://", "https://")):
+            path = (local_dir / href.lstrip("/")).resolve()
+            try:
+                if path.is_file():
+                    return self._image_dimensions(path.read_bytes())
+            except Exception:
+                return 0
+        data = None
+        if href.startswith(("http://", "https://")):
+            try:
+                status, final, headers, body = self.fetch(href)
+                if status == 200:
+                    data = body
+            except Exception:
+                return 0
+        else:
+            # relative — resolve against base_url
+            try:
+                abs_url = urllib.parse.urljoin(self.base_url, href)
+                status, final, headers, body = self.fetch(abs_url)
+                if status == 200:
+                    data = body
+            except Exception:
+                return 0
+        if not data:
+            return 0
+        dim = self._image_dimensions(data)
+        self._probe_cache[href] = dim
+        return dim
+
+    def _image_dimensions(self, data):
+        """PNG: bytes 16-24 = width,height (big endian). ICO: header entries."""
+        if len(data) < 24:
+            return 0
+        if data[:8] == b"\x89PNG\r\n\x1a\n":
+            w = int.from_bytes(data[16:20], "big")
+            h = int.from_bytes(data[20:24], "big")
+            return min(w, h) if w and h else 0
+        if data[:4] == b"\x00\x00\x01\x00":  # ICO
+            count = data[4]
+            if count == 0:
+                return 0
+            # first entry at offset 6: width byte, height byte (0 means 256)
+            w = data[6] or 256
+            h = data[7] or 256
+            return min(w, h)
+        return 0
 
     def check_ogimage(self, url, meta, html=""):
         """Check 11: og:image absolute https."""
@@ -548,21 +613,27 @@ class Checker:
             file_to_url[f] = base + path
 
         # file-existence check for sitemap urls
+        # (skip with --skip-sitemap-files: Next.js/worker builds don't mirror
+        #  every route as a flat file; live mode verifies sitemap URLs instead)
         sitemap_host = self.host_of(self.base_url)
-        for u in sitemap_urls:
-            parsed = urllib.parse.urlsplit(u)
-            if sitemap_host and parsed.hostname and parsed.hostname.lower() != sitemap_host:
-                self.warn("sitemap-cross-host", u, f"sitemap url host {parsed.hostname} != base {sitemap_host}")
-                continue
-            rel_path = parsed.path
-            if rel_path.endswith("/"):
-                candidate = d / (rel_path.lstrip("/") + "index.html")
-            else:
-                candidate = d / rel_path.lstrip("/")
-                if not candidate.exists():
-                    candidate = d / (rel_path.lstrip("/") + ".html")
-            if not candidate.exists():
-                self.err("sitemap-file-missing", u, f"sitemap url has no file in build output: {candidate}")
+        if not self.skip_sitemap_files:
+            for u in sitemap_urls:
+                parsed = urllib.parse.urlsplit(u)
+                if sitemap_host and parsed.hostname and parsed.hostname.lower() != sitemap_host:
+                    self.warn("sitemap-cross-host", u, f"sitemap url host {parsed.hostname} != base {sitemap_host}")
+                    continue
+                rel_path = parsed.path
+                candidates = []
+                if rel_path.endswith("/"):
+                    candidates = [d / (rel_path.lstrip("/") + "index.html")]
+                else:
+                    candidates = [
+                        d / rel_path.lstrip("/"),
+                        d / (rel_path.lstrip("/") + ".html"),
+                        d / (rel_path.lstrip("/") + "/index.html"),
+                    ]
+                if not any(c.exists() for c in candidates):
+                    self.err("sitemap-file-missing", u, f"sitemap url has no file in build output: {candidates[0]}")
 
         titles = {}
         for f, url in file_to_url.items():
@@ -573,8 +644,9 @@ class Checker:
             self.check_canonical(url, meta, html)
             self.check_robots(url, meta, html)
             self.check_title_desc(url, meta, html)
+            self.check_soft404(url, meta, html)
             self.check_jsonld(url, meta, html)
-            self.check_favicon(url, meta, html)
+            self.check_favicon(url, meta, html, local_dir=d)
             self.check_ogimage(url, meta, html)
             self.check_hreflang(url, meta, html)
             if meta["title"]:
@@ -609,6 +681,9 @@ def main():
     ap.add_argument("--max", type=int, default=None, help="cap sitemap urls crawled (live)")
     ap.add_argument("--json", help="write machine-readable report to this path")
     ap.add_argument("--warn-as-error", action="store_true", help="exit 1 on warnings too")
+    ap.add_argument("--skip-sitemap-files", action="store_true",
+                    help="dir mode: do not check that every sitemap URL has a flat file "
+                         "(use for Next.js/worker builds — live mode verifies sitemap URLs)")
     ap.add_argument("--verbose", "-v", action="store_true", help="print per-url progress to stderr")
     args = ap.parse_args()
 
@@ -618,6 +693,7 @@ def main():
 
     base_url = args.url or args.base_url or "https://example.com"
     checker = Checker(base_url, delay=args.delay, max_urls=args.max, verbose=args.verbose)
+    checker.skip_sitemap_files = args.skip_sitemap_files
 
     if args.dir:
         checker.run_dir(args.dir, args.base_url or args.url)
