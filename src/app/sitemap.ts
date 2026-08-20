@@ -1,11 +1,13 @@
 import type { MetadataRoute } from "next";
+import { headers } from "next/headers";
 import { BLOG_POSTS } from "@/lib/blog/posts";
 import { getPublishedDynamicBlogPosts } from "@/lib/blog/automation";
 import {
   getAppCanonicalUrl,
-  getProductCanonicalUrl,
-  getSmmAgentCanonicalUrl,
-  getSmmCanonicalUrl,
+  getCanonicalUrl,
+  SITE_DOMAINS,
+  normalizeHost,
+  getPublicSiteKey,
   type PublicSiteKey,
 } from "@/lib/site-domains";
 
@@ -13,34 +15,38 @@ function categorySlug(category: string) {
   return category.toLowerCase().replace(/\s+/g, "-");
 }
 
-/**
- * Hosts where a post actually renders. Posts declare `audiences` (site keys);
- * posts without audiences are ClawPoster-branded legacy content visible on
- * the product host only. Emitting a URL on a host where the page 404s is a
- * GSC "Sitemap has errors / page with redirect" risk, so each URL must be
- * emitted on exactly the host(s) that serve it.
- */
-function canonicalUrlForSiteKey(siteKey: PublicSiteKey, pathname: string): string {
+/** Host name for a site key (used to emit URLs on the requesting host). */
+function hostForSiteKey(siteKey: PublicSiteKey): string {
   switch (siteKey) {
     case "clawposter":
-      return getProductCanonicalUrl(pathname);
+      return SITE_DOMAINS.product;
     case "smmclaw":
-      return getSmmCanonicalUrl(pathname);
+      return SITE_DOMAINS.smm;
     case "smmagent":
-      return getSmmAgentCanonicalUrl(pathname);
+      return SITE_DOMAINS.smmAgent;
   }
 }
 
-function hostsForPost(post: {
-  audiences?: PublicSiteKey[];
-  slug?: string;
-  category?: string;
-  publishedAt?: string;
-}): PublicSiteKey[] {
-  return post.audiences?.length ? post.audiences : ["clawposter"];
-}
-
+/**
+ * The sitemap is host-aware: it only lists URLs that actually render on the
+ * requesting host, and emits each on that host's canonical origin. Emitting a
+ * URL on a host where the page 404s (or listing a different host's URLs) is a
+ * GSC "Sitemap has errors / Alternate page" risk.
+ *
+ * Visibility rules mirror `filterStaticPostsForHost`:
+ * - posts WITHOUT `audiences` are visible on every public host;
+ * - posts WITH `audiences` are visible only on the listed hosts;
+ * - dynamic (DB) posts are visible on every public host.
+ */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const host = await headers().then((h) =>
+    normalizeHost(h.get("x-forwarded-host") ?? h.get("host"))
+  );
+  const siteKey: PublicSiteKey = getPublicSiteKey(host);
+  const canonicalHost = hostForSiteKey(siteKey);
+
+  const urlFor = (pathname: string) => getCanonicalUrl(pathname, canonicalHost);
+
   const dynamicPosts = await getPublishedDynamicBlogPosts();
   const allPosts = [
     ...dynamicPosts.map((post) => ({
@@ -51,46 +57,48 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...BLOG_POSTS,
   ];
 
-  const blogPosts: MetadataRoute.Sitemap = allPosts.flatMap((post) =>
-    hostsForPost(post).map((siteKey) => ({
-      url: canonicalUrlForSiteKey(siteKey, `/blog/${post.slug}`),
+  const visible = (post: {
+    audiences?: PublicSiteKey[];
+    slug?: string;
+    category?: string;
+    publishedAt?: string;
+  }) => !post.audiences?.length || post.audiences.includes(siteKey);
+
+  const blogPosts: MetadataRoute.Sitemap = allPosts
+    .filter(visible)
+    .map((post) => ({
+      url: urlFor(`/blog/${post.slug}`),
       lastModified: new Date(`${post.publishedAt}T00:00:00.000Z`),
       changeFrequency: "monthly",
       priority: 0.6,
-    }))
+    }));
+
+  // A category URL is only valid if at least one visible post is in it.
+  const visibleCategories = new Set(
+    allPosts.filter(visible).map((post) => categorySlug(post.category))
   );
 
-  // A category URL is only valid on a host that has at least one post in it.
-  const categoryHosts = new Map<string, Set<PublicSiteKey>>();
-  for (const post of allPosts) {
-    const slug = categorySlug(post.category);
-    const hosts = categoryHosts.get(slug) ?? new Set<PublicSiteKey>();
-    hostsForPost(post).forEach((siteKey) => hosts.add(siteKey));
-    categoryHosts.set(slug, hosts);
-  }
-
-  const blogCategories: MetadataRoute.Sitemap = Array.from(categoryHosts.entries()).flatMap(
-    ([slug, hosts]) =>
-      Array.from(hosts).map((siteKey) => ({
-        url: canonicalUrlForSiteKey(siteKey, `/blog/category/${slug}`),
-        changeFrequency: "weekly",
-        priority: 0.55,
-      }))
+  const blogCategories: MetadataRoute.Sitemap = Array.from(visibleCategories).map(
+    (slug) => ({
+      url: urlFor(`/blog/category/${slug}`),
+      changeFrequency: "weekly",
+      priority: 0.55,
+    })
   );
 
   return [
     {
-      url: getProductCanonicalUrl("/"),
+      url: urlFor("/"),
       changeFrequency: "weekly",
       priority: 1,
     },
     {
-      url: getProductCanonicalUrl("/blog"),
+      url: urlFor("/blog"),
       changeFrequency: "weekly",
       priority: 0.8,
     },
     {
-      url: getProductCanonicalUrl("/social-media-bot"),
+      url: urlFor("/social-media-bot"),
       changeFrequency: "weekly",
       priority: 0.85,
     },
