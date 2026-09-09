@@ -438,13 +438,14 @@ function validateV4ResearchEvidence(
     ) {
       throw new Error("Version 4 inspected source " + (index + 1) + " is incomplete.");
     }
+    const proofLocator = asText(proof?.locator) || asText(proof?.content_locator) || asText(source.locator);
     if (
       !proof ||
       proof.url !== url ||
       !INSPECTION_TOOLS.has(asText(proof.tool)) ||
       !["captured", "extracted", "verified"].includes(asText(proof.status)) ||
       !SHA256_PATTERN.test(asText(proof.content_sha256)) ||
-      !asText(proof.locator)
+      !proofLocator
     ) {
       throw new Error(
         "Version 4 inspected source " + (index + 1) + " lacks capture proof.",

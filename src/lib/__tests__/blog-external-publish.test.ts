@@ -181,6 +181,21 @@ describe("external Hermes v4 compatibility", () => {
     expect(() => validateExternalBlogPublishPayload(jsonReviewPayload)).not.toThrow();
   });
 
+  it("accepts a v4 source whose proof uses content_locator (controller output)", () => {
+    // The Hermes controller emits the proof locator as content_locator (and
+    // source.locator at top level), not inspection_proof.locator. The receiver
+    // must treat that as valid capture proof (run e2f11c73f906 was rejected with
+    // "Version 4 inspected source 1 lacks capture proof" on exactly this).
+    const payload = versionFourPayload();
+    const ev = (payload as any).researchEvidence;
+    const source = ev.manifest.inspected_sources[0];
+    delete source.inspection_proof.locator;
+    source.inspection_proof.content_locator = "capture:".concat("a".repeat(64), ":captured_text[0:64]");
+    ev.manifestJson = JSON.stringify(ev.manifest);
+    ev.manifestSha256 = createHash("sha256").update(ev.manifestJson).digest("hex");
+    expect(() => validateExternalBlogPublishPayload(payload)).not.toThrow();
+  });
+
   it("accepts the same actual Python producer v4 payload fixture", () => {
     const payload = pythonProducerV4Fixture();
     expect(payload.researchEvidence.manifestJson).toMatch(/"confidence":1\.0/);
