@@ -187,12 +187,19 @@ describe("external Hermes v4 compatibility", () => {
     // must treat that as valid capture proof (run e2f11c73f906 was rejected with
     // "Version 4 inspected source 1 lacks capture proof" on exactly this).
     const payload = versionFourPayload();
-    const ev = (payload as any).researchEvidence;
-    const source = ev.manifest.inspected_sources[0];
-    delete source.inspection_proof.locator;
-    source.inspection_proof.content_locator = "capture:".concat("a".repeat(64), ":captured_text[0:64]");
-    ev.manifestJson = JSON.stringify(ev.manifest);
-    ev.manifestSha256 = createHash("sha256").update(ev.manifestJson).digest("hex");
+    const evidence = payload.researchEvidence as unknown as {
+      manifest: {
+        inspected_sources: Array<Record<string, Record<string, string | undefined>>>;
+      };
+      manifestJson?: string;
+      manifestSha256: string;
+    };
+    const source = evidence.manifest.inspected_sources[0];
+    const proof = source.inspection_proof as Record<string, string | undefined>;
+    delete proof.locator;
+    proof.content_locator = "capture:".concat("a".repeat(64), ":captured_text[0:64]");
+    evidence.manifestJson = JSON.stringify(evidence.manifest);
+    evidence.manifestSha256 = createHash("sha256").update(evidence.manifestJson).digest("hex");
     expect(() => validateExternalBlogPublishPayload(payload)).not.toThrow();
   });
 
