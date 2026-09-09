@@ -1,5 +1,6 @@
 import type { ApprovalWorkflowMode } from "@/lib/tenancy";
 import { approvalRequests } from "@/db/schema";
+import { readStringArray, readStringArrayMap } from "@/lib/post-publish-metadata";
 
 export const APPROVAL_REQUEST_STATUSES = [
   "requested",
@@ -49,6 +50,18 @@ export type ApprovalRequestViewRow = ApprovalRequestRow & {
 };
 export type ApprovalRequestInsert = typeof approvalRequests.$inferInsert;
 
+export type PostApprovalRevisionInput = {
+  content: string;
+  title?: string | null;
+  contentType: string;
+  mediaUrl?: string | null;
+  mediaUrls?: readonly string[];
+  sourceUrl?: string | null;
+  profileId?: string | null;
+  metadata?: unknown;
+  targetIds?: readonly string[];
+};
+
 export type ApprovalPublishGuardInput = {
   approvalWorkflowMode: ApprovalWorkflowMode;
   approvalRequestStatus?: string | null;
@@ -85,6 +98,35 @@ export function normalizeApprovalDecision(
   return value && APPROVAL_DECISIONS.includes(value as ApprovalDecision)
     ? (value as ApprovalDecision)
     : null;
+}
+
+export function createPostApprovalRevision(input: PostApprovalRevisionInput) {
+  const mediaUrls = input.mediaUrls
+    ? Array.from(input.mediaUrls)
+    : input.mediaUrl
+      ? [input.mediaUrl]
+      : [];
+
+  return stableSerialize({
+    version: 1,
+    content: input.content,
+    title: input.title ?? null,
+    contentType: input.contentType,
+    mediaUrl: input.mediaUrl ?? null,
+    sourceUrl: input.sourceUrl ?? null,
+    profileId: input.profileId ?? null,
+    metadata: normalizeApprovalMetadata(input.metadata, mediaUrls),
+    targetIds: Array.from(new Set(input.targetIds ?? [])).sort(),
+  });
+}
+
+export function selectCurrentApprovalRequest<
+  T extends Pick<ApprovalRequestRow, "id" | "currentRevisionId">
+>(rows: T[], currentRevisionId: string) {
+  const currentRows = rows
+    .filter((row) => row.currentRevisionId === currentRevisionId);
+
+  return currentRows.length === 1 ? currentRows[0] : null;
 }
 
 export function isApprovalRequestOpen(status: ApprovalRequestStatus) {
@@ -182,4 +224,32 @@ export function mapApprovalRequestRow(row: ApprovalRequestRow): ApprovalRequestV
     isOpen: isApprovalRequestOpen(approvalRequestStatus),
     isResolved: isApprovalRequestResolved(approvalRequestStatus),
   };
+}
+
+function normalizeApprovalMetadata(value: unknown, fallbackMediaUrls: string[]) {
+  const record = isRecord(value) ? { ...value } : {};
+  const mediaUrls = readStringArray(record.mediaUrls);
+  return {
+    ...record,
+    platformOverrides: isRecord(record.platformOverrides) ? record.platformOverrides : {},
+    previewSpecs: isRecord(record.previewSpecs) ? record.previewSpecs : {},
+    mediaUrls: mediaUrls.length > 0 ? mediaUrls : fallbackMediaUrls,
+    mediaUrlsByPlatformId: readStringArrayMap(record.mediaUrlsByPlatformId),
+    mediaUrlsByPlatformType: readStringArrayMap(record.mediaUrlsByPlatformType),
+  };
+}
+
+function stableSerialize(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(stableSerialize).join(",")}]`;
+  if (value && typeof value === "object") {
+    return `{${Object.entries(value as Record<string, unknown>)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, item]) => `${JSON.stringify(key)}:${stableSerialize(item)}`)
+      .join(",")}}`;
+  }
+  return JSON.stringify(value) ?? "null";
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
