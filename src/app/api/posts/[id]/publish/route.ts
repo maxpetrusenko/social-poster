@@ -1,26 +1,28 @@
+import { and, eq } from "drizzle-orm";
+import { NextResponse } from "next/server";
+
 import { db } from "@/db";
-import { posts, postTargets, platforms, pipelineRuns } from "@/db/schema";
-import type { PipelineStep } from "@/db/schema";
+import { pipelineRuns, posts, postTargets, type PipelineStep } from "@/db/schema";
 import { requireApiWorkspacePublisher } from "@/lib/api-authorization";
-import { getLatestApprovalRequestForPost } from "@/lib/approval-requests";
-import { normalizeApprovalWorkflowMode, shouldBlockPublishForApproval } from "@/lib/approvals";
 import { recordTenantAuditEvent } from "@/lib/audit";
+import {
+  claimPostForPublishing,
+  DISABLED_TARGET_RETRY_MARKER,
+  resolvePostStatusFromTargetRows,
+} from "@/lib/pipeline/publish-claim";
 import { publishPlatformTargets } from "@/lib/pipeline/publish-service";
+import type { PublishResult } from "@/lib/pipeline/publisher";
+import {
+  resolvePublishResultsStatus,
+} from "@/lib/pipeline/status";
 import {
   normalizePostPublishMetadata,
   resolveInstagramContentType,
   resolvePlatformMediaUrls,
   resolvePlatformOverride,
 } from "@/lib/post-publish-metadata";
-import { trackUsage } from "@/lib/usage";
 import { sendNotificationEmail } from "@/lib/notifications/send";
-import { and, eq } from "drizzle-orm";
-import crypto from "node:crypto";
-import { NextResponse } from "next/server";
-import {
-  resolvePostStatusFromTargetResults,
-  resolvePublishResultsStatus,
-} from "@/lib/pipeline/status";
+import { trackUsage } from "@/lib/usage";
 
 export async function POST(
   _request: Request,
@@ -30,81 +32,78 @@ export async function POST(
   if (tenant instanceof NextResponse) return tenant;
 
   const { id: postId } = await params;
-  const post = await db.query.posts.findFirst({
-    where: and(eq(posts.id, postId), eq(posts.workspaceId, tenant.currentWorkspace.id)),
-  });
-  if (!post) {
-    return NextResponse.json({ error: "Post not found" }, { status: 404 });
-  }
-
-  const latestApprovalRequest = await getLatestApprovalRequestForPost({
+  const claim = claimPostForPublishing({
     workspaceId: tenant.currentWorkspace.id,
     postId,
-  });
-  const approvalGuard = shouldBlockPublishForApproval({
-    approvalWorkflowMode: normalizeApprovalWorkflowMode(
-      tenant.currentWorkspace.approvalWorkflowMode
-    ),
-    approvalRequestStatus: latestApprovalRequest?.status,
+    mode: "manual",
   });
 
-  if (approvalGuard.blocked) {
-    await recordTenantAuditEvent(tenant, {
-      action: "post.publish.blocked",
-      targetType: "post",
-      targetId: postId,
-      metadata: {
-        status: "blocked",
-        endpoint: `POST /api/posts/${postId}/publish`,
-        href: `/dashboard/posts/${postId}`,
-        approvalState: approvalGuard.approvalState,
-        reason: approvalGuard.reason,
-      },
-    });
+  if (claim.kind !== "claimed") {
+    if (claim.kind === "approval_blocked") {
+      await recordTenantAuditEvent(tenant, {
+        action: "post.publish.blocked",
+        targetType: "post",
+        targetId: postId,
+        metadata: {
+          status: "blocked",
+          endpoint: `POST /api/posts/${postId}/publish`,
+          href: `/dashboard/posts/${postId}`,
+          approvalState: claim.approvalState,
+          reason: claim.reason,
+        },
+      });
+      return NextResponse.json(
+        { error: claim.reason, approvalState: claim.approvalState },
+        { status: 409 }
+      );
+    }
 
-    return NextResponse.json(
-      {
-        error: approvalGuard.reason ?? "Approval required before publish.",
-        approvalState: approvalGuard.approvalState,
-      },
-      { status: 409 }
-    );
+    if (claim.kind === "not_found") {
+      return NextResponse.json({ error: "Post not found" }, { status: 404 });
+    }
+    if (claim.kind === "publishing") {
+      return NextResponse.json(
+        { error: "Post is already publishing. Wait for the current delivery attempt to finish." },
+        { status: 409 }
+      );
+    }
+    if (claim.kind === "completed") {
+      return NextResponse.json(
+        { error: "Post has already delivered all available targets." },
+        { status: 409 }
+      );
+    }
+    if (claim.kind === "no_targets") {
+      return NextResponse.json({ error: "No platform targets for this post" }, { status: 400 });
+    }
+    if (claim.kind === "no_retryable_targets") {
+      return NextResponse.json(
+        { error: "No pending or failed platform targets can be retried." },
+        { status: 409 }
+      );
+    }
+    if (claim.kind === "invalid_state") {
+      return NextResponse.json(
+        { error: `Post cannot be published from status ${claim.status}.` },
+        { status: 409 }
+      );
+    }
+
+    return NextResponse.json({ error: "Post is not ready to publish." }, { status: 409 });
   }
 
-  const targets = db
-    .select({ target: postTargets, platform: platforms })
-    .from(postTargets)
-    .innerJoin(platforms, eq(postTargets.platformId, platforms.id))
-    .where(eq(postTargets.postId, postId))
-    .all();
-
-  if (targets.length === 0) {
-    return NextResponse.json({ error: "No platform targets for this post" }, { status: 400 });
-  }
-
-  // Create pipeline run
-  const runId = crypto.randomUUID();
-  const now = new Date();
+  const { post, targets, publishTargets, runId, startedAt } = claim;
   const steps: PipelineStep[] = [];
-
-  await db.insert(pipelineRuns).values({
-    id: runId,
-    workspaceId: tenant.currentWorkspace.id,
-    scheduleId: null,
-    postId,
-    trigger: "api",
-    status: "running",
-    steps: [],
-    startedAt: now,
-  });
-
-  // Update post status
-  await db.update(posts).set({ status: "publishing", updatedAt: now }).where(eq(posts.id, postId));
-
-  const results = [];
+  const results: PublishResult[] = [];
   const publishMetadata = normalizePostPublishMetadata(post.metadata);
 
-  for (const { target, platform } of targets) {
+  for (const { target, platform } of publishTargets) {
+    await db
+      .update(postTargets)
+      .set({ status: "publishing", error: null })
+      .where(eq(postTargets.id, target.id));
+    target.status = "publishing";
+
     const stepName = `publish:${platform.type}`;
     const stepStart = new Date();
     const override = resolvePlatformOverride(publishMetadata, platform);
@@ -121,25 +120,22 @@ export async function POST(
       mediaUrlCount: platformMediaUrls.length,
     });
 
-    const execution = await publishPlatformTargets([
-      {
-        platform,
-        content: override.caption || post.content,
-        mediaUrl: platformMediaUrl,
-        mediaUrls: platformMediaUrls,
-        mediaType: getMediaType(post.contentType, platformMediaUrl ?? null),
-        instagramContentType,
-        platformFormat: override.format,
-        threadLongPosts: override.format?.trim().toLowerCase() === "thread",
-        firstComment: override.firstComment,
-        collaborators: override.collaborators,
-      },
-    ]);
-    const result = execution.outcomes[0];
+    const result = await publishOneTarget({
+      platform,
+      content: override.caption || post.content,
+      mediaUrl: platformMediaUrl,
+      mediaUrls: platformMediaUrls,
+      mediaType: getMediaType(post.contentType, platformMediaUrl ?? null),
+      instagramContentType,
+      platformFormat: override.format,
+      threadLongPosts: override.format?.trim().toLowerCase() === "thread",
+      firstComment: override.firstComment,
+      collaborators: override.collaborators,
+    });
     results.push(result);
 
     const stepEnd = new Date();
-    const step: PipelineStep = {
+    steps.push({
       name: stepName,
       status: result.success
         ? "completed"
@@ -150,31 +146,13 @@ export async function POST(
       completedAt: stepEnd.toISOString(),
       durationMs: stepEnd.getTime() - stepStart.getTime(),
       output: result,
-      error:
-        result.classification === "disabled" ? undefined : result.error,
-    };
-    steps.push(step);
+      error: result.classification === "disabled" ? undefined : result.error,
+    });
 
-    // Update target status
-    await db.update(postTargets).set({
-      status: result.success
-        ? "published"
-        : result.classification === "duplicate" ||
-            result.classification === "disabled"
-          ? "skipped"
-          : "failed",
-      publishedUrl: result.postUrl ?? null,
-      platformPostId: result.postId ?? null,
-      error:
-        result.classification === "disabled" ? null : result.error ?? null,
-      publishedAt: result.success ? stepEnd : null,
-    }).where(eq(postTargets.id, target.id));
+    applyTargetResult(target, result, stepEnd);
+    await persistTargetResult(target.id, result, stepEnd);
 
-    if (
-      !result.success &&
-      result.classification !== "disabled" &&
-      result.classification !== "duplicate"
-    ) {
+    if (!result.success && result.classification !== "disabled" && result.classification !== "duplicate") {
       await sendNotificationEmail({
         userId: tenant.user.id,
         workspaceId: tenant.currentWorkspace.id,
@@ -191,47 +169,54 @@ export async function POST(
   }
 
   const completedAt = new Date();
-  const runStatus = resolvePublishResultsStatus(results);
-  const hasActionableResults = results.some(
-    (result) => result.classification !== "disabled"
+  const runStatus = results.some((result) => result.classification === "disabled")
+    ? "failed"
+    : resolvePublishResultsStatus(results);
+  const postStatus = resolvePostStatusFromTargetRows(
+    targets.map(({ target }) => target),
+    post.scheduledAt && post.scheduledAt > completedAt ? "scheduled" : "draft"
   );
-  const postStatus = hasActionableResults
-    ? resolvePostStatusFromTargetResults(results)
-    : post.scheduledAt && post.scheduledAt > completedAt
-      ? "scheduled"
-      : "draft";
 
-  // Update pipeline run
-  await db.update(pipelineRuns).set({
-    status: runStatus,
-    steps,
-    durationMs: completedAt.getTime() - now.getTime(),
-    completedAt,
-  }).where(eq(pipelineRuns.id, runId));
+  await db
+    .update(pipelineRuns)
+    .set({
+      status: runStatus,
+      steps,
+      durationMs: completedAt.getTime() - startedAt.getTime(),
+      completedAt,
+    })
+    .where(eq(pipelineRuns.id, runId));
 
-  // Update post status
-  await db.update(posts).set({
-    status: postStatus,
-    publishedAt:
-      postStatus === "published" || postStatus === "partial_failure"
-        ? completedAt
-        : null,
-    updatedAt: completedAt,
-  }).where(eq(posts.id, postId));
+  await db
+    .update(posts)
+    .set({
+      status: postStatus,
+      publishedAt:
+        postStatus === "published" || postStatus === "partial_failure"
+          ? post.publishedAt ?? completedAt
+          : post.publishedAt,
+      updatedAt: completedAt,
+    })
+    .where(and(eq(posts.id, postId), eq(posts.workspaceId, tenant.currentWorkspace.id)));
 
-  // Track usage for each successful publish
-  for (let i = 0; i < results.length; i++) {
-    if (results[i]?.success) {
-      await trackUsage(tenant.currentWorkspace.id, "post_published", targets[i]?.platform.id, { postId });
+  for (let index = 0; index < results.length; index += 1) {
+    if (results[index]?.success) {
+      await trackUsage(
+        tenant.currentWorkspace.id,
+        "post_published",
+        publishTargets[index]?.platform.id,
+        { postId }
+      );
     }
   }
 
-  // Cancel "first post" drip if this was a successful publish
   if (postStatus === "published" || postStatus === "partial_failure") {
     try {
       const { cancelDripIfDone } = await import("@/lib/marketing/drip");
       cancelDripIfDone(tenant.user.id, "welcome_3_first_post");
-    } catch { /* non-critical */ }
+    } catch {
+      // Non-critical.
+    }
   }
 
   await recordTenantAuditEvent(tenant, {
@@ -243,6 +228,7 @@ export async function POST(
       endpoint: `POST /api/posts/${postId}/publish`,
       runId,
       platformTargetCount: targets.length,
+      attemptedTargetCount: publishTargets.length,
     },
   });
 
@@ -252,6 +238,108 @@ export async function POST(
     success: runStatus === "completed",
     postStatus,
   });
+}
+
+async function publishOneTarget(
+  input: Parameters<typeof publishPlatformTargets>[0][number]
+): Promise<PublishResult> {
+  try {
+    const execution = await publishPlatformTargets([input]);
+    return execution.outcomes[0] ?? createAmbiguousResult(
+      input.platform,
+      "Provider returned no delivery outcome."
+    );
+  } catch (error) {
+    return createAmbiguousResult(
+      input.platform,
+      error instanceof Error ? error.message : String(error)
+    );
+  }
+}
+
+function createAmbiguousResult(
+  platform: Parameters<typeof publishPlatformTargets>[0][number]["platform"],
+  detail: string
+): PublishResult {
+  return {
+    platform: platform.type,
+    provider: platform.provider === "bird" ? "bird" : platform.provider === "direct" ? "direct" : "late",
+    accountId: platform.accountId,
+    success: false,
+    classification: "network_error",
+    error: `Delivery state is unknown: ${detail}`,
+  };
+}
+
+function applyTargetResult(
+  target: typeof postTargets.$inferSelect,
+  result: PublishResult,
+  completedAt: Date
+) {
+  if (result.success) {
+    target.status = "published";
+    target.publishedUrl = result.postUrl ?? null;
+    target.platformPostId = result.postId ?? null;
+    target.error = null;
+    target.publishedAt = completedAt;
+    return;
+  }
+
+  if (result.classification === "network_error") {
+    target.status = "publishing";
+    target.error = result.error ?? "Delivery state is unknown.";
+    return;
+  }
+
+  target.status = result.classification === "disabled" || result.classification === "duplicate"
+    ? "skipped"
+    : "failed";
+  target.error = result.classification === "disabled"
+    ? DISABLED_TARGET_RETRY_MARKER
+    : result.error ?? null;
+}
+
+async function persistTargetResult(
+  targetId: string,
+  result: PublishResult,
+  completedAt: Date
+) {
+  if (result.success) {
+    await db
+      .update(postTargets)
+      .set({
+        status: "published",
+        publishedUrl: result.postUrl ?? null,
+        platformPostId: result.postId ?? null,
+        error: null,
+        publishedAt: completedAt,
+      })
+      .where(eq(postTargets.id, targetId));
+    return;
+  }
+
+  if (result.classification === "network_error") {
+    await db
+      .update(postTargets)
+      .set({
+        status: "publishing",
+        error: result.error ?? "Delivery state is unknown.",
+      })
+      .where(eq(postTargets.id, targetId));
+    return;
+  }
+
+  await db
+    .update(postTargets)
+    .set({
+      status: result.classification === "disabled" || result.classification === "duplicate"
+        ? "skipped"
+        : "failed",
+      error: result.classification === "disabled"
+        ? DISABLED_TARGET_RETRY_MARKER
+        : result.error ?? null,
+    })
+    .where(eq(postTargets.id, targetId));
 }
 
 function isVideoContent(contentType: string) {

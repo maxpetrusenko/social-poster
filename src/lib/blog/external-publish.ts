@@ -41,6 +41,31 @@ export async function publishExternalBlogArticle(value: unknown) {
     url,
     publisher: new URL(url).hostname,
   }));
+  const isV4 = payload.contractVersion === 4;
+  const frameworkChecks = isV4
+    ? {
+        externalHermesReview: true,
+        exactHashReview: true,
+        framework: validated.framework,
+        readiness: validated.readiness,
+        researchEvidence: validated.researchEvidence
+          ? {
+              producer: validated.researchEvidence.producer,
+              status: validated.researchEvidence.status,
+              manifestSha256: validated.researchEvidence.manifestSha256,
+            }
+          : undefined,
+        image: validated.image,
+        trustBoundary:
+          "Authenticated controller evidence is consistency-validated here; local source capture is not independently re-proven by the receiver.",
+      }
+    : {
+        externalHermesReview: true,
+        exactHashReview: true,
+        minimumInlineSources: true,
+        minimumWordCount: true,
+        licensedCommonsImage: (payload.contractVersion ?? 1) >= 2,
+      };
 
   await db.insert(blogAutomationPosts).values({
     id: postId,
@@ -56,13 +81,7 @@ export async function publishExternalBlogArticle(value: unknown) {
     thesis: excerpt,
     contentMarkdown: payload.article,
     sources,
-    frameworkChecks: {
-      externalHermesReview: true,
-      exactHashReview: true,
-      minimumInlineSources: true,
-      minimumWordCount: true,
-      licensedCommonsImage: (payload.contractVersion ?? 1) >= 2,
-    },
+    frameworkChecks,
     validationStatus: "pass",
     validationScore: 100,
     targetWords: validated.visibleWordCount,
