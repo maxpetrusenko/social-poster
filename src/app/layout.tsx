@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Cormorant_Garamond, DM_Sans } from "next/font/google";
+import { LandingFooter } from "@/components/landing/footer";
 import { SMM_AGENT_ORIGIN } from "@/lib/site-domains";
 import "./globals.css";
 
@@ -68,6 +69,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${sans.variable} ${serif.variable} bg-[var(--sand)] text-[var(--ink)] antialiased`}>
         {children}
+        <LandingFooter />
       </body>
     </html>
   );

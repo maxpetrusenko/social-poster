@@ -17,7 +17,6 @@ import { WhoIsThisFor } from "@/components/landing/who-is-this-for";
 import { HowItWorks } from "@/components/landing/how-it-works";
 import { FeaturesGrid } from "@/components/landing/features";
 import { CtaSection } from "@/components/landing/cta-section";
-import { LandingFooter } from "@/components/landing/footer";
 import { HonestReviews } from "@/components/landing/honest-reviews";
 import { SmmAgentHome, SmmHome } from "@/components/landing/smm-home";
 
@@ -141,7 +140,6 @@ export default async function HomePage() {
       <>
         <LandingNav isLoggedIn={!!session} brandName="SMMClaw" />
         <SmmHome />
-        <LandingFooter brandName="SMMClaw" />
       </>
     );
   }
@@ -151,7 +149,6 @@ export default async function HomePage() {
       <>
         <LandingNav isLoggedIn={!!session} brandName="SMM Agent" accessMode="login" />
         <SmmAgentHome isLoggedIn={!!session} />
-        <LandingFooter brandName="SMM Agent" />
       </>
     );
   }
@@ -175,7 +172,6 @@ export default async function HomePage() {
         <HonestReviews />
       </div>
       <CtaSection />
-      <LandingFooter />
     </>
   );
 }
