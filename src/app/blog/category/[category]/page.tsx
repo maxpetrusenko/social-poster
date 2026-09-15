@@ -6,7 +6,6 @@ import { headers } from "next/headers";
 import { BLOG_POSTS } from "@/lib/blog/posts";
 import { getAllPublicBlogPosts } from "@/lib/blog/dynamic";
 import { LandingNav } from "@/components/landing/nav";
-import { LandingFooter } from "@/components/landing/footer";
 import { getSession } from "@/lib/auth";
 import { getCanonicalUrl, getPublicSiteBrandName, normalizeHost } from "@/lib/site-domains";
 
@@ -136,7 +135,6 @@ export default async function BlogCategoryPage({ params }: Props) {
           </section>
         </div>
       </main>
-      <LandingFooter brandName={brandName} />
     </>
   );
 }

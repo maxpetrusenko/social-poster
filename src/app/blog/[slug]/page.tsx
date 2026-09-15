@@ -6,7 +6,6 @@ import { headers } from "next/headers";
 import { BLOG_POSTS } from "@/lib/blog/posts";
 import { findPublicBlogPost } from "@/lib/blog/dynamic";
 import { LandingNav } from "@/components/landing/nav";
-import { LandingFooter } from "@/components/landing/footer";
 import { WaitlistForm } from "@/components/landing/waitlist-form";
 import { getSession } from "@/lib/auth";
 import { getCanonicalUrl, getPublicSiteBrandName, normalizeHost } from "@/lib/site-domains";
@@ -131,7 +130,6 @@ export default async function BlogPostPage({ params }: Props) {
           </div>
         </article>
       </main>
-      <LandingFooter brandName={brandName} />
     </>
   );
 }

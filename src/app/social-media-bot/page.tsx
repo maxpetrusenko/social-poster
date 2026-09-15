@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { LandingNav } from "@/components/landing/nav";
-import { LandingFooter } from "@/components/landing/footer";
 import { SocialMediaBotPage } from "@/components/landing/social-media-bot-page";
 import { getSession } from "@/lib/auth";
 import { getProductCanonicalUrl } from "@/lib/site-domains";
@@ -20,7 +19,6 @@ export default async function Page() {
     <>
       <LandingNav isLoggedIn={!!session} />
       <SocialMediaBotPage />
-      <LandingFooter />
     </>
   );
 }

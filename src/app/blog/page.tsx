@@ -4,7 +4,6 @@ import Image from "next/image";
 import { headers } from "next/headers";
 import { getAllPublicBlogPosts } from "@/lib/blog/dynamic";
 import { LandingNav } from "@/components/landing/nav";
-import { LandingFooter } from "@/components/landing/footer";
 import { getSession } from "@/lib/auth";
 import { getCanonicalUrl, getPublicSiteBrandName, normalizeHost } from "@/lib/site-domains";
 
@@ -88,7 +87,6 @@ export default async function BlogPage() {
           </div>
         </div>
       </main>
-      <LandingFooter brandName={brandName} />
     </>
   );
 }
