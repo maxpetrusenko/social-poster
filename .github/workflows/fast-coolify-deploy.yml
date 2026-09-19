@@ -346,28 +346,44 @@ jobs:
             echo "- Checked: ${api_health_url}"
           } >> "${GITHUB_STEP_SUMMARY}"
 
-      - name: SEO indexing gate (live)
+      - name: SEO indexing gate (live, one run per brand)
         shell: bash
         run: |
           set -euo pipefail
           log() { printf '[%s] %s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "$*"; }
 
-          log "Running SEO indexing gate against ${PRODUCTION_URL}"
-          # serial crawl + 503 retry (Cloudflare rate-limit safe); capped so the
-          # deploy pipeline stays fast. Errors fail the canary → rollback.
-          python3 .github/scripts/web-seo-check.py \
-            --url "${PRODUCTION_URL}" \
-            --delay 0.3 \
-            --max 60 \
-            --json /tmp/seo-live-report.json
-          log "SEO indexing gate passed"
+          # This deployment serves three public brands on three hosts. Checking only
+          # ${PRODUCTION_URL} is what let smmagent.app and smmclaw.app advertise
+          # clawposter.app/sitemap.xml in robots.txt for weeks: the one host that was
+          # checked was the one host that was correct. Every brand is checked now, and
+          # a cross-brand defect fails the canary -> rollback.
+          #
+          # serial crawl + 503 retry (Cloudflare rate-limit safe); capped per host so the
+          # deploy pipeline stays fast. Errors fail the canary -> rollback.
+          mkdir -p /tmp/seo-live
+          failed=""
+          for host in https://clawposter.app https://smmagent.app https://smmclaw.app; do
+            log "Running SEO indexing gate against ${host}"
+            if ! python3 .github/scripts/web-seo-check.py \
+              --url "${host}" \
+              --delay 0.3 \
+              --max 25 \
+              --json "/tmp/seo-live/$(printf '%s' "${host}" | sed 's|https://||').json"; then
+              failed="${failed} ${host}"
+            fi
+          done
+          if [ -n "${failed}" ]; then
+            log "SEO indexing gate FAILED for:${failed}"
+            exit 1
+          fi
+          log "SEO indexing gate passed for every brand"
 
-      - name: Upload SEO report
+      - name: Upload SEO reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: seo-report-${{ github.run_id }}
-          path: /tmp/seo-live-report.json
+          name: seo-reports-${{ github.run_id }}
+          path: /tmp/seo-live/
           retention-days: 30
 
   rollback:
