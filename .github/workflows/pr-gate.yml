@@ -1,0 +1,58 @@
+# Validation for pull requests. Until now the only workflow in this repo was the deploy one,
+# triggered by push to main, so a PR carried no automated evidence at all: the deploy gate ran
+# after the merge and could only roll back. This runs the same local gates the deploy path runs
+# (the ones that do not need a deployed host) against the PR head.
+#
+# Deliberately NOT here: the live SEO/indexing crawl. It needs a deployed host, so it stays in
+# fast-coolify-deploy.yml's canary, which now checks every brand this app serves, not just
+# PRODUCTION_URL.
+name: PR Gate
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-gate-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gate:
+    name: Local Gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Unit tests
+        run: npm run test:unit
+
+      - name: Deploy workflow regression
+        run: npm run test:deploy-workflow
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Summarize
+        if: always()
+        run: |
+          {
+            echo "### PR Gate"
+            echo "- Result: ${{ job.status }}"
+            echo "- Head: ${{ github.event.pull_request.head.sha || github.sha }}"
+          } >> "$GITHUB_STEP_SUMMARY"

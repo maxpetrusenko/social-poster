@@ -6,7 +6,7 @@ import {
   getAppCanonicalUrl,
   getCanonicalUrl,
   getProductCanonicalUrl,
-  SITE_DOMAINS,
+  getPublicSiteHost,
   normalizeHost,
   getPublicSiteKey,
   type PublicSiteKey,
@@ -14,18 +14,6 @@ import {
 
 function categorySlug(category: string) {
   return category.toLowerCase().replace(/\s+/g, "-");
-}
-
-/** Host name for a site key (used to emit URLs on the requesting host). */
-function hostForSiteKey(siteKey: PublicSiteKey): string {
-  switch (siteKey) {
-    case "clawposter":
-      return SITE_DOMAINS.product;
-    case "smmclaw":
-      return SITE_DOMAINS.smm;
-    case "smmagent":
-      return SITE_DOMAINS.smmAgent;
-  }
 }
 
 /**
@@ -44,7 +32,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     normalizeHost(h.get("x-forwarded-host") ?? h.get("host"))
   );
   const siteKey: PublicSiteKey = getPublicSiteKey(host);
-  const canonicalHost = hostForSiteKey(siteKey);
+  const canonicalHost = getPublicSiteHost(siteKey);
 
   const urlFor = (pathname: string) => getCanonicalUrl(pathname, canonicalHost);
 
