@@ -117,6 +117,27 @@ export function isPublicMarketingHost(host?: string | null) {
 
 export type PublicSiteKey = "clawposter" | "smmclaw" | "smmagent";
 
+/**
+ * Canonical host for a public site key.
+ *
+ * Lives here (not in a route file) because two routes must agree: `sitemap.ts`
+ * emits each URL on this host, and `robots.ts` must advertise the sitemap on the
+ * SAME host. When robots read the product canonical instead, every other public
+ * host advertised https://clawposter.app/sitemap.xml — measured 2026-09-18 on
+ * smmagent.app and smmclaw.app, where crawlers were handed another brand's URL
+ * list and the host's own pages were only discoverable by link following.
+ */
+export function getPublicSiteHost(siteKey: PublicSiteKey): string {
+  switch (siteKey) {
+    case "clawposter":
+      return SITE_DOMAINS.product;
+    case "smmclaw":
+      return SITE_DOMAINS.smm;
+    case "smmagent":
+      return SITE_DOMAINS.smmAgent;
+  }
+}
+
 export function getPublicSiteKey(host?: string | null): PublicSiteKey {
   const canonicalHost = getCanonicalHost(host);
   if (canonicalHost === SITE_DOMAINS.smm) return "smmclaw";
