@@ -197,6 +197,31 @@ class Checker:
             text = body.decode("latin-1", errors="replace")
         return status, final, text
 
+    def probe_redirect(self, url):
+        """First-hop status for a URL, WITHOUT following the redirect.
+
+        urllib follows redirects unconditionally (the allow_redirects argument on
+        fetch() was decorative), which is why a sitemap <loc> that 308s to its
+        canonical form was scored as a clean 200 by every gate in this estate.
+        Returns (status, location).
+        """
+
+        class _NoRedirect(urllib.request.HTTPRedirectHandler):
+            def redirect_request(self, req, fp, code, msg, headers, newurl):
+                return None  # do not follow; surface the 3xx as-is
+
+        opener = urllib.request.build_opener(
+            _NoRedirect(), urllib.request.HTTPSHandler(context=self.ctx)
+        )
+        req = urllib.request.Request(url, headers={"User-Agent": UA, "Accept": "*/*"})
+        try:
+            resp = opener.open(req, timeout=TIMEOUT)
+            return resp.status, (resp.headers.get("Location") or "")
+        except urllib.error.HTTPError as e:
+            return e.code, (e.headers.get("Location") or "")
+        except Exception as e:
+            return 0, f"probe failed: {e}"
+
     # -- html parsing ---------------------------------------------------------
 
     def parse_meta(self, html):
@@ -751,6 +776,22 @@ class Checker:
         titles = {}
         for i, url in enumerate(urls):
             st, final, html = self.fetch_text(url)
+            # A sitemap must list the URL that returns 200, never one that redirects.
+            # Google files a redirecting <loc> as "Page with redirect" and can leave the
+            # destination unindexed, which is how southfloridaqigong.com carried three such
+            # URLs (all 308 -> trailing-slash form) through every gate in this estate:
+            # fetch() follows redirects, so the destination's 200 looked like the <loc>'s.
+            # final != url is already proof of a redirect (geturl() returns the request url
+            # verbatim when nothing was followed); the probe only supplies the status code
+            # as evidence, so it is not required to be conclusive.
+            if final and final != url:
+                rst, rloc = self.probe_redirect(url)
+                code_txt = f"HTTP {rst} " if 300 <= rst < 400 else ""
+                self.err(
+                    "sitemap-url-redirect", url,
+                    f"sitemap url {code_txt}redirects to {rloc or final}; a sitemap must list the "
+                    f"200 url, not one that redirects (Google reports 'Page with redirect')",
+                )
             meta = self.run_page_checks(url, st, final, html)
             if meta and meta["title"]:
                 titles.setdefault(meta["title"], []).append(url)
@@ -802,11 +843,30 @@ class Checker:
             "Library", "Page", "admin", "scripts", "tests", "docs", "output",
             ".tmp", "Tantra", ".webtool-bench",
         }
+        # Exclusions are matched against the path RELATIVE to the scanned directory, never
+        # the absolute path. Matching on f.parts meant a build dir that is itself named
+        # dist/out/build — or that sits under .vercel/output — excluded every file inside
+        # it, so the scan found nothing and reported PASS. Measured 2026-09-19: a page with
+        # no canonical at all, under a path containing .vercel/output, scored 0 errors /
+        # 0 warnings while the same fixture at a neutral path scored 3 errors. That is how
+        # `--dir nextjs/.vercel/output/static` (maxpetrusenko.com) and `--dir dist`
+        # (southfloridaqigong) both scanned zero pages with a green result.
         html_files = [
             f
             for f in sorted(d.rglob("*.html"))
-            if not any(part in EXCLUDE_PARTS for part in f.parts)
+            if not any(part in EXCLUDE_PARTS for part in f.relative_to(d).parts)
         ]
+        if not html_files:
+            # A dir-mode gate that examined nothing must never look like a pass. This is
+            # the estate rule "routes_checked > 0"; without it a path typo or an
+            # over-broad exclusion silently retires the whole check.
+            self.err(
+                "dir-empty", str(d),
+                f"no html files found under {d} after exclusions — this gate verified "
+                f"NOTHING and must not pass; check the --dir path and EXCLUDE_PARTS",
+            )
+        else:
+            self.info("dir-surface", str(d), f"scanning {len(html_files)} html file(s)")
         file_to_url = {}
         for f in html_files:
             rel = f.relative_to(d).as_posix()
