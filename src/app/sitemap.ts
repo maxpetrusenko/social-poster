@@ -75,6 +75,26 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     })
   );
 
+  // Pages that canonicalize to one fixed brand no matter which host serves them: the product
+  // page (/social-media-bot) and the app docs (/docs). A sitemap may only list URLs on its own
+  // host, so each of these is emitted by the brand that owns it and by no one else. Listing them
+  // everywhere is what made smmagent.app/sitemap.xml and smmclaw.app/sitemap.xml advertise
+  // https://clawposter.app/social-media-bot - a crawler of one brand handed another brand's URL,
+  // the same class of defect as the robots.txt Sitemap: line fixed in the previous commit, and
+  // Search Console's "Sitemap contains URLs which are not within the property".
+  const brandFixed: MetadataRoute.Sitemap = [
+    {
+      url: getProductCanonicalUrl("/social-media-bot"),
+      changeFrequency: "weekly",
+      priority: 0.85,
+    },
+    {
+      url: getAppCanonicalUrl("/docs"),
+      changeFrequency: "weekly",
+      priority: 0.7,
+    },
+  ];
+
   return [
     {
       url: urlFor("/"),
@@ -86,20 +106,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "weekly",
       priority: 0.8,
     },
-    // /social-media-bot page canonicals to clawposter.app on every host
-    // (product brand page) — emit it on that host only, or Google sees an
-    // "Alternate page with proper canonical tag" mismatch.
-    {
-      url: getProductCanonicalUrl("/social-media-bot"),
-      changeFrequency: "weekly",
-      priority: 0.85,
-    },
-    // /docs canonicals to smmagent.app on every host (app docs).
-    {
-      url: getAppCanonicalUrl("/docs"),
-      changeFrequency: "weekly",
-      priority: 0.7,
-    },
+    ...brandFixed.filter((entry) => new URL(entry.url).host === canonicalHost),
     ...blogCategories,
     ...blogPosts,
   ];
