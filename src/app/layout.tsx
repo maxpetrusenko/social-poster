@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { Cormorant_Garamond, DM_Sans } from "next/font/google";
 import { LandingFooter } from "@/components/landing/footer";
-import { SMM_AGENT_ORIGIN } from "@/lib/site-domains";
+import { SiteJsonLd } from "@/components/seo/site-json-ld";
+import { normalizeHost, SMM_AGENT_ORIGIN } from "@/lib/site-domains";
 import "./globals.css";
 
 const sans = DM_Sans({
@@ -60,14 +62,32 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+/**
+ * Hosts are resolved per request because this one deployment serves three
+ * separate public brands. The sitewide JSON-LD graph (`SiteJsonLd`) is emitted
+ * here, once, so every page on every host inherits the same Organization /
+ * WebSite / SoftwareApplication nodes for the brand that actually owns the
+ * request. `LandingFooter` below already reads `headers()`, so resolving the host
+ * here does not make any route dynamic that was not dynamic before.
+ */
+async function getRequestHost() {
+  const requestHeaders = await headers();
+  return normalizeHost(
+    requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host")
+  );
+}
+
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const host = await getRequestHost();
+
   return (
     <html lang="en">
       <body className={`${sans.variable} ${serif.variable} bg-[var(--sand)] text-[var(--ink)] antialiased`}>
+        <SiteJsonLd host={host} />
         {children}
         <LandingFooter />
       </body>
