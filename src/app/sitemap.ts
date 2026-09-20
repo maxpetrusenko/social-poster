@@ -11,6 +11,11 @@ import {
   getPublicSiteKey,
   type PublicSiteKey,
 } from "@/lib/site-domains";
+import {
+  newestDate,
+  routeLastmod,
+  toLastModified,
+} from "@/lib/site/sitemap-lastmod";
 
 function categorySlug(category: string) {
   return category.toLowerCase().replace(/\s+/g, "-");
@@ -57,19 +62,24 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     .filter(visible)
     .map((post) => ({
       url: urlFor(`/blog/${post.slug}`),
-      lastModified: new Date(`${post.publishedAt}T00:00:00.000Z`),
+      lastModified: toLastModified(post.publishedAt),
       changeFrequency: "monthly",
       priority: 0.6,
     }));
 
-  // A category URL is only valid if at least one visible post is in it.
-  const visibleCategories = new Set(
-    allPosts.filter(visible).map((post) => categorySlug(post.category))
-  );
+  // A category URL is only valid if at least one visible post is in it, and the
+  // category's freshness is the newest post inside it — a per-URL value derived
+  // from that URL's own content, never a site-wide build date.
+  const categoryLastmod = new Map<string, string>();
+  for (const post of allPosts.filter(visible)) {
+    const slug = categorySlug(post.category);
+    categoryLastmod.set(slug, newestDate([categoryLastmod.get(slug), post.publishedAt]));
+  }
 
-  const blogCategories: MetadataRoute.Sitemap = Array.from(visibleCategories).map(
-    (slug) => ({
+  const blogCategories: MetadataRoute.Sitemap = Array.from(categoryLastmod).map(
+    ([slug, lastmod]) => ({
       url: urlFor(`/blog/category/${slug}`),
+      lastModified: toLastModified(lastmod),
       changeFrequency: "weekly",
       priority: 0.55,
     })
@@ -85,11 +95,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const brandFixed: MetadataRoute.Sitemap = [
     {
       url: getProductCanonicalUrl("/social-media-bot"),
+      lastModified: toLastModified(routeLastmod("/social-media-bot")),
       changeFrequency: "weekly",
       priority: 0.85,
     },
     {
       url: getAppCanonicalUrl("/docs"),
+      lastModified: toLastModified(routeLastmod("/docs")),
       changeFrequency: "weekly",
       priority: 0.7,
     },
@@ -98,11 +110,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   return [
     {
       url: urlFor("/"),
+      lastModified: toLastModified(routeLastmod("/")),
       changeFrequency: "weekly",
       priority: 1,
     },
     {
       url: urlFor("/blog"),
+      lastModified: toLastModified(routeLastmod("/blog")),
       changeFrequency: "weekly",
       priority: 0.8,
     },
