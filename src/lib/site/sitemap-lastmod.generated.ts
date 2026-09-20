@@ -6,7 +6,6 @@
 // Each static route's date is `git log -1 --format=%cs` for the source files
 // that render that route, so a sitemap URL reports the date of its OWN last
 // significant source change and not a shared build/run timestamp.
-/* eslint-disable */
 
 /** static route -> the source paths that render it. */
 export const ROUTE_SOURCES: Record<string, string[]> = {
