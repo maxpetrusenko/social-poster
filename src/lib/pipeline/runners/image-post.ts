@@ -205,6 +205,15 @@ export async function runImagePostJob(
     s2.status = "completed";
     s2.completedAt = new Date().toISOString();
     s2.output = {
+      drafts: humanDrafts
+        ? {
+            source: humanDrafts.source,
+            provider: humanDrafts.provider ?? null,
+            model: humanDrafts.model ?? null,
+            error: humanDrafts.error ?? null,
+            qualityIssues: humanDrafts.qualityIssues ?? null,
+          }
+        : null,
       captions: publishTargets.map((target) => ({
         platform: target.platform.type,
         chars: target.content.length,
@@ -214,6 +223,14 @@ export async function runImagePostJob(
         instagramContentType: target.instagramContentType ?? null,
       })),
     };
+
+    if (humanDrafts?.source === "fallback") {
+      console.warn(
+        `[image-post] caption:write used the deterministic fallback template (${runId}): ${
+          humanDrafts.error ?? JSON.stringify(humanDrafts.qualityIssues ?? {})
+        }`
+      );
+    }
 
     if (scheduledContent) {
       await assertScheduledMediaAvailable(publishTargets);

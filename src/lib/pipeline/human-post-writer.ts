@@ -1,5 +1,6 @@
 import { callOpenAIResponses } from "@/lib/langsmith";
-import { resolveOpenAIResponsesRuntime } from "@/lib/model-runtime";
+import { callChatCompletions } from "@/lib/chat-completions";
+import { resolveWritingRuntimes, type WritingRuntime } from "@/lib/model-runtime";
 import { safeFetchRemote } from "@/lib/safe-remote-fetch";
 import type { RssSettingsConfig } from "@/lib/rss-config";
 import {
@@ -27,15 +28,20 @@ export type HumanPostDrafts = {
   perspective: string | null;
   factsUsed: string[];
   source: "llm" | "fallback";
+  provider?: string;
+  model?: string;
   error?: string;
   qualityIssues?: Record<string, string[]>;
 };
 
-type Runtime = {
-  apiKey: string;
-  model: string;
-  source?: string;
+type DraftCall = {
+  name: string;
+  prompt: string;
+  story: ReturnType<typeof sanitizeHumanPostStory>;
+  strict: boolean;
+  tags: string[];
 };
+
 
 const DEFAULT_MODEL = process.env.OPENAI_SOCIAL_POST_MODEL || "gpt-4.1-mini";
 const X_LIMIT = 275;
@@ -54,20 +60,25 @@ export async function draftHumanPostContent(
   const fallback = buildFallbackDrafts(sanitizedStory, normalizedPlatforms);
 
   try {
-    const runtime = await resolveRuntime(options.workspaceId ?? null);
-    if (!runtime.apiKey) {
-      return { ...fallback, error: "No OpenAI API key available" };
+    const runtimes = await resolveWritingRuntimes({
+      workspaceId: options.workspaceId ?? null,
+      fallbackModel: DEFAULT_MODEL,
+    });
+    if (runtimes.length === 0) {
+      return { ...fallback, error: "No writing model credentials available" };
     }
 
     const articleText = sanitizedStory.link ? await fetchArticleText(sanitizedStory.link) : "";
-    const parsed = await generateDraft({
-      runtime,
+    const firstDraft = await generateDraft({
+      runtimes,
       story: sanitizedStory,
       platforms: normalizedPlatforms,
       articleText,
       rssSettings: options.rssSettings ?? null,
       strict: false,
     });
+    const parsed = firstDraft.parsed;
+    const usedRuntime = firstDraft.runtime;
     const contentByPlatform = { ...fallback.contentByPlatform };
     const qualityIssues: Record<string, string[]> = {};
 
@@ -80,14 +91,16 @@ export async function draftHumanPostContent(
     });
 
     if (rejectedPlatforms.length > 0) {
-      const strictParsed = await generateDraft({
-        runtime,
-        story: sanitizedStory,
-        platforms: rejectedPlatforms,
-        articleText,
-        rssSettings: options.rssSettings ?? null,
-        strict: true,
-      });
+      const strictParsed = (
+        await generateDraft({
+          runtimes: [usedRuntime],
+          story: sanitizedStory,
+          platforms: rejectedPlatforms,
+          articleText,
+          rssSettings: options.rssSettings ?? null,
+          strict: true,
+        })
+      ).parsed;
       applyParsedDrafts({
         parsed: strictParsed,
         story: sanitizedStory,
@@ -116,6 +129,8 @@ export async function draftHumanPostContent(
       perspective: acceptedAny ? parsed.perspective || null : null,
       factsUsed: acceptedAny ? parsed.factsUsed : [],
       source: acceptedAny ? "llm" : "fallback",
+      provider: usedRuntime.provider,
+      model: usedRuntime.model,
       qualityIssues: Object.keys(qualityIssues).length ? qualityIssues : undefined,
     };
   } catch (err) {
@@ -127,37 +142,77 @@ export async function draftHumanPostContent(
 }
 
 async function generateDraft(input: {
-  runtime: Runtime;
+  runtimes: WritingRuntime[];
   story: ReturnType<typeof sanitizeHumanPostStory>;
   platforms: string[];
   articleText: string;
   rssSettings: RssSettingsConfig | null;
   strict: boolean;
-}) {
-  const result = await callOpenAIResponses<Record<string, unknown>>({
+}): Promise<{ parsed: ReturnType<typeof parseDraftResponse>; runtime: WritingRuntime }> {
+  const call: DraftCall = {
     name: input.strict
       ? "pipeline-human-post-drafts-strict-retry"
       : "pipeline-human-post-drafts",
-    apiKey: input.runtime.apiKey,
+    prompt: buildHumanPostPrompt(
+      input.story,
+      input.platforms,
+      input.articleText,
+      input.rssSettings,
+      input.strict
+    ),
+    story: input.story,
+    strict: input.strict,
+    tags: ["pipeline", "social-post", "human-perspective"],
+  };
+
+  const failures: string[] = [];
+  for (const runtime of input.runtimes) {
+    try {
+      return { parsed: await callRuntime(runtime, call), runtime };
+    } catch (err) {
+      failures.push(
+        `${runtime.provider}/${runtime.model}: ${err instanceof Error ? err.message : String(err)}`
+      );
+    }
+  }
+
+  throw new Error(`All writing models failed: ${failures.join(" | ")}`);
+}
+
+async function callRuntime(runtime: WritingRuntime, call: DraftCall) {
+  const metadata = {
+    source: "pipeline",
+    sourceUrl: call.story.link ?? null,
+    title: call.story.title,
+    modelSource: runtime.source,
+    provider: runtime.provider,
+    strict: call.strict,
+  };
+
+  if (runtime.protocol === "openai_chat") {
+    const { text } = await callChatCompletions({
+      name: call.name,
+      apiKey: runtime.apiKey,
+      baseUrl: runtime.baseUrl ?? "https://api.deepseek.com",
+      model: runtime.model,
+      prompt: call.prompt,
+      jsonMode: true,
+      tags: call.tags,
+      metadata,
+    });
+    return parseDraftJson(text);
+  }
+
+  const result = await callOpenAIResponses<Record<string, unknown>>({
+    name: call.name,
+    apiKey: runtime.apiKey,
     body: {
-      model: input.runtime.model,
-      input: buildHumanPostPrompt(
-        input.story,
-        input.platforms,
-        input.articleText,
-        input.rssSettings,
-        input.strict
-      ),
+      model: runtime.model,
+      input: call.prompt,
       text: { format: { type: "json_object" } },
     },
-    tags: ["pipeline", "social-post", "human-perspective"],
-    metadata: {
-      source: "pipeline",
-      sourceUrl: input.story.link ?? null,
-      title: input.story.title,
-      modelSource: input.runtime.source ?? "unknown",
-      strict: input.strict,
-    },
+    tags: call.tags,
+    metadata,
   });
 
   return parseDraftResponse(result.data);
@@ -262,22 +317,6 @@ Respond with JSON only:
 }`;
 }
 
-async function resolveRuntime(workspaceId: string | null): Promise<Runtime> {
-  if (workspaceId) {
-    return resolveOpenAIResponsesRuntime({
-      workspaceId,
-      slot: "writing",
-      fallbackModel: DEFAULT_MODEL,
-    });
-  }
-
-  return {
-    apiKey: process.env.OPENAI_API_KEY || "",
-    model: DEFAULT_MODEL,
-    source: "env",
-  };
-}
-
 async function fetchArticleText(url: string): Promise<string> {
   const response = await safeFetchRemote(url, {
     signal: AbortSignal.timeout(10_000),
@@ -308,6 +347,10 @@ function parseDraftResponse(data: Record<string, unknown>) {
   const content =
     ((message?.content as Array<Record<string, unknown>> | undefined)?.[0]?.text as string) ?? "";
 
+  return parseDraftJson(content);
+}
+
+function parseDraftJson(content: string) {
   const parsed = JSON.parse(content) as {
     perspective?: unknown;
     factsUsed?: unknown;
