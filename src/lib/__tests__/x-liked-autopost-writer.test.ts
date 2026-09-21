@@ -5,11 +5,11 @@ vi.mock("@/lib/langsmith", () => ({
   callOpenAIResponses: vi.fn(),
 }));
 vi.mock("@/lib/model-runtime", () => ({
-  resolveOpenAIResponsesRuntime: vi.fn(),
+  resolveWritingRuntimes: vi.fn(),
 }));
 
 import { callOpenAIResponses } from "@/lib/langsmith";
-import { resolveOpenAIResponsesRuntime } from "@/lib/model-runtime";
+import { resolveWritingRuntimes } from "@/lib/model-runtime";
 import {
   buildXLikedAutopostReviewPrompt,
   buildXLikedAutopostWriterPrompt,
@@ -499,11 +499,15 @@ describe("X liked autopost writer", () => {
   });
 
   it("sends reviewer failures back to the writer before returning a publishable draft", async () => {
-    vi.mocked(resolveOpenAIResponsesRuntime).mockResolvedValue({
+    vi.mocked(resolveWritingRuntimes).mockResolvedValue([
+      {
+        protocol: "openai_responses" as const,
+        provider: "openai" as const,
       apiKey: "test-key",
       model: "test-model",
       source: "env",
-    });
+      },
+    ]);
     vi.mocked(callOpenAIResponses)
       .mockResolvedValueOnce({
         data: {

@@ -1,6 +1,5 @@
-import { callOpenAIResponses } from "@/lib/langsmith";
-import { callChatCompletions } from "@/lib/chat-completions";
 import { resolveWritingRuntimes, type WritingRuntime } from "@/lib/model-runtime";
+import { callWritingModel } from "@/lib/writing-model";
 import { safeFetchRemote } from "@/lib/safe-remote-fetch";
 import type { RssSettingsConfig } from "@/lib/rss-config";
 import {
@@ -180,39 +179,20 @@ async function generateDraft(input: {
 }
 
 async function callRuntime(runtime: WritingRuntime, call: DraftCall) {
-  const metadata = {
-    source: "pipeline",
-    sourceUrl: call.story.link ?? null,
-    title: call.story.title,
-    modelSource: runtime.source,
-    provider: runtime.provider,
-    strict: call.strict,
-  };
-
-  if (runtime.protocol === "openai_chat") {
-    const { text } = await callChatCompletions({
-      name: call.name,
-      apiKey: runtime.apiKey,
-      baseUrl: runtime.baseUrl ?? "https://api.deepseek.com",
-      model: runtime.model,
-      prompt: call.prompt,
-      jsonMode: true,
-      tags: call.tags,
-      metadata,
-    });
-    return parseDraftJson(text);
-  }
-
-  const result = await callOpenAIResponses<Record<string, unknown>>({
+  const result = await callWritingModel({
     name: call.name,
-    apiKey: runtime.apiKey,
-    body: {
-      model: runtime.model,
-      input: call.prompt,
-      text: { format: { type: "json_object" } },
-    },
+    prompt: call.prompt,
+    json: true,
+    fallbackModel: runtime.model,
+    slot: "writing",
+    runtimes: [runtime],
     tags: call.tags,
-    metadata,
+    metadata: {
+      source: "pipeline",
+      sourceUrl: call.story.link ?? null,
+      title: call.story.title,
+      strict: call.strict,
+    },
   });
 
   return parseDraftResponse(result.data);

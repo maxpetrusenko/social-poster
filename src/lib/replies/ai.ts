@@ -1,8 +1,7 @@
 import { z } from "zod";
 import { uniqueReplyDrafts } from "@/lib/replies/duplicate-guard";
 import type { ReplyDirection } from "@/lib/replies/strategy";
-import { callOpenAIResponses } from "@/lib/langsmith";
-import { resolveOpenAIResponsesRuntime } from "@/lib/model-runtime";
+import { callWritingModel } from "@/lib/writing-model";
 import {
   findNoAiSlopIssues,
   NO_AI_SLOP_EDITING_INSTRUCTIONS,
@@ -51,31 +50,18 @@ export async function generateAiReplyDraftsBatch(
 ): Promise<Map<string, string[]>> {
   if (candidates.length === 0) return new Map();
 
-  const runtime = workspaceId
-    ? await resolveOpenAIResponsesRuntime({
-        workspaceId,
-        slot: "reply",
-        fallbackModel: DEFAULT_REPLY_MODEL,
-      })
-    : { apiKey: process.env.OPENAI_API_KEY || "", model: DEFAULT_REPLY_MODEL, source: "env" as const };
-  if (!runtime.apiKey) {
-    throw new Error("OPENAI_API_KEY not set");
-  }
-
-  const result = await callOpenAIResponses<Record<string, unknown>>({
+  const result = await callWritingModel({
     name: "reply-draft-generation",
-    apiKey: runtime.apiKey,
-    body: {
-      model: runtime.model,
-      reasoning: { effort: "low" },
-      input: buildReplyDraftPrompt(candidates, mode),
-    },
+    prompt: buildReplyDraftPrompt(candidates, mode),
+    fallbackModel: DEFAULT_REPLY_MODEL,
+    workspaceId: workspaceId ?? null,
+    slot: "reply",
+    reasoning: { effort: "low" },
     signal: AbortSignal.timeout(45_000),
     tags: ["replies", mode],
     metadata: {
       candidateCount: candidates.length,
       mode,
-      modelSource: runtime.source,
     },
   });
 

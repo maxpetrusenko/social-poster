@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireApiWorkspaceEditor } from "@/lib/api-authorization";
 import { recordTenantAuditEvent } from "@/lib/audit";
-import { callOpenAIResponses, type LangSmithTrace } from "@/lib/langsmith";
-import { resolveOpenAIResponsesRuntime } from "@/lib/model-runtime";
+import { type LangSmithTrace } from "@/lib/langsmith";
+import { callWritingModel } from "@/lib/writing-model";
 
 const MODEL = process.env.OPENAI_ENRICH_MODEL || "gpt-4.1-mini";
 
@@ -41,9 +41,14 @@ async function generateSummary(
   title: string,
   articleText: string,
   existingSummary: string,
-  runtime: { apiKey: string; model: string }
-): Promise<{ summary: string; keyPoints: string[]; trace: LangSmithTrace | null }> {
-  if (!runtime.apiKey) throw new Error("OPENAI_API_KEY not set");
+  workspaceId: string
+): Promise<{
+  summary: string;
+  keyPoints: string[];
+  trace: LangSmithTrace | null;
+  model: string;
+  modelSource: string;
+}> {
 
   const prompt = `You are summarizing an article for social media posts. Extract the most interesting, specific, and substantive points.
 
@@ -59,14 +64,13 @@ Respond with JSON only:
   "keyPoints": ["point 1 - most surprising/specific detail", "point 2 - concrete implication or number", "point 3 - what actually changed"]
 }`;
 
-  const result = await callOpenAIResponses<Record<string, unknown>>({
+  const result = await callWritingModel({
     name: "rss-enrich-summary",
-    apiKey: runtime.apiKey,
-    body: {
-      model: runtime.model,
-      input: prompt,
-      text: { format: { type: "json_object" } },
-    },
+    prompt,
+    json: true,
+    fallbackModel: MODEL,
+    workspaceId,
+    slot: "fast",
     tags: ["rss", "enrichment"],
     metadata: {
       endpoint: "POST /api/rss-enrich",
@@ -74,16 +78,9 @@ Respond with JSON only:
     },
   });
 
-  const data = result.data;
-
-  // Extract text from the response
-  const output = Array.isArray(data.output)
-    ? (data.output as Array<Record<string, unknown>>)
-    : [];
-  const textBlock = output.find((block) => block.type === "message");
-  const content = textBlock
-    ? ((textBlock.content as Array<Record<string, unknown>>)?.[0]?.text as string) ?? ""
-    : "";
+  const content = result.text;
+  const model = result.runtime.model;
+  const modelSource = result.runtime.source;
 
   try {
     const parsed = JSON.parse(content) as { summary: string; keyPoints: string[] };
@@ -91,10 +88,18 @@ Respond with JSON only:
       summary: parsed.summary || "",
       keyPoints: Array.isArray(parsed.keyPoints) ? parsed.keyPoints : [],
       trace: result.trace,
+      model,
+      modelSource,
     };
   } catch {
     // If JSON parse fails, use the raw text as summary
-    return { summary: content.slice(0, 500), keyPoints: [], trace: result.trace };
+    return {
+      summary: content.slice(0, 500),
+      keyPoints: [],
+      trace: result.trace,
+      model,
+      modelSource,
+    };
   }
 }
 
@@ -122,16 +127,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const runtime = await resolveOpenAIResponsesRuntime({
-      workspaceId: authorized.currentWorkspace.id,
-      slot: "fast",
-      fallbackModel: MODEL,
-    });
     const result = await generateSummary(
       body.title || "",
       articleText,
       body.summary || "",
-      runtime
+      authorized.currentWorkspace.id
     );
 
     await recordTenantAuditEvent(authorized, {
@@ -141,8 +141,8 @@ export async function POST(request: NextRequest) {
         status: "success",
         endpoint: "POST /api/rss-enrich",
         sourceUrl: body.url,
-        model: runtime.model,
-        modelSource: runtime.source,
+        model: result.model,
+        modelSource: result.modelSource,
         langsmithTrace: result.trace,
       },
     });

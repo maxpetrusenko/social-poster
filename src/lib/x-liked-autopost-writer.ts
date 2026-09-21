@@ -1,7 +1,6 @@
 import "server-only";
 
-import { callOpenAIResponses } from "@/lib/langsmith";
-import { resolveOpenAIResponsesRuntime } from "@/lib/model-runtime";
+import { callWritingModel } from "@/lib/writing-model";
 import { X_POSTING_SKILL_INSTRUCTIONS } from "@/lib/x-posting-skill";
 import { findNoAiSlopIssues } from "@/lib/writing/no-ai-slop";
 
@@ -76,48 +75,33 @@ export async function draftXLikedAutopostContent(input: {
   mediaType: "image" | "video" | null;
   mediaSourceUrl?: string | null;
 }): Promise<XLikedAutopostWriterResult> {
-  const runtime = await resolveOpenAIResponsesRuntime({
-    workspaceId: input.workspaceId,
-    slot: "writing",
-    fallbackModel: DEFAULT_MODEL,
-  });
-
-  if (!runtime.apiKey) {
-    throw new XLikedAutopostWriterError("OpenAI writing runtime unavailable", {
-      code: "runtime_unavailable",
-      fatal: true,
-    });
-  }
-
   try {
     let lastRejection = "";
     let lastTraceUrl: string | null = null;
 
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
-      const result = await callOpenAIResponses<Record<string, unknown>>({
-        name: attempt === 1
-          ? "x-liked-autopost-writer"
-          : "x-liked-autopost-writer-retry",
-        apiKey: runtime.apiKey,
-        body: {
-          model: runtime.model,
-          input: buildXLikedAutopostWriterPrompt({
-            ...input,
-            previousRejection: lastRejection || null,
-          }),
-          text: { format: { type: "json_object" } },
-        },
+      const result = await callWritingModel({
+        name:
+          attempt === 1 ? "x-liked-autopost-writer" : "x-liked-autopost-writer-retry",
+        prompt: buildXLikedAutopostWriterPrompt({
+          ...input,
+          previousRejection: lastRejection || null,
+        }),
+        json: true,
+        fallbackModel: DEFAULT_MODEL,
+        workspaceId: input.workspaceId,
+        slot: "writing",
         tags: ["x-liked-autopost", "writer"],
         metadata: {
           source: "x-liked-autopost",
           sourceUrl: input.sourceUrl,
           authorHandle: input.authorHandle,
           mediaType: input.mediaType,
-          modelSource: runtime.source ?? "unknown",
           attempt,
         },
       });
 
+      const writerRuntime = result.runtime;
       lastTraceUrl = result.trace?.url ?? null;
       const content = parseWriterResponse(result.data);
       const rejection = getXLikedAutopostContentRejection({
@@ -132,7 +116,6 @@ export async function draftXLikedAutopostContent(input: {
         const review = await reviewXLikedAutopostDraft({
           ...input,
           content,
-          runtime,
           attempt,
         });
         if (!review.approved) {
@@ -142,8 +125,8 @@ export async function draftXLikedAutopostContent(input: {
 
         return {
           content,
-          model: runtime.model,
-          modelSource: runtime.source ?? "unknown",
+          model: writerRuntime.model,
+          modelSource: writerRuntime.source ?? "unknown",
           traceUrl: lastTraceUrl,
           review,
         };
@@ -179,7 +162,7 @@ export async function draftXLikedAutopostContent(input: {
 }
 
 async function reviewXLikedAutopostDraft(input: {
-  runtime: Awaited<ReturnType<typeof resolveOpenAIResponsesRuntime>>;
+  workspaceId: string;
   attempt: number;
   authorHandle: string;
   sourceUrl: string;
@@ -190,29 +173,27 @@ async function reviewXLikedAutopostDraft(input: {
   mediaSourceUrl?: string | null;
   content: string;
 }): Promise<XLikedAutopostReviewResult> {
-  const result = await callOpenAIResponses<Record<string, unknown>>({
+  const result = await callWritingModel({
     name: "x-liked-autopost-reviewer",
-    apiKey: input.runtime.apiKey!,
-    body: {
-      model: input.runtime.model,
-      input: buildXLikedAutopostReviewPrompt(input),
-      text: { format: { type: "json_object" } },
-    },
+    prompt: buildXLikedAutopostReviewPrompt(input),
+    json: true,
+    fallbackModel: DEFAULT_MODEL,
+    workspaceId: input.workspaceId,
+    slot: "writing",
     tags: ["x-liked-autopost", "reviewer"],
     metadata: {
       source: "x-liked-autopost",
       sourceUrl: input.sourceUrl,
       authorHandle: input.authorHandle,
       mediaType: input.mediaType,
-      modelSource: input.runtime.source ?? "unknown",
       writerAttempt: input.attempt,
     },
   });
 
   return {
     ...parseReviewerResponse(result.data),
-    model: input.runtime.model,
-    modelSource: input.runtime.source ?? "unknown",
+    model: result.runtime.model,
+    modelSource: result.runtime.source ?? "unknown",
     traceUrl: result.trace?.url ?? null,
   };
 }

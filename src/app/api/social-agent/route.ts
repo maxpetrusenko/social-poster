@@ -31,12 +31,11 @@ import {
   type WorkspaceRole,
 } from "@/lib/tenancy";
 import { recordTenantAuditEvent } from "@/lib/audit";
-import { callOpenAIResponses } from "@/lib/langsmith";
+import { callWritingModel } from "@/lib/writing-model";
 import {
   NO_AI_SLOP_EDITING_INSTRUCTIONS,
   WRITING_INSTRUCTION_PRECEDENCE,
 } from "@/lib/writing/no-ai-slop";
-import { resolveOpenAIResponsesRuntime } from "@/lib/model-runtime";
 import { executeSafeInternalAgentToolCall } from "@/agent/server-adapter";
 import { parseProductMode, type ProductMode } from "@/lib/user-preferences";
 import { reconcileSchedules } from "@/lib/scheduler";
@@ -783,23 +782,14 @@ async function answerWithContext(
   if (directReply) return avoidRepeatedReply(directReply, messages);
 
   const tenant = await requireTenantContext().catch(() => null);
-  const runtime = tenant
-    ? await resolveOpenAIResponsesRuntime({
-        workspaceId: tenant.currentWorkspace.id,
-        slot: "agent",
-        fallbackModel: MODEL,
-      })
-    : { apiKey: process.env.OPENAI_API_KEY || "", model: MODEL, source: "env" as const };
-  if (!runtime.apiKey) return fallbackAnswer(context, message, messages);
 
   try {
-    const result = await callOpenAIResponses<Record<string, unknown>>({
+    const result = await callWritingModel({
       name: "social-agent-answer",
-      apiKey: runtime.apiKey,
-      body: {
-        model: runtime.model,
-        input: await buildPrompt(context, message, messages, pageContext, attachments),
-      },
+      prompt: await buildPrompt(context, message, messages, pageContext, attachments),
+      fallbackModel: MODEL,
+      workspaceId: tenant ? tenant.currentWorkspace.id : null,
+      slot: "agent",
       tags: ["social-agent"],
       metadata: {
         endpoint: "POST /api/social-agent",
@@ -807,7 +797,7 @@ async function answerWithContext(
       },
     });
 
-    const answer = extractResponseText(result.data) || fallbackAnswer(context, message, messages);
+    const answer = result.text || fallbackAnswer(context, message, messages);
     if (tenant) {
       await recordTenantAuditEvent(tenant, {
         action: "llm.social_agent",
@@ -815,8 +805,8 @@ async function answerWithContext(
         metadata: {
           status: "success",
           endpoint: "POST /api/social-agent",
-          model: runtime.model,
-          modelSource: runtime.source,
+          model: result.runtime.model,
+          modelSource: result.runtime.source,
           langsmithTrace: result.trace,
         },
       });
@@ -1482,25 +1472,6 @@ function mentionedPlatformLabel(lowered: string) {
 function summarizeList(values: string[], limit: number) {
   if (values.length <= limit) return values.join(", ");
   return `${values.slice(0, limit).join(", ")} and ${values.length - limit} more`;
-}
-
-function extractResponseText(body: Record<string, unknown>) {
-  const outputText = body.output_text;
-  if (typeof outputText === "string") return outputText.trim();
-
-  const output = Array.isArray(body.output)
-    ? (body.output as Array<Record<string, unknown>>)
-    : [];
-  for (const block of output) {
-    const content = Array.isArray(block.content)
-      ? (block.content as Array<Record<string, unknown>>)
-      : [];
-    for (const item of content) {
-      if (typeof item.text === "string") return item.text.trim();
-    }
-  }
-
-  return "";
 }
 
 function sanitizePageContext(value: ClientPageContext | undefined): ClientPageContext {

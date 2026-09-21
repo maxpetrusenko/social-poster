@@ -2,18 +2,19 @@ import "server-only";
 
 import { resolveWorkspaceModelConfig } from "@/lib/model-providers";
 
-const DEFAULT_DEEPSEEK_BASE_URL = "https://api.deepseek.com";
-const DEFAULT_DEEPSEEK_MODEL = "deepseek-flash";
+export const DEFAULT_DEEPSEEK_BASE_URL = "https://api.deepseek.com";
+export const DEFAULT_DEEPSEEK_MODEL = "deepseek-flash";
 
-export type WritingRuntime = {
+type WritingRuntimeBase = {
   provider: "deepseek" | "openai";
-  protocol: "openai_chat" | "openai_responses";
   apiKey: string;
   model: string;
-  baseUrl?: string;
   source: "env" | "workspace";
 };
 
+export type WritingRuntime =
+  | (WritingRuntimeBase & { protocol: "openai_chat"; baseUrl: string })
+  | (WritingRuntimeBase & { protocol: "openai_responses"; baseUrl?: string });
 
 export async function resolveOpenAIResponsesRuntime(input: {
   workspaceId: string;
@@ -50,6 +51,7 @@ export async function resolveOpenAIResponsesRuntime(input: {
 export async function resolveWritingRuntimes(input: {
   workspaceId: string | null;
   fallbackModel: string;
+  slot?: "writing" | "reply" | "agent" | "fast" | "image" | "embedding";
 }): Promise<WritingRuntime[]> {
   const runtimes: WritingRuntime[] = [];
 
@@ -66,9 +68,10 @@ export async function resolveWritingRuntimes(input: {
   }
 
   if (input.workspaceId) {
-    const configured = await resolveWorkspaceModelConfig(input.workspaceId, "writing").catch(
-      () => null
-    );
+    const configured = await resolveWorkspaceModelConfig(
+      input.workspaceId,
+      input.slot ?? "writing"
+    ).catch(() => null);
     if (
       configured &&
       configured.provider === "openai" &&

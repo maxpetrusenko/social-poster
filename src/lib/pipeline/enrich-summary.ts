@@ -6,8 +6,7 @@
  * Falls back gracefully — never throws.
  */
 
-import { callOpenAIResponses } from "@/lib/langsmith";
-import { resolveOpenAIResponsesRuntime } from "@/lib/model-runtime";
+import { callWritingModel } from "@/lib/writing-model";
 
 const GARBAGE_SUMMARIES = new Set([
   "comments",
@@ -55,10 +54,6 @@ async function callOpenAI(
   workspaceId?: string | null
 ): Promise<string> {
   const model = process.env.OPENAI_ENRICH_MODEL || "gpt-4.1-mini";
-  const runtime = workspaceId
-    ? await resolveOpenAIResponsesRuntime({ workspaceId, slot: "fast", fallbackModel: model })
-    : { apiKey: process.env.OPENAI_API_KEY || "", model, source: "env" as const };
-  if (!runtime.apiKey) throw new Error("No OPENAI_API_KEY");
 
   const prompt = `Summarize this article in 2-3 sentences. Focus on the most specific and surprising details — numbers, names, concrete claims. No filler phrases like "worth watching" or "interesting development".
 
@@ -70,29 +65,20 @@ ${articleText}
 
 Return ONLY the summary text, no JSON, no formatting.`;
 
-  const result = await callOpenAIResponses<Record<string, unknown>>({
+  const result = await callWritingModel({
     name: "pipeline-enrich-summary",
-    apiKey: runtime.apiKey,
-    body: {
-      model: runtime.model,
-      input: prompt,
-    },
+    prompt,
+    fallbackModel: model,
+    workspaceId: workspaceId ?? null,
+    slot: "fast",
     tags: ["pipeline", "enrichment"],
     metadata: {
       source: "pipeline",
       title,
-      modelSource: runtime.source,
     },
   });
 
-  const data = result.data;
-  const output = Array.isArray(data.output)
-    ? (data.output as Array<Record<string, unknown>>)
-    : [];
-  const textBlock = output.find((block) => block.type === "message");
-  const content =
-    ((textBlock?.content as Array<Record<string, unknown>>)?.[0]?.text as string) ?? "";
-  return content.trim();
+  return result.text;
 }
 
 /**
