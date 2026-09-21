@@ -10,7 +10,6 @@ const relatedSites = [
   { label: "SMMClaw", href: "https://smmclaw.app" },
   { label: "SMM Agent", href: "https://smmagent.app" },
   { label: "Dashboard", href: "https://smmagent.app/dashboard" },
-  { label: "Max Tech", href: "https://www.maxpetrusenko.com/tech" },
 ];
 
 export function LegalPage({

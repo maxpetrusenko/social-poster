@@ -1,30 +1,31 @@
 import Link from "next/link";
 import { headers } from "next/headers";
-import { getCanonicalHost, getPublicSiteBrandName, normalizeHost } from "@/lib/site-domains";
+import {
+  getPublicSiteBrandName,
+  getPublicSiteKey,
+  isPublicMarketingHost,
+  normalizeHost,
+  type PublicSiteKey,
+} from "@/lib/site-domains";
 
-type OwnedProperty = {
+type RelatedTool = {
+  siteKey: PublicSiteKey;
   label: string;
   href: string;
-  host: string;
 };
 
-// Max-owned properties. Every host listed here is rendered in the sitewide
-// footer on every route; the host serving the current page is skipped so the
-// block never links a page to itself.
-export const OWNED_PROPERTIES: readonly OwnedProperty[] = [
-  { label: "Max Petrusenko", href: "https://www.maxpetrusenko.com", host: "maxpetrusenko.com" },
-  { label: "GeoAnalyzer", href: "https://geo-analyzer.com", host: "geo-analyzer.com" },
-  { label: "Unfollow X", href: "https://unfollow-x.com", host: "unfollow-x.com" },
-  { label: "SMM Agent", href: "https://smmagent.app", host: "smmagent.app" },
-  { label: "SMMClaw", href: "https://smmclaw.app", host: "smmclaw.app" },
-  { label: "ClawPoster", href: "https://clawposter.app", host: "clawposter.app" },
-  { label: "Miami Contact Improv", href: "https://miamicontactimprov.com", host: "miamicontactimprov.com" },
-  { label: "Max Wiki", href: "https://wiki.maxpetrusenko.com", host: "wiki.maxpetrusenko.com" },
+// Sibling SMM brands only, topically related to this deployment. Small, visible,
+// and host-filtered through `getPublicSiteKey` — the same helper `sitemap.ts`,
+// `robots.ts` and `brand-json-ld.ts` share — so a host can only ever link to the
+// other two brands, never to itself.
+export const RELATED_TOOLS: readonly RelatedTool[] = [
+  { siteKey: "smmagent", label: "SMM Agent", href: "https://smmagent.app" },
+  { siteKey: "smmclaw", label: "SMMClaw", href: "https://smmclaw.app" },
+  { siteKey: "clawposter", label: "ClawPoster", href: "https://clawposter.app" },
 ];
 
 const networkLinks = [
   { label: "Dashboard", href: "https://smmagent.app/dashboard" },
-  { label: "Max Tech", href: "https://www.maxpetrusenko.com/tech" },
 ];
 
 async function getRequestHost() {
@@ -42,11 +43,15 @@ export async function LandingFooter({
   currentHost?: string | null;
 }) {
   const host = currentHost === undefined ? await getRequestHost() : normalizeHost(currentHost);
-  const canonicalHost = getCanonicalHost(host);
   const resolvedBrandName = brandName ?? getPublicSiteBrandName(host);
-  const visibleProperties = OWNED_PROPERTIES.filter(
-    (property) => property.host !== canonicalHost
-  );
+
+  // Hosts outside the three public marketing brands (legacy host, localhost, a
+  // custom domain) get no cross-links: guessing an identity for them is the
+  // failure mode `brand-json-ld.ts` already refuses.
+  const siteKey = getPublicSiteKey(host);
+  const relatedTools = isPublicMarketingHost(host)
+    ? RELATED_TOOLS.filter((tool) => tool.siteKey !== siteKey)
+    : [];
 
   return (
     <footer className="border-t border-[var(--line)] py-12 px-6">
@@ -67,25 +72,27 @@ export async function LandingFooter({
           ))}
         </div>
       </div>
-      <nav
-        aria-label="Max Petrusenko sites"
-        className="container mt-8 border-t border-[var(--line)] pt-6"
-      >
-        <ul className="flex flex-wrap justify-center gap-x-5 gap-y-2 text-sm text-[var(--muted)] md:justify-start">
-          {visibleProperties.map((property) => (
-            <li key={property.href}>
-              <a
-                href={property.href}
-                target="_blank"
-                rel="noopener"
-                className="hover:text-[var(--ink)] transition-colors"
-              >
-                {property.label}
-              </a>
-            </li>
-          ))}
-        </ul>
-      </nav>
+      {relatedTools.length > 0 ? (
+        <div className="container mt-8 border-t border-[var(--line)] pt-6">
+          <p className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
+            Related tools
+          </p>
+          <ul className="mt-3 flex flex-wrap justify-center gap-x-5 gap-y-2 text-sm text-[var(--muted)] md:justify-start">
+            {relatedTools.map((tool) => (
+              <li key={tool.href}>
+                <a
+                  href={tool.href}
+                  target="_blank"
+                  rel="noopener"
+                  className="hover:text-[var(--ink)] transition-colors"
+                >
+                  {tool.label}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
       <div className="container mt-8 text-center text-xs text-[var(--muted)] md:text-left">
         &copy; {new Date().getFullYear()} {resolvedBrandName}
       </div>
