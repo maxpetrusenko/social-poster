@@ -1,0 +1,33 @@
+--- a/scripts/fingerprint_eval/judge.py
++++ b/scripts/fingerprint_eval/judge.py
+@@ -11,12 +11,15 @@
+ VERDICTS = ("entailed", "changed", "missing")
+ 
+ JUDGE_PROMPT = """/no_think
+-You check whether a rewritten passage still states each claim from the original.
+-For each numbered claim give a verdict:
+-- "entailed": the passage states it or clearly implies it, with the same names, numbers, and causal direction
+-- "changed": the passage states something different (altered number, name, causality, certainty)
+-- "missing": the passage does not state it
+-Return ONLY JSON, nothing before or after it: [{{"i": 1, "verdict": "entailed", "reason": "<=15 words"}}, ...]
++You are a fact-consistency checker. For each numbered claim, find the sentence(s) in the rewritten passage that bear on it, then decide.
++Wording, sentence structure, order, formatting, spelling variants, punctuation and metaphor are irrelevant. Only facts count.
++Verdicts:
++- "entailed": the passage conveys the same fact. Paraphrase with the same factual content is entailed.
++- "changed": the passage conflicts with the claim on a fact dimension. You MUST name the dimension: number, unit, name, entity, date, polarity, modality, causality, scope, or attribution.
++- "missing": nothing in the passage bears on the claim.
++Do not use "changed" for a difference of tone, emphasis, or style. Do use it when a number, unit, name, negation, hedge (may/can/some), cause-effect direction, scope or source differs from the claim, even slightly.
++For every claim copy the supporting or conflicting quote from the passage ("evidence", empty string if missing).
++Return ONLY JSON, nothing before or after it: [{{"i": 1, "evidence": "<quote>", "dimension": "<dimension or none>", "verdict": "entailed", "reason": "<=15 words"}}, ...]
+ Include exactly one entry per claim id, no others.
+ 
+ Claims:
+@@ -41,7 +44,7 @@
+         raise ValueError("judge reply is not a JSON list")
+     out: dict[int, dict] = {}
+     for v in data:
+-        if not isinstance(v, dict) or set(v) - {"i", "verdict", "reason"} or "i" not in v or "verdict" not in v:
++        if not isinstance(v, dict) or set(v) - {"i", "verdict", "reason", "evidence", "dimension"} or "i" not in v or "verdict" not in v:
+             raise ValueError(f"bad judge entry: {str(v)[:80]}")
+         i, verdict = v["i"], v["verdict"]
+         if isinstance(i, bool) or not isinstance(i, int) or i in out:
