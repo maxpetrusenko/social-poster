@@ -132,7 +132,9 @@ def extract_propositions(seg: Segment, model: str = EXTRACTOR) -> None:
             return
         except (GatewayError, AttributeError, TypeError) as e:
             last = e
-    raise GatewayError(f"extraction failed for segment {seg.idx}: {last}")
+    from .contracts import Category
+    cat = getattr(last, "category", Category.UNKNOWN_ERROR)
+    raise GatewayError(f"extraction failed for segment {seg.idx}: {last}", Category.MALFORMED_MODEL_OUTPUT if cat is Category.UNKNOWN_ERROR else cat, getattr(last, "dependency", None))
 
 
 def _attach_missing_links(seg: Segment) -> None:
