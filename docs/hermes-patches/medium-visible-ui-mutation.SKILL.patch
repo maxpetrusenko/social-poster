@@ -1,0 +1,27 @@
+--- a/skills/medium-visible-ui-mutation/SKILL.md	2026-10-04 16:12:21
++++ b/skills/medium-visible-ui-mutation/SKILL.md	2026-10-04 16:12:41
+@@ -16,6 +16,7 @@
+ 
+ ## Two Musts
+ 
++0. **Release gate first.** Before EVERY Medium mutation (paste, type, click Publish/Schedule/Save draft/Update, navigate to new-story, edit or submission pages), run `cd /Users/maxsmacmini/Desktop/Projects/social-poster && ~/.local/bin/uv run --python 3.12 python -m scripts.fingerprint_eval.release verify --package <package-dir>`. Exit 0 is the only permission. Any other exit: stop that article as `SKIPPED_GATE` and continue the queue. The Hermes `pre_tool_call` hook (`scripts/hermes/medium_publish_guard.py`) enforces the same check mechanically and will block the call; do not try to route around it.
+ 1. **Visible editor first.** Before any Medium mutation, verify the already-open visible GStack / Google Chrome for Testing window is on the Medium editor or submission UI and logged in. If it is not visibly usable, stop as `BLOCKED`.
+ 2. **Reviewer proof after.** After any Medium mutation, run `medium-proof-reviewer`. Do not claim complete from local files, workflow metadata, logs, cron state, or model memory.
+ 3. **Existing window only.** If any visible GStack / Chrome-for-Testing browser window is already open, attach to and focus that exact window. Do not launch, spawn, relaunch, or switch to another browser/window/profile. If the existing window cannot be attached or focused, stop as `BLOCKED` before opening anything else.
+@@ -27,6 +28,7 @@
+ - Do not treat `open-gstack-browser` as permission to launch a new window when a visible GStack/Chrome-for-Testing window already exists. In that case it may only be used to focus or attach to the existing window.
+ - For Medium mutation, allowed actions are visible click, visible typing, visible keyboard shortcut, visible paste, visible scroll, and same-tab visible navigation.
+ - Do not use hidden mutation paths: `browse` CLI mutation, CDP, DevTools, DOM JavaScript, Medium private API/delta endpoints, Playwright/Puppeteer scripts, cookie DB inspection/import, AppleScript/System Events UI dumps, accessibility tree dumps, `osascript`, or direct HTTP calls.
++- Bash may additionally run `release verify` (read-only) and `release authorize` (writes only gate/release files) from the social-poster checkout.
+ - Bash is allowed only to read local article/source files before mutation and to record proof/blockers after mutation. Bash is not allowed to inspect or mutate the browser, cookies, Medium DOM, Medium network state, macOS accessibility state, or Chrome UI tree.
+ - If the editor is blocked by login, Cloudflare, MFA, Not Found, permission error, or stale auth, stop immediately as `BLOCKED` and tell Max the visible state.
+ 
+@@ -70,7 +72,7 @@
+ 
+ Only if body/images are requested or stale:
+ 
+-1. Paste approved rich content from the rendered preview or prepared rich source.
++1. Paste ONLY the bytes of `<package>/release/medium-final.md` (or the rendering of exactly that file). Never paste `article-v*.md`, `article-healed-*.md`, notes, or model-rewritten text. Copy to the clipboard only from the release file (`pbcopy < <package>/release/medium-final.md`). If the release file changed after `release verify`, re-run `verify` before pasting again.
+ 2. Verify headings render as headings, links render as links, images are visible, and source links are present.
+ 3. If images fail, stop as `BLOCKED` unless Max explicitly approves a fallback in the same turn.
+ 

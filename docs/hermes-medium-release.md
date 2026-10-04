@@ -1,0 +1,125 @@
+# Hermes Medium release guard
+
+Status: ready for the lead to apply on `mini`. Nothing here has been applied live. Companion to `docs/fingerprint-gate-integration.md`.
+
+Invariant: the automated path must not mutate Medium unless `release verify` passes for the exact current bytes. Unattended publishing stays disabled (the cron already stops at `approval_channel_blocked`); this guard is the mechanical second lock, not a reason to turn that off.
+
+## What actually mutates Medium (evidence)
+
+The Medium job (`youtube-playlist-to-medium-article`, id `cf72679130c9`, workdir `social-poster`, `enabled_toolsets: null`, so every tool is available) is told to use the visible GStack / Chrome-for-Testing window. The only Hermes tool that can do that is `computer_use` (cua-driver):
+
+- Evidence: `data/article-workspace/articles/_blocked-weekly-youtube-medium-2026-07-05-1022z/BLOCKER.md` on mini: "computer_use list_apps returned an empty app list. Captures for Google Chrome for Testing, GStack Browser, and Google Chrome returned 0x0 ...". Schema: `~/.hermes/hermes-agent/tools/computer_use/schema.py`.
+- `computer_use` args: `action` in `capture|click|double_click|right_click|middle_click|drag|scroll|type|key|set_value|wait|list_apps|list_windows|focus_app`, plus `app`, `element` (SOM index), `coordinate`, `text`, `keys`, `value`, `delivery_mode`. Mutating shapes: `{"action":"type","text":"..."}` (title/subtitle/body), `{"action":"key","keys":"cmd+v"}` (paste), `{"action":"click","element":N}` (Publish / Schedule for later / Save / Update), `{"action":"set_value",...}` (pickers). Navigation to `/new-story`, `/p/<id>/edit`, `/p/<id>/submission?...submitType=publishing-post` is also typed/keyed into the omnibox.
+- Limitation that shapes the design: a click payload carries only an element index, never the page or button label. The guard cannot tell "click Publish" from "click a link", so every input action aimed at a browser (or at the unspecified frontmost app) counts as a mutation. Read actions (`capture`, `list_*`, `wait`, `scroll`, `focus_app`) pass.
+- The built-in `browser_*` tools (`browser_navigate{url}`, `browser_click{ref}`, `browser_type{ref,text}`, `browser_press{key}`, `browser_console{expression}`, `browser_cdp`, `browser_exec`) and `terminal` / `execute_code` (`$B goto|click|fill`, `curl`, `osascript`) are forbidden for Medium by the prompt but available, so they are covered too. Last navigated URL per `session_id` is remembered in `~/.hermes/cache/medium-guard-state.json` so `browser_click` on a Medium page is recognised.
+- Recent runs (2026-09-24 to 2026-10-04) all stopped before Medium mutation (`cron/output/cf72679130c9/*.md`), so there is no recent transcript of a successful mutation. Run transcripts live in `state.db`, which must not be opened ad hoc (see memory note on WAL), so tool-call shapes come from the Hermes source and the July blocker file, not a replayed session.
+
+## Hook payload and blocking semantics (evidence)
+
+`~/.hermes/hermes-agent/agent/shell_hooks.py` on mini:
+
+- stdin JSON: `{hook_event_name, tool_name, tool_input, session_id, cwd, profile, extra}`. `tool_input` is the tool's args dict (`_payload_fields`).
+- Block: exit code 2 (`BLOCK_EXIT_CODE`), stderr is the message; or stdout JSON `{"action":"block","message":...}` / `{"decision":"block","reason":...}`. The guard emits both.
+- `fail_closed: true` (config) blocks on timeout, spawn error, other non-zero exit, and unparseable stdout, for `pre_tool_call` only.
+- `model_tools.py::_pre_dispatch_guards` turns a block message into a tool error before dispatch, so the tool never runs.
+
+Gaps found in the Hermes side (these are why a hook alone is not claimed as complete):
+
+1. mini currently has NO hooks (`hermes hooks list`: "No shell hooks ... configured"); the `secret_guard` entry exists only on the main Mac.
+2. A hook is registered at process start, and only if allowlisted. `hooks_auto_accept: false` plus a non-TTY (cron, gateway) means a new, unapproved hook is silently skipped (`shell_hooks.register_from_config`, warning only). Approve it once interactively, and restart the gateway so the long-running process loads it.
+3. `HERMES_SAFE_MODE=1` skips all shell hooks.
+4. `model_tools._pre_dispatch_guards` swallows exceptions raised by the dispatcher itself (`except Exception: logger.debug(...)`) and proceeds. `fail_closed` covers the hook subprocess, not a bug in the dispatcher.
+5. Whether delegated child agents fire `pre_tool_call` in the parent's hook registry was not verified.
+
+## Alternatives considered (Max's ordered list)
+
+| # | Option | Synchronous choke point? | Bypass paths left | Evidence |
+|---|---|---|---|---|
+| 1 | Guarded release artifact (`release/medium-final.md` exists only after exact-hash PASS) | No, on its own. It is a precondition, not a gate | Agent can read and paste `article-v*.md` / `article-healed-*.md` from the same package; same Unix user, nothing forces use of the release file | Package layout in `fingerprint-gate-integration.md`; Hermes runs as `maxsmacmini` with full file access |
+| 2 | Wrapper around the Medium publish action/tool | No such action exists to wrap. Publishing is UI clicks through `computer_use` | n/a | Tool inventory above; Medium has no maintained write API in this stack |
+| 3 | Dedicated Hermes publish skill/tool requiring authorization | A skill is prompt text, not synchronous. A real tool (plugin that authorizes then drives the UI) would be, but only if raw `computer_use` input to Medium is also blocked, which is the hook again | Skill form: model can ignore it. `medium-visible-ui-mutation` is `disable-model-invocation`, exists only in `codex-memory-mirror`, and is not in the job's skill list | Skill front matter; `hermes cron list` skills for `cf72679130c9`; earlier runs log "skill not found ... loaded manually from disk" |
+| 4 | Capability minted only from a valid PASS | Yes for "no mutation without a currently valid authorization": `release/ACTIVE.json` names the package, `release verify` runs synchronously inside the `pre_tool_call` hook on every mutating call | Content paste is only partly checked (below); hook availability caveats 1-5 above | `scripts/hermes/medium_publish_guard.py`, 59 tests; Hermes source above |
+| 5 | Stage final bytes where Hermes cannot read them until authorized | No. Requires an OS boundary (second user, sandbox). A hook-based read block is the same hook dependency and is bypassable via `terminal` tricks | Same-user file access | `secret_guard.py` approach is heuristic; no separate user for Hermes on mini |
+
+Chosen and implemented: option 4 enforced through the `pre_tool_call` hook, plus option 1 as a precondition (the prompt tells Hermes to paste only `release/medium-final.md`), plus byte checks the hook can do:
+
+- `computer_use type`: any typed string longer than 40 chars must be a whitespace-normalised substring of the active package's `release/medium-final.md`.
+- `pbcopy` / clipboard writes (terminal): must reference `release/medium-final`. This is the paste-source check.
+
+Honest answer to "is there a fully reliable synchronous point": there is no reliable synchronous guarantee about the exact bytes that reach Medium. The hook reliably (by source reading, not by live test) blocks Medium-bound input when there is no valid release. It cannot see clipboard contents on `cmd+v`, cannot read the page, and cannot tell a Publish click from any other click. Therefore: keep unattended publish and schedule disabled; require the human approval step (already in the prompt) for the scheduling click. The nightly integrity check is a detector, not the guarantee.
+
+Unclosed bypasses:
+
+1. Clipboard contents at `cmd+v` (hook sees the keypress, not the clipboard). Mitigated only by the `pbcopy` source rule and the prompt.
+2. Release valid, then the agent types/pastes other bytes through paths the hook does not classify (for example a JS `execCommand` through a tool name outside `computer_use|browser_*|terminal|execute_code`; the matcher in the snippet lists those four families only).
+3. Hook not registered (not allowlisted, safe mode, gateway not restarted) or dispatcher exception (gaps 2-4 above). Verify after applying with `hermes hooks list` and by running `hermes hooks test` against a denial fixture.
+4. `computer_use` with `app` naming a non-browser app is allowed (for example a Finder click). Typing into Chrome through a different app name than `BROWSER_APP_RE` matches is not caught; an omitted `app` is caught.
+5. Another process on mini (Codex, Claude, a human shell) touching the same browser is outside Hermes entirely.
+6. Mutation-like detection in `terminal` is regex based; an obfuscated command (base64, split strings) that never mentions `medium.com` and never calls `osascript/cliclick/cua-driver/pbcopy` evades it.
+
+## Apply on mini (lead, after review)
+
+1. Merge this PR chain and `git pull` on mini; confirm `scripts/hermes/medium_publish_guard.py` is executable (`chmod +x`; it has a `python3` shebang, and the guard shells out to `uv run --python 3.12` for verify only).
+2. Add under `hooks:` in `~/.hermes/config.yaml` (the file has no `hooks:` block on mini today; the second entry mirrors the main Mac's secret_guard only if wanted):
+
+```yaml
+hooks:
+  pre_tool_call:
+    - command: /Users/maxsmacmini/Desktop/Projects/social-poster/scripts/hermes/medium_publish_guard.py
+      matcher: ^(computer_use|browser_.*|terminal|execute_code)$
+      timeout: 90
+      fail_closed: true
+```
+
+`timeout: 90` must exceed the guard's own 75 s verify timeout. Matcher is a full-match regex (`fullmatch`).
+
+3. Approve and load: run `hermes --accept-hooks hooks list` once (records the allowlist entry in `~/.hermes/shell-hooks-allowlist.json`), then restart the Hermes gateway (kills running agents; do it between cron slots). Check `hermes hooks list` shows the entry as allowed.
+4. Smoke without touching Medium: `hermes hooks test pre_tool_call` is for the default synthetic payload; instead pipe fixtures by hand: `echo '{"tool_name":"computer_use","tool_input":{"action":"click","element":1}}' | scripts/hermes/medium_publish_guard.py; echo $?` should print the block JSON and exit 2 with no `ACTIVE.json`.
+5. `ACTIVE.json` contract: `data/article-workspace/release/ACTIVE.json` = `{"package": "<slug or absolute dir>"}`, written by the release tooling (or the prompt step below) only after `release authorize` exit 0. Remove or overwrite it when the article is done so the next mutation is blocked until a new authorization.
+
+## Cron prompt patch (job `cf72679130c9`, applied via `hermes cron edit`)
+
+Insert this block immediately before the existing line "Medium mutation has two musts" in the prompt (also in `docs/hermes/youtube-medium-cron.prompt.txt`):
+
+```text
+Fingerprint release gate (mandatory, mechanical):
+- Before ANY Medium draft, update, paste, schedule, or publish step for an article package, run on the final candidate: `cd /Users/maxsmacmini/Desktop/Projects/social-poster && ~/.local/bin/uv run --python 3.12 python -m scripts.fingerprint_eval.release authorize --package <package-dir>`.
+- Exit 0: write `{"package": "<package-dir>"}` to `data/article-workspace/release/ACTIVE.json`, then paste ONLY the bytes of `<package-dir>/release/medium-final.md` (copy with `pbcopy < <package-dir>/release/medium-final.md`). Never paste article-v*.md, article-healed-*.md, or any rewritten text.
+- Exit 3 (quarantined, needs review) or 4 (infra quarantine): do NOT touch Medium for this article. Record the exit code and the reason from `evals/fingerprint-gate/SUMMARY.md` in workflow.json, notify, and continue with the next article in the queue.
+- Any other exit: treat as 4.
+- After finishing (or abandoning) the Medium step, delete `data/article-workspace/release/ACTIVE.json`.
+- A Hermes pre_tool_call hook runs `release verify` before every Medium-bound click, key, type, and navigation and will block the call if the release is missing, stale, or for different bytes. A block is a final answer for that article. Do not retry through another tool, the browse CLI, CDP, osascript, or the API.
+- Releasing never replaces the human approval gate. Scheduling still requires Max's approval as above.
+```
+
+## Nightly watchdog cron
+
+`hermes cron create --script` only accepts scripts under `~/.hermes/scripts/`, so install this wrapper first as `~/.hermes/scripts/fingerprint_nightly.sh` (executable). Matrix targets resolve empty on mini today (see 2026-09-26 and 2026-10-04 run reports), so the wrapper tries Matrix and always prints the summary for local delivery:
+
+```bash
+#!/usr/bin/env bash
+set -uo pipefail
+REPO=/Users/maxsmacmini/Desktop/Projects/social-poster
+cd "$REPO" || { echo "fingerprint nightly: repo missing"; exit 1; }
+out=$("$HOME/.local/bin/uv" run --python 3.12 python -m scripts.fingerprint_eval.nightly 2>&1)
+rc=$?
+summary=$(printf '%s\n' "$out" | tail -40)
+if [ "$rc" -ne 0 ] || printf '%s' "$out" | grep -q CRITICAL; then
+  hermes send --to matrix:hermes "Fingerprint nightly (rc=$rc): $summary" >/dev/null 2>&1 || true
+fi
+printf 'fingerprint nightly rc=%s\n%s\n' "$rc" "$summary"
+exit 0
+```
+
+Create the job (03:40 daily; `--no-agent` so no LLM tokens, stdout delivered locally):
+
+```bash
+hermes cron create "40 3 * * *" --name fingerprint-nightly --no-agent \
+  --script fingerprint_nightly.sh --deliver local --workdir /Users/maxsmacmini/Desktop/Projects/social-poster
+```
+
+The nightly is read-only over article prose; the only writes are reports under `data/article-workspace/reports/fingerprint-nightly/` and `authorize` retries of infra quarantines.
+
+## Tests
+
+`~/.local/bin/uv run --python 3.12 --with pytest python -m pytest -q scripts/hermes` (59 tests, verify stubbed). Covered: every mutation shape denied with no active release, with failing verify, and allowed with a valid release; read-only Medium navigation allowed; stale release (verify exit 1), verify timeout, missing `ACTIVE.json`, corrupt `ACTIVE.json`, missing package dir denied; typed-text and clipboard-source checks; exit-code/stdout contract; unparseable payload and guard crash fail closed for mutation-like calls.
