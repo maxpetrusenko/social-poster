@@ -486,6 +486,23 @@ def decide(payload: dict[str, Any], env: dict[str, str] | None = None,
                             f"authorize --package <dir>` and paste only release/medium-final.md.", True)
 
 
+def log_decision(env: dict[str, str], payload: dict[str, Any], allow: bool, reason: str, note: str = "") -> None:
+    """Append-only JSONL decision log (observability; never affects the decision)."""
+    try:
+        import datetime
+        home = Path(env.get("HERMES_HOME") or Path.home() / ".hermes")
+        path = Path(env.get("MEDIUM_GUARD_LOG") or home / "logs" / "medium-guard-decisions.jsonl")
+        path.parent.mkdir(parents=True, exist_ok=True)
+        args = payload.get("tool_input") if isinstance(payload.get("tool_input"), dict) else {}
+        rec = {"ts": datetime.datetime.now(datetime.timezone.utc).isoformat().replace("+00:00", "Z"),
+               "session_id": payload.get("session_id"), "tool": payload.get("tool_name"), "allow": allow,
+               "reason": reason[:300], "note": note, "args_preview": json.dumps(args)[:160]}
+        with open(path, "a", encoding="utf-8") as fh:
+            fh.write(json.dumps(rec) + "\n")
+    except Exception:  # noqa: BLE001
+        pass
+
+
 def _block(reason: str) -> int:
     sys.stdout.write(json.dumps({"action": "block", "message": reason}))
     sys.stderr.write(reason + "\n")
@@ -510,6 +527,9 @@ def main(stdin: Any = None, env: dict[str, str] | None = None,
         if crude:
             return _block(f"medium_publish_guard crashed on a mutation-like call ({type(exc).__name__}: {exc}); failing closed")
         return 0
+    eff = os.environ if env is None else env
+    if (d.mutation or not d.allow) and (env is None or "MEDIUM_GUARD_LOG" in eff or "HERMES_HOME" in eff):
+        log_decision(eff, payload, d.allow, d.reason, "mutation")
     return 0 if d.allow else _block(d.reason)
 
 

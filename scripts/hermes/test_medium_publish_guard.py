@@ -277,3 +277,11 @@ def test_right_click_always_blocked_and_enter_rules(env):
 def test_read_actions_still_allowed_before_receipt(env):
     for a in ({"action": "capture"}, {"action": "scroll", "direction": "down"}, {"action": "list_windows"}):
         assert g.decide(payload("computer_use", a), env, bad, good_clip).allow
+
+
+def test_decision_log_written_when_configured(env, tmp_path):
+    env["MEDIUM_GUARD_LOG"] = str(tmp_path / "d.jsonl")
+    run_main(MUTATIONS["nav_edit"], env, bad)
+    run_main(READS["snapshot"], env, bad)
+    rows = [json.loads(x) for x in (tmp_path / "d.jsonl").read_text().splitlines()]
+    assert len(rows) == 1 and rows[0]["allow"] is False and rows[0]["tool"] == "browser_navigate"
