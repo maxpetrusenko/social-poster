@@ -1,0 +1,339 @@
+{
+  "slug": "youtube-body-thinks-before-mind-bgyi1l1p4nw",
+  "writer": {
+    "model": "codex",
+    "family": "openai",
+    "evidence": "version.json ratingModel='Codex editorial adversarial pass'"
+  },
+  "reference": {
+    "author_docs": 64,
+    "author_words": 36906,
+    "author_cutoff": "< 2023-01-01",
+    "pipeline_docs": 28
+  },
+  "original": {
+    "n_words": 1551,
+    "n_sentences": 152,
+    "n_paragraphs": 61,
+    "mean_sent_len": 10.203947368421053,
+    "em_dash_per_1k": 0.0,
+    "first_person_per_1k": 1.2894906511927788,
+    "heading_per_1k": 4.513217279174726,
+    "list_items_per_1k": 3.8684719535783367,
+    "one_sentence_para_rate": 0.39344262295081966,
+    "repeated_ngram_rate": {
+      "3": 0.012265978050355068,
+      "4": 0.0,
+      "5": 0.0,
+      "mean": 0.004088659350118356
+    }
+  },
+  "author_style_distance_before": {
+    "sentence_length_jsd": 0.20559925676107438,
+    "paragraph_length_jsd": 0.1053793346532492,
+    "punctuation_jsd": 0.2817248460760422,
+    "function_word_cosine": 0.1928332182937954,
+    "burrows_delta": 0.6866970761715637,
+    "composite": 0.1963841639460403
+  },
+  "pipeline_corpus_outlier_before": {
+    "distance_to_corpus_centroid": 0.29181845540968676,
+    "corpus_mean_distance": 0.18039545040911956,
+    "z": 2.126895159766958,
+    "percentile": 0.9642857142857143,
+    "n_corpus_docs": 28
+  },
+  "structural_templates_original": {
+    "rule_of_three_lists": {
+      "count": 6,
+      "examples": [
+        "We notice, decide, remember, and explain.",
+        "The cells tracked word meaning, grammatical roles, and the probability of what might come next.",
+        "It is often caught late, spreads fast, and has resisted many of the therapies that changed other cancers."
+      ]
+    }
+  },
+  "author_centroid_summary": {
+    "mean_sent_len": 12.731546110432209,
+    "em_dash_per_1k": 3.9508580604268357,
+    "first_person_per_1k": 12.47146613173892,
+    "one_sentence_para_rate": 0.5297333929319072
+  },
+  "extractor": {
+    "model": "claude-sonnet",
+    "family": "anthropic",
+    "backend": "claude-cli",
+    "auth": "claude -p subscription, ANTHROPIC_API_KEY stripped from child env, apiKeySource=none verified",
+    "note": "family guard applies to rewriters only; extractor may be any family"
+  },
+  "rewriters": {
+    "claude-sonnet": {
+      "rewriter": {
+        "model": "claude-sonnet",
+        "family": "anthropic",
+        "backend": "claude-cli"
+      },
+      "control": false,
+      "transform": "cross-family A->B proposition regeneration",
+      "semantic_similarity": {
+        "whole": 0.9894932508064497,
+        "section_mean": 0.956696072897471,
+        "section_min": 0.917418290327912,
+        "per_section": {
+          "(intro)": 0.9198967670609044,
+          "The hippocampus keeps reading after the lights go out": 0.9608790286154437,
+          "A dream can spend the night on your behalf": 0.9615706239393643,
+          "Cancer is a control-system failure": 0.917418290327912,
+          "A tumor can change the neighborhood rules": 0.9859149860375894,
+          "A tiny gland can lock a whole life state": 0.9235295656686472,
+          "Repair may be a locked program": 0.9766715824188794,
+          "The hidden layer keeps winning": 0.9643838120084991,
+          "About the author": 0.9999999999999999
+        }
+      },
+      "claims_total": 154,
+      "claims_preserved": 154,
+      "claims_changed": 0,
+      "claims_missing": 0,
+      "claims_unjudged": 0,
+      "flagged_claims": [],
+      "judge": "claude-sonnet",
+      "structure_preserved": {
+        "headings": {
+          "original": 9,
+          "rewrite": 9,
+          "preserved": true,
+          "missing": []
+        },
+        "images": {
+          "original": 10,
+          "rewrite": 10,
+          "preserved": true,
+          "missing": []
+        },
+        "codes": {
+          "original": 0,
+          "rewrite": 0,
+          "preserved": true,
+          "missing": []
+        },
+        "links": {
+          "original": 24,
+          "rewrite": 29,
+          "preserved": true,
+          "missing": []
+        },
+        "all_preserved": true
+      },
+      "author_style_distance_after": {
+        "sentence_length_jsd": 0.19089013612373232,
+        "paragraph_length_jsd": 0.2866069766669811,
+        "punctuation_jsd": 0.2937409034696366,
+        "function_word_cosine": 0.17007207089131393,
+        "burrows_delta": 0.7431995071621322,
+        "composite": 0.235327521787916
+      },
+      "author_style_distance_delta": {
+        "sentence_length_jsd": -0.01470912063734206,
+        "paragraph_length_jsd": 0.1812276420137319,
+        "punctuation_jsd": 0.012016057393594404,
+        "function_word_cosine": -0.022761147402481474,
+        "burrows_delta": 0.05650243099056851,
+        "composite": 0.03894335784187569
+      },
+      "pipeline_corpus_outlier": {
+        "distance_to_corpus_centroid": 0.2660975647858629,
+        "corpus_mean_distance": 0.18039545040911956,
+        "z": 1.6359226018788644,
+        "percentile": 0.8928571428571429,
+        "n_corpus_docs": 28
+      },
+      "repeated_ngram_rate": {
+        "before": 0.004088659350118356,
+        "after": 0.005943261012505104
+      },
+      "sentence_length_jsd": 0.20296282007538446,
+      "paragraph_length_jsd": 0.23798588578849944,
+      "structural_templates": {
+        "rule_of_three_lists": {
+          "count": 10,
+          "examples": [
+            "This Russian-language science digest covers infrasound, anesthesia, cancer, and spinal repair.",
+            "The older model of the brain gives consciousness a central executive job: it notices, decides, remembers, and explains.",
+            "Patients describe whole nights of plots, missions, conversations, travel, conflict, and obligation."
+          ]
+        }
+      },
+      "n_words": 1797
+    },
+    "control-codex": {
+      "rewriter": {
+        "model": "control-codex",
+        "family": "openai",
+        "backend": "codex-cli"
+      },
+      "control": true,
+      "transform": "same-family A->A control rewrite",
+      "semantic_similarity": {
+        "whole": 0.9891804577779624,
+        "section_mean": 0.9645655348474018,
+        "section_min": 0.9230906654923531,
+        "per_section": {
+          "(intro)": 0.9230906654923531,
+          "The hippocampus keeps reading after the lights go out": 0.9574825903537016,
+          "A dream can spend the night on your behalf": 0.9579123987312383,
+          "Cancer is a control-system failure": 0.9783017917137172,
+          "A tumor can change the neighborhood rules": 0.9812234320332281,
+          "A tiny gland can lock a whole life state": 0.942837584456254,
+          "Repair may be a locked program": 0.9771362046067429,
+          "The hidden layer keeps winning": 0.9631051462393818,
+          "About the author": 0.9999999999999999
+        }
+      },
+      "claims_total": 154,
+      "claims_preserved": 153,
+      "claims_changed": 1,
+      "claims_missing": 0,
+      "claims_unjudged": 0,
+      "flagged_claims": [
+        {
+          "section": "The hidden layer keeps winning",
+          "claim": "Consciousness remains part of the picture and becomes more interesting, as the layer that makes a world reportable after deeper systems have already acted.",
+          "verdict": "changed",
+          "reason": "Drops 'becomes more interesting'; says only that consciousness remains part of picture."
+        }
+      ],
+      "judge": "claude-sonnet",
+      "structure_preserved": {
+        "headings": {
+          "original": 9,
+          "rewrite": 9,
+          "preserved": true,
+          "missing": []
+        },
+        "images": {
+          "original": 10,
+          "rewrite": 10,
+          "preserved": true,
+          "missing": []
+        },
+        "codes": {
+          "original": 0,
+          "rewrite": 0,
+          "preserved": true,
+          "missing": []
+        },
+        "links": {
+          "original": 24,
+          "rewrite": 27,
+          "preserved": true,
+          "missing": []
+        },
+        "all_preserved": true
+      },
+      "author_style_distance_after": {
+        "sentence_length_jsd": 0.198161659976995,
+        "paragraph_length_jsd": 0.29750114705240127,
+        "punctuation_jsd": 0.28539418448177695,
+        "function_word_cosine": 0.1642343737633376,
+        "burrows_delta": 0.7519481633678949,
+        "composite": 0.23632284131862769
+      },
+      "author_style_distance_delta": {
+        "sentence_length_jsd": -0.0074375967840793755,
+        "paragraph_length_jsd": 0.19212181239915208,
+        "punctuation_jsd": 0.0036693384057347456,
+        "function_word_cosine": -0.0285988445304578,
+        "burrows_delta": 0.06525108719633121,
+        "composite": 0.03993867737258738
+      },
+      "pipeline_corpus_outlier": {
+        "distance_to_corpus_centroid": 0.2770551844046264,
+        "corpus_mean_distance": 0.18039545040911956,
+        "z": 1.8450868416119155,
+        "percentile": 0.9285714285714286,
+        "n_corpus_docs": 28
+      },
+      "repeated_ngram_rate": {
+        "before": 0.004088659350118356,
+        "after": 0.023139416061016032
+      },
+      "sentence_length_jsd": 0.2562732299738241,
+      "paragraph_length_jsd": 0.2546374024227545,
+      "structural_templates": {
+        "rule_of_three_lists": {
+          "count": 14,
+          "examples": [
+            "This science digest, published in Russian, covers infrasound, anesthesia, cancer, and spinal repair.",
+            "The older model of the brain gives consciousness a central executive role: it notices, decides, remembers, and explains.",
+            "Hippocampal cells tracked word meanings, grammatical roles, and the probability of which word might come next."
+          ]
+        }
+      },
+      "n_words": 1789
+    }
+  },
+  "lanes": {
+    "extraction": "claude:sonnet, 154 propositions in 19 segments",
+    "rewrite:claude:sonnet": "ok",
+    "rewrite:codex (control)": "ok"
+  },
+  "watermark_tests": {
+    "signal_family": "watermark",
+    "research_only": true,
+    "run": false,
+    "reason": "no vendor keys; GPT/Claude text watermark not verifiable"
+  },
+  "provenance": {
+    "signal_family": "provenance",
+    "status": "n/a for text"
+  },
+  "tier": "fast",
+  "research_tier": {
+    "run": false,
+    "status": "stub; see docs"
+  },
+  "metric_groups": {
+    "style_shape": {
+      "signal_family": "stylistic_structural",
+      "keys": [
+        "sentence_length_jsd",
+        "paragraph_length_jsd",
+        "repeated_ngram_rate",
+        "structural_templates",
+        "pipeline_corpus_outlier"
+      ]
+    },
+    "author_distance": {
+      "signal_family": "author_anchor",
+      "keys": [
+        "author_style_distance_before",
+        "author_style_distance_after",
+        "author_style_distance_delta"
+      ]
+    },
+    "meaning": {
+      "signal_family": "semantic_retention",
+      "keys": [
+        "semantic_similarity",
+        "claims_preserved",
+        "claims_changed",
+        "claims_missing",
+        "structure_preserved"
+      ]
+    },
+    "watermark_tests": {
+      "signal_family": "watermark",
+      "keys": [
+        "watermark_tests"
+      ]
+    },
+    "provenance": {
+      "signal_family": "provenance",
+      "keys": [
+        "provenance"
+      ]
+    }
+  },
+  "blockers": []
+}
