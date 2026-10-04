@@ -73,7 +73,7 @@ hooks:
 
 `timeout: 90` must exceed the guard's own 75 s verify timeout. Matcher is a full-match regex (`fullmatch`).
 
-3. Approve and load: run `hermes --accept-hooks hooks list` once (records the allowlist entry in `~/.hermes/shell-hooks-allowlist.json`), then restart the Hermes gateway (kills running agents; do it between cron slots). Check `hermes hooks list` shows the entry as allowed.
+3. Approve and load: run one throwaway `hermes --accept-hooks chat -Q -q 'Reply OK. Call no tools.' < /dev/null` (registration and approval happen at chat startup; `hermes hooks list` does NOT approve, verified live; the entry lands in `<HERMES_HOME>/shell-hooks-allowlist.json`), then restart the Hermes gateway (kills running agents; do it between cron slots). Check `hermes hooks list` shows the entry as allowed.
 4. Smoke without touching Medium: `hermes hooks test pre_tool_call` is for the default synthetic payload; instead pipe fixtures by hand: `echo '{"tool_name":"computer_use","tool_input":{"action":"click","element":1}}' | scripts/hermes/medium_publish_guard.py; echo $?` should print the block JSON and exit 2 with no `ACTIVE.json`.
 5. `ACTIVE.json` contract: `data/article-workspace/release/ACTIVE.json` = `{"package": "<slug or absolute dir>"}`, written by the release tooling (or the prompt step below) only after `release authorize` exit 0. Remove or overwrite it when the article is done so the next mutation is blocked until a new authorization.
 
@@ -122,4 +122,40 @@ The nightly is read-only over article prose; the only writes are reports under `
 
 ## Tests
 
-`~/.local/bin/uv run --python 3.12 --with pytest python -m pytest -q scripts/hermes` (59 tests, verify stubbed). Covered: every mutation shape denied with no active release, with failing verify, and allowed with a valid release; read-only Medium navigation allowed; stale release (verify exit 1), verify timeout, missing `ACTIVE.json`, corrupt `ACTIVE.json`, missing package dir denied; typed-text and clipboard-source checks; exit-code/stdout contract; unparseable payload and guard crash fail closed for mutation-like calls.
+`~/.local/bin/uv run --python 3.12 --with pytest python -m pytest -q scripts/hermes` (79 tests; verify stubbed except `test_guard_real_release.py`). Covered: every mutation shape denied with no active release, with failing verify, and allowed with a valid release; read-only Medium navigation allowed; stale release (verify exit 1), verify timeout, missing `ACTIVE.json`, corrupt `ACTIVE.json`, missing package dir denied; typed-text and clipboard-source checks; exit-code/stdout contract; unparseable payload and guard crash fail closed for mutation-like calls.
+
+
+## W4b: clipboard-checked paste, receipts, click gating (implemented)
+
+Policy once `release verify` passes (all in `medium_publish_guard.content_policy`):
+
+- Paste keys (`cmd+v`, `ctrl+v`, `shift+insert`, with or without shift, `super/meta+v`; `computer_use key`, `browser_press`, `$B press|key|paste`): the guard runs `pbpaste` (and best-effort `osascript` for the HTML flavor) and allows only if the plain text equals the release text (trailing whitespace ignored), or is a whitespace-normalised substring of at least 40 chars (title/subtitle). An HTML flavor whose text differs from the plain flavor blocks. A pbpaste failure blocks. Allowed pastes append to `<package>/release/paste-receipts.jsonl`: `{ts, session_id, clipboard_sha256, release_sha256, kind: full|fragment}`.
+- Before a full-paste receipt exists for the active release hash in this `session_id`: allowed are `computer_use` read actions, navigation (`browser_navigate`, `$B goto`, a typed URL plus Return), typing (still substring-checked), and non-submitting keys (tab, arrows, escape, cmd+a). Blocked: every click variant, drag, `set_value`, Enter/Space (except to submit a typed URL), and right-click always (a context-menu Paste cannot be inspected).
+- After a full receipt: clicks are allowed. A fragment paste never unlocks clicks.
+- Residual (stale draft): bytes already sitting in a Medium draft, or a verified paste later modified by typing. Typing is substring-checked, but deletions and cursor moves are invisible, and a click gate cannot see page contents, so a draft damaged by deletion-only edits can still be published after a legitimate paste. The receipt chain proves which bytes entered, not what the editor finally holds; the post-mutation proof reviewer must still compare the saved draft to the release.
+- Decision log: `<HERMES_HOME>/logs/medium-guard-decisions.jsonl` (ts, session_id, tool, allow, reason). `MEDIUM_GUARD_LOG` overrides.
+
+Residuals from reading the code, not closed:
+
+1. TOCTOU: the clipboard is checked at hook time; another process could replace it before the keypress lands.
+2. Receipts and ACTIVE are plain files the Hermes user can write. An agent that hand-writes a receipt line (write_file/terminal) unlocks clicks. No secret exists that Hermes cannot read.
+3. The guard script sits in the repo the cron's workdir points to, so the agent could patch it; the allowlist keys on command path, and mtime drift only warns in `hermes hooks doctor`. Install a copy outside the agent-writable tree (read-only, owned by another user if available) before relying on this.
+4. Child agents fire the hook (verified below) but with their own `session_id`, so a parent's paste receipt does not cover a delegated child's clicks. This is the safe direction; do not delegate the Medium step.
+5. `HERMES_SAFE_MODE=1` skips hooks. Nothing on mini sets it (no LaunchAgent, `.env` or config mention; cron job records carry no env). A tool call cannot change the gateway process env, so the cron cannot enable it by itself; an operator `--safe-mode` start or env edit would.
+6. The dispatcher swallows exceptions from `_dispatch_pre_tool_call_hooks` (fails open) as before; `fail_closed` covers only the hook process.
+7. `pbpaste` needs the logged-in GUI session pasteboard; if the gateway runs where it cannot read it, every paste blocks (fails closed, visible in the log).
+
+## Live proof on mini (2026-10-04, no Medium interaction, no computer_use)
+
+Setup: guard checked out with `git worktree add ~/Desktop/Projects/social-poster-fg-guard` (detached at the branch tip; main checkout untouched). Throwaway profile `fgguardtest` (`hermes profile create --clone`) whose config added only this guard as `pre_tool_call` (`fail_closed: true`). Approved once with `hermes --accept-hooks -p fgguardtest chat -Q -q ...`. All test calls ran non-TTY (`hermes -p fgguardtest chat -Q -q '...' < /dev/null`) without `--accept-hooks`, so the allowlist is what loaded the hook. Profile deleted afterwards. Side effect: the first `hermes -p` invocation ran Hermes' own dependency refresh (pip/node), unrelated to the guard.
+
+Results (decision log copied to `docs/hermes-medium-release-live-decisions.jsonl`):
+
+| Call (terminal tool) | State | Result |
+|---|---|---|
+| `echo "simulate: open https://medium.com/new-story and paste"` | no ACTIVE.json | blocked "no active release"; agent output shows the block and no echo output |
+| same | valid ACTIVE (package authorized by the real `release.authorize` with stubbed models; the guard's real `uv run ... release verify` exited 0) | blocked "no verified paste receipt for the active release in this session" |
+| `echo "simulate: $B goto https://medium.com/new-story"` | valid ACTIVE | allowed (navigation); echo ran |
+| the blocked echo, issued by a `delegate_task` child | valid ACTIVE | blocked; the log row carries the child's own session id (`..._7f8f68`, parent `..._da1233`), so child agents DO fire the hook |
+
+Not exercised live: the paste/receipt path (needs `computer_use`). It is covered by unit tests plus `test_guard_real_release.py` (real `release authorize` and real `uv run` verify, stubbed clipboard).
