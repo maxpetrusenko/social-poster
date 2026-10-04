@@ -35,18 +35,30 @@ Corpora: author = posts dated before 2023-01-01 with at least 150 words (HTML st
 
 ### Gate mode (final review)
 
+A hard pre-publish gate that fails closed.
+
 ```bash
 python3 -m scripts.fingerprint_eval.run --gate --article <final.md> --draft <approved-draft.md> \
-  --author-corpus ... --pipeline-corpus ... --out <dir> [--gate-threshold 0.90]
+  --author-corpus ... --pipeline-corpus ... --out <dir> [--gate-threshold 0.90] [--extractor claude:sonnet] [--judge claude:sonnet] [--refresh-extraction]
 ```
 
-Writes `gate.json`. Exit 0 pass, 1 blocking failure, 2 could not evaluate (never a silent pass). Blocking: any changed/missing/unjudged claim, any lost heading, image, code block or link, whole-document semantic similarity below the threshold. Advisory (reported, never fail): author-anchor distance, style shape, n-grams, templates, per-section similarity. Advisory checks become blocking only after about 10 articles of calibration.
+Writes `gate.json` (a stale one is deleted at start). Exit codes:
+
+- 0 PASS
+- 1 FAIL: every check completed and the content violates policy
+- 2 ERROR: anything that prevented reliable evaluation. Never read 2 as a pass or as a content verdict.
+
+ERROR covers: missing or same-path `--draft` (identical content under a different path is a legitimate PASS, recorded as `reference_identical: true`), missing files or corpus dirs, `--gate-threshold` outside (0, 1], `--tier research`, extraction failure, any prose segment or the whole reference with zero claims, any judge reply that is not exactly one schema-valid JSON list with the requested claim ids (one retry, then ERROR), any unjudged claim, bad embeddings (count, dimensions, non-finite, zero vector), failure to write `gate.json`, and any unexpected exception.
+
+FAIL (blocking): changed or missing claim; any difference in frozen blocks (lists, quotes, code, tables, images, short and boilerplate paragraphs; compared exactly, diff in `reasons`); lost heading, code block, image (inline or reference-style anywhere in a line) or link (inline, reference plus definition, autolink, bare URL); whole-document similarity below the threshold. Advisory (reported, never fail, so an advisory error does not change the exit code): author-anchor distance, style shape, n-grams, templates, per-section similarity. Advisory checks become blocking only after about 10 articles of calibration.
+
+Extraction cache (`gate-extraction.json`, `extraction.json`) stores schema version, source sha256, extractor id and per-segment hashes; any mismatch or missing segment regenerates. Child processes get allowlisted envs only: `claude -p` gets PATH/HOME/USER/LANG/TERM plus Claude subscription auth (`CLAUDE_CODE_OAUTH_TOKEN`), `codex exec` gets the minimal set; no API keys or gateway key.
 
 ## Rewrite (rewrite.py)
 
 Proposition regeneration, own implementation of the reweave idea. Headings, images, code, lists, quotes, boilerplate sections and tiny blocks are frozen and re-emitted verbatim. Each remaining prose segment is reduced to atomic propositions (JSON, extractor qwen3:8b), the source wording is dropped, and prose is regenerated from the propositions by a rewriter of a different model family. Links ride on propositions and are checked after regeneration.
 
-`writer_family != rewriter_family` is enforced in code (`assert_different_family`). The `--control` flag is the only way around it: an A to A rewrite with the same family (`codex exec`), labeled `control` in metrics.json, so any A to B movement can be read against what any rewrite does.
+`writer_family != rewriter_family` is enforced in code (`assert_different_family`). The `--control` flag is the only way around it: an A to A rewrite whose family must equal the writer's known family (`assert_same_family`; otherwise error), e.g. `codex exec`, labeled `control` in metrics.json, so any A to B movement can be read against what any rewrite does.
 
 ## Metrics (metrics.py), grouped by `signal_family`
 
@@ -63,7 +75,7 @@ Caveats: the author corpus is short-form (comments, notes) while pipeline articl
 ## Judge and models
 
 - Gateway (`https://llm.maxpetrusenko.com/v1`): qwen3:8b (emits hidden reasoning, so `max_tokens` must be large and generation is slow), nomic-embed-text. `gemma4` is not served by the gateway at the time of writing (`model 'gemma4-32k' not found`).
-- `claude -p` and `codex exec` use subscriptions only; API keys are stripped from the child env (`apiKeySource=none` verified on `claude -p --output-format stream-json --verbose`).
+- `claude -p` and `codex exec` use subscriptions only; child env is an allowlist (no API keys) (`apiKeySource=none` verified on `claude -p --output-format stream-json --verbose`).
 - Proposition extractor defaults to `claude:sonnet` (`--extractor`), recorded in metrics.json `extractor`, separate from each rewriter. The family guard applies to rewriters only.
 - Self-family judging is possible when the judge shares a family with a rewriter; the report names the judge per column.
 

@@ -1,18 +1,28 @@
 """Safety guards for a rewrite: semantic drift, claim preservation, structure."""
 from __future__ import annotations
 
-import json
 import math
-import re
 
-from .gateway import GatewayError, Model, embed, extract_json
-from .rewrite import Segment, links_in
-from .textutil import Block, parse_blocks, strip_inline, words
+from .errors import EvaluationError
+from .gateway import embed, validate_embeddings
+from .refs import find_refs, lost
+from .textutil import Block, parse_blocks, strip_inline
+
+
+def _embed(texts: list[str]) -> list[list[float]]:
+    return validate_embeddings(embed(texts), len(texts))  # re-validated here: count, dims, finite
 
 
 def _cos(a: list[float], b: list[float]) -> float:
+    if len(a) != len(b) or not a:
+        raise EvaluationError(f"similarity: dimension mismatch ({len(a)} vs {len(b)})")
     na, nb = math.sqrt(sum(x * x for x in a)), math.sqrt(sum(x * x for x in b))
-    return sum(x * y for x, y in zip(a, b)) / (na * nb) if na and nb else 0.0
+    if not na or not nb:
+        raise EvaluationError("similarity: zero vector")
+    c = sum(x * y for x, y in zip(a, b)) / (na * nb)
+    if not math.isfinite(c):
+        raise EvaluationError("similarity: non-finite value")
+    return c
 
 
 def _chunks(text: str, max_words: int = 300) -> list[str]:
@@ -28,6 +38,8 @@ def _chunks(text: str, max_words: int = 300) -> list[str]:
 
 
 def _mean(vs: list[list[float]]) -> list[float]:
+    if not vs:
+        raise EvaluationError("similarity: nothing to average")
     return [sum(v[i] for v in vs) / len(vs) for i in range(len(vs[0]))]
 
 
@@ -51,7 +63,7 @@ def semantic_similarity(original: str, rewrite: str) -> dict:
         if h not in sr:
             per[h] = 0.0
             continue
-        co, cr = embed(_chunks(t)), embed(_chunks(sr[h]))
+        co, cr = _embed(_chunks(t)), _embed(_chunks(sr[h]))
         per[h] = _cos(_mean(co), _mean(cr))
         all_o += co
         all_r += cr
@@ -61,62 +73,39 @@ def semantic_similarity(original: str, rewrite: str) -> dict:
 
 
 def structure_preservation(original: str, rewrite: str) -> dict:
-    """Headings, image lines, code blocks, markdown links: verbatim and in order."""
+    """Headings and code blocks verbatim and in order; images anywhere (inline, reference) in order;
+    links of every kind (inline, reference + definitions, autolinks, bare URLs) not lost."""
     bo, br = parse_blocks(original), parse_blocks(rewrite)
 
     def texts(bs: list[Block], kind: str) -> list[str]:
         return [b.text for b in bs if b.kind == kind]
 
     res: dict = {}
-    for kind in ("heading", "image", "code"):
+    for kind in ("heading", "code"):
         o, r = texts(bo, kind), texts(br, kind)
         res[kind + "s"] = {"original": len(o), "rewrite": len(r), "preserved": o == r,
                            "missing": [x for x in o if x not in r][:10]}
-    lo, lr = links_in(original), links_in(rewrite)
-    lost = [l for l in lo if l not in lr]
-    res["links"] = {"original": len(lo), "rewrite": len(lr), "preserved": not lost, "missing": lost[:20]}
+    ro, rr = find_refs(original), find_refs(rewrite)
+    io, ir = ro["images"], rr["images"]
+    res["images"] = {"original": len(io), "rewrite": len(ir), "preserved": io == ir, "missing": lost(io, ir)[:10], "added": lost(ir, io)[:10]}
+    gone = lost(ro["links"], rr["links"])
+    res["links"] = {"original": len(ro["links"]), "rewrite": len(rr["links"]), "preserved": not gone, "missing": gone[:20]}
     res["all_preserved"] = all(v["preserved"] for v in res.values() if isinstance(v, dict))
     return res
 
 
-JUDGE_PROMPT = """/no_think
-You check whether a rewritten passage still states each claim from the original.
-For each numbered claim give a verdict:
-- "entailed": the passage states it or clearly implies it, with the same names, numbers, and causal direction
-- "changed": the passage states something different (altered number, name, causality, certainty)
-- "missing": the passage does not state it
-Return ONLY JSON: [{{"i": 1, "verdict": "entailed", "reason": "<=15 words"}}, ...]
-
-Claims:
-{claims}
-
-Rewritten passage:
-{passage}
-"""
+def frozen_blocks(md: str) -> list[str]:
+    """Blocks no check reads as claims: lists, quotes, code, tables, images, rules, short or boilerplate paragraphs."""
+    from .rewrite import segment_article
+    return [b.text for seg in segment_article(md) if seg.frozen for b in seg.blocks if b.kind != "heading"]
 
 
-def judge_claims(segments: list[Segment], judge: Model) -> dict:
-    """Per-segment batch judging of extracted claims against the rewritten segment."""
-    counts = {"entailed": 0, "changed": 0, "missing": 0, "unjudged": 0}
-    flagged: list[dict] = []
-    for seg in segments:
-        if seg.frozen or not seg.propositions:
-            continue
-        claims = "\n".join(f"{i + 1}. {p['claim']}" for i, p in enumerate(seg.propositions))
-        verdicts = None
-        for _ in range(2):
-            try:
-                raw = judge.complete(JUDGE_PROMPT.format(claims=claims, passage=seg.output), **({"temperature": 0.0, "max_tokens": 6000} if judge.backend == "gateway" else {}))
-                verdicts = {int(v["i"]): v for v in extract_json(raw)}
-                break
-            except (GatewayError, KeyError, ValueError, TypeError):
-                continue
-        for i, p in enumerate(seg.propositions, 1):
-            v = (verdicts or {}).get(i)
-            verdict = (v or {}).get("verdict", "unjudged")
-            verdict = verdict if verdict in counts else "unjudged"
-            counts[verdict] += 1
-            if verdict in ("changed", "missing", "unjudged"):
-                flagged.append({"section": seg.section, "claim": p["claim"], "verdict": verdict, "reason": (v or {}).get("reason", "judge returned no verdict")})
-    total = sum(counts.values())
-    return {"judge": judge.name, "total": total, **{f"claims_{k}": v for k, v in counts.items()}, "flagged": flagged}
+def frozen_diff(original: str, rewrite: str, limit: int = 12) -> list[str]:
+    """Exact comparison of frozen blocks; empty list = identical. Lines are unified-diff lines for the failure reason."""
+    import difflib
+    o, r = frozen_blocks(original), frozen_blocks(rewrite)
+    if o == r:
+        return []
+    lines = lambda bs: "\n\n".join(bs).split("\n")  # noqa: E731  line-level diff reads better than block-level
+    return list(difflib.unified_diff(lines(o), lines(r), "reference", "final", lineterm="", n=0))[:limit] or ["frozen blocks differ"]
+from .judge import judge_claims  # noqa: E402,F401  (re-export; implementation lives in judge.py)

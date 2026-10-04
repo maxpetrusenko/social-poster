@@ -16,7 +16,7 @@ SENT_SPLIT_RE = re.compile(r"(?<=[.!?])[\"')\]]*\s+(?=[\"'(\[]?[A-Z0-9])")
 
 @dataclass
 class Block:
-    kind: str  # heading | image | code | paragraph | list | quote | rule
+    kind: str  # heading | image | code | paragraph | list | quote | table | rule
     text: str
 
 
@@ -32,7 +32,9 @@ def parse_blocks(md: str) -> list[Block]:
             text = "\n".join(buf).strip("\n")
             if text.strip():
                 first = text.lstrip().split("\n", 1)[0]
-                if LIST_RE.match(first):
+                if all(ln.strip().startswith("|") for ln in text.split("\n")) and len(text.split("\n")) >= 2:
+                    kind = "table"
+                elif LIST_RE.match(first):
                     kind = "list"
                 elif first.lstrip().startswith(">"):
                     kind = "quote"

@@ -6,6 +6,7 @@ printed, or placed in argv.
 from __future__ import annotations
 
 import json
+import math
 import os
 import re
 import ssl
@@ -14,6 +15,8 @@ import time
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
+
+from .errors import EvaluationError
 
 def normalize_base_url(url: str) -> str:
     """Doppler stores LLM_GATEWAY_URL without the /v1 suffix; OpenAI-compatible paths need it."""
@@ -53,7 +56,7 @@ def _ssl_ctx() -> ssl.SSLContext:
     return ctx
 
 
-class GatewayError(RuntimeError):
+class GatewayError(EvaluationError):
     pass
 
 
@@ -120,15 +123,68 @@ def chat(model: str, prompt: str, system: str | None = None, temperature: float 
     raise last or GatewayError("chat failed")
 
 
+def validate_embeddings(vectors: list, expected: int) -> list[list[float]]:
+    """Count must match inputs; one consistent non-zero dimension; every component a finite number."""
+    if not isinstance(vectors, list) or len(vectors) != expected:
+        raise GatewayError(f"embeddings: expected {expected} vectors, got {len(vectors) if isinstance(vectors, list) else type(vectors).__name__}")
+    dim = None
+    for v in vectors:
+        if not isinstance(v, list) or not v:
+            raise GatewayError("embeddings: empty or non-list vector")
+        if dim is None:
+            dim = len(v)
+        elif len(v) != dim:
+            raise GatewayError(f"embeddings: inconsistent dimensions {dim} vs {len(v)}")
+        if any(isinstance(x, bool) or not isinstance(x, (int, float)) or not math.isfinite(x) for x in v):
+            raise GatewayError("embeddings: non-finite or non-numeric component")
+        if not any(v):
+            raise GatewayError("embeddings: zero vector for non-empty input")
+    return vectors
+
+
 def embed(texts: list[str]) -> list[list[float]]:
+    if not texts:
+        raise GatewayError("embeddings: no inputs")
     data = _post("/embeddings", {"model": EMBED_MODEL, "input": texts})
-    return [d["embedding"] for d in sorted(data["data"], key=lambda d: d["index"])]
+    try:
+        items = data["data"]
+        if sorted(d["index"] for d in items) != list(range(len(texts))):
+            raise GatewayError("embeddings: response indices do not match inputs")
+        vectors = [d["embedding"] for d in sorted(items, key=lambda d: d["index"])]
+    except (KeyError, TypeError) as e:
+        raise GatewayError(f"embeddings: malformed response ({e!r})") from None
+    return validate_embeddings(vectors, len(texts))
+
+
+CLAUDE_ENV_KEYS = ("PATH", "HOME", "USER", "LOGNAME", "LANG", "LC_ALL", "TERM", "TMPDIR", "CLAUDE_CODE_OAUTH_TOKEN", "CLAUDE_CONFIG_DIR")
+CODEX_ENV_KEYS = ("PATH", "HOME", "USER", "LOGNAME", "LANG", "LC_ALL", "TERM", "TMPDIR", "CODEX_HOME")
+
+
+def child_env(keys: tuple[str, ...], environ=None) -> dict[str, str]:
+    """Allowlisted child env: nothing outside `keys` reaches a subprocess (no API keys, gateway key, Doppler tokens)."""
+    environ = os.environ if environ is None else environ
+    return {k: environ[k] for k in keys if k in environ}
+
+
+def claude_env(environ=None) -> dict[str, str]:
+    """claude -p: subscription auth only. ANTHROPIC_*, OPENAI_* and the gateway key are never copied."""
+    return child_env(CLAUDE_ENV_KEYS, environ)
+
+
+def codex_env(environ=None) -> dict[str, str]:
+    return child_env(CODEX_ENV_KEYS, environ)
+
+
+def _run(cmd: list[str], prompt: str, timeout: int, env: dict, label: str) -> subprocess.CompletedProcess:
+    try:
+        return subprocess.run(cmd, input=prompt, capture_output=True, text=True, timeout=timeout, env=env)
+    except (subprocess.TimeoutExpired, OSError) as e:
+        raise GatewayError(f"{label} could not run: {type(e).__name__}: {str(e)[:200]}") from None
 
 
 def claude_cli(prompt: str, model: str = "sonnet", timeout: int = 300) -> str:
     """Subscription `claude -p`; strips API keys so no API credits are used. Prompt goes via stdin."""
-    env = {k: v for k, v in os.environ.items() if k not in ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN")}
-    p = subprocess.run(["claude", "-p", "--model", model], input=prompt, capture_output=True, text=True, timeout=timeout, env=env)
+    p = _run(["claude", "-p", "--model", model], prompt, timeout, claude_env(), "claude -p")
     if p.returncode != 0:
         raise GatewayError(f"claude -p failed rc={p.returncode}: {p.stderr[:300]}")
     return p.stdout.strip()
@@ -140,14 +196,13 @@ def codex_cli(prompt: str, timeout: int = 400) -> str:
     exe = os.environ.get("CODEX_BIN") or "/Applications/ChatGPT.app/Contents/Resources/codex"
     if not os.path.exists(exe):
         exe = "codex"
-    env = {k: v for k, v in os.environ.items() if k not in ("OPENAI_API_KEY",)}
     with tempfile.TemporaryDirectory() as td:
         out = os.path.join(td, "last.txt")
-        p = subprocess.run([exe, "exec", "--ephemeral", "--skip-git-repo-check", "-s", "read-only", "-C", td, "-o", out, "-"],
-                           input=prompt, capture_output=True, text=True, timeout=timeout, env=env)
+        p = _run([exe, "exec", "--ephemeral", "--skip-git-repo-check", "-s", "read-only", "-C", td, "-o", out, "-"], prompt, timeout, codex_env(), "codex exec")
         if p.returncode != 0 or not os.path.exists(out):
             raise GatewayError(f"codex exec failed rc={p.returncode}: {(p.stderr or p.stdout)[-300:]}")
-        return open(out).read().strip()
+        with open(out) as fh:
+            return fh.read().strip()
 
 
 def extract_json(text: str):

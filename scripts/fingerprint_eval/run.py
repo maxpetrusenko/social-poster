@@ -14,10 +14,13 @@ import sys
 from pathlib import Path
 
 from . import metrics as M
+from .errors import EvaluationError
 from .gateway import GatewayError, Model, resolve_model
-from .guards import judge_claims, semantic_similarity, structure_preservation
+from .extract_cache import ensure_extraction
+from .guards import semantic_similarity, structure_preservation
+from .judge import judge_claims
 from .report import top_diffs, write_report
-from .rewrite import EXTRACTOR, Segment, assert_different_family, extract_propositions, is_meta_claim, rewrite_article, segment_article
+from .rewrite import EXTRACTOR, Segment, assert_different_family, assert_same_family, rewrite_article, segment_article
 from .textutil import core_markdown, load_author_corpus, load_pipeline_corpus
 
 WATERMARK = {"signal_family": "watermark", "research_only": True, "run": False, "reason": "no vendor keys; GPT/Claude text watermark not verifiable"}
@@ -65,7 +68,9 @@ def corpus_fps(docs: list[tuple[str, str]], core: bool) -> list[dict]:
 def run_rewriter(spec: str, md: str, segs_template: list[Segment], writer: dict, ctx: dict, judge: Model, outdir: Path, control: bool = False) -> tuple[dict, list[Segment]]:
     import copy
     rewriter = resolve_model(spec)
-    if not control:
+    if control:
+        assert_same_family(writer["family"], rewriter.family)
+    else:
         assert_different_family(writer["family"], rewriter.family)
     segs = copy.deepcopy(segs_template)
     text = rewrite_article(md, rewriter, writer["family"], segs, control=control)
@@ -110,7 +115,7 @@ def main(argv=None) -> int:
     ap.add_argument("--rewriters", default="qwen3:8b,claude:sonnet")
     ap.add_argument("--control", default="", help="eval-only same-family control rewriter, e.g. 'codex' (A->A). Labeled control in outputs; guard stays on for --rewriters")
     ap.add_argument("--gate", action="store_true", help="fast-tier final review gate: exit 1 on blocking failure, writes gate.json; no rewriting")
-    ap.add_argument("--draft", type=Path, help="gate: approved draft to compare the final against (default: --article itself)")
+    ap.add_argument("--draft", type=Path, help="gate: REQUIRED approved reference draft to compare the final against; must be a different path from --article")
     ap.add_argument("--gate-threshold", type=float, default=0.90, help="gate: min whole-document semantic similarity")
     ap.add_argument("--extractor", default=EXTRACTOR, help="proposition extractor (gateway model or claude:<alias>)")
     ap.add_argument("--tier", choices=["fast", "research"], default="fast")
@@ -118,6 +123,13 @@ def main(argv=None) -> int:
     ap.add_argument("--refresh-extraction", action="store_true")
     a = ap.parse_args(argv)
 
+    if a.gate:  # before anything else: a gate run is never short-circuited into a pass
+        if a.tier != "fast":
+            print("GATE ERROR: --gate runs the fast tier only")
+            return 2
+        from .gate import run_gate
+        load_gateway_key()
+        return run_gate(a.article, a.draft, a.author_corpus, a.pipeline_corpus, a.out, a.judge, a.gate_threshold, a.extractor, a.refresh_extraction)
     a.out.mkdir(parents=True, exist_ok=True)
     if a.tier == "research":
         stub = {"tier": "research", "run": False, "reason": "stub: detectors and watermark checks are scheduled nightly later, not part of the per-article fast tier",
@@ -126,10 +138,6 @@ def main(argv=None) -> int:
         print("research tier is a stub; wrote research-tier.json")
         return 0
     load_gateway_key()
-    a.out.mkdir(parents=True, exist_ok=True)
-    if a.gate:
-        from .gate import run_gate
-        return run_gate(a.article, a.draft or a.article, a.author_corpus, a.pipeline_corpus, a.out, a.judge, a.gate_threshold)
     slug = a.article.parent.name
     md = a.article.read_text()
     writer = infer_writer(a.article.parent / "version.json", a.writer)
@@ -147,17 +155,7 @@ def main(argv=None) -> int:
 
     # propositions, extracted once and shared by every rewriter
     segs = segment_article(md)
-    cache = a.out / "extraction.json"
-    if cache.exists() and not a.refresh_extraction:
-        saved = json.loads(cache.read_text())
-        for s in segs:
-            if str(s.idx) in saved:
-                s.propositions, s.role = [q for q in saved[str(s.idx)]["propositions"] if not is_meta_claim(q["claim"])], saved[str(s.idx)]["role"]
-    else:
-        for s in segs:
-            if not s.frozen:
-                extract_propositions(s, a.extractor)
-        cache.write_text(json.dumps({str(s.idx): {"section": s.section, "role": s.role, "propositions": s.propositions} for s in segs if s.propositions}, indent=1, ensure_ascii=False))
+    ensure_extraction(segs, md, a.extractor, a.out / "extraction.json", a.refresh_extraction)
     lanes["extraction"] = f"{a.extractor}, {sum(len(s.propositions) for s in segs)} propositions in {sum(1 for s in segs if s.propositions)} segments"
 
     judge = resolve_model(a.judge)
@@ -169,7 +167,7 @@ def main(argv=None) -> int:
         spec, is_control = item
         try:
             return item, run_rewriter(spec, md, segs, writer, ctx, judge, a.out, control=is_control), None
-        except (GatewayError, ValueError) as e:
+        except (GatewayError, EvaluationError, ValueError) as e:
             return item, None, e
 
     with ThreadPoolExecutor(max_workers=len(plan) or 1) as ex:  # rewriters are independent; slow gateway model overlaps with CLI ones

@@ -15,7 +15,7 @@ from dataclasses import dataclass, field
 from .gateway import GatewayError, Model, chat, extract_json
 from .textutil import HEADING_RE, LINK_RE, Block, parse_blocks, render_blocks, split_sentences, words
 
-FROZEN_KINDS = {"heading", "image", "code", "rule", "list", "quote"}
+FROZEN_KINDS = {"heading", "image", "code", "rule", "list", "quote", "table"}
 BOILERPLATE_HEAD = re.compile(r"about the author|sources?\b|references|further reading", re.I)
 MIN_SEGMENT_WORDS = 12
 EXTRACTOR = "claude:sonnet"  # fast; qwen3:8b works but takes ~3.5 min per segment (hidden reasoning)
@@ -33,6 +33,14 @@ def assert_different_family(writer_family: str, rewriter_family: str) -> None:
         raise FamilyError(f"unknown family ({writer_family!r} vs {rewriter_family!r}); refuse to guess")
     if writer_family.lower() == rewriter_family.lower():
         raise FamilyError(f"writer_family == rewriter_family == {writer_family!r}; use a different family")
+
+
+def assert_same_family(writer_family: str, rewriter_family: str) -> None:
+    """Control lane (A->A): the rewriter must be the writer's own known family, else it is not a control."""
+    if not writer_family or not rewriter_family or "unknown" in (writer_family, rewriter_family):
+        raise FamilyError(f"control needs known families ({writer_family!r} vs {rewriter_family!r})")
+    if writer_family.lower() != rewriter_family.lower():
+        raise FamilyError(f"control rewriter family {rewriter_family!r} != writer family {writer_family!r}; a control is same-family")
 
 
 @dataclass
@@ -191,7 +199,9 @@ def regenerate_segment(seg: Segment, rewriter: Model, tail: str, role: str = "")
 
 def rewrite_article(md: str, rewriter: Model, writer_family: str, segments: list[Segment], control: bool = False) -> str:
     """Rebuild the article: frozen segments verbatim, prose segments regenerated."""
-    if not control:  # same-family only allowed for the explicitly labeled eval control lane
+    if control:  # same-family only allowed for the explicitly labeled eval control lane, and it must really be same-family
+        assert_same_family(writer_family, rewriter.family)
+    else:
         assert_different_family(writer_family, rewriter.family)
     parts: list[str] = []
     tail = ""

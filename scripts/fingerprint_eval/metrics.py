@@ -147,26 +147,46 @@ def fingerprint(md: str) -> dict:
 
 # ---- distances -----------------------------------------------------------
 
+def _pair(a: list[float], b: list[float]) -> None:
+    """Equal length, non-empty, finite: zip() must never silently truncate."""
+    if len(a) != len(b) or not a:
+        raise ValueError(f"vector length mismatch or empty ({len(a)} vs {len(b)})")
+    if not all(math.isfinite(x) for x in a) or not all(math.isfinite(x) for x in b):
+        raise ValueError("non-finite value in vector")
+
+
 def _kl(p: list[float], q: list[float]) -> float:
     return sum(a * math.log2(a / b) for a, b in zip(p, q) if a > 0 and b > 0)
 
 
 def jsd(p: list[float], q: list[float]) -> float:
     """Jensen-Shannon distance (sqrt of divergence, base 2): 0 identical .. 1."""
+    _pair(p, q)
     m = [(a + b) / 2 for a, b in zip(p, q)]
     return math.sqrt(max(0.0, (_kl(p, m) + _kl(q, m)) / 2))
 
 
 def cosine_distance(a: list[float], b: list[float]) -> float:
+    """Cosine distance. Two zero vectors are identical (0.0); one zero vector is maximally distant (1.0)."""
+    _pair(a, b)
     na = math.sqrt(sum(x * x for x in a))
     nb = math.sqrt(sum(x * x for x in b))
+    if not na and not nb:
+        return 0.0
     if not na or not nb:
         return 1.0
-    return 1.0 - sum(x * y for x, y in zip(a, b)) / (na * nb)
+    d = 1.0 - sum(x * y for x, y in zip(a, b)) / (na * nb)
+    if not math.isfinite(d):
+        raise ValueError("non-finite cosine distance")
+    return d
 
 
 def burrows_delta(a: list[float], b: list[float], mean: list[float], std: list[float]) -> float:
     """Mean absolute z-score difference over function words."""
+    _pair(a, b)
+    _pair(mean, std)
+    if len(a) != len(mean):
+        raise ValueError(f"vector length mismatch ({len(a)} vs {len(mean)})")
     za = [(x - m) / s for x, m, s in zip(a, mean, std) if s > 0]
     zb = [(x - m) / s for x, m, s in zip(b, mean, std) if s > 0]
     return sum(abs(x - y) for x, y in zip(za, zb)) / max(len(za), 1)
