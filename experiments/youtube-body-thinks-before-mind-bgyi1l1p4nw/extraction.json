@@ -1,0 +1,770 @@
+{
+ "2": {
+  "section": "",
+  "role": "Introductory summary of a science digest",
+  "propositions": [
+   {
+    "claim": "The passage describes a science digest published in Russian.",
+    "links": []
+   },
+   {
+    "claim": "The digest covers infrasound, anesthesia, cancer, and spinal repair.",
+    "links": []
+   },
+   {
+    "claim": "The digest repeatedly finds the same pattern across these topics.",
+    "links": []
+   },
+   {
+    "claim": "The pattern is that hidden control systems act before consciousness can report them.",
+    "links": []
+   }
+  ]
+ },
+ "4": {
+  "section": "",
+  "role": "Opens story with a ghost-lab anecdote",
+  "propositions": [
+   {
+    "claim": "The first clue in the story is a fencing sword that shakes on its own.",
+    "links": []
+   },
+   {
+    "claim": "Vic Tandy worked around medical equipment.",
+    "links": []
+   },
+   {
+    "claim": "Vic Tandy had little patience for ghost stories.",
+    "links": []
+   },
+   {
+    "claim": "Tandy's colleagues said the lab felt wrong.",
+    "links": []
+   },
+   {
+    "claim": "Tandy's colleagues felt that they were being watched in the lab.",
+    "links": []
+   },
+   {
+    "claim": "Some of Tandy's colleagues saw a grey figure at the edge of their vision.",
+    "links": []
+   },
+   {
+    "claim": "Tandy laughed at these reports until he stayed late at the lab.",
+    "links": []
+   },
+   {
+    "claim": "While staying late, Tandy felt dread flood his body.",
+    "links": []
+   },
+   {
+    "claim": "While staying late, Tandy saw the same figure at the edge of his vision.",
+    "links": []
+   },
+   {
+    "claim": "While staying late, Tandy began sweating in a cold room.",
+    "links": []
+   },
+   {
+    "claim": "Afterward, a blade held in a vise began to tremble.",
+    "links": []
+   }
+  ]
+ },
+ "6": {
+  "section": "",
+  "role": "Introduces infrasound studies showing unconscious bodily responses",
+  "propositions": [
+   {
+    "claim": "Tandy moved a table and observed the vibration of a blade rise and fall.",
+    "links": []
+   },
+   {
+    "claim": "Tandy traced the dread felt in a room to a standing wave of infrasound produced by ventilation.",
+    "links": []
+   },
+   {
+    "claim": "Infrasound is a pressure too low for ordinary hearing.",
+    "links": []
+   },
+   {
+    "claim": "The infrasound interacted with the geometry of the room to produce a standing wave.",
+    "links": []
+   },
+   {
+    "claim": "The case became the classic Tandy and Lawrence \"ghost in the machine\" account.",
+    "links": [
+     "[Tandy and Lawrence \"ghost in the machine\" account](https://www.richardwiseman.com/resources/ghost-in-machine.pdf)"
+    ]
+   },
+   {
+    "claim": "The Tandy case turned an apparent ghost into a measurable waveform.",
+    "links": []
+   },
+   {
+    "claim": "A newer double-blind experiment on infrasound extended the finding that the body can respond to a signal the mind has not identified.",
+    "links": [
+     "[double-blind infrasound experiment](https://www.frontiersin.org/journals/behavioral-neuroscience/articles/10.3389/fnbeh.2026.1729876/full)"
+    ]
+   },
+   {
+    "claim": "In the experiment, researchers paired infrasound near 18 Hz with either calm music or anxious ambient sound.",
+    "links": [
+     "[double-blind infrasound experiment](https://www.frontiersin.org/journals/behavioral-neuroscience/articles/10.3389/fnbeh.2026.1729876/full)"
+    ]
+   },
+   {
+    "claim": "Participants guessed at chance level whether the hidden low sound was present.",
+    "links": [
+     "[double-blind infrasound experiment](https://www.frontiersin.org/journals/behavioral-neuroscience/articles/10.3389/fnbeh.2026.1729876/full)"
+    ]
+   },
+   {
+    "claim": "Participants' saliva showed a rise in cortisol.",
+    "links": [
+     "[double-blind infrasound experiment](https://www.frontiersin.org/journals/behavioral-neuroscience/articles/10.3389/fnbeh.2026.1729876/full)"
+    ]
+   },
+   {
+    "claim": "Calm music felt gloomier to participants when infrasound was present.",
+    "links": [
+     "[double-blind infrasound experiment](https://www.frontiersin.org/journals/behavioral-neuroscience/articles/10.3389/fnbeh.2026.1729876/full)"
+    ]
+   },
+   {
+    "claim": "Listeners' emotional state shifted while they remained consciously unaware of the infrasound signal.",
+    "links": [
+     "[double-blind infrasound experiment](https://www.frontiersin.org/journals/behavioral-neuroscience/articles/10.3389/fnbeh.2026.1729876/full)"
+    ]
+   }
+  ]
+ },
+ "8": {
+  "section": "",
+  "role": "Intro describing a consciousness captioning sequence",
+  "propositions": [
+   {
+    "claim": "The episode followed a fixed sequence of events.",
+    "links": []
+   },
+   {
+    "claim": "A signal first arrives at a level below what can be reported.",
+    "links": []
+   },
+   {
+    "claim": "The organism's state then changes.",
+    "links": []
+   },
+   {
+    "claim": "After that, consciousness generates a caption describing the change.",
+    "links": []
+   },
+   {
+    "claim": "The caption sometimes names the cause as a ghost.",
+    "links": []
+   },
+   {
+    "claim": "The caption sometimes names the cause as a bad mood.",
+    "links": []
+   },
+   {
+    "claim": "The caption sometimes offers no explanation at all.",
+    "links": []
+   }
+  ]
+ },
+ "10": {
+  "section": "The hippocampus keeps reading after the lights go out",
+  "role": "Sets up study of hippocampal activity under anesthesia",
+  "propositions": [
+   {
+    "claim": "The older model of the brain assigns consciousness a central executive role in noticing, deciding, remembering, and explaining.",
+    "links": []
+   },
+   {
+    "claim": "A newer view compares the brain to a building at night, where the front desk is closed but some departments keep working.",
+    "links": []
+   },
+   {
+    "claim": "Seven epilepsy patients received propofol anesthesia during surgery.",
+    "links": []
+   },
+   {
+    "claim": "Neuropixels probes were placed in these patients deep enough to record individual cells in the hippocampus.",
+    "links": []
+   },
+   {
+    "claim": "A Nature paper reports the study.",
+    "links": [
+     "https://www.nature.com/articles/s41586-026-10448-0"
+    ]
+   },
+   {
+    "claim": "The recording window was about ten to twenty minutes per patient.",
+    "links": [
+     "[Nature paper](https://www.nature.com/articles/s41586-026-10448-0)"
+    ]
+   },
+   {
+    "claim": "Access to record from the hippocampus this way is rare.",
+    "links": []
+   },
+   {
+    "claim": "The study asked what happens when speech and sound enter a brain whose owner will later remember none of it.",
+    "links": []
+   }
+  ]
+ },
+ "12": {
+  "section": "The hippocampus keeps reading after the lights go out",
+  "role": "Summarizes hippocampal responses to sounds and speech under anesthesia",
+  "propositions": [
+   {
+    "claim": "In the experiment, patients first heard repeated tones that included occasional deviant (oddball) tones.",
+    "links": []
+   },
+   {
+    "claim": "Hippocampal neurons adapted to the repeated tones.",
+    "links": []
+   },
+   {
+    "claim": "The neurons learned the tone pattern well enough to flag the oddball tones as exceptions.",
+    "links": []
+   },
+   {
+    "claim": "Patients were next played speech.",
+    "links": []
+   },
+   {
+    "claim": "Hippocampal cells tracked the meanings of words.",
+    "links": []
+   },
+   {
+    "claim": "Hippocampal cells tracked the grammatical roles of words.",
+    "links": []
+   },
+   {
+    "claim": "Hippocampal cells tracked the probability of which word might come next.",
+    "links": []
+   },
+   {
+    "claim": "Words with similar meanings produced related patterns of neural activity.",
+    "links": []
+   },
+   {
+    "claim": "The patients were anesthetized.",
+    "links": []
+   },
+   {
+    "claim": "The anesthetized patients remembered nothing from the speech stream.",
+    "links": []
+   },
+   {
+    "claim": "Despite the lack of memory, the hippocampus still processed language in a structured way.",
+    "links": []
+   },
+   {
+    "claim": "A Scientific American summary described the result as overheard words being processed under anesthesia without later recall.",
+    "links": [
+     "[Scientific American summary](https://www.scientificamerican.com/article/the-brain-processes-overheard-words-under-anesthesia-but-it-may-not-remember-them/)"
+    ]
+   }
+  ]
+ },
+ "14": {
+  "section": "The hippocampus keeps reading after the lights go out",
+  "role": "Reframes anesthesia as loss of binding, not processing",
+  "propositions": [
+   {
+    "claim": "The view being proposed is more limited than the idea of hidden wakefulness under anesthesia.",
+    "links": []
+   },
+   {
+    "claim": "Some brain regions may continue to process language while the system that makes experience belong to a person is inactive.",
+    "links": []
+   },
+   {
+    "claim": "A sentence can be processed without being experienced as one's own.",
+    "links": []
+   },
+   {
+    "claim": "The anesthesia case suggests something about the self.",
+    "links": []
+   },
+   {
+    "claim": "Consciousness may be less the part that does the work than a layer that binds distributed processing into one remembered scene.",
+    "links": []
+   },
+   {
+    "claim": "When the binding layer is shut off, processing can still continue.",
+    "links": []
+   }
+  ]
+ },
+ "16": {
+  "section": "A dream can spend the night on your behalf",
+  "role": "Introduces hyperoneirism as exhausting epic dreaming",
+  "propositions": [
+   {
+    "claim": "Sleep is expected to be the period in which the body repairs itself.",
+    "links": []
+   },
+   {
+    "claim": "Some dreams function more like a second job than like rest.",
+    "links": []
+   },
+   {
+    "claim": "The episode discusses hyperoneirism, which is also called epic dreaming.",
+    "links": []
+   },
+   {
+    "claim": "Hyperoneirism involves long, vivid, continuous dream experiences.",
+    "links": []
+   },
+   {
+    "claim": "People with hyperoneirism feel exhausted after these dreams.",
+    "links": []
+   },
+   {
+    "claim": "The exhaustion occurs even when standard sleep measures appear normal.",
+    "links": []
+   },
+   {
+    "claim": "Patients report nights of dreams containing plots, missions, conversations, travel, conflict, and obligation.",
+    "links": []
+   },
+   {
+    "claim": "Patients wake feeling as though they have already worked a shift.",
+    "links": []
+   }
+  ]
+ },
+ "18": {
+  "section": "A dream can spend the night on your behalf",
+  "role": "Argues dreams reveal hidden physical costs of sleep",
+  "propositions": [
+   {
+    "claim": "A patient can have normal results on a sleep chart.",
+    "links": []
+   },
+   {
+    "claim": "Breathing can appear normal on the chart.",
+    "links": []
+   },
+   {
+    "claim": "Muscle activity can appear normal on the chart.",
+    "links": []
+   },
+   {
+    "claim": "Sleep stages can appear normal on the chart.",
+    "links": []
+   },
+   {
+    "claim": "Despite the normal chart, the patient can wake up with a physical cost from the night.",
+    "links": []
+   },
+   {
+    "claim": "Medicine often runs into cases where a patient experiences a pattern before clinicians have a clean instrument to measure it.",
+    "links": []
+   },
+   {
+    "claim": "In such cases, the patient's private report comes first, classification of the pattern comes afterward, and treatment comes after that.",
+    "links": []
+   },
+   {
+    "claim": "Epic dreaming is significant because it makes a hidden layer of sleep costly.",
+    "links": []
+   },
+   {
+    "claim": "During epic dreaming, the body spends the night inside a story, and the person's waking self inherits the result in the morning.",
+    "links": []
+   }
+  ]
+ },
+ "20": {
+  "section": "Cancer is a control-system failure",
+  "role": "Presents daraxonrasib pancreatic cancer survival result",
+  "propositions": [
+   {
+    "claim": "The passage's medical-news section continues the same argument from perception to tissue.",
+    "links": []
+   },
+   {
+    "claim": "Pancreatic ductal adenocarcinoma is a disease where optimism has to be earned in small steps.",
+    "links": []
+   },
+   {
+    "claim": "Pancreatic ductal adenocarcinoma is often detected late.",
+    "links": []
+   },
+   {
+    "claim": "Pancreatic ductal adenocarcinoma spreads fast.",
+    "links": []
+   },
+   {
+    "claim": "Pancreatic ductal adenocarcinoma has resisted many therapies that changed other cancers.",
+    "links": []
+   },
+   {
+    "claim": "The daraxonrasib result had an unusually strong impact because of this context.",
+    "links": []
+   },
+   {
+    "claim": "Daraxonrasib is an oral, multi-selective RAS(ON) inhibitor.",
+    "links": []
+   },
+   {
+    "claim": "In the Phase 3 RASolute 302 trial in previously treated metastatic pancreatic cancer, median overall survival was about 13.2 months with daraxonrasib.",
+    "links": [
+     "[Phase 3 RASolute 302 result](https://ir.revmed.com/news-releases/news-release-details/daraxonrasib-demonstrates-unprecedented-overall-survival-benefit)"
+    ]
+   },
+   {
+    "claim": "In the same trial, median overall survival was about 6.7 months with standard chemotherapy.",
+    "links": [
+     "[Phase 3 RASolute 302 result](https://ir.revmed.com/news-releases/news-release-details/daraxonrasib-demonstrates-unprecedented-overall-survival-benefit)"
+    ]
+   },
+   {
+    "claim": "ASCO's conference release makes the central point that this is a serious survival signal in a very hard disease.",
+    "links": [
+     "[conference release](https://www.asco.org/about-asco/press-center/multi-selective-ras-inhibitor-nearly-doubles-survival-pancreatic-cancer)"
+    ]
+   },
+   {
+    "claim": "Dana-Farber's clinical summary makes the same central point that this is a serious survival signal in a very hard disease.",
+    "links": [
+     "[clinical summary](https://www.dana-farber.org/newsroom/news-releases/2026/rason-inhibitor-doubles-median-overall-survival-in-results-of-phase-3-trial-for-patients-with-metastatic-pancreatic-cancer)"
+    ]
+   }
+  ]
+ },
+ "22": {
+  "section": "Cancer is a control-system failure",
+  "role": "Frames cancer as a control-system failure",
+  "propositions": [
+   {
+    "claim": "The claim about the treatment has two parts that both need to be stated.",
+    "links": []
+   },
+   {
+    "claim": "In this disease context, a near doubling of survival is a very large effect.",
+    "links": []
+   },
+   {
+    "claim": "The survival endpoint is still measured in months.",
+    "links": []
+   },
+   {
+    "claim": "The passage describes the result in sober terms: a handle appearing on a target that was once considered almost undruggable.",
+    "links": []
+   },
+   {
+    "claim": "The deeper lesson is about system architecture.",
+    "links": []
+   },
+   {
+    "claim": "Cancer is a broken control system involving growth signals, DNA repair, immune evasion, tissue pressure, nutrient routes, local signaling, and evolutionary selection.",
+    "links": []
+   },
+   {
+    "claim": "A drug matters when it reaches a control node.",
+    "links": []
+   },
+   {
+    "claim": "A small molecule can change a map.",
+    "links": []
+   }
+  ]
+ },
+ "24": {
+  "section": "A tumor can change the neighborhood rules",
+  "role": "Introduces tumor-driven elimination of neighboring cells",
+  "propositions": [
+   {
+    "claim": "Chromosomal instability is the condition of cells having abnormal chromosome numbers or structures.",
+    "links": []
+   },
+   {
+    "claim": "Chromosomal instability resembles damage, but in cancer it can work to the tumor's advantage.",
+    "links": []
+   },
+   {
+    "claim": "Abnormal chromosome numbers or structures give tumors variation to search with, such as extra growth genes, missing suppressors, and unstable combinations.",
+    "links": []
+   },
+   {
+    "claim": "The episode's next paper describes an additional territorial behavior of tumors.",
+    "links": []
+   },
+   {
+    "claim": "Some chromosomally unstable tumor cells enter a senescent-like state.",
+    "links": []
+   },
+   {
+    "claim": "Senescent-like tumor cells broadcast signals that push neighboring healthy cells to slow down or die.",
+    "links": []
+   },
+   {
+    "claim": "IRB Barcelona's study summary describes the work as a fruit-fly model in which tumors clear room around themselves.",
+    "links": [
+     "[study summary](https://www.irbbarcelona.org/en/news/scientific/study-flies-reveals-how-some-tumours-eliminate-healthy-neighbouring-cells-grow)"
+    ]
+   }
+  ]
+ },
+ "26": {
+  "section": "A tumor can change the neighborhood rules",
+  "role": "Explains how senescent cells aid tumors",
+  "propositions": [
+   {
+    "claim": "A senescent cell is expected to stop dividing.",
+    "links": []
+   },
+   {
+    "claim": "Senescent cells stop dividing but remain active.",
+    "links": []
+   },
+   {
+    "claim": "Senescent cells make the surrounding environment worse for normal tissue.",
+    "links": []
+   },
+   {
+    "claim": "Senescent cells make the surrounding environment better for a tumor.",
+    "links": []
+   }
+  ]
+ },
+ "28": {
+  "section": "A tumor can change the neighborhood rules",
+  "role": "Frames tumors as rewriters of surrounding tissue rules",
+  "propositions": [
+   {
+    "claim": "The supporting evidence comes from experiments on fruit flies.",
+    "links": []
+   },
+   {
+    "claim": "Whether the findings apply to humans remains unresolved.",
+    "links": []
+   },
+   {
+    "claim": "The underlying conceptual shift is still important.",
+    "links": []
+   },
+   {
+    "claim": "The research question moves from what is faulty inside the malignant cell to how the malignant cell changes the rules of its surrounding environment.",
+    "links": []
+   },
+   {
+    "claim": "A tumor can act in a way comparable to poor governance.",
+    "links": []
+   }
+  ]
+ },
+ "30": {
+  "section": "A tiny gland can lock a whole life state",
+  "role": "Medical case illustrating hormonal control of fertility",
+  "propositions": [
+   {
+    "claim": "A woman has one child, stops breastfeeding, and then develops secondary infertility.",
+    "links": []
+   },
+   {
+    "claim": "After she stopped breastfeeding, her body kept producing milk.",
+    "links": []
+   },
+   {
+    "claim": "She also has headaches, night sweats, and fatigue.",
+    "links": []
+   },
+   {
+    "claim": "Prolactin is a hormone that helps drive lactation.",
+    "links": []
+   },
+   {
+    "claim": "Excess prolactin can suppress ovulation.",
+    "links": []
+   },
+   {
+    "claim": "The source of the excess prolactin is a pituitary tumor at the base of the brain.",
+    "links": []
+   },
+   {
+    "claim": "When the tumor is removed, prolactin returns to normal levels and pregnancy becomes possible again.",
+    "links": []
+   },
+   {
+    "claim": "The case takes up little screen time, but it illustrates a control system well.",
+    "links": []
+   },
+   {
+    "claim": "A tiny gland can set a reproductive state affecting the whole body.",
+    "links": []
+   },
+   {
+    "claim": "A signal for lactation can act as a lock on fertility.",
+    "links": []
+   },
+   {
+    "claim": "A local mass can become a problem that affects the course of a person's life.",
+    "links": []
+   },
+   {
+    "claim": "Bodies have dashboards, but people mostly experience only the output.",
+    "links": []
+   }
+  ]
+ },
+ "32": {
+  "section": "Repair may be a locked program",
+  "role": "Introduces spinal-cord section and the Cell Reports study",
+  "propositions": [
+   {
+    "claim": "The spinal-cord section is the part of the piece where careless writing is most risky, because the hope it raises is so obvious.",
+    "links": []
+   },
+   {
+    "claim": "Researchers built human organoid circuits that model connections between brain tissue and spinal cord tissue.",
+    "links": []
+   },
+   {
+    "claim": "During development, neurons grow axons with considerable freedom.",
+    "links": []
+   },
+   {
+    "claim": "Mature central nervous system neurons lose much of the ability to grow axons.",
+    "links": []
+   },
+   {
+    "claim": "A Cell Reports study identified a program that restrains axon regrowth.",
+    "links": [
+     "[Cell Reports study](https://www.cell.com/cell-reports/fulltext/S2211-1247%2826%2900477-8)"
+    ]
+   },
+   {
+    "claim": "The same study then screened for ways to loosen the regrowth-restraining program.",
+    "links": [
+     "[Cell Reports study](https://www.cell.com/cell-reports/fulltext/S2211-1247%2826%2900477-8)"
+    ]
+   }
+  ]
+ },
+ "34": {
+  "section": "Repair may be a locked program",
+  "role": "Cautions and hopeful framing about lynestrenol finding",
+  "propositions": [
+   {
+    "claim": "Lynestrenol is a synthetic progestin used as a contraceptive.",
+    "links": []
+   },
+   {
+    "claim": "In the organoid model, lynestrenol improved axon growth.",
+    "links": []
+   },
+   {
+    "claim": "The lab's public explanation of the lynestrenol finding was also covered by ScienceDaily.",
+    "links": [
+     "[ScienceDaily](https://www.sciencedaily.com/releases/2026/05/260528082459.htm)"
+    ]
+   },
+   {
+    "claim": "The lynestrenol result comes from a dish model, which is far from an injured human spinal cord.",
+    "links": []
+   },
+   {
+    "claim": "Real spinal cord injury adds scar tissue, inflammation, and broken tissue architecture.",
+    "links": []
+   },
+   {
+    "claim": "The hardest problem in real injury is reconnecting the right neurons to the right places.",
+    "links": []
+   },
+   {
+    "claim": "Adult neurons may carry a brake on repair.",
+    "links": []
+   },
+   {
+    "claim": "If the repair brake can be mapped, therapy becomes less mysterious.",
+    "links": []
+   },
+   {
+    "claim": "Therapy would then involve timing, guidance, scaffolding, chemistry, and targeted release of a developmental program.",
+    "links": []
+   },
+   {
+    "claim": "Hope is stronger when it is specific rather than vague.",
+    "links": []
+   }
+  ]
+ },
+ "36": {
+  "section": "The hidden layer keeps winning",
+  "role": "Summarizes episode theme: hidden control layers precede conscious self",
+  "propositions": [
+   {
+    "claim": "The episode is a digest that moves across many topics: a haunted lab, infrasound, anesthesia, dreams, pancreatic cancer, tumor ecology, prolactin, and spinal repair.",
+    "links": []
+   },
+   {
+    "claim": "The common thread across these topics is a hidden control layer.",
+    "links": []
+   },
+   {
+    "claim": "Vibration can alter stress before it is perceived as sound.",
+    "links": []
+   },
+   {
+    "claim": "The hippocampus processes language before memory receives a scene.",
+    "links": []
+   },
+   {
+    "claim": "A dream uses up the night before the waking self can object to it.",
+    "links": []
+   },
+   {
+    "claim": "A cancer cell changes the rules governing tissue.",
+    "links": []
+   },
+   {
+    "claim": "A pituitary signal suppresses reproduction.",
+    "links": []
+   },
+   {
+    "claim": "A mature neuron has a brake that a developing neuron lacks.",
+    "links": []
+   },
+   {
+    "claim": "The self that a person can narrate is real but arrives late.",
+    "links": []
+   },
+   {
+    "claim": "Most of the body runs on older regulatory machinery: sensors, thresholds, switches, chemical signals, emergency policies, developmental locks, local negotiations, and inherited evolutionary leftovers that still operate.",
+    "links": []
+   },
+   {
+    "claim": "Consciousness remains part of the picture and becomes more interesting, as the layer that makes a world reportable after deeper systems have already acted.",
+    "links": []
+   },
+   {
+    "claim": "A person is a layered organism, and many layers are already processing information before the conscious person arrives.",
+    "links": []
+   }
+  ]
+ },
+ "40": {
+  "section": "The hidden layer keeps winning",
+  "role": "recommends a related article to read next",
+  "propositions": [
+   {
+    "claim": "The passage recommends an article titled \"Why Most People Are Dead Wrong About Global Wealth\" as a next read.",
+    "links": [
+     "[Why Most People Are Dead Wrong About Global Wealth](https://medium.com/@max.petrusenko/why-most-people-are-dead-wrong-about-global-wealth-the-numbers-will-shock-you-52e70e459cc2)"
+    ]
+   },
+   {
+    "claim": "The recommended article is about how large systems conceal consequences that operate at a human scale.",
+    "links": []
+   }
+  ]
+ }
+}

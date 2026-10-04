@@ -1,0 +1,255 @@
+{
+  "slug": "youtube-body-thinks-before-mind-bgyi1l1p4nw",
+  "writer": {
+    "model": "codex",
+    "family": "openai",
+    "evidence": "version.json ratingModel='Codex editorial adversarial pass'"
+  },
+  "reference": {
+    "author_docs": 64,
+    "author_words": 36906,
+    "author_cutoff": "< 2023-01-01",
+    "pipeline_docs": 28
+  },
+  "original": {
+    "n_words": 1551,
+    "n_sentences": 152,
+    "n_paragraphs": 61,
+    "mean_sent_len": 10.203947368421053,
+    "em_dash_per_1k": 0.0,
+    "first_person_per_1k": 1.2894906511927788,
+    "heading_per_1k": 4.513217279174726,
+    "list_items_per_1k": 3.8684719535783367,
+    "one_sentence_para_rate": 0.39344262295081966,
+    "repeated_ngram_rate": {
+      "3": 0.012265978050355068,
+      "4": 0.0,
+      "5": 0.0,
+      "mean": 0.004088659350118356
+    }
+  },
+  "author_style_distance_before": {
+    "sentence_length_jsd": 0.20559925676107438,
+    "paragraph_length_jsd": 0.1053793346532492,
+    "punctuation_jsd": 0.2817248460760422,
+    "function_word_cosine": 0.1928332182937954,
+    "burrows_delta": 0.6866970761715637,
+    "composite": 0.1963841639460403
+  },
+  "pipeline_corpus_outlier_before": {
+    "distance_to_corpus_centroid": 0.29181845540968676,
+    "corpus_mean_distance": 0.18039545040911956,
+    "z": 2.126895159766958,
+    "percentile": 0.9642857142857143,
+    "n_corpus_docs": 28
+  },
+  "structural_templates_original": {
+    "rule_of_three_lists": {
+      "count": 6,
+      "examples": [
+        "We notice, decide, remember, and explain.",
+        "The cells tracked word meaning, grammatical roles, and the probability of what might come next.",
+        "It is often caught late, spreads fast, and has resisted many of the therapies that changed other cancers."
+      ]
+    }
+  },
+  "author_centroid_summary": {
+    "mean_sent_len": 12.731546110432209,
+    "em_dash_per_1k": 3.9508580604268357,
+    "first_person_per_1k": 12.47146613173892,
+    "one_sentence_para_rate": 0.5297333929319072
+  },
+  "rewriters": {
+    "qwen3:8b": {
+      "rewriter": {
+        "model": "qwen3:8b",
+        "family": "alibaba-qwen",
+        "backend": "gateway"
+      },
+      "control": false,
+      "transform": "cross-family A->B proposition regeneration",
+      "semantic_similarity": {
+        "whole": 0.9813256728979103,
+        "section_mean": 0.9423808857427637,
+        "section_min": 0.9032835167728904,
+        "per_section": {
+          "(intro)": 0.936196231371182,
+          "The hippocampus keeps reading after the lights go out": 0.9104981117309222,
+          "A dream can spend the night on your behalf": 0.9397593682996893,
+          "Cancer is a control-system failure": 0.9032835167728904,
+          "A tumor can change the neighborhood rules": 0.9513608890215145,
+          "A tiny gland can lock a whole life state": 0.942837584456254,
+          "Repair may be a locked program": 0.965708367799518,
+          "The hidden layer keeps winning": 0.9317839022329035,
+          "About the author": 0.9999999999999999
+        }
+      },
+      "claims_total": 154,
+      "claims_preserved": 153,
+      "claims_changed": 1,
+      "claims_missing": 0,
+      "claims_unjudged": 0,
+      "flagged_claims": [
+        {
+          "section": "The hidden layer keeps winning",
+          "claim": "The recommended article is about how large systems conceal consequences that operate at a human scale.",
+          "verdict": "changed",
+          "reason": "Passage says systems mask personal-feeling effects like wealth gaps; original says consequences at human scale."
+        }
+      ],
+      "judge": "claude-sonnet",
+      "structure_preserved": {
+        "headings": {
+          "original": 9,
+          "rewrite": 9,
+          "preserved": true,
+          "missing": []
+        },
+        "images": {
+          "original": 10,
+          "rewrite": 10,
+          "preserved": true,
+          "missing": []
+        },
+        "codes": {
+          "original": 0,
+          "rewrite": 0,
+          "preserved": true,
+          "missing": []
+        },
+        "links": {
+          "original": 24,
+          "rewrite": 23,
+          "preserved": false,
+          "missing": [
+            "[Tandy and Lawrence \"ghost in the machine\" account](https://www.richardwiseman.com/resources/ghost-in-machine.pdf)",
+            "[double-blind infrasound experiment](https://www.frontiersin.org/journals/behavioral-neuroscience/articles/10.3389/fnbeh.2026.1729876/full)",
+            "[Cell Reports study](https://www.cell.com/cell-reports/fulltext/S2211-1247%2826%2900477-8)"
+          ]
+        },
+        "all_preserved": false
+      },
+      "author_style_distance_after": {
+        "sentence_length_jsd": 0.23896766001610242,
+        "paragraph_length_jsd": 0.3635849115887985,
+        "punctuation_jsd": 0.28885233934914545,
+        "function_word_cosine": 0.18713100268855654,
+        "burrows_delta": 0.7353978004456393,
+        "composite": 0.26963397841065073
+      },
+      "author_style_distance_delta": {
+        "sentence_length_jsd": 0.033368403255028045,
+        "paragraph_length_jsd": 0.25820557693554935,
+        "punctuation_jsd": 0.007127493273103247,
+        "function_word_cosine": -0.0057022156052388695,
+        "burrows_delta": 0.04870072427407557,
+        "composite": 0.07324981446461043
+      },
+      "pipeline_corpus_outlier": {
+        "distance_to_corpus_centroid": 0.1967591272945222,
+        "corpus_mean_distance": 0.18039545040911956,
+        "z": 0.3123576245621463,
+        "percentile": 0.75,
+        "n_corpus_docs": 28
+      },
+      "repeated_ngram_rate": {
+        "before": 0.004088659350118356,
+        "after": 0.26269074118770447
+      },
+      "sentence_length_jsd": 0.281518883801517,
+      "paragraph_length_jsd": 0.4076967176245811,
+      "structural_templates": {
+        "rule_of_three_lists": {
+          "count": 14,
+          "examples": [
+            "The digest covers infrasound, anesthesia, cancer, and spinal repair.",
+            "The older model of the brain assigns consciousness a central executive role in noticing, deciding, remembering, and explaining.",
+            "Patients report nights of dreams containing plots, missions, conversations, travel, conflict, and obligation."
+          ]
+        }
+      },
+      "n_words": 2438
+    }
+  },
+  "lanes": {
+    "extraction": "claude:sonnet, 154 propositions in 19 segments",
+    "rewrite:qwen3:8b": "ok",
+    "rewrite:gemma4": "blocked",
+    "rewrite:claude:sonnet": "blocked",
+    "rewrite:codex (control)": "blocked"
+  },
+  "watermark_tests": {
+    "signal_family": "watermark",
+    "research_only": true,
+    "run": false,
+    "reason": "no vendor keys; GPT/Claude text watermark not verifiable"
+  },
+  "provenance": {
+    "signal_family": "provenance",
+    "status": "n/a for text"
+  },
+  "tier": "fast",
+  "research_tier": {
+    "run": false,
+    "status": "stub; see docs"
+  },
+  "metric_groups": {
+    "style_shape": {
+      "signal_family": "stylistic_structural",
+      "keys": [
+        "sentence_length_jsd",
+        "paragraph_length_jsd",
+        "repeated_ngram_rate",
+        "structural_templates",
+        "pipeline_corpus_outlier"
+      ]
+    },
+    "author_distance": {
+      "signal_family": "author_anchor",
+      "keys": [
+        "author_style_distance_before",
+        "author_style_distance_after",
+        "author_style_distance_delta"
+      ]
+    },
+    "meaning": {
+      "signal_family": "semantic_retention",
+      "keys": [
+        "semantic_similarity",
+        "claims_preserved",
+        "claims_changed",
+        "claims_missing",
+        "structure_preserved"
+      ]
+    },
+    "watermark_tests": {
+      "signal_family": "watermark",
+      "keys": [
+        "watermark_tests"
+      ]
+    },
+    "provenance": {
+      "signal_family": "provenance",
+      "keys": [
+        "provenance"
+      ]
+    }
+  },
+  "blockers": [
+    {
+      "what": "rewriter gemma4",
+      "error": "HTTP 404: {\"error\":{\"message\":\"model 'gemma4-32k' not found\",\"type\":\"not_found_error\",\"param\":null,\"code\":null}}\n",
+      "fix": "gateway models: expose it on GET /v1/models; CLI lanes: fix login/availability of claude -p / codex exec"
+    },
+    {
+      "what": "rewriter claude:sonnet",
+      "error": "HTTP 524: error code: 524\n",
+      "fix": "gateway models: expose it on GET /v1/models; CLI lanes: fix login/availability of claude -p / codex exec"
+    },
+    {
+      "what": "control rewriter codex",
+      "error": "HTTP 524: error code: 524\n",
+      "fix": "gateway models: expose it on GET /v1/models; CLI lanes: fix login/availability of claude -p / codex exec"
+    }
+  ]
+}
