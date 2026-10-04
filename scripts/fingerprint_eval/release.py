@@ -102,7 +102,7 @@ def _write_quarantine(ctx: PackageCtx, outcome: HealOutcome, evaluator_id: str) 
             arts.append(str(p.relative_to(ctx.package)))
         if rec.raw_report_path:
             arts.append(rec.raw_report_path)
-    q = {"category": cat.value, "kind": "infra" if infra else "content", "retryable": infra, "created_at_utc": R.now_utc(),
+    q = {"status": "NEEDS_REVIEW", "category": cat.value, "kind": "infra" if infra else "content", "retryable": infra, "created_at_utc": R.now_utc(),
          "content_sha256": content, "evaluator_id": evaluator_id, "cycles": R.jsonable(outcome.cycles), "artifacts": arts}
     R.atomic_write(ctx.package / QUARANTINE, (json.dumps(q, indent=1, sort_keys=True) + "\n").encode())
     ledger.append(ctx.package, LedgerState.QUARANTINED, content, evaluator_id, {"category": cat.value, "kind": q["kind"]})
