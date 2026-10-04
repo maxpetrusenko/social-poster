@@ -183,9 +183,21 @@ def _model_info(spec: str) -> dict:
     return {"name": m.name, "family": getattr(m, "family", None), "backend": m.backend, "version": m.model_id}
 
 
-def _cached(package: Path, binding: Binding, ref_sha: str | None) -> tuple[Path, EvalRecord] | None:
+def _cache_extra(ctx: PackageCtx) -> dict:
+    """Inputs beyond Binding + reference that change the verdict: source notes (added-claim judge) and model specs."""
+    notes = None
+    if ctx.source_notes is not None:
+        try:
+            notes = sha256_file(ctx.source_notes)
+        except OSError:
+            notes = "unreadable"
+    return {"source_notes_sha256": notes, "extractor": MODELS["extractor"], "judge": MODELS["judge"]}
+
+
+def _cached(package: Path, binding: Binding, ref_sha: str | None, extra: dict) -> tuple[Path, EvalRecord] | None:
     for p, rec in reversed(R.list_records(package)):
-        if rec.binding == binding and rec.reference_sha256 == ref_sha and rec.result in (Result.PASS, Result.FAIL) and not rec.cache_hit:
+        if (rec.binding == binding and rec.reference_sha256 == ref_sha and (rec.structure or {}).get("cache_key_extra") == extra
+                and rec.result in (Result.PASS, Result.FAIL) and not rec.cache_hit):
             return p, rec
     return None
 
@@ -220,7 +232,7 @@ def _build_record(ctx: PackageCtx, binding: Binding, tree_sha: str, ref_sha: str
     frozen_reasons = [r for r in gate.get("reasons", []) if r.startswith("frozen blocks")]
     structure = {"images": part("images"), "headings": part("headings"), "code": part("codes"),
                  "frozen": {"expected": None, "preserved": bool(blk.get("frozen_blocks_identical", result is Result.PASS)), "diffs": frozen_reasons},
-                 "failure_categories": gate.get("failure_categories", [])}
+                 "failure_categories": gate.get("failure_categories", []), "cache_key_extra": _cache_extra(ctx)}
     models = {"extractor": _model_info(MODELS["extractor"]), "judge": _model_info(MODELS["judge"]),
               "embedding": {"name": EMBED_MODEL, "family": "nomic", "backend": "gateway", "version": EMBED_MODEL}}
     advisory = {"author_distance": aa.get("after"), "sentence_jsd": ss.get("sentence_length_jsd_draft_vs_final"),
@@ -286,7 +298,7 @@ def evaluate_package(ctx: PackageCtx, candidate: Path) -> EvalRecord:
     if early is None and ref is None:
         early = _error_gate(Category.MISSING_SOURCE, "reference version missing or unreadable: cannot ground the comparison", Result.FAIL)
     if early is None:
-        hit = _cached(pkg, binding, ref_sha)
+        hit = _cached(pkg, binding, ref_sha, _cache_extra(ctx))
         if hit:
             cache_hit_path, rec = hit[0], dataclasses.replace(hit[1], cache_hit=True)
     if rec is None:

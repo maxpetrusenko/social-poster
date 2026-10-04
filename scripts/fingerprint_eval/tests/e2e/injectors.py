@@ -57,7 +57,7 @@ def style_only(md: str) -> str:
     for para in md.split("\n\n"):
         out.append(para)
         if n < 6 and len(para.split()) > 25 and not para.startswith(("#", "!", ">", "-", "*", "[")) and para.rstrip()[-1:] in ".?!":
-            out[-1] = para.rstrip() + " Quiet, slow, and invisible."
+            out[-1] = para.rstrip() + " Notice, decide, and remember."  # words already in the article: rhythm, not facts
             n += 1
     assert n >= 3
     return "\n\n".join(out)

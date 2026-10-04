@@ -150,7 +150,7 @@ class FakeModels:
     def _extract(prompt: str) -> str:
         passage = prompt.split("Passage:\n", 1)[1].strip()
         props = []
-        for s in (x for x in re.split(r"(?<=[.!?])\s+", passage) if x.strip()):
+        for s in (x for x in re.split(r"(?<=[.!?])\s+", passage) if len(x.split()) >= 5):  # like the real extractor: fragments are not claims
             props.append({"claim": s.strip(), "links": [m.group(0) for m in re.finditer(r"(?<!!)\[[^\]]*\]\([^)]*\)", s)]})
         return json.dumps({"role": "fixture role", "propositions": props})
 
@@ -165,6 +165,10 @@ class FakeModels:
         else:
             claims = _numbered_claims(prompt)
             support = re.sub(r"^\d+\. .*$", "", prompt, flags=re.M)
+        if "supported by the reference material" in prompt:  # added.SUPPORT_PROMPT: supported/unsupported vocabulary
+            sup = _tokens(support)  # supported when every content word already occurs in the reference (style-only rephrasing)
+            return json.dumps([{"i": i, "verdict": "supported" if verdict_for(c, support) == "entailed" or _tokens(c) <= sup else "unsupported",
+                                "reason": "text comparison"} for i, c in claims])
         return json.dumps([{"i": i, "verdict": verdict_for(c, support), "reason": "text comparison"} for i, c in claims])
 
     @staticmethod

@@ -70,6 +70,8 @@ def _load_heal():
     except Exception:  # noqa: BLE001  heal is owned by another workstream
         return None
     repairer = None
+    if callable(getattr(heal, "get_repairer", None)):  # pinned contract: heal owns repairer selection
+        return run, heal.get_repairer()
     try:
         from . import repair
         for name in ("repair", "default_repairer", "repair_candidate"):

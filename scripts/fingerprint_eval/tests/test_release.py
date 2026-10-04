@@ -277,3 +277,16 @@ class Resolver(Base):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def test_cache_key_includes_source_notes_and_models(tmp_path, monkeypatch):
+    from scripts.fingerprint_eval import authz
+    from scripts.fingerprint_eval.contracts import PackageCtx
+    notes = tmp_path / "notes.md"
+    notes.write_text("a")
+    ctx = PackageCtx(package=tmp_path, slug="s", final_path=tmp_path / "f.md", final_rule="x", reference_path=None, source_notes=notes)
+    k1 = authz._cache_extra(ctx)
+    notes.write_text("b")
+    assert authz._cache_extra(ctx) != k1
+    monkeypatch.setitem(authz.MODELS, "judge", "qwen3:8b")
+    assert authz._cache_extra(ctx)["judge"] == "qwen3:8b"
