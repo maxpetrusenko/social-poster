@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import re
 
+from .contracts import Category
 from .errors import EvaluationError
 from .gateway import GatewayError, Model
 from .rewrite import Segment
@@ -75,7 +76,7 @@ def judge_claims(segments: list[Segment], judge: Model, strict: bool = False) ->
             except (GatewayError, ValueError) as e:  # json.JSONDecodeError is a ValueError
                 last = e
         if verdicts is None and strict:
-            raise EvaluationError(f"judge failed for section {seg.section!r} after retry: {str(last)[:200]}")
+            raise EvaluationError(f"judge failed for section {seg.section!r} after retry: {str(last)[:200]}", category=(last.category if isinstance(last, GatewayError) and last.category is not Category.UNKNOWN_ERROR else Category.MALFORMED_MODEL_OUTPUT), dependency=getattr(last, "dependency", None) or "gateway-chat")
         for i, p in enumerate(seg.propositions, 1):
             v = (verdicts or {}).get(i)
             verdict = v["verdict"] if v else "unjudged"
