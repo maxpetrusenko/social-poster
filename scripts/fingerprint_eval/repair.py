@@ -199,6 +199,7 @@ def _phase_content(ref_md: str, cand_md: str, record: EvalRecord, actions: list[
 
 def _phase_structure(ref_md: str, cand_md: str, record: EvalRecord, actions: list[str]) -> str:
     frozen = _frozen_texts(ref_md)
+    cand_frozen = _frozen_texts(cand_md)
     _, ref = _parse(ref_md)
     front, cand = _parse(cand_md)
     match = _align(ref, cand)
@@ -211,6 +212,7 @@ def _phase_structure(ref_md: str, cand_md: str, record: EvalRecord, actions: lis
             actions.append(f"restored heading {rs.heading.text!r}")
             cs.heading = _copy(rs.heading)
         assign = _assign(rs.blocks, cs.blocks)
+        keep = {id(b) for b in assign.values()}
         prev: Block | None = None
         for j, rb in enumerate(rs.blocks):
             structural = rb.kind != "paragraph" or rb.text in frozen
@@ -224,7 +226,12 @@ def _phase_structure(ref_md: str, cand_md: str, record: EvalRecord, actions: lis
                 new = _copy(rb)
                 cs.blocks.insert(_idx(cs.blocks, prev) + 1 if prev is not None else 0, new)
                 actions.append(f"re-inserted {rb.kind} block in {rs.heading.text if rs.heading else '(intro)'!r}")
+                keep.add(id(new))
                 prev = new
+        extras = [b for b in cs.blocks if id(b) not in keep and (b.kind != "paragraph" or b.text in cand_frozen)]
+        if extras:
+            actions.append(f"removed {len(extras)} added frozen block(s) from {rs.heading.text if rs.heading else '(intro)'!r}")
+            cs.blocks[:] = [b for b in cs.blocks if not any(b is x for x in extras)]
     return _render(front, cand)
 
 

@@ -75,6 +75,17 @@ def run_probe(name: str, probes: dict[str, Callable[[], bool]]) -> bool:
         return False
 
 
+def authz_fallback_gate(ctx: PackageCtx, path: Path, model: str) -> EvalRecord:
+    """Approved-fallback gate: switch extractor+judge via authz.set_models for this one evaluation, then restore."""
+    from . import authz
+    saved = dict(authz.MODELS)
+    authz.set_models(judge=model, extractor=model)
+    try:
+        return authz.evaluate_package(ctx, path)
+    finally:
+        authz.MODELS.update(saved)
+
+
 def get_repairer() -> Repairer:
     """The deterministic repairer. FINGERPRINT_EVAL_REPAIRER=module:attr overrides it ONLY in FINGERPRINT_EVAL_TEST_MODE=1."""
     spec = os.environ.get("FINGERPRINT_EVAL_REPAIRER")
@@ -195,11 +206,13 @@ def write_quarantine(ctx: PackageCtx, category: Category, kind: str, record: Eva
 
 # ---- the loop -------------------------------------------------------------------------------------------------------------
 def run_heal_loop(ctx: PackageCtx, gate_fn: GateFn, repairer: Repairer, max_cycles: int = MAX_REPAIR_CYCLES, *,
-                  fallback_gate_fn: FallbackGateFn | None = None, sleep: Callable[[float], None] = time.sleep,
+                  fallback_gate_fn: FallbackGateFn | None = None, sleep: Callable[[float], None] | None = None,
                   clock: Callable[[], float] = time.monotonic, backoff=INFRA_BACKOFF_SECONDS,
                   probes: dict[str, Callable[[], bool]] | None = None, workspace: Path | None = None,
                   circuit_clock: Callable[[], float] = time.time) -> HealOutcome:
     probes = {**DEFAULT_PROBES, **(probes or {})}
+    sleep = sleep or (lambda s: time.sleep(s))  # late-bound so patched time.sleep applies
+    fallback_gate_fn = fallback_gate_fn or authz_fallback_gate
     cycles: list[HealCycle] = []
     state = {"gate": gate_fn, "model": None}  # model: active approved fallback, if any
     circuits: dict[str, Circuit] = {}
