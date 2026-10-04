@@ -110,7 +110,8 @@ def _strings(obj: Any) -> list[str]:
 
 
 def state_path(env: dict[str, str]) -> Path:
-    return Path(env.get("MEDIUM_GUARD_STATE") or Path.home() / ".hermes" / "cache" / "medium-guard-state.json")
+    home = Path(env.get("HERMES_HOME") or Path.home() / ".hermes")
+    return Path(env.get("MEDIUM_GUARD_STATE") or home / "cache" / "medium-guard-state.json")
 
 
 def _load_state(env: dict[str, str]) -> dict[str, str]:
