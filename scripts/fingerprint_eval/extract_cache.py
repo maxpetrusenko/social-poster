@@ -8,6 +8,7 @@ import hashlib
 import json
 from pathlib import Path
 
+from .contracts import Category
 from .errors import EvaluationError
 from .gateway import GatewayError, resolve_model
 from .rewrite import Segment, extract_propositions, is_meta_claim
@@ -56,7 +57,7 @@ def ensure_extraction(segs: list[Segment], md: str, extractor_spec: str, cache: 
             try:
                 extract_propositions(s, extractor_spec)
             except (GatewayError, ValueError) as e:
-                raise EvaluationError(f"extraction failed: {str(e)[:250]}") from None
+                raise EvaluationError(f"extraction failed: {str(e)[:250]}", category=getattr(e, "category", Category.MALFORMED_MODEL_OUTPUT), dependency=getattr(e, "dependency", None)) from None
         source = "extracted"
         body = {"schema_version": SCHEMA_VERSION, "source_sha256": sha256(md), "extractor": ext,
                 "segments": {str(s.idx): {"hash": segment_hash(s), "section": s.section, "role": s.role, "propositions": s.propositions} for s in prose}}
