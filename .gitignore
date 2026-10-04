@@ -29,3 +29,6 @@ scripts/oauth-portals/*.png
 certs/
 .gstack/
 .playwright-mcp/
+
+# fingerprint eval: bulky corpora cache (experiments/ output is committed on purpose)
+.cache/
