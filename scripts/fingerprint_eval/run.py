@@ -17,7 +17,7 @@ from . import metrics as M
 from .gateway import GatewayError, Model, resolve_model
 from .guards import judge_claims, semantic_similarity, structure_preservation
 from .report import top_diffs, write_report
-from .rewrite import EXTRACTOR, Segment, assert_different_family, extract_propositions, rewrite_article, segment_article
+from .rewrite import EXTRACTOR, Segment, assert_different_family, extract_propositions, is_meta_claim, rewrite_article, segment_article
 from .textutil import core_markdown, load_author_corpus, load_pipeline_corpus
 
 WATERMARK = {"signal_family": "watermark", "research_only": True, "run": False, "reason": "no vendor keys; GPT/Claude text watermark not verifiable"}
@@ -152,7 +152,7 @@ def main(argv=None) -> int:
         saved = json.loads(cache.read_text())
         for s in segs:
             if str(s.idx) in saved:
-                s.propositions, s.role = saved[str(s.idx)]["propositions"], saved[str(s.idx)]["role"]
+                s.propositions, s.role = [q for q in saved[str(s.idx)]["propositions"] if not is_meta_claim(q["claim"])], saved[str(s.idx)]["role"]
     else:
         for s in segs:
             if not s.frozen:

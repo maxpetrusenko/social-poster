@@ -10,7 +10,7 @@ from pathlib import Path
 from . import metrics as M
 from .gateway import GatewayError, resolve_model
 from .guards import judge_claims, semantic_similarity, structure_preservation
-from .rewrite import EXTRACTOR, extract_propositions, segment_article
+from .rewrite import EXTRACTOR, extract_propositions, is_meta_claim, segment_article
 from .textutil import core_markdown, load_author_corpus, load_pipeline_corpus
 
 
@@ -26,7 +26,7 @@ def run_gate(article: Path, draft: Path, author_dir: Path, pipeline_dir: Path, o
             saved = json.loads(cache.read_text())
             for s in segs:
                 if str(s.idx) in saved:
-                    s.propositions = saved[str(s.idx)]["propositions"]
+                    s.propositions = [q for q in saved[str(s.idx)]["propositions"] if not is_meta_claim(q["claim"])]
         else:
             for s in segs:
                 if not s.frozen:

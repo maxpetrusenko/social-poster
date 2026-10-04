@@ -88,6 +88,7 @@ def links_in(text: str) -> list[str]:
 
 EXTRACT_PROMPT = """/no_think
 Extract the atomic factual propositions from the passage below. One proposition = one self-contained claim, in plain neutral words (do not copy the passage's phrasing; keep names, numbers, units, and causal direction exact). Keep the order of the passage.
+Skip statements about the passage or article itself (transitions such as "the passage moves on", "this section explains"). Extract only claims about the world, people, studies, events, or the author's stated opinions.
 If a claim came from a sentence containing a markdown link, copy that link into the proposition's "links" list exactly as written.
 Return ONLY JSON: {{"role": "<what this passage does, max 8 words>", "propositions": [{{"claim": "...", "links": []}}]}}
 
@@ -97,6 +98,16 @@ Passage:
 """
 
 
+META_CLAIM_RE = re.compile(
+    r"^\s*(?:the|this|that)\s+(?:passage|section|article|text|paragraph|piece|essay)(?:'s\s+[\w-]+(?:\s+section)?)?\s+"
+    r"(?:moves|shifts|turns|transitions|continues|returns|pivots|zooms|steps)\b", re.I)
+
+
+def is_meta_claim(claim: str) -> bool:
+    """Discourse claims about the text itself carry no fact; judging them only produces false gate failures."""
+    return bool(META_CLAIM_RE.match(claim))
+
+
 def extract_propositions(seg: Segment, model: str = EXTRACTOR) -> None:
     from .gateway import resolve_model
     m = resolve_model(model)
@@ -104,7 +115,7 @@ def extract_propositions(seg: Segment, model: str = EXTRACTOR) -> None:
     for _ in range(2):
         try:
             data = extract_json(m.complete(EXTRACT_PROMPT.format(section=seg.section or "(intro)", text=seg.text), **({"temperature": 0.1, "max_tokens": 6000} if m.backend == "gateway" else {})))
-            props = [p for p in data.get("propositions", []) if isinstance(p, dict) and p.get("claim")]
+            props = [p for p in data.get("propositions", []) if isinstance(p, dict) and p.get("claim") and not is_meta_claim(str(p["claim"]))]
             if not props:
                 raise GatewayError("empty propositions")
             seg.role = str(data.get("role", ""))[:80]

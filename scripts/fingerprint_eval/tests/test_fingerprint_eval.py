@@ -151,5 +151,15 @@ class GatewayUrlTest(unittest.TestCase):
         self.assertEqual(normalize_base_url("https://llm.maxpetrusenko.com/v1"), "https://llm.maxpetrusenko.com/v1")
 
 
+class MetaClaimTest(unittest.TestCase):
+    def test_discourse_claims_are_filtered(self):
+        from scripts.fingerprint_eval.rewrite import is_meta_claim
+        self.assertTrue(is_meta_claim("The passage moves to a smaller scale of example."))
+        self.assertTrue(is_meta_claim("The passage's medical-news section continues the same argument."))
+        self.assertFalse(is_meta_claim("The passage describes the result: a handle on an undruggable target."))
+        self.assertFalse(is_meta_claim("The hippocampus replays the day during sleep."))
+        self.assertFalse(is_meta_claim("Medicine repeatedly runs into this blind spot."))
+
+
 if __name__ == "__main__":
     unittest.main()
