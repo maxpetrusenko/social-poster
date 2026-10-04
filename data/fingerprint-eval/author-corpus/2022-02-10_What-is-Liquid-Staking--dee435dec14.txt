@@ -1,0 +1,58 @@
+What is Liquid Staking?
+
+Low risk, high reward!
+
+## What is Liquid Staking?
+
+### Low risk, high reward!
+
+## TLDR
+
+- Liquid staking allows you to use your tokens in DeFi and also stake them.
+- Users to remain in control of their funds.
+- PoS Network benefit from liquid staking with increased liquidity and enhanced network security
+- Top Liquid Staking platforms are Lido & Marinade
+
+Liquid staking is the act of delegating your tokens to a service that stakes for you without losing access to your funds.
+
+Liquid staking allows you to access your funds even when you’re staking them. The funds remain in escrow, but aren’t “locked” and inaccessible, as they would be with PoS staking.
+
+When you stake coins you have to lock them up for a specified amount of time. During which you cannot sell or transfer your coins. If there is a market crash during your lock period, you won’t be able to act in a timely manner. With liquid staking, you can add and remove funds as you pleased (usually with a trade-off of lower APR)
+
+Liquid staking offers the best of both worlds: a passive income and access to your staked funds.
+
+If you don’t know what staking is, read this article below:
+
+What is Proof of Stake (POS)?Spoiler alert: it is something that will make you money.medium.com
+
+If you are here to make money and don’t really care about the fundamentals, read this article below:
+
+Earn Crypto Passive IncomeTop methods revealed!medium.com
+
+## Where Can You Liquid Stake?
+
+### Lido
+
+Lido is a liquid staking solution for Ethereum. No minimum deposits or maintaining of infrastructure. Out of the top ten staking protocols on Ethereum, Lido dominates with a 35% market share of staked ETH. Lido holds 17.5% of the entire staked ETH supply, the most notable statistic depicting Lido’s undeniable dominance on Ethereum.
+
+(Sources: Defillama, Dune Analytics)
+
+### Marinade
+
+Marinade is the leading liquid staking protocol on Solana. When you stake you receive mSOL in exchange of your SOL and you can use it to do other DeFi operations. It comes with smart contract risk but they been audited 3 times so it is minimal. The price of mSOL always trades at a slight premium to SOL. Each epoch this ratio grows so that mSOL is gradually becoming worth more SOL so if you were to unstake mSOL for SOL on Marinade you would unstake more SOL than you originally deposited.
+
+There are some other similar options like Socean, Parrot, aSol, Stafi, Orca, Radium, and pSTAKE. But always do your own research or as we say it “DYOR”
+
+If you liked this story, you might also like a Medium membership. It’s only $5 a month (a price of a cup of coffee!) but it will give you unlimited access to stories while supporting your favorite writers. If you sign up using this link, I’ll earn a small commission. Thanks!
+
+And if you don’t want to be left behind during this wealth transfer consider subscribing to the Cryptobase newsletter. Get the latest crypto news, tips, and insights straight to your inbox.
+
+CryptobaseConnecting the dots. Click to read Cryptobase, by Max Petrusenko, a Substack publication. Launched 3 months ago.cryptobase.substack.com
+
+## Get Connected
+
+Web: https://maxpetrusenko.com/
+
+Twitter: https://twitter.com/petrusenko_max
+
+Instagram: https://www.instagram.com/petrusenkomax/

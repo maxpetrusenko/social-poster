@@ -1,0 +1,46 @@
+The Best Crypto Wallets
+
+A Beginner’s Guide to Cryptocurrency Wallets
+
+## The Best Crypto Wallets
+
+### A Beginner’s Guide to Cryptocurrency Wallets
+
+A cryptocurrency wallet is basically an app that enables you to send and receive coins through the blockchain like a bank account.
+
+### TL;DR:
+
+- Best Overall: Exodus, Trust Wallet
+- Best Hardware Wallet: Ledger Nano X
+- Best Exchanges: Coinbase (US), Binance (non-US)
+- Best Web: MetaMask (only supports ETH and its tokens).
+
+Source: changeangel.io
+
+### Not your keys, not your coins
+
+What it actually means is that if you keep your cryptocurrency on an exchange (such as Coinbase or Binance ), you don’t actually own those coins, because you don’t have the private keys to the related wallet. You gain access to those wallets by logging into these exchanges. Your account can be deleted, an exchange can get hacked. Your funds will disappear forever as a result of it. Look up Mt. Gox’s hacking.
+
+### Simple explanation
+
+Your public key is what identifies your account on the network. Think of it as your email address, When someone wants to send you crypto, they will send it to this address.
+
+Your private key is a string of 64 characters that can be generated from a 12-word seed phrase. It is kind of like the password to your account. It is used to sign transactions and to prove that you own the related public key.
+
+Source: GateHub
+
+### About wallet types
+
+Hardware / Offline / Cold Wallet — an offline encrypted storage device that will cost you a little bit up front( like a USB stick). The most popular are Ledger or Trezor. They both are good but Ledger has a nicer UI. The ledger supports over 1200 cryptocurrencies, while Trezor supports over a thousand. The only issue here is that you can’t stake your coins.
+
+Mobile/Desktop/Hot Wallet — applications for your phone/PC/Mac that are connected to the internet. Make sure that you can back up your private keys first, otherwise don’t store your money there. Exodus/Trust/Atomic wallets have a nice UI and allow you to keep multiple cryptocurrencies in one place. They are also free. However, it can be hard to keep track of your finances if you have 100 different apps for each coin on your phone.
+
+Paper wallet — it is a piece of paper usually with 12/24 (otherwise called seed phrase) words given to you when you create a wallet for the first time. Make sure to store it in a safe place and NEVER share it with ANYONE. If someone has your private keys — they have your money. Otherwise, paper wallets offer the safest way to store your cryptos.
+
+### Final thoughts
+
+There is no one best cryptocurrency wallet that has all of the features and all of the coins. It is what you intend to do with your crypto at the moment that should influence your decision on what wallet to choose.
+
+If you don’t want to be left behind during this wealth transfer consider subscribing to the Cryptobase newsletter. Get the latest crypto news, tips, and insights straight to your inbox.
+
+CryptobaseConnecting the dotscryptobase.substack.com

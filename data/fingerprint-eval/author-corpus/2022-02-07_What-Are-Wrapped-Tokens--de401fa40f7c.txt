@@ -1,0 +1,62 @@
+What Are Wrapped Tokens?
+
+Put your cryptocurrency to work
+
+## What Are Wrapped Tokens?
+
+### Put your cryptocurrency to work
+
+You might have seen “wBTC” or “wETH” at the CoinMarketCap or in the DeFi space. How is it possible that (wrapped) Bitcoin is available on Ethereum, or wrapped Ethereum exists on another blockchain? And why would you use wrapped tokens in the first place?
+
+Back in the 2017 crypto bull run, bitcoin was really expensive to send because of the network congestion. Since eth allows you to do smart contracts, someone smart made an eth token called “bitcoin” (or “wrapped bitcoin” so it doesn’t confuse people), it locked up an actual bitcoin in an Ethereum smart contract and allowed you to send wrapped bitcoin cheaper.
+
+Fast forward to the last bull run(2021) and otherwise became true, but this can’t happen quite yet because bitcoin can’t do smart contracts.
+
+### Wrapped token explained
+
+As many of the blockchains(BTC, ETH) were created at different times, they have different characteristics and cannot easily communicate with one another. WBTC aims to bring the value of Bitcoin and make it usable in the DeFi (decentralized finance) space.
+
+WBTC or Wrapped Bitcoin is an Ethereum token that represents Bitcoin. It enables the use of BTC on the Ethereum network. 1 WBTC equals 1 BTC, and WBTC can be converted into BTC and vice-versa.
+
+This is the summary of various Bitcoin-on-Ethereum’s:
+
+- WBTC: Best liquidity
+- renBTC: Easiest bridge between BTC & Ethereum
+- tBTC: Most decentralized
+- sBTC: Useful for no-slippage trading on Synthetix
+
+Wrapped tokens allow non-native tokens to be used on different blockchains. It is the way to use the original token on another blockchain with a 1:1 value. For example, Wrapped Bitcoin (WBTC) is an ERC-20 token, linked to Bitcoin launched on the Ethereum network on January 30th, 2019. As a result, Bitcoin can be used in the DeFi market.
+
+What is Decentralized Finance (DeFi)People became a lot more interested in DeFi (Decentralized Finance) applications. With this article, I would like to…medium.com
+
+## What’s the purpose of wrapped tokens?
+
+Different blockchains offer different functionality and they’re not always compatible with one another. For example, you can’t use BTC on Ethereum. But wrapped tokens offer a way to overcome this issue. They can act as bridges between different blockchains and increase interoperability.
+
+Liquidity is the foundation of all finance. Wrapped tokens bring liquidity to the market. Lenders have no value without money to borrow. Low liquidity is bad for exchanges as traders cannot easily trade their tokens quickly and at their targeted prices.
+
+Yield farming allows users to earn interest on cryptocurrencies that they lend out. WBTC allows users to participate in yield farming by lending out their crypto and earning interest on it.
+
+Staking is very popular within the crypto community. Users usually, have to lock their crypto in smart contracts for a designated period of time and earn rewards. Bitcoin cannot do this. But if you use WBTC you can enjoy the benefits of staking.
+
+Earn Crypto Passive IncomeTop methods revealed!medium.comThe Best Staking Wallets For Your CryptocurrencyStaking is a great option to passively earn income through your held coins/tokens and can be done with cryptocurrencies…medium.com
+
+## DeFi example
+
+Let’s say I have some USDC (US dollar coin), and I want to get interest on my USDC. To do this, I deposit them into a lending pool (let’s say I use the Anchor protocol ~20% APY). Once they leave my wallet, I get UST(anchor USDC) in return. This is an absolutely amazing and overlooked feature of crypto. This UST I have is just as valuable as the asset itself + any interest it’s generating. If I sent you my UST tokens, you can withdraw all my USDC (and any accrued interest) out of Anchor. This allows the USDC holder to not only gain interest in the Terra ecosystem but now take that “receipt” and use that value somewhere else to generate even more passive income.
+
+Anchor Protocol: Insane 20% APY on a Stablecoin and Why It Is SafeStrengths and weaknesses of the Anchor Protocolmedium.com
+
+If you liked this story, you might also like a Medium membership. It’s only $5 a month (a price of a cup of coffee!) but it will give you unlimited access to stories while supporting your favorite writers. If you sign up using this link, I’ll earn a small commission. Thanks!
+
+And if you don’t want to be left behind during this wealth transfer consider subscribing to the Cryptobase newsletter. Get the latest crypto news, tips, and insights straight to your inbox.
+
+CryptobaseConnecting the dots. Click to read Cryptobase, by Max Petrusenko, a Substack publication. Launched 2 months ago.cryptobase.substack.com
+
+## Get Connected
+
+Web: https://maxpetrusenko.com/
+
+Twitter: https://twitter.com/petrusenko_max
+
+Instagram: https://www.instagram.com/petrusenkomax/

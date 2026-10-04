@@ -1,0 +1,55 @@
+Web 3.0 Explained
+
+What is web 3.0 and why you should care
+
+## Web 3.0 Explained
+
+### What is web 3.0 and why you should care about it
+
+Created by author
+
+To better understand what is Web 3.0 we need to know what is Web 1.0 and 2.0. Not to bore you, here are some simple explanations:
+
+- Web 1.0 — information only goes from the website to the user.
+- Web 2.0 — information goes both ways. Users interact with the website.
+- Web 3.0 — the great beyond. Information becomes open, decentralized, smart. It interacts with the user and the website or app.
+
+Web 3.0 is a decentralized trustless and permissionless network that is able to use Artificial Intelligence and Machine Learning and where the data from its network can be accessed in many places at the same time (ex. Internet of Things).
+
+That's a mouthful of smart words. Below, I’ll offer a simpler explanation. But if you are eager to learn more, check this out.
+
+### Welcome to Web 3.0
+
+Web 3 doesn’t solve all world problems. The internet won’t be decentralized as long as internet providers are under government control. There is still a chance of shutting down the internet with a click of a button.
+
+Source: computes
+
+Web 3 is currently considered the decentralized web. Web 2.0 is a centralized web — data is stored in large data centers owned by big centralized businesses. The decentralized web, on the other hand, would spread the data storage and computation needed for websites away from those centralized sources to decentralized networks that would run across all computers running one of these systems. Blockchain technology is of great help here.
+
+Source: memegenerator
+
+At the moment, Web 3 is more about making assets digital and allowing ownership of something.
+
+Here is a good example. You play the game, spend a lot of time and effort. You acquire rare items. A company that created that game decides to go out of business or to ban your account for some reason. You lost all your items. The very sad ending of the story.
+
+Smart contracts, on the other hand, allow code enforceable contracts. Blockchain allows ownership of digital assets. This is the game-changer for finance. Now those items (assets, NFTs) are located on the blockchain and could be used in many different games and they don’t belong to the company. They belong to you.
+
+Source: offthegridnews.com
+
+Web3.0 is making its way to Congress.
+
+### Final Thoughts
+
+This is how web 3.0 looks now. It’s still pretty new so its understanding will be clearer with its development. As for now, the average internet user may notice web 3 when they:
+
+- Do not have to share all their data with apps like Facebook/Meta.
+- Enter a website they like and they are NOT greeted with a message “THIS DOMAIN HAS BEEN SEIZED BY THE STATE”.
+- Speak to their friends and DO NOT see relevant ads.
+- Interact with people online and can instantly, privately transfer money or assets without anyone asking how, why, and wait 5 business days.
+- Own their digital assets (NFTs).
+
+If you liked this story, you might also like a Medium membership. It’s only $5 a month (a price of a cup of coffee!) but it will give you unlimited access to stories while supporting your favorite writers. If you sign up using this link, I’ll earn a small commission. Thanks!
+
+If you don’t want to be left behind during this wealth transfer consider subscribing to the Cryptobase newsletter. Get the latest crypto news, tips, and insights straight to your inbox.
+
+CryptobaseConnecting the dotscryptobase.substack.com

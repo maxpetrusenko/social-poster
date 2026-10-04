@@ -1,0 +1,55 @@
+Top 10 Myths About Cryptocurrencies That You Need to Know
+
+Cryptocurrencies will replace fiat
+
+## Top 10 Myths About Cryptocurrencies That You Need to Know
+
+Cryptocurrencies will replace fiat
+
+It is unlikely in the short term. We have stablecoins, but they are not as stable as we thought(UST for example). Governments created CDBC and that's the most likely outcome at the moment. We agree that cryptocurrencies were created to give people power — but some people don’t understand that and we are still at the beginning of the financial revolution.
+
+Shitcoins can replace BTC
+
+The BTC white paper may seem outdated to you, but remember BTC is the most used crypto at the moment. Of course, with the current speed of development, Ethereum has a good chance to overtake it.
+
+BTC is too volatile as a store of value
+
+It is at the moment, but as soon as the last block will be mined in 2040 it will change everything. Unless, of course, we will come up with something better. But did you know gold used to be very volatile too? In the 1970s, it increased 10x in a decade before declining by a lot.
+
+Governments will kill cryptos
+
+Governments wanted to kill it, but it didn’t happen. Crypto is a movement now and lots of mainstream companies integrate it. Universities have started teaching blockchain technology. You can easily get a job in the crypto industry now.
+
+You only pay taxes on crypto in the US if you sell your crypto
+
+Capital gains are not the only thing that’s taxed. You will also have to pay for income like Coinbase rewards, airdrops, or mining rewards. So you can hodl and pay fewer taxes.
+
+Whales control the governance
+
+Whales control maybe around a quarter of the governance of most coins. People wouldn’t buy into a coin that has bad tokenomics. So they don’t actually have that much power.
+
+8,000% APY will give you 8,000% returns annually
+
+Nobody is giving you free money. Those APYs are a marketing trick to attract people, and they constantly change, ending up averaging out. For a good project, those APYs will quickly drop back down to earth, to below 20%, and average out at 10–15%.
+
+Technical analysis is astrology
+
+TA is about probabilities. It uses historical data, market patterns, and sentiment to make a more educated guess, and figure out better probabilities. Over a few trades you may end up losing with TA, but at the end, you should come up on top more than 50% of the time.
+
+The FBI has seized a wallet with 140k Bitcoins, but can’t access them
+
+Don’t trust the media. If someone got your ledger wallet they still don’t know the secret phrase. Bitcoins exist only on a ledger on a worldwide network.
+
+There is no such thing as a “seized” bitcoin or “coins” they can’t access. There are no actual coins you have laying around your house or on a hard drive that the FBI can grab.
+
+Crypto is untraceable.
+
+Duh, every chain has a block explorer and you know the sender and receiver addresses. Blockchains do not have your name written on them by design, but you might be stupid enough to do KYC and report all your earnings and wallets to IRS.
+
+If I missed anything, feel free to add it to the comment section!
+
+Read next → Your Top 5 Big Mistakes In Crypto Bear Market. Learn About Them Now
+
+Max Petrusenko works remotely in the software development industry and travels the world to stay in touch with the latest trends. His Cryptobase newsletter provides insightful actions needed to be taken by thoughtful people in this fast and crazy environment. Join people who follow him on Medium, Twitter, and Substack.
+
+If you liked this story, you might also like a Medium membership. It’s only $5 a month (a price of a cup of coffee!) but it will give you unlimited access to stories while supporting your favorite writers. If you sign up using this link, I’ll earn a small commission. Thanks!

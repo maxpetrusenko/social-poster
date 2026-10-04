@@ -1,0 +1,73 @@
+What are Stablecoins? And How Stablecoins Can Make You Money
+
+And are they a good investment?
+
+## What are Stablecoins? And How Stablecoins Can Make You Money
+
+### And are they a good investment?
+
+A stablecoin is a coin where its value is pegged to a fiat currency like the US dollar, ensuring price stability is maintained. Cryptocurrencies like BTC and ETH offer a lot of benefits but their prices are unpredictable making them unsuitable for everyday transactions.
+
+So how do stablecoins work?
+
+Stablecoins are used in converting one coin to another. So if you wanted to convert your XYZ to ZYX you’d sell XYZ and buy USDC.
+
+Stablecoins offer a more reliable, usable solution for making payments as they experience negligible price fluctuations and closely follow the value of the reserve asset that they are pegged to.
+
+Typically, the stablecoins will be backed by a ‘reserve’ where the asset or assets backing the stablecoin are stored. For example, $1 million to back up 1 million stablecoin units. The money in the reserve acts as collateral for the stablecoin.
+
+## Types of stablecoins
+
+Fiat-backed stablecoins
+
+Fiat-backed stablecoins are the most popular. They are pegged to a fiat currency with a 1:1 ratio. We also refer to these as fiat-collateralized stablecoins. A central bank or issuer stores a reserve amount of fiat currency and issues a proportionate number of tokens. The bank should hold 100,000 dollars, and issue 100,000 tokens each worth one dollar.
+
+Commodity-backed stablecoins
+
+Similarly, a stablecoin pegged to the price of gold would have a specific amount of gold held for each stablecoin issued. Ex: PAX, GUSD.
+
+However, this type of stablecoin is not without risk as it is necessary to trust that the issuer is holding funds in reserve.
+
+Crypto-backed stablecoins
+
+Cryptocurrency, rather than fiat currency is used as collateral. It is more complex. As crypto is digital, smart contracts issue stablecoin tokens. Here, you’re trusting that the network participants rather than a single issuer. Ex: SNX
+
+Algorithmic stablecoins
+
+Algorithmic stablecoins are not backed by crypto or fiat currencies. They are pegged by algorithms and smart contracts. Token supply is increased or decreased to ensure the coin’s value remains in line with its target price.
+
+## What are the benefits of stablecoins?
+
+Stablecoins are significantly less volatile and more predictable than non-pegged cryptocurrencies. This makes them a useful solution for integrating crypto with traditional financial markets.
+
+Stablecoins possess many of the beneficial properties of cryptocurrencies. They are open and accessible to anyone who has access to the internet. They’re also secure, fast, and cheap. Users don’t need a band account to hold stablecoins, and they’re easy to transfer too. There are also simple ways to make interest on stablecoin investments.
+
+Top stablecoins by market cap
+
+Tether (USDT): is an example of a cryptocurrency whose tokens are backed by an equal amount of US dollars. As of December 13, 2021, Tether is the 4th largest cryptocurrency by market capitalization.
+
+USD Coin (USDC): is a USD-backed stablecoin.
+
+TerraUSD (UST): is a decentralized stablecoin that aims to maintain a value of $1 USD by burning a reserve asset — LUNA.
+
+Dai (DAI): is a decentralized stablecoin that runs on Ethereum and aims to maintain a value of $1 USD. DAI is backed by collateral on the Maker platform.
+
+How to earn interest on stablecoins
+
+Platforms like Anchor(19.5%), Alpha Finance Lab, Hodlnaut, Celsius offer opportunities for investors to earn up to 20% interest on stablecoins. The most lucrative and safest at the moment would be the Anchor, it is also decentralized.
+
+Anchor Protocol: Insane 20% APY on a Stablecoin and Why It Is SafeStrengths and weaknesses of the Anchor Protocolmedium.com
+
+You can earn interest by holding your stablecoins long-term. More in the article below.
+
+Earn Crypto Passive IncomeTop methods revealed!medium.com
+
+### Should you pull all of your cash from your savings account and use stablecoins? What’s the risk?
+
+People that have done just this with great results. Bank funds are FDIC insured up to 250k, which is not the case with crypto. Stick with more reputable platforms with clean books. That rules out Tether right out of the gate but do your own research on whichever platform and holdings you choose.
+
+If you liked this story, you might also like a Medium membership. It’s only $5 a month (a price of a cup of coffee!) but it will give you unlimited access to stories while supporting your favorite writers. If you sign up using this link, I’ll earn a small commission. Thanks!
+
+If you don’t want to be left behind during this wealth transfer consider subscribing to the Cryptobase newsletter. Get the latest crypto news, tips, and insights straight to your inbox.
+
+Cryptobase | Max Petrusenko | SubstackConnecting the dots. Click to read Cryptobase, by Max Petrusenko, a Substack publication. Launched 2 months ago.cryptobase.substack.com

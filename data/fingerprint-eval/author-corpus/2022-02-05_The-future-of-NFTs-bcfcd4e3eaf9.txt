@@ -1,0 +1,69 @@
+The future of NFTs
+
+Is NFT the future of everything or just a craze?
+
+## The future of NFTs
+
+### Is NFT the future of everything or just a craze?
+
+> NFT’s could be the future, but I’m not including punks, apes, and rocks digital art pieces. Let me explain.
+
+NFT’s could be the future for everything. Literally everything. But there are two sides to the story. Let's see the tech of NFT’s and what their true purpose is going to be:
+
+- Passports
+- Licenses
+- Credit cards
+- Medical records
+- Real estate
+- Gaming
+
+Non-Fungible Token (NFT). What is it exactly?The hype is real.medium.com
+
+## Pro NFT Side
+
+It’s great that people are being introduced to NFT’s through fun art creations. That way everyone will be more accepting of the technology.
+
+My hope is that it leads to digital ownership of your libraries. Currently, digital libraries are subject to terms of use. Users' entire libraries can be forfeited if those terms are violated or even perceived to be violated. NFTs on a public blockchain represent the possibility of ownership of digital property independent of having an account with a store, your identity can be kept anonymous, you can even resell, rent out or lend your digital property. The tech is in its infancy and I see a strong push in the media to cancel this technology but just think about it and how it works for a little bit. It can make digital property behave more like physical property. Here are some possible use-cases:
+
+- “Soulbound” NFTs. Driver’s licenses, diplomas, certifications, proof of attendance, etc. Soulbound can not be sold.
+- Retail. Brands use NFTs to incentivize IRL transactions, leveraging creators to drive traffic to storefronts. For example, Yeezy NFTs that airdrop with purchases from Gap stores, or NFTs that unlock exclusive features for Tesla vehicles.
+- Rewards. Brands will drop unique quests within communities, rewarding completion with NFTs. This could be anything from completing a questionnaire to referring members into the community and attending events.
+- Legal. Real estate, proof of ownership, royalties are all good use-cases for NFTs here.
+- Content Submission. Users will submit content like short-form videos, reviews, and tutorials in exchange for NFTs. It’s a marketing flywheel. Rights can be programmed into contracts so that the use of the contributor’s content in advertising could yield their future profits.
+- Gaming. Avatars as well as unique in-game inventory items could be NFTs. NFTs could create hive activity by incentivizing group behavior. MMORPGs that unlock levels once 10k users have aped in. Airdrops of rare NFTs to collector cohorts that have signed contracts to merge their base-layer NFTs.
+- Collateralization. To date, lenders have been averse to NFT holders borrowing against their assets. But as institutional $$$ flows in, and assets become better stores of value, collateral markets will promise flexibility and liquidity for all NFT holders, not just whales.
+- Fractionalization. Splitting up NFTs into individual shares gives more people exposure to blue-chip assets, like owning a piece of a crypto punk. The result? More liquidity for holders and more appreciation of blue-chip assets as money enters the markets.
+- R&D. Brands and creators will exchange NFTs for insights on product development: pain points, marketing claims, roadmap, and more. The NFTs will unlock early access to product releases and potential profit sharing. Brands will track and maintain these key relationships.
+- Education and Customer Support. Upon demonstrating exceptional knowledge of a brand’s product, users can receive NFTs in exchange for onboarding newbies into the community, or providing support. This can be exponentially more impactful than a brand employee doing the same.
+
+## Anti NFT View
+
+> They will collapse as soon as the endless supply of zero interest rate money dries up, and the rest of the asset bubbles burst.
+
+> You don't really need NFTs to automate DCMA copyright takedowns, you can do it right now.
+
+There are comments that say “everything digital needs to be considered intellectual property with blockchain receipts so artists can prove they own things and take legal action, etc.” But if somebody steals your art and sells it online, there are already systems in place for you to either take action against this online or through the law.
+
+So, what are people buying when you sell a physical drawing or a digital drawing? The answer is access to these things. You can still be the owner of your own media without blockchain making things more complicated.
+
+If the product can be consumed at all it can be duplicated. If the data from an image or music file is decrypted enough to modulate my pixels or speakers, the signals can be duped. If the sound waves or photons are reaching my ears or eyes, they can reach a recording device. The only way to actually “cryptographically secure” any of this shit is to encrypt it and never let it get decrypted. You can already throw data into a cryptographic black hole, but why would anyone ever want to “consume” the results?
+
+And, with gaming, people really think that it is so easy to make a “knife” that could be used in multiple games, but in reality, it is much harder than you think. Of course, it opens up space for creativity, but at the moment it requires way too many resources and there is no revenue from it for the Big Companies.
+
+### Closing thoughts
+
+With everything said here keep in mind: we are early. The promise of NFT technology to democratize and reward community participation grows every day. But it financial part of it might hurt too many people and it won’t be mainstream.
+
+If you liked this story, you might also like a Medium membership. It’s only $5 a month (a price of a cup of coffee!) but it will give you unlimited access to stories while supporting your favorite writers. If you sign up using this link, I’ll earn a small commission. Thanks!
+
+And if you don’t want to be left behind during this wealth transfer consider subscribing to the Cryptobase newsletter. Get the latest crypto news, tips, and insights straight to your inbox.
+
+CryptobaseConnecting the dots. Click to read Cryptobase, by Max Petrusenko, a Substack publication. Launched 2 months ago.cryptobase.substack.com
+
+## Get Connected
+
+Web: https://maxpetrusenko.com/
+
+Twitter: https://twitter.com/petrusenko_max
+
+Instagram: https://www.instagram.com/petrusenkomax/

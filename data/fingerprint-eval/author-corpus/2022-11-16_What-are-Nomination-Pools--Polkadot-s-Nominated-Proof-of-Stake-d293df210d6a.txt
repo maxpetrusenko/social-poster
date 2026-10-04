@@ -1,0 +1,34 @@
+What are Nomination Pools? Polkadot’s Nominated Proof of Stake
+
+Stake DOT like a pro.
+
+## What are Nomination Pools? Polkadot’s Nominated Proof of Stake
+
+### Stake DOT like a pro.
+
+The nomination pool is the new add-on to the Polkadot and Kusama network that allows members to raise their funds and act as a candidate account or single nominator in other words. The objective of the pool is to maximize the overall stake in the network. In summary, each nomination pool is viewed as a single nominator from the NPoS (Nominated Proof of Stake) system point of view.
+
+Here is an excerpt from the official doc:
+
+> Nomination pools are one of the key features from the roadmap of staking improvements on Polkadot. They are designed to permissionlessly allow members to pool their funds together and act as a single nominator account.
+
+Unstaking time with this method doesn’t change and will be 28 days.
+
+In this article, we will be talking about Polkadot pools. You can stake natively and earn rewards with as low as 1 DOT. It became very simple to create or join a nomination pool — just connect your wallet, select a pool, and start earning rewards.
+
+At this time Polkadot can support up to 22 500 nominators in the set of active nominators, which means that only users with the most DOTs can participate in the network staking, and therefore generate rewards.
+
+Here is the list of top DOT pools:
+
+- Polkadot.network
+- Talisman
+
+As of writing the Talisman pool has the most number of contributors and the highest amount of staked Dot and you can also use your Ledger device!
+
+As you would assume the earnings of the pool depend on a member’s stake in the bonded pool (and thus the staking rewards for members will be the same as if they were a nominator). Importantly, slashes are also applied proportionally to members who may have been actively bonded.
+
+Read next → Top 10 Myths About Cryptocurrencies That You Need to Know
+
+Max Petrusenko works remotely in the software development industry and travels the world to stay in touch with the latest trends. His Cryptobase newsletter provides insightful actions needed to be taken by thoughtful people in this fast and crazy environment. Join people who follow him on Medium, Twitter, and Substack.
+
+If you liked this story, you might also like a Medium membership. It’s only $5 a month (a price of a cup of coffee!) but it will give you unlimited access to stories while supporting your favorite writers. If you sign up using this link, I’ll earn a small commission. Thanks!

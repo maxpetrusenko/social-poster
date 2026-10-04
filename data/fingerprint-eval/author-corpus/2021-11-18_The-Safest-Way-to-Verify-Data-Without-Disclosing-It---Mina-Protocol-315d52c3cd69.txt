@@ -1,0 +1,60 @@
+The Safest Way to Verify Data Without Disclosing It — Mina Protocol
+
+The TL;DR
+
+## What is Mina Protocol?
+
+### The safest way to verify data without disclosing it
+
+Source: Smart Fix Edinburgh
+
+## The TL;DR
+
+- 💳 Mina is the safest way to verify data without disclosing it and the world’s lightest blockchain
+- 🚀 Be an early adaptor and make a lot of money
+- 💻 Mina is a layer 1 protocol and the network has a size of only 22 KB, which is nothing when compared to Bitcoin’s 300 GB blockchain
+- ❗Mina protocol uses Snapps — a new type of decentralized application (dapp) that uses cryptography to conduct trustless blockchain transactions.
+
+Cryptocurrency’s scalability and privacy always were one of the most pressing issues across any blockchain ecosystem — whether that’s Bitcoin or Ethereum. Snapps solve the industry’s greatest challenges.
+
+Imagine a world where medical information, credit score, ownership, mortgage, and voting can be verified without having to share sensitive information. Now, this is can be done with Mina Protocol. User runs Snapps that generates the proof. Then the proof is sent to the chain along with the user's information where it gets verified. So the information never leaves the user's computer, only the proof. You don’t have to trust a third party with your information anymore.
+
+Created by author
+
+Mina Protocol aims to be a lightweight blockchain that maintains a constant size of just 22 kB regardless of the number of transactions on the network. This allows anyone to operate a node and help secure its network without needing a supercomputer. Mina already partnered with Ethereum foundation & polygon, and this is just the beginning!
+
+Mina’s Snapps have the unique ability to privately interact with any website and access verified real-world data for use on-chain — other current blockchains can’t do that. The ability to verify data while not disclosing that data is obviously a very valuable privacy feature.
+
+Imagine the situation where the teller verifies your credit score and gives you loans in DeFi without revealing your identity. Without Snapps, anyone would be able to look up your transaction, connect it to the credit score, and dox you. With Snapps, you are safe.
+
+## What are Snapps?
+
+Snapps are a new type of decentralized application (dapp) that has the ability to verify data while not disclosing it. Snapps uses the power of zk-SNARKs to complete the transaction with information that is absolutely needed. This removes the need for oracles. So, no more front-running attacks. You have complete control over which data you want to share and under what terms or conditions you want to share it.
+
+Source: Medium
+
+### zk-SNARK is an abbreviation of zero-knowledge Succinct Non-interactive ARguments of Knowledge.
+
+- Zero-Knowledge: Provers do not disclose the private information they wish to prove.
+- Succinct: The amount of data proved is relatively small
+- Non-interactive: Little or no interaction
+- ARguments: The verifier is only protected against computationally limited provers. Provers with enough computational power can create proofs/arguments about wrong statements (Note that with enough computational power, any public-key encryption can be broken). This is also called “computational soundness,’’ as opposed to “perfect soundness”.
+- of Knowledge: It is not possible for the prover to construct a proof/argument without knowing a certain so-called witness.
+
+## Product’s Roadmap
+
+Mina is capable of being much faster but the team will address tps once Snapps are on mainnet — Q1 2022. For Q4 2021, they’ve chosen to spend development time on use cases and stability.
+
+Smart contracts will be deployed via Pickles Snarks — a proof system and associated toolkit.
+
+Here is what Mina’s devs are saying about their amazing project on Reddit:
+
+> Mina’s current throughput limit is about 1 tps. This was an intentional choice, independent of what the architecture is actually capable of. When deciding what to work on, devs chosen to prioritize use cases and decentralization features over a high throughput.
+
+> This may be confusing, given the recent wave of high throughput projects. But if you look at the data, you see a different story. Tezos has recently just hit 1 tps after being out for years. Avalanche, which is seeing pretty substantial activity, is still averaging only 0.2 tps. Another project advertising high throughput, Elrond, is only at an average of 0.3 tps.
+
+> At the peak of activity when Mina’s tokens started unlocking, Mina was clocking only 0.1 tps, well under our limit. Given that, we face a question — do we focus the engineering hours to make Mina’s TPS a big number? Or, do we follow the data and work on solving for the decentralization problem and building use cases? We’ve chosen to go with the latter — which should optimize the time it takes Mina to launch what will likely be one of the first programmable platforms for zero knowledge proofs. TPS will follow after this, relatively easily, especially because Mina’s lightweight blockchain means that Mina doesn’t face the same tradeoffs between scale and decentralization as other blockchains.
+
+If you are still not sold, watch this YouTube video to learn more about Mina Protocol and Snapps:
+
+Mina Protocol: A REALLY CRAZY Crypto Project!!

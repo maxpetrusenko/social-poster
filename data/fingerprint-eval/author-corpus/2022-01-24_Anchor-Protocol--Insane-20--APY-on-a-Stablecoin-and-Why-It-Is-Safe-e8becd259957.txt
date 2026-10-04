@@ -1,0 +1,75 @@
+Anchor Protocol: Insane 20% APY on a Stablecoin and Why It Is Safe
+
+Strengths and weaknesses of the Anchor Protocol
+
+## Anchor Protocol: Insane 20% APY on a Stablecoin and Why It Is Safe
+
+### Strengths and weaknesses of the Anchor Protocol
+
+> Anchor savings has no minimum deposits, account freezes, or signup requirements — it can be used by anyone in the world with access to the internet.
+
+Anchor Protocol is a decentralized savings account where you earn up to 20% interest per year paid out every 7 seconds.
+
+Anchor can pay this due to the anchor borrow side. Here you can deposit collateral that is staked and the staking rewards are earned by the protocol and the people who borrow get paid in ANC tokens but pay interest in UST.
+
+Anchor earn derives its rate from the staking rewards of people who deposit bLUNA and bETH as loan collateral as well as the interest paid on these loans.
+
+Token name: Anchor ProtocolToken symbol: ANCNetwork: TerraTotal supply: 1,000,000,000,000 ANC
+
+### The 20% isn’t always 20%.
+
+This is a built-in mechanism where if the total earned from the borrower’s interest is lower than the amount needed to pay depositors, there’s a minimum yield of 18% that’s paid (side note: it should be 18% so I’m not sure why it’s slightly lower than 18%). If the total earned from the borrower’s interest is lower than 18%, we start dipping into the treasury. This 18% minimum yield can be changed through a vote by the community of ANC token holders.
+
+The risk of losing the 20% APY is small but has happened once before during a market crash when too many people withdrew staked bLUNA and there were not enough rewards being generated to cover the 20% yield fully. It dropped to around 18% IIRC. The APY recovered relatively quickly as the protocol incentivizes people to deposit and borrow more by increasing the borrow rewards (paid in ANC tokens) to incentivize more collateral to enter the borrowed product when this happens.
+
+After the incident happened, Terraform Labs injected Anchor with a large sum of cash to improve the size of their war chest so they could better withstand such a sudden crash again in the future.
+
+Also, Nexus protocol is a new platform that just released its first two products a couple of days ago. They aim to allow automatic liquidation protection to Anchor borrowers. This means more people will be comfortable depositing more collateral and borrowing more aggressively than ever before as the risk of liquidation will be greatly reduced. This will end up generating more rewards and more interest than ever before to continue to refill the war chest more quickly.
+
+### Could UST lose its peg?
+
+Peg — specific price that a token is aiming to stay at. Used with stablecoins to maintain their value over a long period of time.
+
+This is a none zero possibility but UST has withstood several market flash crashes and dumps over the last year alone and has held its peg very well compared to even some of the other popular stable coins. This is only going to get better as the ecosystem matures. For example, the white whale is an arbitrage platform on the horizon that is specifically targeting the stabilization of the UST peg by allowing anyone and everyone to pool their resources to automatically arbitrage UST and LUNA to maintain peg.
+
+The unsustainability of the 20% returns in a bear market/flash crash scenario.
+
+When LUNA token price crashed, a huge portion of borrowers got liquidated. This did 4 things:
+
+1. It reduced the amount of interest being earned by the protocol to pay depositors as there are fewer borrowers paying interest.
+
+2. It causes strain on the network, and there was a period of 30 mins where the anchor app was down because of it (apparently this is fixed and shouldn’t happen again)
+
+3. Borrowers who may not come back.
+
+4. Borrower incentive paid in ANC tokens increased by 164% APY, which means the supply of ANC tokens is super high now, and with demand low during a bearish period, it could cause ANC to dump.
+
+The depositors’ funds are safe
+
+Recently there was a 2% loss in the UST peg which was short-term, the depositors' funds were safe. UST was $0.98, instead of a dollar. Even if the economic model fails, I believe that the initial capital would still be there, and if the anchor rate drops to something more sustainable like 10%, you could always choose to park your money elsewhere. Token holds its value for about a year.
+
+### If you wondering how Anchor Protocol can sustain this rate please read this twit below:
+
+Anchor protocol can do more for you and it is pretty underrated:
+
+- You can lock in ETH/LUNA, earn 12% APR on these tokens.
+- You can lock your UST for another 20%.
+- You could leverage UST in Mirror.
+
+In addition to Anchor, you can use Polygon’s Dfyn stable pool — USDT/UST for around 40%.
+
+### Are you wondering if anyone invests in anchor protocol as a savings account?
+
+### How is Anchor supposed to attract more borrowers if the APR keeps getting worse?
+
+For those who interested in details you can listen to this AMA call:
+
+Anchor AMA Community CallWelcome back to the Ether! Today we have the Anchor community call AMA hosted by Danku and friends!terraspaces.org
+
+For those that don’t click the link, they say even without the yield reserve the Anchor protocol is expected to still maintain around 17% with current metrics.
+
+If you liked this story, you might also like a Medium membership. It’s only $5 a month (a price of a cup of coffee!) but it will give you unlimited access to stories while supporting your favorite writers. If you sign up using this link, I’ll earn a small commission. Thanks!
+
+If you don’t want to be left behind during this wealth transfer consider subscribing to the Cryptobase newsletter. Get the latest crypto news, tips, and insights straight to your inbox.
+
+CryptobaseConnecting the dots. Click to read Cryptobase, by Max Petrusenko, a Substack publication. Launched 2 months ago.cryptobase.substack.com

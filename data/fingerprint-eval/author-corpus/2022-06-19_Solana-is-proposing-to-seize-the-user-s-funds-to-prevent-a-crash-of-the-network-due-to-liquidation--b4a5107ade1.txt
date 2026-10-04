@@ -1,0 +1,37 @@
+Solana is proposing to seize the user’s funds to prevent a crash of the network due to liquidation…
+
+Let’s see how decentralized protocols resolve problems.
+
+## Solana is proposing to seize the user’s funds to prevent a crash of the network due to liquidation on Solend
+
+### Let’s see how decentralized protocols resolve problems.
+
+Solana’s largest lending platform Solend is about to go down. There is a large liquidation threat to watch on Solend protocol, where a whale has deposited 5.7M SOL ($170M and borrowed 108M USDC and USDT borrowed. This alone accounts for a massive % of borrowing on Solana, and now this position is under a liquidation threat.
+
+To prevent this, the decentralized protocol proposes to seize the user’s funds via governance because it could crash the network.
+
+In most protocols like Compound, AAVE, and Maker this will result in an on-chain liquidation. In fact, we have seen many such large liquidations on AAVE And Maker recently, and everything has worked as expected.
+
+The whale is not closing their position. Such a large liquidation in an illiquid market and unstable network like Solana is likely to have vastly damaging consequences. Solana network has already gone down and halted half a dozen times.
+
+The Solend team explains what could happen to the network:
+
+> This could cause chaos, putting a strain on the Solana network. Liquidators would be especially active and spamming the liquidate function, which has been known to be a factor causing Solana to go down in the past.
+
+> Letting a liquidation of this size to happen on-chain is extremely risky. DEX liquidity isn’t deep enough to handle a sale of this size and could cause cascading effects. Additionally, liquidators will be incentivized to spam the network in an effort to win very lucrative liquidations. This has been known to cause load issues for Solana in the past which would exacerbate the problems at hand.
+
+So to prevent this, they are proposing to literally steal the user’s funds and execute OTC trades:
+
+> Grant emergency power to Solend Labs to temporarily take over the whale’s account so the liquidation can be executed OTC and avoid pushing Solana to its limits. This would be done via a smart contract upgrade. Emergency powers will be revoked once the whale’s account reaches a safe level.
+
+When things like this happen, all the true colors of decentralization come out.
+
+Developers of new protocols put their users at risk by not thinking about all the edge cases…because who cares about risks right?!
+
+And during signs of distress, they resolve to seize user funds.
+
+Read next → What is Liquid Staking?
+
+Max Petrusenko works remotely in the software development industry and travels the world to stay in touch with the latest trends. His Cryptobase newsletter provides insightful actions needed to be taken by thoughtful people in this fast and crazy environment. Join people who follow him on Medium, Twitter, and Substack.
+
+If you liked this story, you might also like a Medium membership. It’s only $5 a month (a price of a cup of coffee!) but it will give you unlimited access to stories while supporting your favorite writers. If you sign up using this link, I’ll earn a small commission. Thanks!

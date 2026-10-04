@@ -1,0 +1,69 @@
+Prevent Losing 100k Of Crypto From Metamask. Here Is What You Can Do
+
+Save your money. Read this article.
+
+## Prevent Losing 100k Of Crypto From Metamask. Here Is What You Can Do
+
+### Save your money. Read this article.
+
+Here is what can happen to you:
+
+> I'm completely devastated. I honestly have no idea how or when my metamask or laptop got compromised. To think i was planning to get a hardware wallet, but didn’t. My life was already going backwards and now this. Any ideas on what i should do. Also If someone can shed some light on the situation.
+
+This is a real-life example:
+
+From -> To
+
+## What can you learn here
+
+- The transaction was initiated by the owner's wallet directly.
+- It is not a contract approval scam
+
+The ‘From’ field is the owner's wallet address. This means the transaction was initiated by OP’s wallet directly.
+
+The ‘To’ field says it’s a contract, but the contract name is ‘Centre: USD Coin’ and the address is the address of the USDC token. So this is a direct transfer of the token, and there is no third-party contract involved here.
+
+If it was an approval scam, what we would expect to see is:
+
+The ‘From’ field could be OP’s wallet address, or it could be a third party address. Either option is possible with an approval scam.
+
+The ‘To’ field would NOT be the USDC contract, this would be some random contract, probably unnamed.
+
+Disclaimer: always double-check the address you are sending to.
+
+When you approve a contract to spend tokens, transactions that spend the token need to be going through that contract(approval). Some wallet needs to call a function on that contract, which will transfer the tokens.
+
+If you look at all the transactions with the money going into the thief’s account, there is no third-party contract involved:
+
+The transactions are simple sends that are not interacting with any third-party contract, transferring directly from the owner's wallet to the thief’s wallet. There is no approval scam here.
+
+### Do not’s
+
+- Don’t write your private keys in any file on any electronic device.
+- Do not give your seed phrase to anyone (including metamask support).
+- Don’t “verify your wallet” on any website
+- Don’t make photos of your private keys
+- Don’t copy-paste your private keys
+- Do not use public networks.
+- Do not leave your metamask unlocked.
+
+### Do’s
+
+- Move your crypto to a cold wallet/ ledger
+- Write private keys on a piece of paper.
+- Use auto-lock timer
+- Always use Google Authenticator (or similar) for 2-factor security on exchanges
+
+## Final thoughts
+
+Giving your secret phrase away will let people access your crypto regardless of anything else.
+
+Metamask will never ask you for your seed phrase.
+
+Being your own bank is only safer if you put the work in. Otherwise, it can be a nightmare.
+
+Read next → Why Ethereum Is Not Decentralized. Here Is What You Need To Know
+
+Max Petrusenko works remotely in the software development industry and travels the world to stay in touch with the latest trends. His Cryptobase newsletter provides insightful actions needed to be taken by thoughtful people in this fast and crazy environment. Join people who follow him on Medium, Twitter, and Substack.
+
+If you liked this story, you might also like a Medium membership. It’s only $5 a month (a price of a cup of coffee!) but it will give you unlimited access to stories while supporting your favorite writers. If you sign up using this link, I’ll earn a small commission. Thanks!

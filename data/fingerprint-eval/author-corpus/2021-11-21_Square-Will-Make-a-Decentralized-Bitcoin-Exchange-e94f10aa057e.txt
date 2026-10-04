@@ -1,0 +1,33 @@
+Square Will Make a Decentralized Bitcoin Exchange
+
+Jack Dorsey made a bold move.
+
+## Square Will Make a Decentralized Bitcoin Exchange
+
+### Jack Dorsey made a bold move.
+
+### The TL;DR:
+
+- Square is a financial payments company led by Jack Dorsey.
+- Square has released a new whitepaper for decentralized exchange for Bitcoin (not a final version).
+- The Reddit community is not happy with it.
+
+Square CEO Jack Dorsey, who is also the CEO of Twitter, announced the company’s plan to create an open developer platform for a decentralized bitcoin exchange back in August. He announced that TBD, Square’s new division focused on developing non-exchange and decentralized financial services, will build the new exchange. Mike Brock, the head of strategic development at Square, is leading the new project. Brock had previously tweeted:
+
+> “This is the problem we’re are going to solve: make it easy to fund a non-custodial wallet anywhere in the world, through a platform to build on- and off-ramps into Bitcoin.”
+
+And here is more information from the tbDex White Paper:
+
+> At its core, the tbDEX protocol facilitates the formation of networks of mutual trust between counterparties that are not centrally controlled; it allows participants to negotiate trust directly with each other (or rely on mutually trusted third-parties to vouch for counterparties), and price their exchanges to account for perceived risk and specific requirements.
+
+The whitepaper authors clarify that this whitepaper is not the final design but merely a proposed design for public comment:
+
+> “This initial draft of the whitepaper is meant to establish a conceptual understanding of the high-level design of the proposed proposed proposed tbDEX protocol. It should not be considered complete or final. Future revisions of the whitepaper will address incomplete elements and currently unforeseen issues or challenges.”
+
+Not everyone was excited by this news. Not the crypto pros…
+
+Nor the Crypto community:
+
+### Final Thoughts
+
+While tbDEX is built around the concept of Bitcoin, it isn’t necessarily built atop the Bitcoin blockchain. It’s just a series of on- and off-ramps to BTC and other cryptocurrency networks. Where exactly the protocol lives isn’t clearly stated in their highly technical yet high-level white paper.

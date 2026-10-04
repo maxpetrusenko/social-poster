@@ -15,6 +15,8 @@ import os
 from pathlib import Path
 
 from . import metrics as M
+from .contracts import AUTHOR_CORPUS_DIR, Category, Result
+from .added import check_added
 from .errors import EvaluationError
 from .extract_cache import ensure_extraction, extractor_id, sha256
 from .gateway import resolve_model
@@ -25,6 +27,7 @@ from .textutil import core_markdown, load_author_corpus, load_pipeline_corpus
 
 SCHEMA_VERSION = 2
 PASS, FAIL, ERROR = 0, 1, 2
+DEFAULT_AUTHOR_CORPUS = Path(__file__).resolve().parents[2] / AUTHOR_CORPUS_DIR  # frozen pre-2023 corpus shipped in the repo
 
 
 def _read(path: Path, what: str) -> str:
@@ -54,9 +57,17 @@ def _write(out: Path, gate: dict) -> None:
     os.replace(tmp, out / "gate.json")
 
 
+def _load_author(author_dir: Path) -> list[tuple[str, str]]:
+    """Frozen corpus (.txt, already pre-2023 and length-filtered) or a raw medium export directory (.html)."""
+    txt = sorted(author_dir.glob("*.txt"))
+    if txt:
+        return [(f.name, f.read_text(errors="ignore")) for f in txt]
+    return load_author_corpus(author_dir)
+
+
 def _advisory(final_md: str, draft_md: str, author_dir: Path, pipeline_dir: Path, slug: str) -> dict:
     try:
-        a_fps = [M.fingerprint(t) for _, t in load_author_corpus(author_dir)]
+        a_fps = [M.fingerprint(t) for _, t in _load_author(author_dir)]
         p_fps = [M.fingerprint(core_markdown(t)) for _, t in load_pipeline_corpus(pipeline_dir, exclude=slug)]
         mean, std = M.fw_stats(a_fps + p_fps)
         cen = M.centroid(a_fps)
@@ -72,14 +83,63 @@ def _advisory(final_md: str, draft_md: str, author_dir: Path, pipeline_dir: Path
         return {"advisory_error": str(e)[:200]}  # advisory never gates
 
 
-def evaluate(article: Path, draft: Path | None, author_dir: Path, pipeline_dir: Path, out: Path, judge_spec: str,
-             extractor_spec: str, threshold: float, refresh: bool) -> dict:
+def _deterministic(struct: dict, fdiff: list[str]) -> tuple[list[str], list[str]]:
+    """Cheap checks (no model, no network): reasons and the content categories they imply, cheapest first."""
+    reasons: list[str] = []
+    cats: list[str] = []
+    if fdiff:
+        reasons.append("frozen blocks (lists, quotes, code, tables, short paragraphs) differ from the reference:\n" + "\n".join(fdiff))
+    for k in ("headings", "images", "codes", "links"):
+        if not struct[k]["preserved"]:
+            reasons.append(f"{k} not preserved: missing={struct[k]['missing'][:3]}" + (f" added={struct[k]['added'][:3]}" if k == "images" else ""))
+    if not struct["links"]["preserved"]:
+        cats.append(Category.MISSING_LINK.value)
+    if fdiff or any(not struct[k]["preserved"] for k in ("headings", "images", "codes")):
+        cats.append(Category.STRUCTURAL_DAMAGE.value)
+    return reasons, cats
+
+
+def _verdict(slug: str, threshold: float, reasons: list[str], cats: list[str], inputs: dict, extractor_spec: str, extraction: str,
+             judge_name: str, claims: dict, sem: dict, struct: dict, fdiff: list[str], advisory: dict) -> dict:
+    return {"schema_version": SCHEMA_VERSION, "pass": not reasons, "evaluated": True, "exit_code": FAIL if reasons else PASS,
+            "result": (Result.FAIL if reasons else Result.PASS).value, "error_category": None, "failure_categories": cats,
+            "slug": slug, "threshold": threshold, "reasons": reasons, "reference_identical": inputs["reference_identical"], "inputs": inputs,
+            "extractor": {"spec": extractor_spec, "id": extractor_id(extractor_spec), "source": extraction}, "judge": judge_name,
+            "blocking": {"signal_family": "semantic_retention",
+                         "claims": claims, "flagged_claims": claims.get("flagged", []), "semantic_similarity_whole": sem["whole"], "structure": struct,
+                         "frozen_blocks_identical": not fdiff},
+            "advisory": advisory}
+
+
+def evaluate(article: Path, draft: Path | None, author_dir: Path | None, pipeline_dir: Path, out: Path, judge_spec: str,
+             extractor_spec: str, threshold: float, refresh: bool, identity_shortcut: bool = False, source_notes: Path | None = None) -> dict:
+    """identity_shortcut (release path): a final byte-identical to the reference skips the extractor, judge and embeddings
+    (claims judged_by "identity"). Off by default so the standalone --gate CLI keeps exercising every model."""
+    author_dir = author_dir or DEFAULT_AUTHOR_CORPUS
     _check_inputs(article, draft, author_dir, pipeline_dir, threshold)
     final_md, draft_md = _read(article, "article"), _read(draft, "draft")
     slug = article.parent.name
     judge = resolve_model(judge_spec)
     inputs = {"article": str(article), "draft": str(draft), "article_sha256": sha256(final_md), "draft_sha256": sha256(draft_md),
               "reference_identical": final_md == draft_md}
+
+    # cheap deterministic checks first: no model call is spent on a candidate that is already structurally broken
+    struct = structure_preservation(draft_md, final_md)
+    fdiff = frozen_diff(draft_md, final_md)
+    det_reasons, det_cats = _deterministic(struct, fdiff)
+    advisory: dict = {}
+    if det_reasons:
+        skipped = {"total": 0, "claims_entailed": 0, "claims_changed": 0, "claims_missing": 0, "claims_unjudged": 0,
+                   "judge": None, "skipped": "deterministic_fail", "flagged": []}
+        advisory.update(_advisory(final_md, draft_md, author_dir, pipeline_dir, slug))
+        return _verdict(slug, threshold, det_reasons, det_cats, inputs, extractor_spec, "skipped", judge.name, skipped,
+                        {"whole": None, "section_min": None, "per_section": {}}, struct, fdiff, advisory)
+    if identity_shortcut and inputs["reference_identical"]:
+        ident = {"total": 0, "claims_entailed": 0, "claims_changed": 0, "claims_missing": 0, "claims_unjudged": 0,
+                 "judge": "identity", "skipped": "identical", "flagged": []}
+        advisory.update(_advisory(final_md, draft_md, author_dir, pipeline_dir, slug))
+        return _verdict(slug, threshold, [], [], inputs, extractor_spec, "skipped", judge.name, ident,
+                        {"whole": 1.0, "section_min": 1.0, "per_section": {}}, struct, fdiff, advisory)
 
     segs = segment_article(draft_md)
     extraction = ensure_extraction(segs, draft_md, extractor_spec, out / "gate-extraction.json", refresh)
@@ -99,47 +159,49 @@ def evaluate(article: Path, draft: Path | None, author_dir: Path, pipeline_dir: 
     if claims["claims_unjudged"] or claims["total"] == 0:
         raise EvaluationError(f"{claims['claims_unjudged']} unjudged claims, total {claims['total']}")
     sem = semantic_similarity(draft_md, final_md)
-    struct = structure_preservation(draft_md, final_md)
-    fdiff = frozen_diff(draft_md, final_md)
+    notes = _read(source_notes, "source notes") if source_notes else None
+    added = check_added(draft_md, final_md, notes, extractor_spec, judge_spec)  # claims that exist only in the final
 
-    reasons: list[str] = []
-    if claims["claims_changed"] or claims["claims_missing"]:
-        reasons.append(f"claims changed={claims['claims_changed']} missing={claims['claims_missing']}")
-    if fdiff:
-        reasons.append("frozen blocks (lists, quotes, code, tables, short paragraphs) differ from the reference:\n" + "\n".join(fdiff))
-    for k in ("headings", "images", "codes", "links"):
-        if not struct[k]["preserved"]:
-            reasons.append(f"{k} not preserved: missing={struct[k]['missing'][:3]}" + (f" added={struct[k]['added'][:3]}" if k == "images" else ""))
+    cats: list[str] = list(det_cats)
+    changed = [f"claims changed={claims['claims_changed']} missing={claims['claims_missing']}"] if claims["claims_changed"] or claims["claims_missing"] else []
     if not math.isfinite(sem["whole"]):
         raise EvaluationError("non-finite whole-document similarity")
-    if sem["whole"] < threshold:
-        reasons.append(f"semantic similarity whole {sem['whole']:.3f} < {threshold}")
-    advisory: dict = {}
+    low_sem = [f"semantic similarity whole {sem['whole']:.3f} < {threshold}"] if sem["whole"] < threshold else []
+    added_reasons = []
+    if added["unsupported"]:
+        added_reasons.append(f"added unsupported claims={len(added['unsupported'])}: " + "; ".join(f"[{u['section'] or 'intro'}] {u['claim']}" for u in added["unsupported"][:3]))
+        cats.append(Category.ADDED_UNSUPPORTED_CLAIM.value)
+    if changed or low_sem:
+        cats.append(Category.CONTENT_CLAIM_FAILURE.value)
+    reasons = changed + det_reasons + added_reasons + low_sem
     low = {h: round(v, 3) for h, v in sem["per_section"].items() if v < threshold}
     if low:
         advisory["sections_below_threshold"] = low  # per-section is advisory until calibrated
     advisory.update(_advisory(final_md, draft_md, author_dir, pipeline_dir, slug))
+    cl = {k: claims[k] for k in ("total", "claims_entailed", "claims_changed", "claims_missing", "claims_unjudged", "judge")}
+    cl["flagged"] = claims["flagged"]
+    cl["added_unsupported"], cl["added_checked_claims"], cl["added_new_sentences"] = len(added["unsupported"]), added["claims"], added["sentences"]
+    g = _verdict(slug, threshold, reasons, cats, inputs, extractor_spec, extraction, judge.name, cl, sem, struct, fdiff, advisory)
+    g["blocking"]["flagged_claims"] = claims["flagged"]
+    g["blocking"]["claims"].pop("flagged", None)
+    g["blocking"]["added_unsupported_claims"] = added["unsupported"]
+    g["blocking"]["semantic_section_min"] = sem["section_min"]
+    return g
 
-    return {"schema_version": SCHEMA_VERSION, "pass": not reasons, "evaluated": True, "exit_code": FAIL if reasons else PASS,
-            "slug": slug, "threshold": threshold, "reasons": reasons, "reference_identical": inputs["reference_identical"], "inputs": inputs,
-            "extractor": {"spec": extractor_spec, "id": extractor_id(extractor_spec), "source": extraction}, "judge": judge.name,
-            "blocking": {"signal_family": "semantic_retention",
-                         "claims": {k: claims[k] for k in ("total", "claims_entailed", "claims_changed", "claims_missing", "claims_unjudged", "judge")},
-                         "flagged_claims": claims["flagged"], "semantic_similarity_whole": sem["whole"], "structure": struct,
-                         "frozen_blocks_identical": not fdiff},
-            "advisory": advisory}
 
-
-def run_gate(article: Path, draft: Path | None, author_dir: Path, pipeline_dir: Path, out: Path, judge_spec: str,
-             threshold: float, extractor_spec: str, refresh: bool = False) -> int:
+def run_gate(article: Path, draft: Path | None, author_dir: Path | None, pipeline_dir: Path, out: Path, judge_spec: str,
+             threshold: float, extractor_spec: str, refresh: bool = False, identity_shortcut: bool = False, source_notes: Path | None = None) -> int:
     """Never raises: every failure to evaluate, including bugs, is exit 2."""
     try:
         out.mkdir(parents=True, exist_ok=True)
         (out / "gate.json").unlink(missing_ok=True)  # a stale verdict must never outlive a failed run
-        gate = evaluate(article, draft, author_dir, pipeline_dir, out, judge_spec, extractor_spec, threshold, refresh)
+        gate = evaluate(article, draft, author_dir, pipeline_dir, out, judge_spec, extractor_spec, threshold, refresh, identity_shortcut, source_notes)
     except Exception as e:  # noqa: BLE001  fail closed
         msg = f"{type(e).__name__}: {e}" if not isinstance(e, EvaluationError) else str(e)
-        gate = {"schema_version": SCHEMA_VERSION, "pass": False, "evaluated": False, "exit_code": ERROR, "reasons": [f"could not evaluate: {msg[:400]}"]}
+        cat = getattr(e, "category", None)  # errors.EvaluationError carries a Category (older builds: absent)
+        gate = {"schema_version": SCHEMA_VERSION, "pass": False, "evaluated": False, "exit_code": ERROR, "result": Result.ERROR.value,
+                "error_category": getattr(cat, "value", cat) or Category.UNKNOWN_ERROR.value, "failure_categories": [],
+                "reasons": [f"could not evaluate: {msg[:400]}"]}
     try:
         _write(out, gate)
     except Exception as e:  # noqa: BLE001

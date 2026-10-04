@@ -1,0 +1,48 @@
+What is Decentralized Finance (DeFi)
+
+People became a lot more interested in DeFi (Decentralized Finance) applications. With this article, I would like to help you get started…
+
+## What is Decentralized Finance (DeFi)
+
+People became a lot more interested in DeFi (Decentralized Finance) applications. With this article, I would like to help you get started with learning the basic fundamentals of DeFi.
+
+Let's make it as simple as possible.
+
+### So what is happening?
+
+Decentralized Finance (DeFi) is a relatively new buzzword that uses different blockchain networks to move money from traditional financial products into trustless and transparent protocols that work without intermediaries.
+
+Currently, one of the best DeFi applications here is Aave, Polygon, and Fantom. Some can be not as decentralized as others but still provide a great deal of value. Celcius is a CeDeFi application and has some features of both worlds. Developers create applications that store and manage tokens, on the blockchain. The expiration of these contracts and agreements is automatically enforced when the blockchain receives the correct data.
+
+In order to facilitate transactions on blockchains, you need to have some of their coins/tokens in your wallet in order to pay for the transaction fees. Each Platform might have its own token. To make DeFi possible we need a bridge — called “stable coins”.
+
+### Stable coins
+
+Dai, Tether, and USD coins are all that we call stable coins. They are most popular but not as good as TerraUSD. Their price is tied to the united states dollar. The purpose of this is to have a reliable way to buy and sell certain coins without having to buy and sell them. Stable coins allow borrowing and lending possible.
+
+### Borrowing
+
+With collateralized loans, you can unlock liquidity from the asset you have, similar to taking a loan out on your house to buy another one. It can save you quite a big chunk of taxes.
+
+If you expect the token to appreciate in value, for whatever reason, you might want to keep it, but still be able to get hold of some cash to spend or re-invest.
+
+### Lending
+
+You can lend your money to a liquidity pool and it will allow you to gain yield passively from holding crypto assets. By doing so you can receive LPs (liquidity pool tokens) which can be traded to gain extra money.
+
+### Short selling:
+
+- Let’s say ETH is worth $2000. You post $3000 worth of dai as collateral and borrow one ETH. You sell this ETH immediately and get $2000. The price of ETH then tanks down to $500. You buy the ETH back at $500, pay off your loan, and you’re left with $4500 in dai free and clear (your collateral plus $1500 in profit). Obviously, fees and interest eat into this profit, but that’s a general idea.
+
+### Some other pros:
+
+- Anyone can partake at any time without a credit check, credit score, KYC, or walking into a bank. No paperwork. Done in 5 minutes
+- Flash loans are a special case that requires no collateral and has different use cases but they are very powerful.
+- Insurance - Collateral Protection Insurance provides borrowers and lenders with a sense of security from crypto lending networks, which is a critical step in advancing blockchain adoption.
+- Margin Trading - refers to the practice of using borrowed funds from a broker to trade a financial asset.
+
+Here is a great post I found that goes even into more detail:
+
+If you liked this story, you might also like a Medium membership. It’s only $5 a month (a price of a cup of coffee!) but it will give you unlimited access to stories while supporting your favorite writers. If you sign up using this link, I’ll earn a small commission. Thanks!
+
+If you don’t want to be left behind during this wealth transfer consider subscribing to the Cryptobase newsletter. Get the latest crypto news, tips, and insights straight to your inbox.

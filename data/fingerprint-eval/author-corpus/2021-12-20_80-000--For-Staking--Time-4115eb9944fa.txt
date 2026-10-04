@@ -1,0 +1,49 @@
+80,000% For Staking $Time
+
+When you jthought it couldn't get crazier
+
+## 80,000% For Staking $Time
+
+### When you just thought it couldn't get crazier…
+
+## What is Wonderland?
+
+Wonderland is a reserve currency protocol available on the Avalanche Network based on the TIME token. It’s a fork of OlympusDao. Each TIME token is backed by a basket of assets (e.g., MIM, TIME-AVAX LP Tokens, etc) in the Wonderland treasury, giving it an intrinsic value.
+
+The goal of Wonderland is to build a policy-controlled currency system. In the long term, TIME will function as a medium-of-exchange currency. In the short term, TIME intends to optimize the system for growth and wealth creation.
+
+## Pros
+
+- There is no holding period. You can stake and unstake anytime.
+- Fast Removal of your initial investment. Stake until your investment reaches 2x and then take it out.
+- OHM is the OG. Time is the fork of OHM from ETH to Avax. So, if OHM does well then Time will mostly follow.
+- The Treasury will be used then to fund projects like venture capital.
+- Wonderland transitioned to a DAO. That’s how long-term value will be created.
+- The treasury is also used to do some low-risk yield farming.
+- $Ice was exploited. Daniele and his team reimbursed everyone out of their own pockets. $ice has relaunched since.
+- $time is being audited. But keep in mind that $time is a fork of OHM which was audited three times already.
+
+## Cons
+
+Like with any project, there are some risks that you have to evaluate:
+
+- Credibility. Daniele — created abacadabra.money, people generally trust him a bit more than a project founder that is completely unknown or doesn’t have a track record.
+- APY. It might be sky-high right now, but it’s likely will be lower when more people invest…just look at the APY history chart for Olympus DAO.
+- Price. Since you are earning rewards in TIME, you need to carefully monitor the price and compare it against the rate at which you are earning staking rewards. Price may drop and you will end up in a negative position
+- $Time is starting as a Ponzi scheme to build the treasury.
+
+## How to stake?
+
+- Install MetaMask
+- Add the Avalanche Network to MetaMask:
+- Buy TIME on Gate.io (or trade Avax on traderjoe)
+- Move Time to Wanderland.money
+- Stake TIME
+
+There are similar successful projects like Euphoria/WAGMI on ONE, KLIMA on the Polygon. Invictus on SOL and Spartacus on FTM. Plenty of decent forks now. Of course, there are risks, but the upside is insane. Do your own research tho! Good luck!
+
+If you liked this story, you might also like a Medium membership. It’s only $5 a month (a price of a cup of coffee!) but it will give you unlimited access to stories while supporting your favorite writers. If you sign up using this link, I’ll earn a small commission. Thanks!
+
+If you don’t want to be left behind during this wealth transfer consider subscribing to the Cryptobase newsletter. Get the latest crypto news, tips, and insights straight to your inbox.
+
+Cryptobase | Max Petrusenko | SubstackConnecting the dots. Click to read Cryptobase, by Max Petrusenko, a Substack publication. Launched 24 days ago.cryptobase.substack.com

@@ -1,0 +1,53 @@
+Why Ethereum Is Not Decentralized. Here Is What You Need To Know
+
+And how you can help.
+
+## Why Ethereum Is Not Decentralized. Here Is What You Need To Know
+
+### And how you can help.
+
+Ethereum gets a lot of love from the crypto community for being properly decentralized, but has anyone actually taken the time to analyze that network using Ethereum’s own topology tools? A Twitter user noticed something quite obvious that maybe none of us have seen before:
+
+“Few will acknowledge that of ETH’s ~5000 mainnet nodes, a full 2/3 are hosted, 50% with AWS, 17% of which is in a single data center in Ashburn, VA. As it was said by venerable eth guy “they are a party to your network.”
+
+So numbers will change daily, but it is really scary what is happening now.
+
+https://ethernodes.org/
+
+One-third of the nodes are running on AWS. Which is a very high number.
+
+> Total number of nodes: 4546
+
+> Number of nodes that are hosted: 3052 (67%)
+
+> Number of nodes that are run at the homes of users: 1374 (30%)
+
+> Number of hosted nodes on AWS: 1500 (33%)
+
+Honestly, if you research this topic more you will find that something like 70% of the world's internet traffic travels through Ashburn, Virginia. It shouldn’t necessarily be concerning to find significance in that area. So much web traffic appears to originate there. It’s like the backbone of the internet with all the data services. Any admin who looks up google analytics for their web pages will recognize Ashburn. But let's get to the solutions.
+
+### Solutions:
+
+- You can run an Ethereum node on a Raspberry Pie.
+
+The hard disk requirements depend on the client that you are running. There a 5 available for Ethereum at least you need around 700 GB at the moment. Recommended are 2TB to be safe for the future.
+
+How to turn your Raspberry Pi 4 into a node just by flashing the MicroSD card | ethereum.orgAfter The Merge, it will not be possible to run execution and consensus clients separately-they must be run as a pair…ethereum.org
+
+2. Stateless clients.
+
+With some luck, they will be available next year.
+
+Stateless-Clients - Ethhub Ethereum is based on blockchain technology. A blockchain is defined as a "cryptographically secure transactional…docs.ethhub.io
+
+3. Run the Ethereum node in the International Space Station. Fun one. But still, is an option.
+
+Analysis of Ethereum Network Properties and Behavior of Influential NodesEthereum is arguably the second most popular cryptocurrency-based network after Bitcoin, both make use of the…ieeexplore.ieee.org
+
+I find it highly ironic that other networks (which I won’t name) are often scrutinized on Reddit for running in a data center or not being decentralized enough, but when you really look closely at Ethereum, it’s really not that much better in this department either. Especially when you factor this plus the LIDO issue, best explained by Laura Shin and co on the Unchained Podcast. Also worth a watch.
+
+Read next → 7 Most Controversial Things About Crypto You Need To Know Today
+
+Max Petrusenko works remotely in the software development industry and travels the world to stay in touch with the latest trends. His Cryptobase newsletter provides insightful actions needed to be taken by thoughtful people in this fast and crazy environment. Join people who follow him on Medium, Twitter, and Substack.
+
+If you liked this story, you might also like a Medium membership. It’s only $5 a month (a price of a cup of coffee!) but it will give you unlimited access to stories while supporting your favorite writers. If you sign up using this link, I’ll earn a small commission. Thanks!

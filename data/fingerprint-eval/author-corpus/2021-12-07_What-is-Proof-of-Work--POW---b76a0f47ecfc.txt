@@ -1,0 +1,29 @@
+What is Proof of Work (POW)?
+
+The first consensus algorithm ever implemented in cryptocurrency.
+
+## What is Proof of Work (POW)?
+
+### The first consensus algorithm ever implemented in cryptocurrency.
+
+> A long time ago when there was no Instagram and Netflix you could make money by just downloading a simple software on your computer and it would give you something called Bitcoin
+
+Correction: first men mined with pickaxes
+
+“Proof of work” is an algorithm that is used to secure bitcoin transactions. Basically, they are recorded in blocks that are “signed” with a number that is very hard to find. The more people sign transactions — the harder to find that number. So statistically, a lot of computing power was spent on finding one. If someone trying to maliciously manipulate the transactions will be foiled when the next block is signed by someone else who did not include the manipulated transactions. The manipulator can only win in the long run if they control more computing power than everyone else together.
+
+In the beginning, Bitcoin was mined with GPUs (computer graphic cards). Nowadays you can only mine bitcoin with something called ASIC — specialized hardware. Anyway, it is pretty expensive to mine Bitcoin and not very profitable at this time. There are other coins that also have a Proof of work algorithm and can be mined.
+
+If you’d like to see how it looks like and learn how to mine and to learn about different types of mining equipment and coins you can mine I recommend you watch this video:
+
+The downside is that the “work” is basically wasted a large amount of electricity. It also gets pretty hot in the mining facilities. You can warm your whole house if you have a few of these mining rigs. The solution to this problem is “Proof of Stake”, where people pledge some of the currency to sign transaction blocks. And in return, they get a reward in a form of that cryptocurrency (ex. Ethereum).
+
+You can learn what is “Proof of Stake” and how to “Stake”/”Delegate”(earn cryptocurrency) in this article.
+
+What is Proof of Stake (POS)?Spoiler alert: it is something that will make you money.medium.com
+
+If you liked this story, you might also like a Medium membership. It’s only $5 a month (a price of a cup of coffee!) but it will give you unlimited access to stories while supporting your favorite writers. If you sign up using this link, I’ll earn a small commission. Thanks!
+
+If you don’t want to be left behind during this wealth transfer consider subscribing to the Cryptobase newsletter. Get the latest crypto news, tips, and insights straight to your inbox.
+
+Cryptobase | Max Petrusenko | SubstackConnecting the dotscryptobase.substack.com

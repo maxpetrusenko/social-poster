@@ -1,0 +1,63 @@
+What Is Ethereum Merge? Top 5 Things You Need to Know About ETH Merge
+
+Eth 2.0 is coming soon.
+
+## What Is Ethereum Merge? Top 5 Things You Need to Know About ETH Merge
+
+### Eth 2.0 is coming soon.
+
+Before reading about a merge you really need to understand the difference between PoW and PoS and how Ethereum will transfer from the former to the latter. If you don’t know much about it please read the article below.
+
+## POW vs POS
+
+With the PoS model, the network is secured by validators who stake ETH in order to validate network activity. With this model, power consumption decreases dramatically.
+
+With PoW model, the network is secured by miners that have to purchase and run Ethereum mining hardware. This model has proven to be extremely inefficient since miners have to consume electricity in order to issue new blocks.
+
+Otherwise, I assume that you understand the difference and can skip this part if you want.
+
+What is Proof of Stake (POS)?Spoiler alert: it is something that will make you money.medium.comWhat is Proof of Work (POW)?The first consensus algorithm ever implemented in cryptocurrency.medium.com
+
+## The “merge”
+
+When people talk about “the merge” they’re actually talking about a two-step process.
+
+- The first step is launching the Beacon Chain ( Done in December of 2020).
+
+The first goal behind this was to be able to test a chain running in parallel with the already existing PoW network without causing any disruption.
+
+The second goal was to give time for stakers to stake enough ETH to secure the new network when implementing the actual merge.
+
+- The second step is what we call the marge and it’s what everyone is talking about right now.
+
+The merge is simply the act of merging the consensus layer of the Beacon chain with the EVM state of the Ethereum PoW chain.
+
+## What happens after the “merge”
+
+The power consumption for transactions on Ethereum dramatically decrease from what it was with PoW. In fact, it will decrease by almost 99.95%.
+
+- Ethereum ESG becomes compliant which is great for institutions overall especially ones that are regulatory driven. This will most definitely help boost mainstream adoption since many more global institutions will start exploring Web3 space.
+
+2. Enviormentalists will finally shut down their arguments about NFTs, DeFi, and all Ethereum activity overall ruining the planet.
+
+3. Merge gives access to new updates, the most important of which is Sharding.
+
+## Misconceptions about the merge and how Sharding is related to that
+
+- The “merge” on its own will not make Ethereum gas fees lower.
+- The Ethereum roadmap IS NOT working on lowering gas fees on the chain.
+- The Ethereum roadmap IS working on improving and integrating rollups and L2s( For example ZK-rollup on polygon will help with gas fees and traffic overall).
+
+## What is the main risk behind the “merge”?
+
+Any upgrade to any new technology comes with risks. Some of the we don’t even know.
+
+Right now the biggest concern is a DDOS scenario where if the attacker can know exactly which proposer is next in line they can try to DOS said proposer and strip them of their slot. The transactions that come with this slot can now be picked up by the attacker.
+
+This scenario should be handled by new solutions like SSLE. It's basically complicated cryptography that prevents the attacker from knowing which proposer is next in line
+
+Read next → Prevent Losing 100k Of Crypto From Metamask. Here Is What You Can Do
+
+Max Petrusenko works remotely in the software development industry and travels the world to stay in touch with the latest trends. His Cryptobase newsletter provides insightful actions needed to be taken by thoughtful people in this fast and crazy environment. Join people who follow him on Medium, Twitter, and Substack.
+
+If you liked this story, you might also like a Medium membership. It’s only $5 a month (a price of a cup of coffee!) but it will give you unlimited access to stories while supporting your favorite writers. If you sign up using this link, I’ll earn a small commission. Thanks!

@@ -1,0 +1,55 @@
+What is DAO in Crypto?
+
+Everything you need to know about Decentralized Autonomous Organizations
+
+## What is DAO in Crypto?
+
+### Everything you need to know about Decentralized Autonomous Organizations
+
+What is a DAO?
+
+Here are a few good definitions online:
+
+- A Decentralized Autonomous Organization is a type of organization that is managed by computer programs. DAOs automate functions that would’ve otherwise been done by humans, through the use of many smart contracts. DAO distributes risks & rewards among people that share a common economic goal.
+- Decentralized Autonomous Organization is an internet-native blockchain-derived investor-directed venture capital fund organization managed by all members. At its core, the objective is to provide a decentralized business model for all future enterprises. Mark Cuban called them “the ultimate combination of capitalism and progressivism.”
+- DAO is a risk/reward scheme with a programmable set of incentives that can be distributed between token holders that aim to affect change in the world representing a new(online) type of organization.
+
+### Core features of DAO:
+
+- Clear structure & roadmap — organization vision is set by members, members have full control and decide the future of the DAO.
+- Voting — removes the need for political representation and involved parties can participate in important decisions by themselves. Imagine voting for a president over the phone.
+- Set of rules — the automated crowdsourced process of decision-making eliminates human error, manipulation, and third parties. The DA organization is represented by transparent computational rules.
+- Open source code — secured on the digital ledger across the internet, hardened against forgery by blockchain, and disseminated as a distributed database.
+- A funding token — owning a token is what determines your voting power. Usability increases its price.
+
+> Bitcoin in essence is the first fully functional DAO with programmed rules and functional autonomy through consensual protocol; the miners and nodes signal voting through support.
+
+Source: reddit
+
+> Examples of DAOs: Aragon, MakerDAO (MKR), DASH, Curve DAO
+
+### Downsides:
+
+1. Greater control in the hands of those who hold the most coin.
+
+2. We read source code about as often as we read EULAs.
+
+3. No legal framework, yet.
+
+4. New technology and unknown consequences.
+
+5. Upgrading of code is often delegated to experts who understand techno-legal intricacies of code and are therefore a point of centralization.
+
+One may have heard about ‘The DAO hack’, back in 2016.
+
+### On the bright side:
+
+Smart contracts with actual utility, and basically a company that functions without a board room? That really helps illustrate why blockchain’s super important as technological advancement.
+
+Somewhere, in some business boardroom, people are trying to figure out how to integrate self-driving cars into DAOs of autonomous taxi drivers. You order an Uber and it comes, no company, just code.
+
+If you like to watch, here is a great video with examples based on a vending machine:
+
+If you liked this story, you might also like a Medium membership. It’s only $5 a month (a price of a cup of coffee!) but it will give you unlimited access to stories while supporting your favorite writers. If you sign up using this link, I’ll earn a small commission. Thanks!
+
+If you don’t want to be left behind during this wealth transfer consider subscribing to the Cryptobase newsletter. Get the latest crypto news, tips, and insights straight to your inbox.
