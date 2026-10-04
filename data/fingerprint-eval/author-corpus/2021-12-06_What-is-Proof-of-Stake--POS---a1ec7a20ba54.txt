@@ -1,0 +1,40 @@
+What is Proof of Stake (POS)?
+
+Spoiler alert: it is something that will make you money.
+
+## What is Proof of Stake (POS)?
+
+### Spoiler alert: it is something that will make you money.
+
+Source: datadriveninvestor
+
+> Staking is a way of earning rewards for holding certain cryptocurrencies.
+
+Staking is a consensus algorithm where a person can validate transactions (support network) according to how many coins they hold. The more coins owned by a miner, the more transactions they validate.
+
+Basically, you can make money and secure the network at the same time while you sleep and there is no need to spend an enormous amount of electricity as Proof-of-Work does.
+
+Staking often requires a lockup period, where your crypto can’t be transferred for some time as it is being used.
+
+However, it’s not all roses and diamonds. Staking is much better than Proof-of-work, but it still has its drawbacks.
+
+Imagine you have 5 ETH and your neighbor has 1000 ETH. Your neighbor will earn more rewards than you. In the long run, that means your neighbor will end up with a much larger profit margin. So a larger stakeholder would grow his ETH stake faster than a smaller stakeholder. After a point, it centralizes the network towards the big stakers, and again, the rich get richer faster.
+
+But hey, you have to start somewhere. Now your money is working for you!
+
+Just keep staking!
+
+## How to start staking?
+
+- Learn about crypto that offers “staking”.
+- Buy the coin you want.
+- Move it to an exchange or wallet that allows earning through staking.
+- Go to the Stake/Earn section and select the coin you bought.
+- Click “Stake” or “Delegate”.
+- Enjoy your rewards!
+
+If you liked this story, you might also like a Medium membership. It’s only $5 a month (a price of a cup of coffee!) but it will give you unlimited access to stories while supporting your favorite writers. If you sign up using this link, I’ll earn a small commission. Thanks!
+
+If you don’t want to be left behind during this wealth transfer consider subscribing to the Cryptobase newsletter. Get the latest crypto news, tips, and insights straight to your inbox.
+
+Cryptobase | Max Petrusenko | SubstackConnecting the dotscryptobase.substack.com

@@ -1,0 +1,49 @@
+Non-Fungible Token (NFT) Explained in Plain English
+
+The hype is real.
+
+## What Is A Non-Fungible Token (NFT)
+
+### The hype is real.
+
+Source: imgflip.com
+
+### What is non-fungible?
+
+Fungibility is the ability of an asset to be exchanged for another of the same kind. A dollar bill can be exchanged for another dollar bill, one share of Tesla stock is worth the same as any other share of Tesla stock. Assets that are not interchangeable, such as your house or “Mona Lisa” painting, are non-fungible.
+
+### What is a token?
+
+A cryptocurrency token is an asset for a specific use, like helping support a network, store value, or make purchases. A token is a cryptocurrency that does not have its own blockchain and lives on another blockchain.
+
+### What is a non-fungible token?
+
+Non-Fungible Tokens (NFT) is a digital asset that represents real-world objects like art, music, in-game items. NFTs are written to the blockchain network to certify the uniqueness of digital goods. They can be bought and sold online:
+
+How To Make and Sell Your First NFT In 10 MinutesAnyone can create and sell their own NFT – a non-fungible (unique) token everybody is talking about.medium.com
+
+### NFT use case
+
+- For most people, it is an investment because of the limited value making it a scarcity.
+- For some people, it is a way to support their artists.
+- Receive royalties. This is the percentage you will earn from NFTs you create every time it is subsequently sold and changes hands.
+- For some people, it is bragging rights or access to exclusive places.
+- Some people use it for trolling/fun/memes.
+
+### NFT rights
+
+If the creator of NFT posts into the blockchain — it is all good and you can support your artist and each of the screenshots would just raise the price of the original NFT. You’d be able to find its origins on the blockchain.
+
+If you don’t know what the Bored Ape Yacht Club is about, think of these Apes like access cards. They let you get into exclusive places. It’s a club. It’s a yacht club for rich people. It’s not about art. All of these people are just trying to get you to spread their investment around so more people will see it. Everyone is falling for it, and it’s so obvious.
+
+But a minted NFT of Mona Lisa might be a legit digital copy, but what if it was posted by a friend of the owner? And the owner doesn’t know about it nor know how to make an NFT. Does this case make it fake? Does it only have to be posted by the owner? Or if you posted it first it makes it original?
+
+This is the flaw in NFT’s that’s already being abused today. People are stealing/copying art and claiming it as their own to sell it as an NFT. This is how it was before and NFTs do not resolve this issue.
+
+A simple answer would be it is still being decided by the community. There is no smart contract to decide it for you yet. It is still up for debate.
+
+If you liked this story, you might also like a Medium membership. It’s only $5 a month (a price of a cup of coffee!) but it will give you unlimited access to stories while supporting your favorite writers. If you sign up using this link, I’ll earn a small commission. Thanks!
+
+If you don’t want to be left behind during this wealth transfer consider subscribing to the Cryptobase newsletter. Get the latest crypto news, tips, and insights straight to your inbox.
+
+Cryptobase | Max Petrusenko | SubstackConnecting the dots. Click to read Cryptobase, by Max Petrusenko, a Substack publication. Launched 16 days ago.cryptobase.substack.com

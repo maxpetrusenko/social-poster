@@ -1,0 +1,51 @@
+The Easiest Way to Earn 20% on UST Stablecoin
+
+Edit: This definitely didn’t age well…
+
+## The Easiest Way to Earn 20% on UST Stablecoin
+
+Source: OKCoin
+
+Edit: This definitely didn’t age well…
+
+### The TL;DR:
+
+- Download the OKCoin app ( or use their website).
+- Pass KYC ( for large amounts over $2,000)
+- Deposit USD via ACH (instant)
+- Buy UST with USD
+- Click Earn
+- Select UST (Anchor protocol)
+- Enjoy 20% APY
+
+You can read in great detail about Anchor protocol in the article below:
+
+Anchor Protocol: Insane 20% APY on a Stablecoin and Why It Is SafeStrengths and weaknesses of the Anchor Protocolmedium.com
+
+Just a heads up if you will use the “Basic version” you might end up paying a high “spread” fee. Read below on how to avoid it.
+
+## Lets Begin
+
+Head over to the website or Apple Store(link) or Google Play(link) to download the app
+
+Sign Up if you haven’t already:
+
+For larger sums of money, you will have to pass KYC, you might need to wait a little bit. If you are on the website you should go to the verification page.
+
+If you are using the app, make the spread as low as possible by switching to Pro
+
+Go to My Assets -> Deposit -> Select USD
+
+When you are done, click Home -> Deposit -> Fiat tab -> Instant transfer (ACH). Add a bank account
+
+We will Transfer USD from Funding to Trading Account. Enter deposited amount (or click Transfer All)
+
+From Home, go to the trading tab, and select UST/USD pair. Select as much as you want and click Buy UST.
+
+Once the order is filled ( usually it will be instant) go to the Earn section. Select UST -> Continue. Add “some” amount and enjoy the rewards. The flexible rewards means that you can cancel the contract and withdraw your funds at any time!
+
+If you liked this story, you might also like a Medium membership. It’s only $5 a month (a price of a cup of coffee!) but it will give you unlimited access to stories while supporting your favorite writers. If you sign up using this link, I’ll earn a small commission. Thanks!
+
+If you don’t want to be left behind during this wealth transfer consider subscribing to the Cryptobase newsletter. Get the latest crypto news, tips, and insights straight to your inbox.
+
+CryptobaseConnecting the dots. Click to read Cryptobase, by Max Petrusenko, a Substack publication. Launched 4 months ago.cryptobase.substack.com

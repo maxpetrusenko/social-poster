@@ -1,0 +1,29 @@
+7 Steps You May Consider to Fully Take Advantage of the Ethereum Merge
+
+What should you do to best position yourself?
+
+## 7 Steps You May Consider to Fully Take Advantage of the Ethereum Merge
+
+### What should you do to best position yourself?
+
+Before we get to the steps, what is happening again? Ethereum is going through an upgrade where it will transition from Proof of Work to Proof of Stake. After the transition, ETH miners can no longer mine. Miners are forking ETH to keep a PoW version so they can continue mining.
+
+You might want to learn about Ethereum merge below:
+
+What Is Ethereum Merge? Top 5 Things You Need to Know About ETH MergeEth 2.0 is coming soon.medium.com
+
+### Here is the list:
+
+- To get the ETH PoW tokens, you must first hold ETH on a wallet that supports this fork. The best would be to have your ETH on a hardware wallet. Most exchanges will support merge, but who knows… not your keys, not your crypto.
+- Bridge all your tokens back to ETH mainnet. You will not be getting any ETH PoW for your ETH held on any other Layer 2 scaling solution.
+- Unwrap all WETH to ETH. The best is to get hold of the ETH PoW tokens immediately. Most likely there will be a DEX on the new ETH PoW chain to help you unwrap your WETH PoW token but you will need to wait.
+- Remove liquidity from DeFi protocols You will not be getting any ETH PoW tokens for ETH that are being used to provide liquidity. I would withdraw now and provide liquidity again after the Merge. Most people will want to borrow more ETH. So be careful with borrowing
+- Buy the rumor, sell the fact Maybe speculating on ETH PoW is not worth it for you. ETH will probably be bought up in the hours to the Merge and dumped immediately after. You can choose to sell ETH and take a profit right before the merge.
+
+Personally, I hold my ETH on a non-custodial wallet, so I will be eligible to get all these fork tokens. This doesn’t mean I will claim all airdrops as some could be scams trying to get my signature/keys.
+
+Read next → Prevent Losing 100k Of Crypto From Metamask. Here Is What You Can Do
+
+Max Petrusenko works remotely in the software development industry and travels the world to stay in touch with the latest trends. His Cryptobase newsletter provides insightful actions needed to be taken by thoughtful people in this fast and crazy environment. Join people who follow him on Medium, Twitter, and Substack.
+
+If you liked this story, you might also like a Medium membership. It’s only $5 a month (a price of a cup of coffee!) but it will give you unlimited access to stories while supporting your favorite writers. If you sign up using this link, I’ll earn a small commission. Thanks!

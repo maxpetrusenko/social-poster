@@ -1,0 +1,23 @@
+MetaMask Wallet Now Has Over 21 Million Users
+
+MetaMask is one of the best digital wallets for your collectibles and NFTs.
+
+## MetaMask Wallet Now Has Over 21 Million Users
+
+### MetaMask is one of the best digital wallets for your collectibles and NFTs.
+
+Source: consensys.net
+
+MetaMask is a Web 3 project that helps create a more ethical internet where people control their own data and identities, do not rely on centralized services, and can build powerful communities. It is so cool that this is happening right in front of our eyes and we look forward to millions of more users that will be joining the decentralized web.
+
+### MetaMask Leads Decentralized Web
+
+In April, the number of active users of the Ethereum MetaMask wallet was 5 million. Its growth was 420% in the last seven months. Over the past three months, the figure has increased by 11 million.
+
+According to an article on the ConsenSys blog, user growth is influenced by the popularity of Decentralized Finance (DeFi) and Collectible Token (NFT) projects. At the same time, there are no signs of a decrease in the excitement around such projects:
+
+> One of the main drivers of audience growth has become gaming projects — recently, hundreds of games have appeared that require a cryptocurrency wallet to work with. We also see that users who initially came to the game project are beginning to use decentralized finance applications, ”said MetaMask COO Jacob Cantele.
+
+Back in the day, it was just a browser plugin for Ethereum and ERC-20 tokens. Five years ago, when users rushed to buy up some of the first NFTs and CryptoKitties, they used MetaMask to send their ETH and claim their tokens. Now, baseball, pokemon and collectible cards are in the past. You can use MetaMask — the application that enables people to borrow, lend, or trade funds without the approval of a third party.
+
+As a reminder, a version of the MetaMask Institutional wallet with functions for institutional investors was recently launched. In mid-November, MetaMask developers restored support for Ledger Nano hardware wallets.
