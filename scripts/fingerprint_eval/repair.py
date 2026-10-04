@@ -360,3 +360,7 @@ class FaultyRepairer:
         text += f"\nFault injection {cycle}: revenue grew {cycle * 1000}% overnight.\n"
         self.last_description = f"{self.name}: injected damage (links stripped, heading dropped, unsupported claim added)"
         return write_healed(ctx, cycle, text)
+
+
+# Module-level instance: release._load_heal() picks up `repair.repair` as the repairer.
+repair = DeterministicRepairer()
