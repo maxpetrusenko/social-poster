@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "medium-review/learning-row.schema.json",
+  "title": "Medium distribution learning row (one row per published article)",
+  "description": "Dataset for the nightly learning job: joins the advisory Medium review, title features, fingerprint metric references and observed outcomes. CORRELATION, NOT CAUSATION: rows describe what co-occurred; they do not show that any review characteristic caused Boost or reach. Never use rows to tune articles toward a score, and never treat a missing outcome as zero.",
+  "type": "object",
+  "required": ["schema_version", "slug", "content_sha256", "policy_version", "observed_at", "review", "title_features", "fingerprint", "outcomes"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {"const": 1},
+    "slug": {"type": "string"},
+    "package_path": {"type": "string"},
+    "content_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$", "description": "sha256 of the article bytes the review and outcomes refer to"},
+    "policy_version": {"type": "string", "description": "<policy sha12>@<updated_at> the review was produced under"},
+    "observed_at": {
+      "type": "object",
+      "required": ["review", "outcomes"],
+      "additionalProperties": false,
+      "properties": {
+        "review": {"type": "string", "format": "date-time", "description": "scorecard timestamp_utc"},
+        "outcomes": {"type": ["string", "null"], "format": "date-time", "description": "when outcome fields were read; null if never observed"},
+        "published": {"type": ["string", "null"], "format": "date-time"}
+      }
+    },
+    "review": {
+      "type": "object",
+      "required": ["boost_candidate", "general_distribution_risk", "weakest_dimension", "dimensions"],
+      "additionalProperties": false,
+      "properties": {
+        "boost_candidate": {"enum": ["YES", "NO", "UNCERTAIN"]},
+        "general_distribution_risk": {"enum": ["LOW", "MEDIUM", "HIGH"]},
+        "weakest_dimension": {"type": ["string", "null"]},
+        "dimensions": {
+          "type": "object",
+          "description": "rating per dimension: writer_experience, originality, reader_value, craftsmanship, title_quality, image_quality, sourcing",
+          "additionalProperties": {"enum": ["strong", "adequate", "weak", "n/a"]}
+        },
+        "derivative_summary": {"type": ["boolean", "null"]},
+        "author_input_required": {"type": ["boolean", "null"]},
+        "author_contribution_present": {"type": ["boolean", "null"]},
+        "hard_policy_risk_count": {"type": "integer", "minimum": 0},
+        "warning_count": {"type": "integer", "minimum": 0},
+        "scorecard_ref": {"type": "string", "description": "path to MEDIUM_REVIEW.json"}
+      }
+    },
+    "title_features": {
+      "type": "object",
+      "required": ["title_chars"],
+      "additionalProperties": false,
+      "properties": {
+        "title": {"type": ["string", "null"]},
+        "title_chars": {"type": "integer", "minimum": 0},
+        "title_words": {"type": "integer", "minimum": 0},
+        "subtitle_chars": {"type": "integer", "minimum": 0},
+        "is_question": {"type": "boolean"},
+        "is_listicle": {"type": "boolean"},
+        "has_clickbait_phrase": {"type": "boolean"},
+        "all_caps": {"type": "boolean"},
+        "has_pipe_suffix": {"type": "boolean"}
+      }
+    },
+    "fingerprint": {
+      "type": "object",
+      "description": "References and copies of fingerprint-eval metrics; null members when no gate record exists. Fingerprint is a separate concern from distribution review.",
+      "additionalProperties": false,
+      "properties": {
+        "record_ref": {"type": ["string", "null"], "description": "path to the fingerprint-gate run record"},
+        "gate_result": {"enum": ["PASS", "FAIL", "ERROR", null]},
+        "author_distance": {"type": ["number", "null"]},
+        "jsd": {"type": ["number", "null"]},
+        "repeated_ngram_rate": {"type": ["number", "null"]}
+      }
+    },
+    "outcomes": {
+      "type": "object",
+      "required": ["boost_observed", "sources"],
+      "additionalProperties": false,
+      "properties": {
+        "boost_observed": {"enum": [true, false, "unknown"]},
+        "views": {"type": ["number", "null"]},
+        "reads": {"type": ["number", "null"]},
+        "claps": {"type": ["number", "null"]},
+        "fans": {"type": ["number", "null"]},
+        "earnings": {"type": ["number", "null"], "description": "currency units as recorded by the source; null if unavailable"},
+        "sources": {
+          "type": "object",
+          "description": "provenance for each outcome field present: field name -> file and key it was read from (or 'unavailable')",
+          "additionalProperties": {"type": "string"}
+        }
+      }
+    },
+    "caveat": {"const": "correlation, not causation"}
+  }
+}

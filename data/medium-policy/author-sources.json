@@ -1,0 +1,4 @@
+{
+  "_comment": "Trusted author material the editorial proposer may mine for the author's own relevant experience. Paths are relative to the repo root; '{package}' expands to the article package dir. Add a path only if its first-person text is genuinely by the author.",
+  "paths": ["data/fingerprint-eval/author-corpus", "{package}/sources", "{package}/notes"]
+}
