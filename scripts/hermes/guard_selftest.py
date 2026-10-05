@@ -11,10 +11,15 @@ Cases (exit 1 on any wrong decision):
   ACTIVE, no full-paste receipt -> click, type, other keys, unknown browser tool, non-editor Medium nav BLOCKED;
       exact editor nav and cmd+a, read-only browser tool ALLOWED;
   ACTIVE + signed full receipt -> click allowed; tampered / unsigned receipt -> blocked; state unwritable -> blocked.
+Round 4: unsigned / edited / out-of-workspace (symlink escape) / slug-mismatch / hash-mismatch ACTIVE -> blocked;
+  namespaced or opaque unknown tools (evil__browser_snapshot, mcp__x__browser_click, vision_analyze) blocked unless
+  ACTIVE + receipt, safe-listed tools (read_file, memory, todo) allowed; concurrent sessions all land in url memory.
 """
 from __future__ import annotations
 
+import concurrent.futures
 import hashlib
+import hmac
 import importlib.util
 import json
 import os
@@ -42,6 +47,12 @@ NAV_SUBMIT = pl("browser_navigate", {"url": "https://medium.com/p/abc123/submiss
 UNKNOWN_BROWSER = pl("browser_evaluate_script", {"code": "document.title"})
 READ = pl("computer_use", {"action": "capture"})
 SNAPSHOT = pl("browser_snapshot", {})
+NS_SNAPSHOT = pl("evil__browser_snapshot", {})
+MCP_CLICK = pl("mcp__x__browser_click", {"ref": "e1"})
+VISION = pl("vision_analyze", {"image": "x.png"})
+READ_FILE = pl("read_file", {"path": "/tmp/x"})
+MEMORY = pl("memory", {"action": "list"})
+TODO = pl("todo", {"items": []})
 
 
 def main(dest_arg: str) -> int:
@@ -56,14 +67,25 @@ def _sha_file(p: Path) -> str:
     return hashlib.sha256(p.read_bytes()).hexdigest()
 
 
-def _pinned_dir(root: Path, installed_guard: Path, ws: Path, uv: Path, state_is_file: bool = False) -> Path:
+def _write_active(ws: Path, rkey: Path, pkg: Path, sha: str, slug: str = "pkg1", sign: bool = True, **over) -> None:
+    """ACTIVE.json as `release authorize` writes it: record.py HMAC (canonical json minus hmac_sha256)."""
+    doc = {"package": str(pkg.resolve()), "slug": slug, "content_sha256": sha, "activated_at_utc": "2026-01-01T00:00:00Z", **over}
+    if sign:
+        canon = json.dumps(doc, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode()
+        doc["hmac_sha256"] = hmac.new(rkey.read_bytes().strip(), canon, hashlib.sha256).hexdigest()
+    (ws / "release" / "ACTIVE.json").write_text(json.dumps(doc))
+
+
+def _pinned_dir(root: Path, installed_guard: Path, ws: Path, uv: Path, state_is_file: bool = False,
+                rkey: Path | None = None) -> Path:
     """A throwaway installed-style directory: guard copy, config (repo/workspace/uv + uv_sha256), manifest, key."""
     gd = root / "guards"
     gd.mkdir(parents=True)
     guard = gd / "medium_publish_guard.py"
     shutil.copyfile(installed_guard, guard)
     cfg = gd / "config.json"
-    cfg.write_text(json.dumps({"repo": str(root), "workspace": str(ws), "uv": str(uv), "uv_sha256": _sha_file(uv)}))
+    cfg.write_text(json.dumps({"repo": str(root), "workspace": str(ws), "uv": str(uv), "uv_sha256": _sha_file(uv),
+                               "record_key": str(rkey or "")}))
     (gd / "manifest.sha256").write_text(f"{_sha_file(guard)}  medium_publish_guard.py\n{_sha_file(cfg)}  config.json\n")
     key = gd / "key"
     key.write_text("cd" * 32)
@@ -120,7 +142,10 @@ def _run(dest: Path, tmp: Path) -> int:
     uv.write_text("#!/bin/sh\necho '{\"valid\": true, \"content_sha256\": \"%s\", \"release_article_sha256\": \"%s\"}'\n"
                   % (BODY_SHA, BODY_SHA))
     uv.chmod(stat.S_IRWXU)
-    gd = _pinned_dir(tmp / "ok", guard, ws, uv)
+    rkey = tmp / "record.key"
+    rkey.write_text("ef" * 32)
+    rkey.chmod(0o600)
+    gd = _pinned_dir(tmp / "ok", guard, ws, uv, rkey=rkey)
     tguard = gd / "medium_publish_guard.py"
     spec = importlib.util.spec_from_file_location("temp_guard", tguard)
     mod = importlib.util.module_from_spec(spec)
@@ -134,7 +159,7 @@ def _run(dest: Path, tmp: Path) -> int:
     check("no ACTIVE.json -> click blocked", run(CLICK), 2)
     check("no ACTIVE.json -> read-only capture allowed", run(READ), 0)
 
-    (ws / "release" / "ACTIVE.json").write_text(json.dumps({"package": "pkg1"}))
+    _write_active(ws, rkey, pkg, BODY_SHA)
     for name, p in (("click", CLICK), ("type", TYPE), ("other key (tab)", KEY_TAB),
                     ("unknown browser tool", UNKNOWN_BROWSER), ("non-editor Medium navigation", NAV_SUBMIT)):
         check(f"ACTIVE, no full-paste receipt -> {name} blocked", run(p), 2)
@@ -153,7 +178,64 @@ def _run(dest: Path, tmp: Path) -> int:
     check("unsigned receipt -> click blocked", run(CLICK), 2)
     rpath.write_text(good)
 
-    gd_bad = _pinned_dir(tmp / "badstate", guard, ws, uv, state_is_file=True)
+    # round 4: ACTIVE trust
+    _write_active(ws, rkey, pkg, BODY_SHA, sign=False)
+    check("unsigned ACTIVE -> click blocked", run(CLICK), 2)
+    _write_active(ws, rkey, pkg, BODY_SHA)
+    act = ws / "release" / "ACTIVE.json"
+    good_active = act.read_text()
+    act.write_text(good_active.replace('"slug": "pkg1"', '"slug": "other"'))
+    check("edited ACTIVE (bad signature) -> click blocked", run(CLICK), 2)
+    outside = tmp / "outside"
+    (outside / "release").mkdir(parents=True)
+    (outside / "release" / "medium-final.md").write_text(BODY)
+    _write_active(ws, rkey, outside, BODY_SHA, slug="outside")
+    check("signed ACTIVE naming a package outside the workspace -> click blocked", run(CLICK), 2)
+    (ws / "articles" / "link").symlink_to(outside)
+    _write_active(ws, rkey, pkg, BODY_SHA, slug="outside", package=str(ws / "articles" / "link"))
+    check("signed ACTIVE naming a symlink escape -> click blocked", run(CLICK), 2)
+    _write_active(ws, rkey, pkg, BODY_SHA, slug="not-the-package")
+    check("ACTIVE slug differs from the package slug -> click blocked", run(CLICK), 2)
+    _write_active(ws, rkey, pkg, hashlib.sha256(b"x").hexdigest())
+    check("ACTIVE content_sha256 differs from verify --json -> click blocked", run(CLICK), 2)
+    _write_active(ws, rkey, pkg, BODY_SHA)
+    check("valid signed ACTIVE restored -> click allowed (receipt present)", run(CLICK), 0)
+
+    # round 4: unknown tool classification
+    unknowns = (("namespaced evil__browser_snapshot", NS_SNAPSHOT), ("mcp__x__browser_click", MCP_CLICK),
+                ("opaque vision_analyze", VISION))
+    for name, p in unknowns:
+        check(f"{name} with ACTIVE + receipt -> allowed", run(p), 0)
+    for name, p in (("read_file", READ_FILE), ("memory", MEMORY), ("todo", TODO)):
+        check(f"safe-listed {name} -> allowed", run(p), 0)
+    receipts_file = gd / "state" / "receipts.jsonl"
+    saved_receipts = receipts_file.read_text()
+    receipts_file.unlink()  # no receipt: unknown tools must block
+    for name, p in unknowns:
+        check(f"ACTIVE, no receipt -> {name} blocked", run(p), 2)
+    check("ACTIVE, no receipt -> safe-listed read_file allowed", run(READ_FILE), 0)
+    (ws / "release" / "ACTIVE.json").unlink()
+    for name, p in unknowns:
+        check(f"no ACTIVE -> {name} blocked", run(p), 2)
+    check("no ACTIVE -> safe-listed memory allowed", run(MEMORY), 0)
+    _write_active(ws, rkey, pkg, BODY_SHA)
+    receipts_file.write_text(saved_receipts)
+
+    # round 4: concurrent sessions must not lose each other's url memory
+    mem = gd / "state" / "url-memory.json"
+    if mem.exists():
+        mem.unlink()
+    sessions = [f"conc{i}" for i in range(12)]
+    with concurrent.futures.ThreadPoolExecutor(max_workers=12) as ex:
+        rcs = list(ex.map(lambda sid: run({**NAV, "session_id": sid}), sessions))
+    check("12 concurrent navigations all allowed", 0 if all(r == 0 for r in rcs) else 1, 0)
+    try:
+        kept = set(json.loads(mem.read_text())["data"])
+    except (OSError, ValueError, KeyError):
+        kept = set()
+    check("12 concurrent sessions all present in signed url memory", 0 if set(sessions) <= kept else 1, 0)
+
+    gd_bad = _pinned_dir(tmp / "badstate", guard, ws, uv, state_is_file=True, rkey=rkey)
     bad_guard = gd_bad / "medium_publish_guard.py"
     check("state dir unwritable -> Medium navigation blocked", run(NAV, bad_guard), 2)
     check("state dir unwritable -> click blocked (receipt unreadable)", run(CLICK, bad_guard), 2)

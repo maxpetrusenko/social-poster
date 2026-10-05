@@ -68,6 +68,12 @@ BROWSER_READ_TOOLS = {"browser_snapshot", "browser_vision", "browser_get_images"
                       "browser_capture", "browser_get_text", "browser_list", "browser_list_tabs",
                       "browser_wait", "browser_scroll"}
 BROWSER_ALL_RE = re.compile(r"^browser_")
+# Exact names of tools that cannot drive a browser or the desktop: file read/search/write, memory, todo, skills,
+# session search, API-based web research, delegation (children fire their own hooks). NOT here on purpose:
+# vision_analyze, mcp__*, anything namespaced, any browser_*/computer_* name. Everything else is a mutation.
+SAFE_NON_BROWSER_TOOLS = {"read_file", "search_files", "list_files", "list_directory", "glob", "grep", "write_file",
+                          "patch", "edit_file", "memory", "todo", "todo_write", "skill_view", "skills_list",
+                          "session_search", "web_search", "web_extract", "delegate_task", "clarify"}
 # Tokens of a tool name that mean "this can drive a browser or the desktop".
 BROWSER_TOUCH_TOKENS = {"browser", "chrome", "chromium", "gstack", "playwright", "puppeteer", "patchright", "cdp",
                         "selenium", "webdriver", "computer", "mouse", "keyboard", "keystroke", "click", "desktop",
@@ -209,19 +215,46 @@ def _load_state(env: dict[str, str]) -> dict[str, str]:
     return data
 
 
+@contextmanager
+def state_lock(env: dict[str, str], timeout_s: float = 20.0):
+    """Exclusive flock on <state>/.lock around every read-modify-write of guard state (concurrent sessions would
+    otherwise lose each other's url memory). Raises StateError when the lock cannot be taken."""
+    path = state_dir(env) / ".lock"
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+        fh = open(path, "a")
+    except OSError as exc:
+        raise StateError(f"cannot open state lock {path}: {exc}") from exc
+    try:
+        deadline = time.monotonic() + timeout_s
+        while True:
+            try:
+                fcntl.flock(fh.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except OSError as exc:
+                if time.monotonic() >= deadline:
+                    raise StateError(f"cannot lock {path}: {exc}") from exc
+                time.sleep(0.02)
+        yield
+    finally:
+        fh.close()
+
+
 def _remember_url(env: dict[str, str], session: str, url: str) -> None:
-    """Record last browser URL per session in signed state. Raises StateError on ANY failure."""
+    """Record last browser URL per session in signed state (flock-guarded read-modify-write).
+    Raises StateError on ANY failure."""
     try:
         p = state_dir(env) / "url-memory.json"
         p.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-        state = _load_state(env)
-        if len(state) > 200:
-            state = dict(list(state.items())[-100:])
-        state[session or "_"] = url
-        fd, tmp = tempfile.mkstemp(dir=str(p.parent), prefix=".mg-")
-        with os.fdopen(fd, "w") as fh:
-            json.dump({"data": state, "sig": _sign(env, state)}, fh)
-        os.replace(tmp, p)
+        with state_lock(env):
+            state = _load_state(env)
+            if len(state) > 200:
+                state = dict(list(state.items())[-100:])
+            state[session or "_"] = url
+            fd, tmp = tempfile.mkstemp(dir=str(p.parent), prefix=".mg-")
+            with os.fdopen(fd, "w") as fh:
+                json.dump({"data": state, "sig": _sign(env, state)}, fh)
+            os.replace(tmp, p)
     except StateError:
         raise
     except Exception as exc:  # noqa: BLE001 - every write failure is a guard error
@@ -317,15 +350,15 @@ def classify(payload: dict[str, Any], env: dict[str, str]) -> tuple[bool, str]:
             return False, ""
         return False, ""
 
-    if BROWSER_ALL_RE.match(tool) or tool.split("__")[-1] in BROWSER_READ_TOOLS:
-        if tool in BROWSER_NAV_TOOLS:
-            url = str(args.get("url") or "")
-            _remember_nav(env, session, url)
-            if _is_medium_write_url(url):
-                return True, f"browser_navigate to Medium write page {url}"
-            return False, ""
-        if tool in BROWSER_READ_TOOLS or tool.split("__")[-1] in BROWSER_READ_TOOLS:
-            return False, ""
+    if tool in BROWSER_READ_TOOLS:  # exact full-name match only: no prefix/suffix/namespace tricks
+        return False, ""
+    if tool in BROWSER_NAV_TOOLS:
+        url = str(args.get("url") or "")
+        _remember_nav(env, session, url)
+        if _is_medium_write_url(url):
+            return True, f"browser_navigate to Medium write page {url}"
+        return False, ""
+    if BROWSER_ALL_RE.match(tool):
         return True, f"{tool}: browser tool not on the read-only allowlist (default is mutation)"
 
     if tool in {"terminal", "execute_code", "process", "bash", "shell"}:
@@ -333,15 +366,11 @@ def classify(payload: dict[str, Any], env: dict[str, str]) -> tuple[bool, str]:
         text = "\n".join(t for t in texts if t) or "\n".join(_strings(args))
         return _classify_command(text, env, session)
 
-    # unknown tool: a browser/desktop-touching name is a mutation by default; otherwise mutation only if it
-    # explicitly carries a Medium write URL
-    if _touches_browser(tool):
-        return True, f"{tool}: unrecognized tool that can touch the browser (default is mutation)"
-    for s in _strings(args):
-        for m in MEDIUM_URL_RE.finditer(s):
-            if _is_medium_write_url(m.group(0)):
-                return True, f"{tool} carries Medium write URL"
-    return False, ""
+    if tool in SAFE_NON_BROWSER_TOOLS:
+        return False, ""
+    # Round 4: every other tool name (namespaced variants, opaque tools such as vision_analyze, anything new) is a
+    # mutation. decide() then blocks it unless ACTIVE is valid and a verified full-paste receipt exists.
+    return True, f"{tool}: tool is not on the exact-name safe list (default is mutation)"
 
 
 def _touches_browser(tool: str) -> bool:
@@ -450,23 +479,89 @@ def sub_env(env: dict[str, str] | None = None, extra: dict[str, str] | None = No
     return out
 
 
-def active_package(env: dict[str, str]) -> tuple[Path | None, str]:
+DEFAULT_RECORD_KEY = Path.home() / ".config" / "fingerprint-eval" / "record.key"
+ACTIVE_SIG_FIELD = "hmac_sha256"
+
+
+def record_key_path(env: dict[str, str]) -> Path:
+    """The fingerprint-eval record key (same file record.py signs with). Pinned in config.json ("record_key");
+    test-mode env override MEDIUM_GUARD_RECORD_KEY only."""
+    o = _ovr(env, "MEDIUM_GUARD_RECORD_KEY")
+    if o:
+        return Path(o)
+    cfg = _config(env).get("record_key")
+    return Path(cfg) if isinstance(cfg, str) and cfg else DEFAULT_RECORD_KEY
+
+
+def _record_key(env: dict[str, str]) -> bytes:
+    path = record_key_path(env)
+    try:
+        if not path.is_absolute():
+            raise StateError(f"record key path {path} is not absolute")
+        st = path.stat()
+        if st.st_mode & 0o077:
+            raise StateError(f"record key {path} is group/world accessible")
+        raw = path.read_bytes().strip()
+    except OSError as exc:
+        raise StateError(f"cannot read record key {path}: {exc}") from exc
+    if len(raw) < 32:
+        raise StateError(f"record key {path} is too short")
+    return raw
+
+
+def verify_active_sig(env: dict[str, str], doc: dict[str, Any]) -> str:
+    """'' if ACTIVE.json carries a valid record.py-style HMAC (canonical json minus the sig field), else why not."""
+    sig = doc.get(ACTIVE_SIG_FIELD)
+    if not isinstance(sig, str) or not sig:
+        return f"ACTIVE.json is unsigned (no {ACTIVE_SIG_FIELD}); re-run `release authorize`"
+    body = {k: v for k, v in doc.items() if k != ACTIVE_SIG_FIELD}
+    canon = json.dumps(body, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode()
+    want = hmac.new(_record_key(env), canon, hashlib.sha256).hexdigest()
+    return "" if hmac.compare_digest(want, sig) else "ACTIVE.json signature invalid (modified or not written by release authorize)"
+
+
+def _package_slug(pkg: Path) -> str:
+    try:
+        vj = json.loads((pkg / "version.json").read_text(encoding="utf-8"))
+        if isinstance(vj, dict) and vj.get("slug"):
+            return str(vj["slug"])
+    except (OSError, ValueError):
+        pass
+    return pkg.name
+
+
+def active_package(env: dict[str, str]) -> tuple[tuple[Path, str, str] | None, str]:
+    """Trusted ACTIVE selector. Returns ((package, slug, content_sha256), '') or (None, why).
+    ACTIVE.json must be HMAC-signed with the record key; its package must be an absolute path that resolves
+    (no '..', no symlink escape) strictly inside the pinned workspace. Slug and content hash are compared with the
+    package and the verifier by decide()."""
     ws = workspace(env)
     active = ws / "release" / "ACTIVE.json"
     try:
         data = json.loads(active.read_text())
     except FileNotFoundError:
-        return None, f"no active release: {active} does not exist (run `release authorize`, then activate)"
+        return None, f"no active release: {active} does not exist (run `release authorize`)"
     except (OSError, ValueError) as exc:
         return None, f"unreadable {active}: {exc}"
-    ref = data.get("package") or data.get("package_dir") or data.get("slug") if isinstance(data, dict) else None
+    if not isinstance(data, dict):
+        return None, f"{active} is not a JSON object"
+    why = verify_active_sig(env, data)
+    if why:
+        return None, why
+    ref, slug, sha = data.get("package"), data.get("slug"), data.get("content_sha256")
     if not isinstance(ref, str) or not ref.strip():
         return None, f"{active} names no package"
-    p = Path(ref).expanduser()
-    for cand in ([p] if p.is_absolute() else [ws / p, ws / "articles" / p, repo_root(env) / p]):
-        if cand.is_dir():
-            return cand, ""
-    return None, f"{active} names package {ref!r} which is not a directory"
+    if not isinstance(slug, str) or not slug or not isinstance(sha, str) or not re.fullmatch(r"[0-9a-f]{64}", sha):
+        return None, f"{active} lacks a slug or content_sha256"
+    p = Path(ref)
+    if not p.is_absolute() or ".." in p.parts:
+        return None, f"{active} package {ref!r} must be an absolute path without '..'"
+    wsr, real = Path(os.path.realpath(ws)), Path(os.path.realpath(p))
+    if real == wsr or wsr not in real.parents:
+        return None, f"{active} package {ref!r} resolves outside the workspace {wsr}"
+    if not real.is_dir():
+        return None, f"{active} names package {ref!r} which is not a directory"
+    return (real, slug, sha), ""
 
 
 def run_verify(package: Path, env: dict[str, str]) -> tuple[int, str]:
@@ -690,7 +785,7 @@ def write_receipt(env: dict[str, str], pkg: Path, session: str, clip_text: str, 
         line = json.dumps({"rec": rec, "sig": _sign(env, rec)}, sort_keys=True)
         path = receipts_path(env)
         path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-        with open(path, "a", encoding="utf-8") as fh:
+        with state_lock(env), open(path, "a", encoding="utf-8") as fh:
             fh.write(line + "\n")
             fh.flush()
             os.fsync(fh.fileno())
@@ -871,17 +966,20 @@ def could_mutate(payload: Any) -> bool:
             if not isinstance(args, dict):
                 return True
             return str(args.get("action") or "").strip().lower() not in CU_READ_ACTIONS
+        if tool in BROWSER_READ_TOOLS:
+            return False
         if tool.startswith("browser_"):
-            if tool in BROWSER_READ_TOOLS:
-                return False
             if tool == "browser_navigate":
                 return not isinstance(args, dict) or _could_be_medium(str(args.get("url") or ""))
             return True
         text = "\n".join(_strings(args)).lower() if args is not None else ""
         if tool in SHELL_TOOLS:
             return (not isinstance(args, dict)) or "medium" in text or bool(SHELL_HINT_RE.search(text))
-        return ("medium" in text or "medium" in json.dumps(payload, default=str).lower()
-                or (_touches_browser(tool) and tool.split("__")[-1] not in BROWSER_READ_TOOLS))
+        if tool in BROWSER_READ_TOOLS:
+            return False
+        if tool in SAFE_NON_BROWSER_TOOLS:
+            return "medium" in text or "medium" in json.dumps(payload, default=str).lower()
+        return True  # any other tool name could drive a browser
     except Exception:  # noqa: BLE001
         return True
 
@@ -912,11 +1010,16 @@ def decide(payload: dict[str, Any], env: dict[str, str] | None = None,
         return Decision(False, f"Medium mutation blocked ({why}): guard integrity check failed: {why_int}. "
                                "Reinstall with scripts/hermes/install_guard.sh and review who changed it.", True)
     try:
-        pkg, why_pkg = active_package(env)
-        if pkg is None:
+        sel, why_pkg = active_package(env)
+        if sel is None:
             return _blocked(why, why_pkg)
+        pkg, act_slug, act_sha = sel
         with release_lock(pkg):
             ok, reason, ver = authorize_mutation(pkg, env, verifier)
+            if ok and ver is not None and act_slug != _package_slug(pkg):
+                ok, reason = False, f"ACTIVE slug {act_slug!r} differs from the package slug {_package_slug(pkg)!r}"
+            elif ok and ver is not None and act_sha != ver.sha:
+                ok, reason = False, "ACTIVE content_sha256 differs from the hash release verify vouched for"
             if ok and ver is not None:
                 # read the release ONCE, after verify, inside the lock; never re-read it afterwards
                 rel_bytes = (pkg / "release" / "medium-final.md").read_bytes()

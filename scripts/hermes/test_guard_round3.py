@@ -28,10 +28,10 @@ def pkg_of(env):
 UNKNOWN_BROWSER = ["browser_evaluate", "browser_brand_new_tool", "browser_back", "browser_hover", "browser_fill_form",
                    "browser_upload", "browser_select", "browser_tab_close", "mcp__playwright__browser_click",
                    "mcp__playwright__browser_run_code", "playwright_click", "chrome_devtools_press",
-                   "puppeteer_evaluate", "desktop_mouse_move", "keyboard_hotkey", "webdriver_execute"]
+                   "puppeteer_evaluate", "desktop_mouse_move", "keyboard_hotkey", "webdriver_execute",
+                   "evil__browser_snapshot", "mcp__playwright__browser_snapshot"]
 READ_BROWSER = ["browser_snapshot", "browser_vision", "browser_get_images", "browser_screenshot", "browser_capture",
-                "browser_get_text", "browser_list", "browser_list_tabs", "browser_wait", "browser_scroll",
-                "mcp__playwright__browser_snapshot"]
+                "browser_get_text", "browser_list", "browser_list_tabs", "browser_wait", "browser_scroll"]
 
 
 @pytest.mark.parametrize("tool", UNKNOWN_BROWSER)
@@ -59,8 +59,8 @@ def test_read_only_allowlist_passes(tool, env):
     assert g.could_mutate(payload(tool, {})) is False
 
 
-def test_unknown_non_browser_tool_without_medium_still_passes(env):
-    assert g.decide(payload("vision_analyze", {"image": "x.png"}), env, bad).allow
+def test_opaque_non_browser_tool_is_a_mutation_round4(env):
+    assert not g.decide(payload("vision_analyze", {"image": "x.png"}), env, bad).allow
 
 
 # ---- 2. before an exact full paste: editor navigation, Enter on a typed editor URL, cmd+a, full paste ----
@@ -156,7 +156,7 @@ def test_verify_json_hash_must_match_release_bytes(env):
     other = hashlib.sha256(b"something else").hexdigest()
     v = lambda pkg, e: (0, verify_json(pkg, sha=other))  # noqa: E731
     d = g.decide(paste(), env, v, good_clip)
-    assert not d.allow and "changed after verify" in d.reason
+    assert not d.allow and "differs from the hash release verify vouched for" in d.reason
     assert receipts(env) == []
 
 

@@ -47,8 +47,10 @@ def world(tmp_path, monkeypatch):
     with Fakes():
         rc = release.authorize(pkg, out=lambda *a: None)
     assert rc == 0, "authorize must PASS with stubbed models"
+    from scripts.fingerprint_eval import record as R
     env = {"FINGERPRINT_EVAL_WORKSPACE": str(ws), "MEDIUM_GUARD_REPO": str(REPO),
            **install_fake_guard(tmp_path)}
+    env["MEDIUM_GUARD_RECORD_KEY"] = str(R.key_path())  # the key authorize signed ACTIVE with
     return pkg, env
 
 

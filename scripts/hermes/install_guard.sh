@@ -4,6 +4,8 @@
 #   scripts/hermes/install_guard.sh [--rotate-key]
 #
 # Env: HERMES_GUARD_DIR (default ~/.hermes/guards), MEDIUM_GUARD_WORKSPACE (default <repo>/data/article-workspace),
+#      HERMES_GUARD_RECORD_KEY (fingerprint-eval record key used to verify ACTIVE.json; default
+#      ~/.config/fingerprint-eval/record.key, pinned in config.json; must be 0600),
 #      HERMES_GUARD_UV (verifier uv; default `command -v uv`, else ~/.local/bin/uv). The uv path is resolved,
 #      must be absolute and owned by you, and is pinned with its sha256 in config.json; the guard ignores
 #      MEDIUM_GUARD_UV/REPO env overrides outside tests. A uv upgrade changes the sha: rerun this script.
@@ -16,6 +18,7 @@ SRC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO="$(cd "$SRC_DIR/../.." && pwd)"
 DEST="${HERMES_GUARD_DIR:-$HOME/.hermes/guards}"
 WORKSPACE="${MEDIUM_GUARD_WORKSPACE:-$REPO/data/article-workspace}"
+RECORD_KEY="${HERMES_GUARD_RECORD_KEY:-${FINGERPRINT_EVAL_KEY_FILE:-$HOME/.config/fingerprint-eval/record.key}}"
 ROTATE=0
 [ "${1:-}" = "--rotate-key" ] && ROTATE=1
 
@@ -50,9 +53,10 @@ chmod 0400 "$DEST/key"
 rm -f "$DEST/medium_publish_guard.py" "$DEST/config.json" "$DEST/manifest.sha256"
 cp "$SRC_DIR/medium_publish_guard.py" "$DEST/medium_publish_guard.py"
 UV_SHA="$(sha256 "$UV_BIN")"
-python3 - "$DEST/config.json" "$REPO" "$WORKSPACE" "$UV_BIN" "$UV_SHA" <<'PY'
+python3 - "$DEST/config.json" "$REPO" "$WORKSPACE" "$UV_BIN" "$UV_SHA" "$RECORD_KEY" <<'PY'
 import json, sys
-json.dump({"repo": sys.argv[2], "workspace": sys.argv[3], "uv": sys.argv[4], "uv_sha256": sys.argv[5]},
+json.dump({"repo": sys.argv[2], "workspace": sys.argv[3], "uv": sys.argv[4], "uv_sha256": sys.argv[5],
+           "record_key": sys.argv[6]},
           open(sys.argv[1], "w"), indent=2, sort_keys=True)
 PY
 
