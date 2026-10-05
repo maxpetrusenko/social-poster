@@ -17,6 +17,7 @@ from .textutil import HEADING_RE, LINK_RE, Block, parse_blocks, render_blocks, s
 
 FROZEN_KINDS = {"heading", "image", "code", "rule", "list", "quote", "table"}
 BOILERPLATE_HEAD = re.compile(r"about the author|sources?\b|references|further reading", re.I)
+PROMO_LINE = re.compile(r"^\s*(?:read next|read more|for a useful next read|related reading|further reading|up next)\b", re.I)  # "Read next: [title](url)" carries no claim
 MIN_SEGMENT_WORDS = 12
 EXTRACTOR = "claude:sonnet"  # fast; qwen3:8b works but takes ~3.5 min per segment (hidden reasoning)
 
@@ -69,7 +70,7 @@ def segment_article(md: str) -> list[Segment]:
     def flush_run():
         if run:
             seg = Segment(len(segs), section, sec_idx, list(run))
-            if boiler or len(words(seg.text)) < MIN_SEGMENT_WORDS:
+            if boiler or len(words(seg.text)) < MIN_SEGMENT_WORDS or (PROMO_LINE.match(seg.text) and links_in(seg.text)):
                 seg.frozen = True
             segs.append(seg)
             run.clear()
