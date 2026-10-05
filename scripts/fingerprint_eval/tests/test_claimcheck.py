@@ -11,8 +11,10 @@ PARA = ("The study might explain part of the drop in covert actions across model
 @pytest.fixture(autouse=True)
 def _no_gateway(monkeypatch):
     """Hash embedder: identical text is cosine 1.0, anything else is low. A test that wants a rescue passes its own."""
+    seen: dict[str, int] = {}
+
     def emb(texts):
-        return [[1.0 if i == hash(t) % 7 else 0.0 for i in range(7)] + [0.01] for t in texts]
+        return [[1.0 if seen.setdefault(t, len(seen)) == i else 0.0 for i in range(256)] for t in texts]
     monkeypatch.setattr(guards, "_embed", emb)
 
 
