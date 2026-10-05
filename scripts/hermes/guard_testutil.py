@@ -19,4 +19,4 @@ def install_fake_guard(root: Path, guard_file: Path | None = None) -> dict[str, 
     os.chmod(key, 0o400)
     src = guard_file or Path(g.__file__).resolve()
     (gd / "manifest.sha256").write_text(f"{hashlib.sha256(src.read_bytes()).hexdigest()}  medium_publish_guard.py\n")
-    return {"MEDIUM_GUARD_DIR": str(gd), "MEDIUM_GUARD_STATE_DIR": str(gd / "state")}
+    return {"MEDIUM_GUARD_TEST_MODE": "1", "MEDIUM_GUARD_DIR": str(gd), "MEDIUM_GUARD_STATE_DIR": str(gd / "state")}
