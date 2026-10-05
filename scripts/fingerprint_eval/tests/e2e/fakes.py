@@ -150,7 +150,7 @@ class FakeModels:
     def _extract(prompt: str) -> str:
         passage = prompt.split("Passage:\n", 1)[1].strip()
         props = []
-        for s in (x for x in re.split(r"(?<=[.!?])\s+", passage) if len(x.split()) >= 5):  # like the real extractor: fragments are not claims
+        for s in (x for x in re.split(r"(?<=[.!?])\s+", passage) if x.strip()):  # round 5: new multi-token fragments are routed here by the added-claim check, so tag them too
             props.append({"claim": s.strip(), "links": [m.group(0) for m in re.finditer(r"(?<!!)\[[^\]]*\]\([^)]*\)", s)]})
         return json.dumps({"role": "fixture role", "propositions": props})
 
