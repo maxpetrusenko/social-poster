@@ -84,10 +84,23 @@ class AddedSentences(unittest.TestCase):
             self.assertIn(s, self.new(self.REF + " " + s), s)
 
     def test_short_fragments_are_stylistic_only_when_every_token_is_in_the_reference_section(self):
-        self.assertEqual(self.new(self.REF + " Crew inspected."), [])  # all content tokens occur in the section
+        self.assertEqual(self.new(self.REF + " Inspected."), [])  # one content token, in the section
+        self.assertEqual(added.new_sentences("Notice the fault.", "Notice the fault. Notice it."), {})  # pure rhythm fragment
+        self.assertTrue(self.new(self.REF + " Crew inspected."))  # two reused tokens can recombine into a claim: checked
         self.assertEqual(self.new(self.REF + " ..."), [])  # no content token
         self.assertEqual(self.new(self.REF + " Notice, decide, and remember."), ["Notice, decide, and remember."])
         self.assertEqual(self.new(self.REF + " They won."), ["They won."])
+
+    def test_reused_vocabulary_recombination_is_checked_and_unsupported_fails(self):
+        ref = "The patient ran for forty days. Doctors inspected the patient twice."
+        final = ref + " The patient died."
+        self.assertIn("The patient died.", sum(added.new_sentences(ref, final).values(), []))
+        f = Fakes()
+        f.judge_reply = lambda prompt: json.dumps([{"i": 1, "verdict": "unsupported", "reason": "new fact"}])
+        with f:
+            res = added.check_added(ref, final, None, "claude:sonnet", "claude:sonnet")
+        self.assertEqual([u["claim"] for u in res["unsupported"]], ["The patient died."])
+        self.assertEqual(f.calls["judge"], 1)  # batched: one judge call per section
 
     def test_fuzzy_match_with_changed_number_negation_or_entity_is_new(self):
         for old, new in (("forty days", "fourteen days"), ("for forty days", "for 40 days"), ("ran for forty days without", "did not run for forty days without"),

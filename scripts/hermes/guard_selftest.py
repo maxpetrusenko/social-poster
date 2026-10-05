@@ -45,6 +45,8 @@ SELECT_ALL = pl("computer_use", {"action": "key", "keys": "cmd+a", "app": "GStac
 NAV = pl("browser_navigate", {"url": "https://medium.com/new-story"})
 NAV_SUBMIT = pl("browser_navigate", {"url": "https://medium.com/p/abc123/submission?x=1"})
 UNKNOWN_BROWSER = pl("browser_evaluate_script", {"code": "document.title"})
+TERM_TYPE = pl("computer_use", {"action": "type", "text": "open https://medium.com/new-story", "app": "Terminal"})
+TERM_ENTER = pl("computer_use", {"action": "key", "keys": "return", "app": "Terminal"})
 READ = pl("computer_use", {"action": "capture"})
 SNAPSHOT = pl("browser_snapshot", {})
 NS_SNAPSHOT = pl("evil__browser_snapshot", {})
@@ -159,7 +161,12 @@ def _run(dest: Path, tmp: Path) -> int:
     check("no ACTIVE.json -> click blocked", run(CLICK), 2)
     check("no ACTIVE.json -> read-only capture allowed", run(READ), 0)
 
+    for name, p in (("Terminal type", TERM_TYPE), ("Terminal Enter", TERM_ENTER)):
+        check(f"no ACTIVE.json -> {name} blocked", run(p), 2)
+
     _write_active(ws, rkey, pkg, BODY_SHA)
+    for name, p in (("Terminal type", TERM_TYPE), ("Terminal Enter", TERM_ENTER)):
+        check(f"ACTIVE, no full-paste receipt -> {name} blocked", run(p), 2)
     for name, p in (("click", CLICK), ("type", TYPE), ("other key (tab)", KEY_TAB),
                     ("unknown browser tool", UNKNOWN_BROWSER), ("non-editor Medium navigation", NAV_SUBMIT)):
         check(f"ACTIVE, no full-paste receipt -> {name} blocked", run(p), 2)

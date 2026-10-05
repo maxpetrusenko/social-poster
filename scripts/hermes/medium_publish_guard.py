@@ -59,6 +59,8 @@ BLOCK_EXIT = 2
 # ---- classification tables ------------------------------------------------------------------------
 CU_READ_ACTIONS = {"capture", "list_apps", "list_windows", "wait", "scroll", "focus_app"}
 CU_INPUT_ACTIONS = {"click", "double_click", "right_click", "middle_click", "drag", "type", "key", "set_value"}
+# Apps whose computer_use input is exempt from the guard. EMPTY by default: terminals and every other app are mutations.
+CU_NON_BROWSER_ALLOWLIST: frozenset[str] = frozenset()
 BROWSER_APP_RE = re.compile(r"chrome|chromium|gstack|browser|safari|firefox|arc|brave|edge|medium", re.I)
 
 BROWSER_NAV_TOOLS = {"browser_navigate"}
@@ -344,11 +346,11 @@ def classify(payload: dict[str, Any], env: dict[str, str]) -> tuple[bool, str]:
         if action in CU_READ_ACTIONS:
             return False, ""
         app = str(args.get("app") or "")
-        if action in CU_INPUT_ACTIONS or action not in CU_READ_ACTIONS:  # unknown action: treat as input
-            if not app or BROWSER_APP_RE.search(app):
-                return True, f"computer_use {action or '?'} on {app or 'frontmost window'}"
+        if app.strip() and any(app.strip().lower() == a.lower() for a in CU_NON_BROWSER_ALLOWLIST):
             return False, ""
-        return False, ""
+        # Every input action is a mutation whatever the target app: terminals (Terminal, iTerm2, Warp, Ghostty, kitty,
+        # Alacritty, WezTerm) can drive the browser via `open` or osascript. Unknown actions count as input.
+        return True, f"computer_use {action or '?'} on {app or 'frontmost window'}"
 
     if tool in BROWSER_READ_TOOLS:  # exact full-name match only: no prefix/suffix/namespace tricks
         return False, ""

@@ -47,6 +47,11 @@ EDIT_URL = "https://medium.com/p/a6ee8afb8283/edit"
 
 MUTATIONS = {
     "cu_click": payload("computer_use", {"action": "click", "element": 7, "app": "Google Chrome for Testing"}),
+    "cu_click_finder": payload("computer_use", {"action": "click", "element": 1, "app": "Finder"}),
+    "cu_type_terminal": payload("computer_use", {"action": "type", "text": "open https://medium.com/new-story", "app": "Terminal"}),
+    "cu_enter_terminal": payload("computer_use", {"action": "key", "keys": "return", "app": "Terminal"}),
+    "cu_type_iterm": payload("computer_use", {"action": "type", "text": "x", "app": "iTerm2"}),
+    "cu_paste_ghostty": payload("computer_use", {"action": "paste", "app": "Ghostty"}),
     "cu_click_frontmost": payload("computer_use", {"action": "click", "element": 7}),
     "cu_type": payload("computer_use", {"action": "type", "text": "Title", "app": "GStack Browser"}),
     "cu_paste": payload("computer_use", {"action": "key", "keys": "cmd+v", "app": "Google Chrome for Testing"}),
@@ -63,7 +68,6 @@ MUTATIONS = {
 READS = {
     "cu_capture": payload("computer_use", {"action": "capture", "mode": "som"}),
     "cu_scroll": payload("computer_use", {"action": "scroll", "direction": "down"}),
-    "cu_click_finder": payload("computer_use", {"action": "click", "element": 1, "app": "Finder"}),
     "nav_stats": payload("browser_navigate", {"url": "https://medium.com/me/stats"}),
     "nav_stories": payload("browser_navigate", {"url": "https://medium.com/me/stories/public"}),
     "nav_read": payload("browser_navigate", {"url": "https://medium.com/@someone/some-post-1234abcd5678"}),

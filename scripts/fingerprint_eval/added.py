@@ -85,10 +85,11 @@ def _ref_sentences(md: str) -> list[tuple[set, tuple]]:
 
 
 def _stylistic_echo(sentence: str, ref_tokens: set[str]) -> bool:
-    """Short non-factual sentences (punctuation, interjections, 'They won.'): stylistic only if they carry no content token or
-    every content token already occurs in the same reference section. Anything else goes to the model."""
+    """Rhythm fragments only ('Notice it.', 'Yes.'): at most ONE content token, already in the same reference section, and
+    (the caller guarantees) no number, proper noun or negation. Two or more content tokens can recombine reused words into a
+    new claim ('The patient died.'), so they always go to the extractor and the support judge."""
     toks = _content_tokens(sentence)
-    return not toks or toks <= ref_tokens
+    return len(toks) <= 1 and toks <= ref_tokens
 
 
 def new_sentences(draft_md: str, final_md: str) -> dict[str, list[str]]:
