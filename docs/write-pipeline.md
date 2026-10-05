@@ -36,3 +36,14 @@ source, research, angle, outline, draft, validate, editorial, voice, antifp, rev
 ```
 
 The evaluator tree must be committed: one test runs the real `release authorize` and `release verify` on the identity path and is skipped when the tree is dirty.
+
+## Trust model and residuals (Codex re-check)
+
+- `state.json` and every stage record carry an HMAC-SHA256 from the evaluator's record key (`scripts/fingerprint_eval/record.py`). An unsigned, edited or malformed state is moved aside as `state.json.invalid-<hash>` and replaced by a persisted NOT_READY state; it is never repaired silently.
+- `status`, `stop` and every READY_FOR_REVIEW decision recompute the final verification from the files: FINAL.md hash against the integrity and hash records, the signed release authorization and gate record (PASS, same bytes), `release verify`, a strictly validated `route.json` bound to that hash, `publish_route verify`, and the hashes of FINAL.md, FINAL.html (re-rendered), PACKAGE.md and route.json recorded in the package stage. Any mismatch is NOT_READY.
+- The gate child (`fingerprint_eval run` and `release`) receives `LLM_GATEWAY_API_KEY` and `LLM_GATEWAY_URL`; no other child does. `claude -p` children keep the subscription-only env.
+- Input files (`submit --file/--report`, `antifp try --file`, `repair try --file`) and the framework path must resolve (symlinks followed) inside the package, an exact configured framework file (`WRITE_PIPELINE_FRAMEWORK` or the default), or a root listed in `WRITE_PIPELINE_INPUT_ROOTS` (os.pathsep separated).
+- Residual, accepted: same-user risk. A process running as the owner can read the record key and forge a signed state; the HMAC stops edits by anything that cannot.
+- Residual, accepted (review item 10): model aliases such as `claude:sonnet` are not bound to a runtime version in the evaluator cache key, and the embedding runtime digest is best effort. Pinning aliases to a resolved model version is deferred.
+- Editorial and voice stages may declare `removals` in the report. A declared sentence that exactly matches a reference sentence (inline markup and whitespace ignored) and is really gone from the candidate is an intentional cut: it is taken out of that stage's claims-gate reference, recorded in the state and in the HMAC-signed `write-pipeline/removals-ledger.json`. Changed and added claims still block, and the final integrity gate is unchanged (it compares the post-editorial reference with the final bytes).
+- The validate stage's unresolved-claims semantic check builds its reference from the candidate's own frozen skeleton plus one claims paragraph, so the gate judges claims, not structure. A FAIL with any non-claims category is inconclusive and ends the stage NOT_READY; it never counts as "unresolved claims absent".

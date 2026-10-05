@@ -165,7 +165,7 @@ def test_nothing_ever_publishes(d):
     assert {m for m, _ in d.runner.calls} <= allowed
     for m, argv in d.runner.calls:
         if m == "scripts.publish_route":
-            assert argv[3] == "decide"  # recommendation only, never repair or verify-and-act
+            assert argv[3] in ("decide", "verify")  # recommendation or read-only verify, never repair
         if m == "scripts.fingerprint_eval.release":
             assert argv[3] in ("authorize", "verify")
     s = st(d)
@@ -209,6 +209,8 @@ def test_real_release_gate_on_the_exact_bytes_with_a_private_active_selector(d, 
     from scripts.write_pipeline import editguard as G
     if not _evaluator_clean():
         pytest.skip("evaluator tree is dirty: release authorize refuses to run (commit first)")
+    from scripts.write_pipeline import verify
+    monkeypatch.setattr(verify, "record_check", verify.real_record_check)  # the real signed authorization and record, not the offline stand-in
     d.to_stage("integrity")
     real = G.make_runner(d.pkg / "write-pipeline" / "workspace")
     stub = d.runner

@@ -19,7 +19,10 @@ from . import editguard as G
 from . import final as FN
 from . import runs as RN
 from . import submit as SB
-from .core import (BLOCKED, DEPS, DONE, FAILED, KIND, NAMES, NOT_READY, NUM, PENDING, STALE, Pipeline, PipelineError, fail_exc, sha_bytes)
+from . import verify as VF
+from .core import (BLOCKED, DEPS, DONE, FAILED, KIND, NAMES, NOT_READY, NUM, PENDING, STALE, Pipeline, PipelineError, fail_exc, contain_input, input_roots, sha_bytes)
+
+from scripts.fingerprint_eval.record import RecordError as R_ERR  # noqa: E402
 
 EXIT = {"OK": 0, "INVALID": 1, "USAGE": 2, "WAITING": 2, "NOT_READY": 3, "BLOCKED": 4, "BLOCKED_INPUT": 4, "QUARANTINED": 5}
 DEFAULT_FRAMEWORK = Path.home() / "Desktop/Projects/medium-automation/FRAMEWORK.md"
@@ -48,13 +51,31 @@ def _code(res: dict) -> int:
     return EXIT.get(res.get("code", "INVALID"), 1)
 
 
+def framework_roots() -> tuple[Path, ...]:
+    """The configured framework files (default and WRITE_PIPELINE_FRAMEWORK), exactly as resolved, are always allowed."""
+    cfg = [DEFAULT_FRAMEWORK] + ([Path(os.environ["WRITE_PIPELINE_FRAMEWORK"])] if os.environ.get("WRITE_PIPELINE_FRAMEWORK") else [])
+    return tuple(p.resolve() for p in cfg)
+
+
+def contain_framework(pkg: Path, path) -> Path:
+    return contain_input(pkg, path, exact=framework_roots())
+
+
 def load_framework(pipe: Pipeline) -> tuple[str | None, str]:
-    fw = pipe.state.get("framework") or {}
-    p = Path(fw.get("path", ""))
+    fw = pipe.state.get("framework")
+    if not isinstance(fw, dict) or not isinstance(fw.get("path"), str) or not isinstance(fw.get("sha256"), str):
+        pipe.mark_invalid("framework record is malformed")
+        return None, "NOT_READY: framework record is malformed"
     try:
+        p = contain_framework(pipe.pkg, fw["path"])
         t = p.read_text()
+    except PipelineError as e:
+        return None, f"BLOCKED_FRAMEWORK: {e}"
     except OSError:
-        return None, f"BLOCKED_FRAMEWORK: cannot read {p}"
+        return None, f"BLOCKED_FRAMEWORK: cannot read {fw['path']}"
+    except ValueError as e:  # not UTF-8 text: the framework data is malformed, recorded as NOT_READY
+        pipe.mark_invalid(f"framework file is not valid text: {e}")
+        return None, "NOT_READY: framework file is not valid text"
     sha = sha_bytes(t.encode())
     if sha != fw.get("sha256"):  # the contract changed: every stage is bound to the old hash, so everything is stale
         pipe.state["framework"] = {**fw, "sha256": sha}
@@ -67,8 +88,12 @@ def cmd_init(a) -> int:
     p = Path(a.package).resolve()
     fwp = Path(a.framework or os.environ.get("WRITE_PIPELINE_FRAMEWORK") or DEFAULT_FRAMEWORK)
     try:
+        fwp = contain_framework(p, fwp)
         t = fwp.read_text()
-    except OSError:
+    except PipelineError as e:
+        _out({"ok": False, "code": "BLOCKED", "state": "BLOCKED_FRAMEWORK", "reasons": [str(e)]})
+        return 4
+    except (OSError, ValueError):
         _out({"ok": False, "code": "BLOCKED", "state": "BLOCKED_FRAMEWORK", "reasons": [f"cannot read the canonical framework at {fwp}"]})
         return 4
     p.mkdir(parents=True, exist_ok=True)
@@ -96,18 +121,20 @@ def _short(pipe: Pipeline, n: str) -> str:
 def cmd_status(pipe: Pipeline, a) -> int:
     rows = [{"n": NUM[n], "stage": n, "kind": KIND[n], "state": pipe.status(n), "note": _short(pipe, n)} for n in NAMES]
     fin = pipe.state.get("final")
-    d = {"package": str(pipe.pkg), "overall": pipe.overall(), "published": False, "awaiting_review": bool(pipe.state.get("awaiting_review")),
+    overall = pipe.overall()  # recomputes the final verification from the files; computed once per call
+    d = {"package": str(pipe.pkg), "overall": overall, "published": False, "awaiting_review": overall == "READY_FOR_REVIEW",
+         "invalid": pipe.state.get("invalid"),
          "final": fin, "user_modified": pipe.state.get("user_modified"), "critic_rounds": (pipe.state.get("critic") or {}).get("rounds", 0),
          "terminal": pipe.terminal(), "stages": rows}
     if a.json:
         _out(d)
     else:
-        print(f"{pipe.overall()}  published=False  final={(fin or {}).get('sha256', '-')[:12]}")
+        print(f"{overall}  published=False  final={(fin or {}).get('sha256', '-')[:12]}")
         for r in rows:
             print(f"{r['n']:>2} {r['stage']:<10} {r['kind']:<5} {r['state']:<10} {r['note']}")
         if d["terminal"]:
             print(f"STOP: {d['terminal']['state']} at {d['terminal']['stage']}: {d['terminal']['reason']}")
-    return {"USER_MODIFIED": 6, "NOT_READY": 3, "QUARANTINED": 5, "BLOCKED": 4}.get(pipe.overall(), 0)
+    return {"USER_MODIFIED": 6, "NOT_READY": 3, "QUARANTINED": 5, "BLOCKED": 4}.get(overall, 0)
 
 
 def cmd_begin(pipe: Pipeline, a) -> int:
@@ -156,7 +183,12 @@ def cmd_antifp(pipe: Pipeline, a, runner) -> int:
             _out({"ok": False, "reasons": ["--file and --signal are required"]})
             return 2
         c = SB.deps_ctx(pipe)
-        res = AF.try_edit(pipe, Path(a.file).read_text(), a.signal, runner, c)
+        try:
+            text = contain_input(pipe.pkg, a.file).read_text()
+        except (OSError, ValueError, PipelineError) as e:
+            _out({"ok": False, "code": "USAGE", "reasons": [f"cannot read {a.file}: {e}"]})
+            return 2
+        res = AF.try_edit(pipe, text, a.signal, runner, c)
         if res.get("blocked"):
             pipe.set("antifp", BLOCKED, reasons=res["reasons"], extra={"category": "MODEL_UNAVAILABLE"})
             pipe.save()
@@ -243,17 +275,26 @@ def main(argv: list[str] | None = None, runner=None, critic=None) -> int:
         return cmd_init(a)
     try:
         pipe = Pipeline(a.package)
-    except PipelineError as e:
+    except (PipelineError, R_ERR) as e:
         _out({"ok": False, "code": "USAGE", "reasons": [str(e)]})
         return 2
     if not pipe.initialized:
         _out({"ok": False, "code": "USAGE", "reasons": ["package is not initialized: run 'init' first"]})
         return 2
+    if pipe.state.get("invalid"):  # a rejected or malformed state stays NOT_READY until a human removes it
+        if a.cmd == "status":
+            return cmd_status(pipe, a)
+        _out({"ok": False, "code": "NOT_READY", "state": "NOT_READY", "reasons": [pipe.state["invalid"].get("reason", "pipeline state is invalid")]})
+        return 3
     fw, err = load_framework(pipe)
     if fw is None:
+        if pipe.state.get("invalid"):  # persisted: malformed framework data is NOT_READY, not an exception
+            _out({"ok": False, "code": "NOT_READY", "state": "NOT_READY", "reasons": [err]})
+            return 3
         _out({"ok": False, "code": "BLOCKED", "state": "BLOCKED_FRAMEWORK", "reasons": [err]})
         return 4
     runner = runner or G.make_runner(pipe.pkg / "write-pipeline" / "workspace")
+    pipe.final_verifier = VF.make_verifier(runner)
     try:
         return _dispatch(a, pipe, runner, critic)
     except Exception as e:  # noqa: BLE001  stage boundary: persist a terminal state instead of escaping with pending state
@@ -291,7 +332,12 @@ def _dispatch(a, pipe: Pipeline, runner, critic) -> int:
         elif not a.file:
             r = {"ok": False, "code": "USAGE", "reasons": ["--file is required"]}
         else:
-            r = RN.repair_try(pipe, a.file.read_text(), runner)
+            try:
+                text = contain_input(pipe.pkg, a.file).read_text()
+            except (OSError, ValueError, PipelineError) as e:
+                r = {"ok": False, "code": "USAGE", "reasons": [f"cannot read {a.file}: {e}"]}
+            else:
+                r = RN.repair_try(pipe, text, runner)
         _out(r)
         return _code(r)
     if a.cmd == "finalize":

@@ -240,9 +240,8 @@ def test_image_symlink_escape_is_rejected(d, tmp_path):
 
 def test_state_artifact_path_escape_is_refused(d, tmp_path):
     d.to_stage("outline")
-    s = state(d)
-    s["stages"]["research"]["artifact"] = "../../outside.json"
-    (d.pkg / "write-pipeline/state.json").write_text(json.dumps(s))
+    from .fakes import resign_state
+    resign_state(d.pkg, lambda s: s["stages"]["research"].__setitem__("artifact", "../../outside.json"))
     pipe = Pipeline(d.pkg)
     assert pipe.read_json("research") == {} and pipe.status("research") == "STALE"
     with pytest.raises(Exception):

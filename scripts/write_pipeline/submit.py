@@ -4,11 +4,12 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from . import cuts as CT
 from . import editguard as G
 from . import frame as FR
 from . import mdlib as M
 from . import validators as V
-from .core import BLOCKED, DONE, FAILED, KIND, NOT_READY, Pipeline, atomic_write, fail_exc, sha_bytes, sha_json
+from .core import BLOCKED, DONE, FAILED, KIND, NOT_READY, Pipeline, PipelineError, atomic_write, contain_input, fail_exc, sha_bytes, sha_json
 
 JSON_STAGES = {"source": "json", "research": "json", "angle": "json", "outline": "json", "title": "json", "images": "json"}
 TEXT_STAGES = {"draft": "md", "validate": "md", "editorial": "md", "voice": "md"}
@@ -57,14 +58,16 @@ def submit(pipe: Pipeline, stage: str, file: Path, report: Path | None, runner: 
     if KIND[stage] != "agent" or stage == "repair":
         return {"ok": False, "code": "USAGE", "stage": stage, "reasons": [f"stage '{stage}' is not submitted; use its run command"]}
     try:
-        raw = Path(file).read_bytes()
-    except OSError as e:
+        file = contain_input(pipe.pkg, file)  # symlinks resolved: an escaping link is refused
+        raw = file.read_bytes()
+    except (OSError, PipelineError) as e:
         return {"ok": False, "code": "USAGE", "stage": stage, "reasons": [f"cannot read {file}: {e}"]}
     rep_raw, rep = None, None
     if report is not None:
         try:
-            rep_raw = Path(report).read_bytes()
-        except OSError as e:
+            report = contain_input(pipe.pkg, report)
+            rep_raw = report.read_bytes()
+        except (OSError, PipelineError) as e:
             return {"ok": False, "code": "USAGE", "stage": stage, "reasons": [f"cannot read report {report}: {e}"]}
         rep, err = _json(report)
         if rep is None:
@@ -170,7 +173,8 @@ def _text_stage(pipe: Pipeline, stage: str, text: str, rep: dict | None, rep_raw
         # claims alone, so a clean text has them all MISSING (FAIL); a PASS means the text still entails them.
         base = pipe.pkg / "write-pipeline" / "work" / "unresolved"
         atomic_write(base / "candidate" / "article.md", text.encode())
-        atomic_write(base / "reference" / "reference.md", V.unresolved_reference(c["ev"]).encode())
+        ref_doc = V.unresolved_reference(c["ev"], text)
+        atomic_write(base / "reference" / "reference.md", ref_doc.encode())
         gate = G.claims_gate(runner, base / "candidate" / "article.md", base / "reference" / "reference.md", base / "gate", pipe.pkg)
         if gate["state"] == "ERROR":
             msg = ["claims gate could not check the unresolved claims (retry later): " + "; ".join(gate["reasons"])[:200]]
@@ -179,11 +183,18 @@ def _text_stage(pipe: Pipeline, stage: str, text: str, rep: dict | None, rep_raw
             return {"ok": False, "code": "BLOCKED", "stage": stage, "reasons": msg}
         if gate["state"] == "PASS":
             return _fail(pipe, stage, ["the evaluator gate finds an unresolved claim still asserted in the text (paraphrase): remove it"])
+        if not gate["categories"] or set(gate["categories"]) - G.CLAIM_CATS:
+            # a FAIL for any non-claims reason (structure, links, frozen blocks) never judged the claims: inconclusive, not "absent"
+            msg = ["the unresolved-claims semantic check was inconclusive (the gate failed for a non-claims reason: " + ", ".join(gate["categories"] or ["unknown"]) + "); fix and resubmit"]
+            pipe.set(stage, NOT_READY, reasons=msg)
+            pipe.save()
+            return {"ok": False, "code": "NOT_READY", "stage": stage, "reasons": msg}
     if stage in ("editorial", "voice"):  # the evaluator's claim judge: meaning must survive the pass (only claim categories block here)
         prev = pipe.read_art(PREV[stage]) or ""
+        gate_ref, cuts = CT.apply_cuts(prev, text, removals)  # declared, exactly matched, really removed sentences are intentional cuts
         base = pipe.pkg / "write-pipeline" / "work" / stage
         atomic_write(base / "candidate" / "article.md", text.encode())
-        atomic_write(base / "reference" / "reference.md", prev.encode())
+        atomic_write(base / "reference" / "reference.md", gate_ref.encode())
         gate = G.claims_gate(runner, base / "candidate" / "article.md", base / "reference" / "reference.md", base / "gate", pipe.pkg)
         if gate["state"] == "ERROR":
             msg = [f"claims gate could not evaluate the {stage} pass (retry later): " + "; ".join(gate["reasons"])[:200]]
@@ -192,4 +203,5 @@ def _text_stage(pipe: Pipeline, stage: str, text: str, rep: dict | None, rep_raw
             return {"ok": False, "code": "BLOCKED", "stage": stage, "reasons": msg}
         if gate["state"] == "FAIL" and set(gate["categories"]) & G.CLAIM_CATS:
             return _fail(pipe, stage, [f"{stage} pass changed meaning: " + "; ".join(gate["reasons"])[:300]])
+        CT.record_cuts(pipe, stage, cuts)
     return _finish(pipe, stage, text.encode(), "md", report=rep_raw)
