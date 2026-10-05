@@ -20,6 +20,7 @@ from .gateway import GatewayError, Model
 from .rewrite import Segment
 
 VERDICTS = ("entailed", "changed", "missing")
+JUDGE_BATCH = 10  # max claims per judge call (part of the gate cache key, authz._cache_extra); larger sections are chunked
 CONFIRM_RUNS = 2  # telemetry-only extra judge passes over flagged claims (judge_claims(confirm_telemetry=True))
 
 JUDGE_PROMPT = """/no_think
@@ -58,9 +59,17 @@ def identical(candidate: str, reference: str) -> bool:
     return normalize(candidate) == normalize(reference)
 
 
-def parse_verdicts(raw: str, n: int) -> dict[int, dict]:
-    """Raise ValueError unless raw (after one optional ```json fence) is a JSON list of
-    {i, verdict[, reason, evidence, dimension]} with ids exactly 1..n, each once, verdicts in VERDICTS."""
+class MissingIds(ValueError):
+    """Valid reply, every entry well formed, but some expected ids are absent. Carries the valid partial result."""
+
+    def __init__(self, partial: dict[int, dict], missing: list[int]):
+        super().__init__(f"claim ids {sorted(partial)} != expected; missing {missing}")
+        self.partial, self.missing = partial, missing
+
+
+def parse_entries(raw: str, n: int, verdicts: tuple, keys: set, strings: tuple) -> dict[int, dict]:
+    """Strict parse shared with added.py. ValueError for anything malformed, extra/duplicate ids or bad verdicts;
+    MissingIds (a ValueError) only when the reply is otherwise valid but lacks some of ids 1..n."""
     text = raw.strip()
     m = _FENCE.match(text)
     if m:
@@ -70,37 +79,72 @@ def parse_verdicts(raw: str, n: int) -> dict[int, dict]:
         raise ValueError("judge reply is not a JSON list")
     out: dict[int, dict] = {}
     for v in data:
-        if not isinstance(v, dict) or set(v) - _ALLOWED_KEYS or "i" not in v or "verdict" not in v:
+        if not isinstance(v, dict) or set(v) - keys or "i" not in v or "verdict" not in v:
             raise ValueError(f"bad judge entry: {str(v)[:80]}")
         i, verdict = v["i"], v["verdict"]
         if isinstance(i, bool) or not isinstance(i, int) or i in out:
             raise ValueError(f"bad or duplicate claim id {i!r}")
-        if verdict not in VERDICTS:
+        if verdict not in verdicts:
             raise ValueError(f"bad verdict {verdict!r}")
-        for key in ("reason", "evidence", "dimension"):
+        for key in strings:
             if key in v and not isinstance(v[key], str):
                 raise ValueError(f"{key} must be a string")
         out[i] = v
-    if set(out) != set(range(1, n + 1)):
+    expected = set(range(1, n + 1))
+    if set(out) - expected:
         raise ValueError(f"claim ids {sorted(out)} != expected 1..{n}")
+    if set(out) != expected:
+        raise MissingIds(out, sorted(expected - set(out)))
     return out
+
+
+def parse_verdicts(raw: str, n: int) -> dict[int, dict]:
+    """Raise ValueError unless raw (after one optional ```json fence) is a JSON list of
+    {i, verdict[, reason, evidence, dimension]} with ids exactly 1..n, each once, verdicts in VERDICTS."""
+    return parse_entries(raw, n, VERDICTS, _ALLOWED_KEYS, ("reason", "evidence", "dimension"))
+
+
+def ask_chunked(claims: list[str], ask, parse) -> tuple[dict[int, dict], int]:
+    """Judge `claims` in chunks of at most JUDGE_BATCH, each numbered 1..k; results come back keyed by GLOBAL id (1..len(claims)).
+    ask(sub_claims) -> raw reply; parse(raw, n) -> {1..n: entry}. Per chunk: one retry on a gateway error or malformed reply;
+    a reply that is valid but misses ids gets ONE targeted re-ask for just those ids; still missing -> ValueError.
+    A verdict is never inferred for a missing claim. Returns (verdicts, number of chunks)."""
+    out: dict[int, dict] = {}
+    chunks = 0
+    for start in range(0, len(claims), JUDGE_BATCH):
+        chunk = claims[start:start + JUDGE_BATCH]
+        chunks += 1
+        got: dict[int, dict] | None = None
+        last: Exception | None = None
+        for _ in range(2):
+            try:
+                got = parse(ask(chunk), len(chunk))
+                break
+            except MissingIds as e:
+                got, miss = dict(e.partial), e.missing
+                try:
+                    again = parse(ask([chunk[i - 1] for i in miss]), len(miss))
+                except MissingIds as e2:
+                    raise ValueError(f"claim ids still missing after targeted re-ask: {[miss[j - 1] for j in e2.missing]}") from e2
+                got.update({miss[k - 1]: v for k, v in again.items()})
+                break
+            except (GatewayError, ValueError) as e:  # json.JSONDecodeError is a ValueError
+                last = e
+        if got is None:
+            assert last is not None
+            raise last
+        out.update({start + i: v for i, v in got.items()})
+    return out, chunks
 
 
 def _numbered(claims: list[str]) -> str:
     return "\n".join(f"{i + 1}. {c}" for i, c in enumerate(claims))
 
 
-def _call(judge: Model, claims: list[str], passage: str) -> dict[int, dict]:
-    """One judged batch with one retry on bad output. Raises GatewayError/ValueError (last failure) when both attempts fail."""
-    last: Exception | None = None
-    for _ in range(2):
-        try:
-            raw = judge.complete(JUDGE_PROMPT.format(claims=_numbered(claims), passage=passage), **({"temperature": 0.0, "max_tokens": 6000} if judge.backend == "gateway" else {}))
-            return parse_verdicts(raw, len(claims))
-        except (GatewayError, ValueError) as e:  # json.JSONDecodeError is a ValueError
-            last = e
-    assert last is not None
-    raise last
+def _call(judge: Model, claims: list[str], passage: str) -> tuple[dict[int, dict], int]:
+    """Judged claims (chunked, global ids) and the chunk count. Raises GatewayError/ValueError when a chunk cannot be completed."""
+    kw = {"temperature": 0.0, "max_tokens": 6000} if judge.backend == "gateway" else {}
+    return ask_chunked(claims, lambda sub: judge.complete(JUDGE_PROMPT.format(claims=_numbered(sub), passage=passage), **kw), parse_verdicts)
 
 
 def _judge_error(section: str, last: Exception) -> EvaluationError:
@@ -129,8 +173,8 @@ def judge_claims(segments: list[Segment], judge: Model, strict: bool = False, co
             counts["entailed"] += len(claims)
             continue
         try:
-            calls += 1
-            first = _call(judge, claims, seg.output)
+            first, n_calls = _call(judge, claims, seg.output)
+            calls += n_calls
         except (GatewayError, ValueError) as e:
             if strict:
                 raise _judge_error(seg.section, e) from e
@@ -142,8 +186,8 @@ def judge_claims(segments: list[Segment], judge: Model, strict: bool = False, co
             sub = [claims[i - 1] for i in flag_ids]
             for _ in range(CONFIRM_RUNS):
                 try:
-                    calls += 1
-                    again = _call(judge, sub, seg.output)
+                    again, n_calls = _call(judge, sub, seg.output)
+                    calls += n_calls
                 except (GatewayError, ValueError):
                     continue  # telemetry only: a failed vote is simply absent
                 for k, i in enumerate(flag_ids, 1):

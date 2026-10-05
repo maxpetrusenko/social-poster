@@ -248,6 +248,7 @@ def _cache_extra(ctx: PackageCtx) -> dict:
             notes = "unreadable"
     from . import added as AD, extract_cache as EC, gateway as GW, judge as JG, rewrite as RW
     prompts = {"extract": _sha(RW.EXTRACT_PROMPT.encode()), "judge": _sha(JG.JUDGE_PROMPT.encode()), "added": _sha(AD.SUPPORT_PROMPT.encode()),
+               "judge_batch": JG.JUDGE_BATCH,
                "extract_schema_version": EC.SCHEMA_VERSION}
     return {"source_notes_sha256": notes, "extractor": MODELS["extractor"], "judge": MODELS["judge"],
             "models": {"extractor": _model_info(MODELS["extractor"]), "judge": _model_info(MODELS["judge"])},
