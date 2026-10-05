@@ -5,6 +5,8 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from scripts.fingerprint_eval.added import NEGATIONS, NUMBER_WORDS
+
 LINK = re.compile(r"(?<!!)\[([^\]]+)\]\((https?://[^)]+)\)")
 IMAGE = re.compile(r"^!\[[^\]]*\]\([^)]*\)\n\n?", re.M)
 
@@ -57,7 +59,12 @@ def style_only(md: str) -> str:
     for para in md.split("\n\n"):
         out.append(para)
         if n < 6 and len(para.split()) > 25 and not para.startswith(("#", "!", ">", "-", "*", "[")) and para.rstrip()[-1:] in ".?!":
-            out[-1] = para.rstrip() + " Notice, decide, and remember."  # words already in the article: rhythm, not facts
+            pool = []  # lowercase plain words of this very paragraph (same section): rhythm, not facts, and never a new token
+            for w in re.findall(r"(?<![\w'-])[a-z]{5,}(?![\w'-])", para):
+                if w not in pool and w not in NUMBER_WORDS and w not in NEGATIONS:
+                    pool.append(w)
+            assert len(pool) >= 3
+            out[-1] = para.rstrip() + f" {pool[0].capitalize()}, {pool[1]}, and {pool[2]}."
             n += 1
     assert n >= 3
     return "\n\n".join(out)
