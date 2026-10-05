@@ -1,6 +1,6 @@
-"""Package resolution + hashing helpers (follows the contracts.py package conventions; does not import it).
+"""Package resolution + hashing helpers. Final-article resolution is delegated to fingerprint_eval.authz.resolve_package.
 
-final article rule: version.json.finalFile > article-medium.md > version.json.articleFile. An explicit
+final article rule (canonical): version.json.finalFile > article-medium.md > version.json.articleFile. An explicit
 --article always wins. The package dir may be any directory (e.g. an experiments/ dir).
 """
 from __future__ import annotations
@@ -9,6 +9,8 @@ import hashlib
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
+
+from scripts.fingerprint_eval.authz import PackageError, resolve_package
 
 BOOST_KEYS = ("boost", "boosted", "boost_observed", "boostobserved", "isboosted", "boosteddistribution")
 
@@ -48,25 +50,29 @@ def read_json(p: Path) -> dict:
 
 
 def resolve(package: Path, article: Path | None = None) -> ReviewCtx:
+    """Thin adapter over the one canonical resolver, scripts.fingerprint_eval.authz.resolve_package.
+
+    An explicit --article always wins; otherwise the canonical rule decides (finalFile > article-medium.md > articleFile).
+    """
     package = package.resolve()
     version = read_json(package / "version.json")
     workflow = read_json(package / "workflow.json")
+    try:
+        canon = resolve_package(package)
+    except PackageError as e:
+        if article is None:
+            raise FileNotFoundError(f"no article found in {package} (use --article): {e}") from None
+        canon = None
     if article is not None:
         art = article if article.is_absolute() else (package / article if (package / article).exists() else Path.cwd() / article)
         rule = "explicit --article"
+        notes = canon.source_notes if canon else (package / "sources" / "source-notes.md")
     else:
-        art, rule = None, ""
-        ff = version.get("finalFile")
-        if ff and (package / ff).exists():
-            art, rule = package / ff, "version.json.finalFile"
-        elif (package / "article-medium.md").exists():
-            art, rule = package / "article-medium.md", "article-medium.md"
-        elif version.get("articleFile") and (package / version["articleFile"]).exists():
-            art, rule = package / version["articleFile"], "version.json.articleFile"
-    if art is None or not art.exists():
+        art, rule, notes = canon.final_path, canon.final_rule, canon.source_notes
+    if not art.exists():
         raise FileNotFoundError(f"no article found in {package} (use --article)")
-    notes = package / "sources" / "source-notes.md"
-    return ReviewCtx(package, art.resolve(), rule, notes if notes.exists() else None, version, workflow)
+    notes = notes if notes is not None and notes.exists() else None
+    return ReviewCtx(package, art.resolve(), rule, notes, version, workflow)
 
 
 def boost_observed(*sources: dict):

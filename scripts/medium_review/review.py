@@ -1,4 +1,4 @@
-"""ONE Sonnet call per article (subscription `claude -p` via the imported gateway.claude_cli).
+"""ONE Sonnet call per article (subscription `claude -p` via the local llm.run_claude wrapper, env from gateway.claude_env).
 
 The prompt holds the cached policy text, the article and the deterministic findings; the reply is strict JSON,
 schema-validated, one retry, else ERROR. The review judges Medium-policy fit, never AI-detectability.
@@ -10,9 +10,10 @@ import re
 from pathlib import Path
 from typing import Callable
 
-from scripts.fingerprint_eval.gateway import GatewayError, claude_cli, extract_json
+from scripts.fingerprint_eval.gateway import GatewayError, extract_json
 
 from . import checks as CK
+from .llm import run_claude
 from . import policy as POL
 from . import scorecard as SC
 from .package import ReviewCtx, sha256_bytes
@@ -149,13 +150,16 @@ def call_model(prompt: str, article: str, llm: Callable[[str], str]) -> dict:
             raw = llm(p)
             return validate(extract_json(raw), article)
         except (SchemaError, GatewayError, ValueError) as e:
+            cat = getattr(e, "category", None)
             last = f"{type(e).__name__}: {e}"
+            if cat is not None:
+                last = f"[{getattr(cat, 'value', cat)}] {last}"
             p = prompt + f"\n\nYour previous reply was rejected ({last[:300]}). Reply again with ONLY the valid JSON object."
     raise ReviewError(f"model call failed or reply invalid after retry: {last}")
 
 
 def default_llm(prompt: str) -> str:
-    return claude_cli(prompt, "sonnet", timeout=600)
+    return run_claude(prompt, "sonnet", timeout=600)
 
 
 def run_review(ctx: ReviewCtx, root: Path = POL.REPO, llm: Callable[[str], str] | None = None, policy: dict | None = None,

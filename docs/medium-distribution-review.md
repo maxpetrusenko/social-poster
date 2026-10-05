@@ -14,7 +14,7 @@ A score does not guarantee Boost. Medium describes the guidelines as nuanced cha
 | Fingerprint | `scripts/fingerprint_eval` advisory metrics | Style diagnostics: author distance, JSD, repeated n-grams | No |
 | Distribution | `scripts/medium_review` | Would Medium curators see substantive author contribution, originality, reader value, craft, sourcing; any policy risk? | No. Advisory; the release controller decides |
 
-The three share no logic. `medium_review` imports only `gateway.claude_cli`/`claude_env`, `refs.find_refs` and `textutil` helpers from fingerprint-eval and edits nothing there.
+The three share no logic. `medium_review` imports only `authz.resolve_package` (the one canonical final-article resolver), `gateway.claude_env`/`extract_json`, `refs.find_refs` and `textutil` helpers from fingerprint-eval and edits nothing there. Model calls go through `medium_review/llm.py`, a local `claude -p` wrapper (subscription env from `claude_env`, no API keys) that keeps the stdout/stderr tail in the error record because `gateway.claude_cli` drops stdout; rate-limit and session-limit messages map to `MODEL_UNAVAILABLE`, and the ERROR record's `error` text is prefixed with the category, e.g. `[MODEL_UNAVAILABLE]`.
 
 ## Order of operations
 
