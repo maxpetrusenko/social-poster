@@ -144,6 +144,8 @@ def load_provenance(package: Path, version: dict) -> dict[str, dict]:
     walk(version)
     for jf in list((package / "assets").glob("**/*.json"))[:50] if (package / "assets").is_dir() else []:
         try:
+            if not jf.resolve().is_relative_to(package.resolve()):
+                continue
             walk(json.loads(jf.read_text()))
         except (OSError, ValueError):
             pass

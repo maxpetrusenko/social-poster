@@ -54,6 +54,8 @@ def trusted_files(ctx: ReviewCtx, root: Path) -> list[Path]:
     for e in entries:
         p = Path(str(e).replace("{package}", str(ctx.package)))
         p = p if p.is_absolute() else root / p
+        if str(e).startswith("{package}") and not p.resolve().is_relative_to(ctx.package.resolve()):
+            continue  # package-relative source that symlinks out of the package
         if p.is_file():
             files.append(p)
         elif p.is_dir():

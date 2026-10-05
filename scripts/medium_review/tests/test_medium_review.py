@@ -431,3 +431,76 @@ class LlmWrapper(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def test_resolve_rejects_article_and_notes_escaping_package(tmp_path):
+    import pytest
+    from scripts.medium_review.package import resolve
+    outside = tmp_path / "secret.md"
+    outside.write_text("# s\n")
+    pkg = tmp_path / "pkg"
+    pkg.mkdir()
+    (pkg / "article-medium.md").write_text("# a\n")
+    with pytest.raises(FileNotFoundError, match="escapes"):
+        resolve(pkg, outside)
+    with pytest.raises(FileNotFoundError, match="escapes"):
+        resolve(pkg, Path("../secret.md"))
+    (pkg / "link.md").symlink_to(outside)
+    with pytest.raises(FileNotFoundError, match="escapes"):
+        resolve(pkg, Path("link.md"))
+    (pkg / "sources").mkdir()
+    (pkg / "sources" / "source-notes.md").symlink_to(outside)
+    with pytest.raises(Exception, match="escapes|no article"):
+        resolve(pkg)
+
+
+def test_policy_current_file_cannot_escape_policy_dir(tmp_path):
+    import hashlib
+    from scripts.medium_review import policy as POL
+    pdir = tmp_path / "pol"
+    pdir.mkdir()
+    (tmp_path / "evil.txt").write_text("boost distribution")
+    (pdir / "CURRENT.json").write_text(json.dumps({"file": "../evil.txt", "sha256": hashlib.sha256(b"boost distribution").hexdigest()}))
+    assert POL._load_current(pdir) is None
+
+
+def test_child_processes_get_allowlisted_env(monkeypatch):
+    from scripts.medium_review import scorecard as SC, policy as POL
+    seen = []
+
+    class P:
+        returncode, stdout, stderr = 0, "x", ""
+
+    monkeypatch.setenv("LLM_GATEWAY_API_KEY", "secret")
+    monkeypatch.setenv("DOPPLER_TOKEN", "secret")
+    monkeypatch.setattr(SC.subprocess, "run", lambda *a, **k: seen.append(k["env"]) or P())
+    SC._git("rev-parse", "HEAD")
+    monkeypatch.setattr(POL.shutil, "which", lambda n: "/bin/browse.sh")
+    monkeypatch.setattr(POL.subprocess, "run", lambda *a, **k: seen.append(k["env"]) or P())
+    POL._from_browse_sh()
+    assert len(seen) == 2 and all("LLM_GATEWAY_API_KEY" not in e and "DOPPLER_TOKEN" not in e for e in seen)
+
+
+def test_validate_review_rejects_forgeries():
+    from scripts.medium_review import scorecard as SC
+    h = "a" * 64
+    dims = {k: {"rating": "adequate"} for k in SC.DIMENSIONS}
+    good = {"schema_version": 1, "review_version": 1, "status": "REVIEWED",
+            "binding": {"content_sha256": h, "policy_sha256": "b" * 64, "policy_version": "b" * 12 + "@x", "evaluator_id": "ev"},
+            "scorecard": {"dimensions": dims, "boost_candidate": "NO", "general_distribution_risk": "LOW", "derivative_summary": False,
+                          "author_contribution": {"present": True, "integral": True}},
+            "hard_policy_risks": [], "warnings": [], "safe_auto_fixes": [], "author_input_required": {"required": False}}
+    assert SC.validate_review(good, h, "ev") is None
+    assert SC.validate_review(good, "c" * 64, "ev")           # content hash
+    assert SC.validate_review(good, h, "other-evaluator")      # evaluator
+    forged = {"status": "REVIEWED", "binding": {"content_sha256": h}, "scorecard": {"author_contribution": {"integral": True}}}
+    assert SC.validate_review(forged, h, "ev")
+    import copy
+    for mutate in (lambda r: r["scorecard"]["dimensions"].pop("sourcing"),
+                   lambda r: r["binding"].__setitem__("policy_version", "zzz"),
+                   lambda r: r.__setitem__("review_version", 99),
+                   lambda r: r["scorecard"].__setitem__("general_distribution_risk", "??")):
+        bad = copy.deepcopy(good)
+        mutate(bad)
+        assert SC.validate_review(bad, h, "ev")
+    assert SC.validate_review(None) and SC.validate_review([])

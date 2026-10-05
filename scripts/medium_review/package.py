@@ -10,7 +10,7 @@ import json
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from scripts.fingerprint_eval.authz import PackageError, resolve_package
+from scripts.fingerprint_eval.authz import PackageError, contained, resolve_package
 
 BOOST_KEYS = ("boost", "boosted", "boost_observed", "boostobserved", "isboosted", "boosteddistribution")
 
@@ -71,8 +71,14 @@ def resolve(package: Path, article: Path | None = None) -> ReviewCtx:
         art, rule, notes = canon.final_path, canon.final_rule, canon.source_notes
     if not art.exists():
         raise FileNotFoundError(f"no article found in {package} (use --article)")
+    try:
+        art = contained(package, art, "article")
+        if notes is not None and notes.exists():
+            notes = contained(package, notes, "source notes")
+    except PackageError as e:
+        raise FileNotFoundError(str(e)) from None
     notes = notes if notes is not None and notes.exists() else None
-    return ReviewCtx(package, art.resolve(), rule, notes, version, workflow)
+    return ReviewCtx(package, art, rule, notes, version, workflow)
 
 
 def boost_observed(*sources: dict):
