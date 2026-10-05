@@ -64,6 +64,19 @@ MAX_REPAIR_CYCLES = 3
 CIRCUIT_FAILURE_THRESHOLD = 3
 CIRCUIT_COOLDOWN_SECONDS = 1800
 INFRA_BACKOFF_SECONDS = (10, 30, 90)
+FG_ENV_KEYS = ("FINGERPRINT_EVAL_KEY_FILE", "FINGERPRINT_EVAL_WORKSPACE", "FINGERPRINT_EVAL_TEST_MODE", "FINGERPRINT_EVAL_REPAIRER")
+
+
+def clamp_cycles(value) -> int:
+    """max_cycles at an API boundary: a finite int (bool/NaN/inf/str rejected with ValueError) clamped to [0, MAX_REPAIR_CYCLES]."""
+    import math
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ValueError(f"max_cycles must be a finite int, got {value!r}")
+    if isinstance(value, float):
+        if not math.isfinite(value) or value != int(value):
+            raise ValueError(f"max_cycles must be a finite int, got {value!r}")
+        value = int(value)
+    return max(0, min(MAX_REPAIR_CYCLES, value))
 
 # ---- paths inside an article package --------------------------------------------------------------
 GATE_DIR = Path("evals/fingerprint-gate")
@@ -104,6 +117,10 @@ class Binding:
     content_sha256: str
     evaluator_id: str
     author_corpus_sha256: str
+    # round-3 additions (backward compatible: "" = not bound, never equal to a real current value)
+    evaluator_tree_sha256: str = ""
+    reference_sha256: str = ""
+    reference_record_sha256: str = ""   # sha256 of the prepublish/rating record that bound the reference; "" if none
 
 
 # ---- package resolution ------------------------------------------------------------------------------
@@ -160,6 +177,7 @@ class EvalRecord:
     heal_cycle: int = 0
     parent_content_sha256: str | None = None
     cache_hit: bool = False       # served from cache keyed by Binding (no model calls)
+    raw_report_sha256: str | None = None   # sha256 of the raw gate report at raw_report_path (covered by the record HMAC)
 
 
 class LedgerState(str, Enum):

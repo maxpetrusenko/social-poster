@@ -6,6 +6,8 @@ A record is the only proof of an evaluation. It is written once (hard link, neve
 from __future__ import annotations
 
 import dataclasses
+import hashlib
+import hmac
 import json
 import os
 import re
@@ -16,10 +18,86 @@ from .contracts import (GATE_DIR, RELEASE_AUTH, RUNS_DIR, SUMMARY, Authorization
 
 SCHEMA_VERSION = 1
 SHA_RE = re.compile(r"^[0-9a-f]{64}$")
+SIG_FIELD = "hmac_sha256"
+DEFAULT_KEY_FILE = Path.home() / ".config" / "fingerprint-eval" / "record.key"
+RAW_DIR = GATE_DIR / "raw"
 
 
 class RecordError(ValueError):
     """A record or authorization file is missing, unreadable, or fails schema validation."""
+
+
+# ---- signing --------------------------------------------------------------------------------------------
+# Records and authorizations carry an HMAC-SHA256 over their canonical JSON, keyed by a local secret (0600, in a 0700 dir).
+# RESIDUAL RISK (same-user): any process running as this user can read the key and forge a valid record. The HMAC stops
+# edits by anything that cannot read the key (other users, a model/tool writing files into the package, a stray script that
+# does not know to sign); it is not a defence against a hostile process with the owner's privileges.
+def key_path() -> Path:
+    return Path(os.environ.get("FINGERPRINT_EVAL_KEY_FILE") or DEFAULT_KEY_FILE)
+
+
+def _key() -> bytes:
+    path = key_path()
+    path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    if not os.environ.get("FINGERPRINT_EVAL_KEY_FILE"):
+        os.chmod(path.parent, 0o700)
+    if not path.exists():
+        try:
+            fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        except FileExistsError:
+            pass
+        else:
+            with os.fdopen(fd, "wb") as f:
+                f.write(os.urandom(32).hex().encode())
+    st = path.stat()
+    if st.st_mode & 0o077:
+        raise RecordError(f"signing key {path} is accessible to other users (mode {oct(st.st_mode & 0o777)}); expected 0600")
+    key = path.read_bytes().strip()
+    if len(key) < 32:
+        raise RecordError(f"signing key {path} is too short")
+    return key
+
+
+def canonical_json(obj) -> bytes:
+    return json.dumps(obj, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode()
+
+
+def sign(obj: dict) -> str:
+    body = {k: v for k, v in obj.items() if k != SIG_FIELD}
+    return hmac.new(_key(), canonical_json(body), hashlib.sha256).hexdigest()
+
+
+def signed(obj: dict) -> dict:
+    return {**{k: v for k, v in obj.items() if k != SIG_FIELD}, SIG_FIELD: sign(obj)}
+
+
+def check_signature(d: dict, what: str) -> None:
+    sig = d.get(SIG_FIELD)
+    if not isinstance(sig, str) or not sig:
+        raise RecordError(f"{what}: unsigned (no {SIG_FIELD})")
+    if not hmac.compare_digest(sig, sign(d)):
+        raise RecordError(f"{what}: signature invalid (file was modified or not written by the gate)")
+
+
+def contained(package: Path, rel: str, base: Path, what: str) -> Path:
+    """`rel` (package-relative) must name an existing regular file under package/base: not absolute, no traversal, no symlink
+    in any component below the package, and the resolved path stays inside the resolved base."""
+    if not isinstance(rel, str) or not rel or "\0" in rel:
+        raise RecordError(f"{what}: empty or invalid path")
+    if os.path.isabs(rel) or ".." in Path(rel).parts:
+        raise RecordError(f"{what}: {rel!r} is absolute or traverses upward")
+    root = Path(package).resolve()
+    p = root / rel
+    if not Path(os.path.normpath(p)).is_relative_to(root / base):
+        raise RecordError(f"{what}: {rel!r} is outside {base}")
+    cur = root
+    for part in Path(rel).parts:
+        cur = cur / part
+        if cur.is_symlink():
+            raise RecordError(f"{what}: {rel!r} passes through a symlink")
+    if not p.is_file() or not p.resolve().is_relative_to((root / base).resolve()):
+        raise RecordError(f"{what}: {rel!r} is not a file inside {base}")
+    return p
 
 
 def now_utc() -> str:
@@ -87,6 +165,11 @@ def binding_from_dict(d, where: str = "binding") -> Binding:
         raise RecordError(f"{where}: content_sha256 is not a sha256 hex digest")
     if not vals["evaluator_id"] or not vals["author_corpus_sha256"]:
         raise RecordError(f"{where}: empty evaluator_id or author_corpus_sha256")
+    for k in ("evaluator_tree_sha256", "reference_sha256", "reference_record_sha256"):  # optional for old files; "" never matches a real value
+        v = d.get(k, "")
+        if not isinstance(v, str) or (v and k != "evaluator_tree_sha256" and not SHA_RE.match(v)):
+            raise RecordError(f"{where}: {k} is not a sha256 hex digest")
+        vals[k] = v
     return Binding(**vals)
 
 
@@ -125,7 +208,8 @@ def from_dict(d) -> EvalRecord:
         result=result, category=category, reasons=reasons, runtime_s=float(_need(d, "runtime_s", (int, float))),
         raw_report_path=_need(d, "raw_report_path", (str,)), heal_cycle=int(_need(d, "heal_cycle", (int,))),
         parent_content_sha256=d.get("parent_content_sha256") if isinstance(d.get("parent_content_sha256"), (str, type(None))) else _bad("parent_content_sha256"),
-        cache_hit=_need(d, "cache_hit", (bool,)))
+        cache_hit=_need(d, "cache_hit", (bool,)),
+        raw_report_sha256=d.get("raw_report_sha256") if isinstance(d.get("raw_report_sha256"), (str, type(None))) else _bad("raw_report_sha256"))
     return rec
 
 
@@ -137,24 +221,45 @@ def write_record(package: Path, rec: EvalRecord) -> Path:
     """Immutable: a record file is created once and never replaced."""
     path = package / RUNS_DIR / record_name(rec)
     from_dict(to_dict(rec))  # never persist something load_record would reject
-    atomic_write(path, (json.dumps(to_dict(rec), indent=1, sort_keys=True) + "\n").encode(), exclusive=True)
+    atomic_write(path, (json.dumps(signed(to_dict(rec)), indent=1, sort_keys=True) + "\n").encode(), exclusive=True)
     os.chmod(path, 0o444)
     return path
 
 
 def load_record(path: Path) -> EvalRecord:
+    """Schema-validated AND signature-checked. Callers that take a path from a file must use load_record_in."""
     try:
-        return from_dict(json.loads(Path(path).read_text()))
+        d = json.loads(Path(path).read_text())
+        if not isinstance(d, dict):
+            raise RecordError("record: not an object")
+        check_signature(d, "record")
+        return from_dict(d)
     except (OSError, ValueError) as e:
         if isinstance(e, RecordError):
             raise
         raise RecordError(f"cannot read record {path}: {e}") from None
 
 
+def load_record_in(package: Path, rel: str) -> EvalRecord:
+    """Load a record named by a package-relative path: it must live in <package>/evals/fingerprint-gate/runs/."""
+    return load_record(contained(package, rel, RUNS_DIR, "record_path"))
+
+
+def check_raw_report(package: Path, rec: EvalRecord) -> None:
+    """The raw gate report the record points to must exist inside <package>/evals/fingerprint-gate/raw/ and match the signed sha256."""
+    if not rec.raw_report_path or not rec.raw_report_sha256:
+        raise RecordError("record has no raw gate report binding (raw_report_path / raw_report_sha256)")
+    p = contained(package, rec.raw_report_path, RAW_DIR, "raw_report_path")
+    if hashlib.sha256(p.read_bytes()).hexdigest() != rec.raw_report_sha256:
+        raise RecordError("raw gate report differs from the sha256 stored in the signed record")
+
+
 def list_records(package: Path) -> list[tuple[Path, EvalRecord]]:
     """Valid records, oldest first (file names sort by UTC timestamp). Invalid files are skipped, never trusted."""
     out = []
     for p in sorted((package / RUNS_DIR).glob("*.json")):
+        if p.is_symlink():
+            continue
         try:
             out.append((p, load_record(p)))
         except RecordError:
@@ -170,7 +275,7 @@ def find_record_path(package: Path, rec: EvalRecord) -> Path | None:
 # ---- Authorization ----------------------------------------------------------------------------------------
 def write_authorization(package: Path, auth: Authorization) -> Path:
     path = package / RELEASE_AUTH
-    atomic_write(path, (json.dumps(jsonable(auth), indent=1, sort_keys=True) + "\n").encode())
+    atomic_write(path, (json.dumps(signed(jsonable(auth)), indent=1, sort_keys=True) + "\n").encode())
     return path
 
 
@@ -182,6 +287,7 @@ def load_authorization(package: Path) -> Authorization:
         raise RecordError(f"cannot read authorization {path}: {e}") from None
     if not isinstance(d, dict):
         raise RecordError("authorization: not an object")
+    check_signature(d, "authorization")
     sha = _need(d, "release_article_sha256", (str,), "authorization")
     if not SHA_RE.match(sha):
         raise RecordError("authorization: release_article_sha256 is not a sha256 hex digest")

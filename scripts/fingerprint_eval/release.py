@@ -8,6 +8,7 @@ evaluator and author corpus.
 from __future__ import annotations
 
 import argparse
+import dataclasses
 import hashlib
 import json
 import os
@@ -16,7 +17,7 @@ import time
 from pathlib import Path
 
 from . import authz, ledger, record as R
-from .contracts import (EXIT_INFRA_QUARANTINED, EXIT_QUARANTINED, INFRA_CATEGORIES, MAX_REPAIR_CYCLES, QUARANTINE, RELEASE_ACTIVE, RELEASE_ARTICLE,
+from .contracts import (EXIT_INFRA_QUARANTINED, EXIT_QUARANTINED, INFRA_CATEGORIES, MAX_REPAIR_CYCLES, QUARANTINE, clamp_cycles, RELEASE_ACTIVE, RELEASE_ARTICLE,
                         Authorization, Binding, Category, HealOutcome, LedgerState, PackageCtx, Result)
 
 REPO = authz.REPO
@@ -38,7 +39,7 @@ def verify_package(package: Path) -> tuple[bool, str]:
         ev = authz.evaluator_version()
         if ev.dirty:
             return False, "evaluator tree has uncommitted changes (dirty): release blocked"
-        current = Binding(_sha(final), ev.id, authz.corpus_sha256())
+        current = authz.make_binding(ctx, _sha(final), ev)
         rel = (ctx.package / RELEASE_ARTICLE).read_bytes()
     except FileNotFoundError as e:
         return False, f"missing release artifact: {e.filename}"
@@ -47,16 +48,17 @@ def verify_package(package: Path) -> tuple[bool, str]:
     if rel != final:
         return False, "release article bytes differ from the current final bytes"
     try:
-        auth = R.load_authorization(ctx.package)
-        rec = R.load_record(ctx.package / auth.record_path)
-    except R.RecordError as e:
+        auth = R.load_authorization(ctx.package)  # signature checked
+        rec = R.load_record_in(ctx.package, auth.record_path)  # contained in <package>/evals/fingerprint-gate/runs/, signature checked
+        R.check_raw_report(ctx.package, rec)  # raw gate report exists, contained, sha256 == the signed field
+    except (R.RecordError, OSError) as e:
         return False, str(e)
     if rec.result is not Result.PASS:
         return False, f"authorization record is {rec.result.value}, not PASS"
     if auth.release_article_sha256 != current.content_sha256:
         return False, "authorization is for different release bytes"
     if auth.binding != current or rec.binding != current:
-        diffs = [k for k in ("content_sha256", "evaluator_id", "author_corpus_sha256") if getattr(auth.binding, k) != getattr(current, k) or getattr(rec.binding, k) != getattr(current, k)]
+        diffs = [f.name for f in dataclasses.fields(Binding) if getattr(auth.binding, f.name) != getattr(current, f.name) or getattr(rec.binding, f.name) != getattr(current, f.name)]
         return False, "authorization binding differs from current: " + ", ".join(diffs)
     return True, "authorized"
 
@@ -126,6 +128,11 @@ def _ensure_final_points_at(ctx: PackageCtx, final_path: Path) -> None:
 
 def authorize(package: Path, max_repairs: int = MAX_REPAIR_CYCLES, dry_run: bool = False, out=print) -> int:
     package = Path(package)
+    try:
+        max_repairs = clamp_cycles(max_repairs)
+    except ValueError as e:
+        out(f"authorize: {e}")
+        return 2
     try:
         ctx = authz.resolve_package(package)
     except authz.PackageError as e:
@@ -204,14 +211,14 @@ def status(package: Path) -> dict:
     ctx = authz.resolve_package(package)
     try:
         ev = authz.evaluator_version()
-        current, dirty, err = Binding(_sha(ctx.final_path.read_bytes()), ev.id, authz.corpus_sha256()), ev.dirty, None
+        current, dirty, err = authz.make_binding(ctx, _sha(ctx.final_path.read_bytes()), ev), ev.dirty, None
     except (authz.EnvError, OSError) as e:
         current, dirty, err = None, False, str(e)
     st = ledger.reconstruct(ctx, current, dirty)
     summary = None
     if st.record_path:
         try:
-            summary = R.render_summary(R.load_record(ctx.package / st.record_path))
+            summary = R.render_summary(R.load_record_in(ctx.package, st.record_path))
         except R.RecordError:
             pass
     d = {"package": str(ctx.package), "slug": ctx.slug, "final_path": str(ctx.final_path), "final_rule": ctx.final_rule,

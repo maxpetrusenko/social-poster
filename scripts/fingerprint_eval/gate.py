@@ -154,7 +154,10 @@ def evaluate(article: Path, draft: Path | None, author_dir: Path | None, pipelin
 
     segs = segment_article(draft_md)
     extraction = ensure_extraction(segs, draft_md, extractor_spec, out / "gate-extraction.json", refresh)
-    prose = [s for s in segs if not s.frozen]
+    prose = [s for s in segs if not s.frozen]  # frozen = headings, code, lists, quotes, short and boilerplate segments (the meta rules)
+    uncovered = [s.idx for s in prose if not s.propositions]
+    if uncovered:  # never skip a prose segment silently: every non-frozen segment must yield >= 1 claim
+        raise EvaluationError(f"reference prose segments with zero extracted claims: {uncovered}", Category.MALFORMED_MODEL_OUTPUT)
     if not prose or sum(len(s.propositions) for s in prose) == 0:
         raise EvaluationError("zero claims extracted from the reference: a vacuous pass is not allowed")
 

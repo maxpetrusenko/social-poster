@@ -22,7 +22,7 @@ from typing import Callable
 from .circuit import Circuit
 from .classify import classify, failure_categories
 from .contracts import (APPROVED_FALLBACKS, CONTENT_CATEGORIES, INFRA_BACKOFF_SECONDS, INFRA_CATEGORIES, MAX_REPAIR_CYCLES,
-                        QUARANTINE, Binding, Category, EvalRecord, GateFn, HealCycle, HealOutcome, PackageCtx, Repairer, Result)
+                        QUARANTINE, clamp_cycles, Binding, Category, EvalRecord, GateFn, HealCycle, HealOutcome, PackageCtx, Repairer, Result)
 from .errors import EvaluationError
 from .repair import DeterministicRepairer
 
@@ -53,7 +53,8 @@ def _probe_claude() -> bool:
 
 def _probe_codex() -> bool:
     exe = os.environ.get("CODEX_BIN") or "codex"
-    return subprocess.run([exe, "--version"], capture_output=True, timeout=15).returncode == 0
+    from . import gateway
+    return subprocess.run([exe, "--version"], capture_output=True, timeout=15, env=gateway.codex_env()).returncode == 0
 
 
 def _probe_doppler() -> bool:
@@ -210,6 +211,7 @@ def run_heal_loop(ctx: PackageCtx, gate_fn: GateFn, repairer: Repairer, max_cycl
                   clock: Callable[[], float] = time.monotonic, backoff=INFRA_BACKOFF_SECONDS,
                   probes: dict[str, Callable[[], bool]] | None = None, workspace: Path | None = None,
                   circuit_clock: Callable[[], float] = time.time) -> HealOutcome:
+    max_cycles = clamp_cycles(max_cycles)
     probes = {**DEFAULT_PROBES, **(probes or {})}
     sleep = sleep or (lambda s: time.sleep(s))  # late-bound so patched time.sleep applies
     fallback_gate_fn = fallback_gate_fn or authz_fallback_gate

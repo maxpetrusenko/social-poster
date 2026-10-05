@@ -15,7 +15,10 @@ import subprocess
 import sys
 from pathlib import Path
 
+from .gateway import child_env
 from .textutil import body_text, core_markdown, load_author_corpus
+
+_ENV_KEYS = ("PATH", "HOME", "USER", "LOGNAME", "LANG", "LC_ALL", "TMPDIR", "VIRTUAL_ENV", "UV_CACHE_DIR")  # no API keys or tokens reach the lanes
 
 STY = r'''
 import json, sys
@@ -43,7 +46,7 @@ def main() -> int:
 
     if a.stylometry_python and a.stylometry_python.exists():
         author = "\n\n".join(t for _, t in load_author_corpus(a.author_corpus))
-        p = subprocess.run([str(a.stylometry_python), "-c", STY], input=json.dumps({"author": author, "texts": texts}), capture_output=True, text=True)
+        p = subprocess.run([str(a.stylometry_python), "-c", STY], input=json.dumps({"author": author, "texts": texts}), capture_output=True, text=True, env=child_env(_ENV_KEYS))
         lanes["pystylometry"] = json.loads(p.stdout) if p.returncode == 0 else {"skipped": True, "error": p.stderr[-300:]}
     else:
         lanes["pystylometry"] = {"skipped": True, "reason": "no --stylometry-python"}
@@ -52,7 +55,7 @@ def main() -> int:
         res = {}
         for k, f in files.items():
             p = subprocess.run(["uv", "run", "--python", "3.12", "--no-project", "python", "-c", "import sys;from reweave.cli import main;sys.exit(main(['score',sys.argv[1]]))", str(f)],
-                               capture_output=True, text=True, env={**__import__("os").environ, "PYTHONPATH": str(a.reweave_src)})
+                               capture_output=True, text=True, env={**child_env(_ENV_KEYS), "PYTHONPATH": str(a.reweave_src)})
             m = re.search(r"human-signature:\s*([0-9.]+)", p.stdout)
             res[k] = float(m.group(1)) if m else {"error": (p.stderr or p.stdout)[-200:]}
         lanes["reweave_score_human_signature"] = {"observational_only": True, "values": res}

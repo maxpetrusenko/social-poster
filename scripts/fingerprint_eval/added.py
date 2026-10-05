@@ -139,6 +139,25 @@ def _gateway_cat(model) -> Category:
     return Category.GATEWAY_FAILURE if model.backend == "gateway" else Category.MODEL_UNAVAILABLE
 
 
+_CLAIM_STOP = frozenset("the a an and or but of to in on at for with by from as is are was were be been it its this that these those he she they we you i his her their our your not no".split())
+COVER = 0.5
+
+
+def _content_tokens(text: str) -> set[str]:
+    return {t for t in re.findall(r"[a-z0-9]+", text.lower().replace("\u2019", "'")) if t not in _CLAIM_STOP}
+
+
+def uncovered_sentences(sentences: list[str], claims: list[str]) -> list[str]:
+    """New factual sentences with no extracted claim that overlaps them (>= COVER of the smaller token set)."""
+    ctoks = [_content_tokens(c) for c in claims]
+    out = []
+    for s in sentences:
+        st = _content_tokens(s)
+        if not st or not any(c and len(st & c) / min(len(st), len(c)) >= COVER for c in ctoks):
+            out.append(s)
+    return out
+
+
 def _extract_claims(sentences: list[str], section: str, extractor_spec: str) -> list[str]:
     m = resolve_model(extractor_spec)
     prompt = EXTRACT_PROMPT.format(section=section or "(intro)", text=" ".join(sentences))
@@ -169,8 +188,11 @@ def check_added(draft_md: str, final_md: str, notes: str | None, extractor_spec:
     notes_txt = (notes or "")[:MAX_NOTES_CHARS]
     for section, sents in new.items():
         claims = _extract_claims(sents, section, extractor_spec)
-        if not claims:
-            continue  # every proposition was meta (no factual content); the extractor did answer
+        if not claims:  # new factual sentences exist: an empty post-filter extraction is a failed extraction, never a pass
+            raise _fail(f"added-claim extraction returned no factual claims for {len(sents)} new factual sentence(s) in section {section!r}", Category.MALFORMED_MODEL_OUTPUT)
+        gaps = uncovered_sentences(sents, claims)
+        if gaps:  # sentence-to-claim coverage: every new factual sentence maps to >= 1 claim
+            raise _fail(f"added-claim extraction left {len(gaps)} new factual sentence(s) without a claim in section {section!r}: {gaps[0][:100]!r}", Category.MALFORMED_MODEL_OUTPUT)
         ref = _reference_section(draft_md, section)
         parts = [p for p in (ref and f"Reference section:\n{ref}", notes_txt and f"Source notes:\n{notes_txt}") if p]
         material = "\n\n".join(parts) or "(none: there is no reference text and no source notes for this section)"

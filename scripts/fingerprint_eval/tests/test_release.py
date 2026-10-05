@@ -62,7 +62,7 @@ class Authorization(Base):
         self.assertEqual(self.authorize(), 0)
         self.assertEqual((self.pkg / RELEASE_ARTICLE).read_bytes(), (self.pkg / "article-medium.md").read_bytes())
         auth = json.loads((self.pkg / RELEASE_AUTH).read_text())
-        self.assertEqual(set(auth), {"binding", "record_path", "authorized_at_utc", "release_article_sha256"})
+        self.assertEqual(set(auth), {"binding", "record_path", "authorized_at_utc", "release_article_sha256", "hmac_sha256"})
         self.assertTrue((self.root / "ws" / RELEASE_ACTIVE).is_file())
         self.assertTrue((self.pkg / "evals/fingerprint-gate/SUMMARY.md").read_text().startswith("Fingerprint / integrity gate: PASS"))
         self.assertIn(LedgerState.PUBLISH_AUTHORIZED, [e.state for e in ledger.read(self.pkg)])

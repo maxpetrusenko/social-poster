@@ -242,9 +242,14 @@ def circuit_states(workspace: Path) -> dict:
     return out
 
 
+def _probe_env() -> dict:
+    from .gateway import CLAUDE_ENV_KEYS, CODEX_ENV_KEYS, child_env
+    return child_env(tuple(dict.fromkeys(CLAUDE_ENV_KEYS + CODEX_ENV_KEYS)))
+
+
 def _probe_cmd(cmd: list[str]) -> dict:
     try:
-        r = subprocess.run(cmd, capture_output=True, text=True, timeout=20)
+        r = subprocess.run(cmd, capture_output=True, text=True, timeout=20, env=_probe_env())
         return {"ok": r.returncode == 0, "detail": (r.stdout or r.stderr).strip().splitlines()[:1]}
     except (OSError, subprocess.SubprocessError) as e:
         return {"ok": False, "detail": [type(e).__name__]}

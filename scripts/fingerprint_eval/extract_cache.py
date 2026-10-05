@@ -67,5 +67,5 @@ def ensure_extraction(segs: list[Segment], md: str, extractor_spec: str, cache: 
             raise EvaluationError(f"cannot write extraction cache: {e}") from None
     empty = [s.idx for s in prose if not s.propositions]
     if empty:
-        raise EvaluationError(f"prose segments with zero claims: {empty}")
+        raise EvaluationError(f"prose segments with zero claims: {empty}", category=Category.MALFORMED_MODEL_OUTPUT)
     return source

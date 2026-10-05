@@ -32,10 +32,18 @@ VEC_KEYS = ("sent_len_hist", "para_len_hist", "punct_dist", "function_words")
 
 
 # ---- infra retry ----------------------------------------------------------------------------------------
+def _child_env() -> dict:
+    """Allowlisted env for the authorize child: claude/codex/doppler auth knobs and FINGERPRINT_EVAL_* only, no other secrets."""
+    from .contracts import FG_ENV_KEYS
+    from .gateway import CLAUDE_ENV_KEYS, CODEX_ENV_KEYS, child_env
+    from .run import DOPPLER_ENV_KEYS
+    return child_env(tuple(dict.fromkeys(CLAUDE_ENV_KEYS + CODEX_ENV_KEYS + DOPPLER_ENV_KEYS + FG_ENV_KEYS)))
+
+
 def run_authorize(pkg: Path) -> int:
     """Re-run the canonical release path. Stubbed in tests."""
     r = subprocess.run([sys.executable, "-m", "scripts.fingerprint_eval.release", "authorize", "--package", str(pkg)],
-                       cwd=REPO, capture_output=True, text=True)
+                       cwd=REPO, capture_output=True, text=True, env=_child_env())
     return r.returncode
 
 
