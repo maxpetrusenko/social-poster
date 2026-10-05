@@ -14,9 +14,9 @@ from pathlib import Path
 
 from scripts.fingerprint_eval.gateway import GatewayError
 from scripts.medium_review.llm import run_claude
-from scripts.publish_route.orchestrate import default_runner
 
 from . import antifp as AF
+from . import editguard as G
 from . import final as FN
 from . import runs as RN
 from . import submit as SB
@@ -205,7 +205,7 @@ def cmd_run(pipe: Pipeline, a, runner, critic) -> int:
     return _code(r)
 
 
-def main(argv: list[str] | None = None, runner=default_runner, critic=None) -> int:
+def main(argv: list[str] | None = None, runner=None, critic=None) -> int:
     critic = critic or (lambda prompt: run_claude(prompt, "sonnet"))
     ap = argparse.ArgumentParser(prog="python -m scripts.write_pipeline", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -255,6 +255,7 @@ def main(argv: list[str] | None = None, runner=default_runner, critic=None) -> i
     if fw is None:
         _out({"ok": False, "code": "BLOCKED", "state": "BLOCKED_FRAMEWORK", "reasons": [err]})
         return 4
+    runner = runner or G.make_runner(pipe.pkg / "write-pipeline" / "workspace")
     um = FN.sync_user_edit(pipe)
     if um and a.cmd not in ("status", "revalidate", "rebase"):
         _out({"ok": False, "code": "USER_MODIFIED", "reasons": ["FINAL.md changed after PASS; run 'revalidate' (reruns the affected analysis and the final gate)"], "user_modified": um})

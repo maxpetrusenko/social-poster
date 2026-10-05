@@ -6,6 +6,7 @@ add personal experience. claims_gate is the evaluator half and is called through
 from __future__ import annotations
 
 import json
+import subprocess
 import sys
 from collections import Counter
 from pathlib import Path
@@ -13,7 +14,8 @@ from typing import Callable
 
 from scripts.fingerprint_eval.contracts import AUTHOR_CORPUS_DIR
 from scripts.fingerprint_eval.guards import frozen_diff, structure_preservation
-from scripts.publish_route.orchestrate import default_runner
+from scripts.fingerprint_eval.gateway import child_env
+from scripts.publish_route.orchestrate import ROUTE_ENV_KEYS
 
 from . import mdlib as M
 
@@ -21,6 +23,20 @@ Runner = Callable[[list[str]], tuple[int, str]]
 REPO = Path(__file__).resolve().parents[2]
 CONTENT_CATS = {"CONTENT_CLAIM_FAILURE", "ADDED_UNSUPPORTED_CLAIM", "MISSING_LINK", "STRUCTURAL_DAMAGE", "MISSING_SOURCE"}
 CLAIM_CATS = {"CONTENT_CLAIM_FAILURE", "ADDED_UNSUPPORTED_CLAIM"}
+
+
+def make_runner(workspace: Path) -> Runner:
+    """Subprocess runner with the evaluator's allowlisted env. FINGERPRINT_EVAL_WORKSPACE points at a pipeline-private directory so a
+    release authorize here writes its ACTIVE selector there and never replaces the production selector another article may hold."""
+    def run(argv: list[str]) -> tuple[int, str]:
+        env = child_env(ROUTE_ENV_KEYS)
+        env["FINGERPRINT_EVAL_WORKSPACE"] = str(workspace)
+        try:
+            p = subprocess.run(argv, capture_output=True, text=True, timeout=1800, cwd=REPO, env=env)
+        except (OSError, subprocess.SubprocessError) as e:
+            return 127, f"{type(e).__name__}: {e}"
+        return p.returncode, p.stdout + (("\n" + p.stderr) if p.returncode else "")
+    return run
 
 
 def has_author_material(sources: dict) -> bool:

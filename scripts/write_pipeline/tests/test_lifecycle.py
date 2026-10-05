@@ -193,3 +193,30 @@ def test_status_shows_every_stage_state(d):
     rc, out = d.cli("status")
     lines = [ln for ln in out.splitlines() if re.match(r"\s*\d+ ", ln)]
     assert len(lines) == 18 and sum(" DONE " in ln for ln in lines) == 9
+
+
+def _evaluator_clean() -> bool:
+    import subprocess
+    p = subprocess.run(["git", "status", "--porcelain", "--untracked-files=all", "--", "scripts/fingerprint_eval", ":(exclude)scripts/fingerprint_eval/tests"],
+                       capture_output=True, text=True, cwd=Path(__file__).resolve().parents[3])
+    return p.returncode == 0 and not p.stdout.strip()
+
+
+def test_real_release_gate_on_the_exact_bytes_with_a_private_active_selector(d, monkeypatch, tmp_path):
+    """The real release authorize + verify (no stub): byte-identical final and reference take the evaluator's identity path, which needs no model."""
+    import pytest
+    from scripts.fingerprint_eval.contracts import RELEASE_ARTICLE
+    from scripts.write_pipeline import editguard as G
+    if not _evaluator_clean():
+        pytest.skip("evaluator tree is dirty: release authorize refuses to run (commit first)")
+    d.to_stage("integrity")
+    real = G.make_runner(d.pkg / "write-pipeline" / "workspace")
+    stub = d.runner
+    d.runner = lambda argv: real(argv) if argv[2] == "scripts.fingerprint_eval.release" else stub(argv)
+    rc, out = d.cli("finalize")
+    assert rc == 0, out
+    assert (d.pkg / "release" / "authorization.json").exists() and (d.pkg / RELEASE_ARTICLE).read_bytes() == (d.pkg / "FINAL.md").read_bytes()
+    assert (d.pkg / "write-pipeline" / "workspace" / "release" / "ACTIVE.json").exists()  # not the production selector
+    # a one-byte change after PASS is no longer authorized, and the pipeline says so
+    (d.pkg / "FINAL.md").write_text((d.pkg / "FINAL.md").read_text() + "\n")
+    assert d.cli("status", "--json")[1]["overall"] == "USER_MODIFIED"
