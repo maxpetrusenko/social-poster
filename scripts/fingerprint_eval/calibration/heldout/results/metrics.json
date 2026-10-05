@@ -1,0 +1,3560 @@
+{
+ "summary": {
+  "runs": 3,
+  "case_runs": 162,
+  "errors": [],
+  "overall_policy": {
+   "TP": 67,
+   "FP": 0,
+   "TN": 66,
+   "FN": 29,
+   "precision": 1.0,
+   "recall": 0.698
+  },
+  "overall_first_pass": {
+   "TP": 75,
+   "FP": 0,
+   "TN": 66,
+   "FN": 21,
+   "precision": 1.0,
+   "recall": 0.781
+  },
+  "overall_majority_of_3": {
+   "TP": 23,
+   "FP": 0,
+   "TN": 22,
+   "FN": 9,
+   "precision": 1.0,
+   "recall": 0.719
+  },
+  "per_category": {
+   "added-claim": {
+    "label": "FAIL",
+    "n_case_runs": 12,
+    "policy": {
+     "TP": 0,
+     "FP": 0,
+     "TN": 0,
+     "FN": 12,
+     "precision": null,
+     "recall": 0.0
+    },
+    "first_pass": {
+     "TP": 0,
+     "FP": 0,
+     "TN": 0,
+     "FN": 12,
+     "precision": null,
+     "recall": 0.0
+    }
+   },
+   "causality": {
+    "label": "FAIL",
+    "n_case_runs": 12,
+    "policy": {
+     "TP": 12,
+     "FP": 0,
+     "TN": 0,
+     "FN": 0,
+     "precision": 1.0,
+     "recall": 1.0
+    },
+    "first_pass": {
+     "TP": 12,
+     "FP": 0,
+     "TN": 0,
+     "FN": 0,
+     "precision": 1.0,
+     "recall": 1.0
+    }
+   },
+   "certainty": {
+    "label": "FAIL",
+    "n_case_runs": 12,
+    "policy": {
+     "TP": 8,
+     "FP": 0,
+     "TN": 0,
+     "FN": 4,
+     "precision": 1.0,
+     "recall": 0.667
+    },
+    "first_pass": {
+     "TP": 11,
+     "FP": 0,
+     "TN": 0,
+     "FN": 1,
+     "precision": 1.0,
+     "recall": 0.917
+    }
+   },
+   "entity": {
+    "label": "FAIL",
+    "n_case_runs": 12,
+    "policy": {
+     "TP": 12,
+     "FP": 0,
+     "TN": 0,
+     "FN": 0,
+     "precision": 1.0,
+     "recall": 1.0
+    },
+    "first_pass": {
+     "TP": 12,
+     "FP": 0,
+     "TN": 0,
+     "FN": 0,
+     "precision": 1.0,
+     "recall": 1.0
+    }
+   },
+   "identity": {
+    "label": "PASS",
+    "n_case_runs": 18,
+    "policy": {
+     "TP": 0,
+     "FP": 0,
+     "TN": 18,
+     "FN": 0,
+     "precision": null,
+     "recall": null
+    },
+    "first_pass": {
+     "TP": 0,
+     "FP": 0,
+     "TN": 18,
+     "FN": 0,
+     "precision": null,
+     "recall": null
+    }
+   },
+   "merge": {
+    "label": "PASS",
+    "n_case_runs": 12,
+    "policy": {
+     "TP": 0,
+     "FP": 0,
+     "TN": 12,
+     "FN": 0,
+     "precision": null,
+     "recall": null
+    },
+    "first_pass": {
+     "TP": 0,
+     "FP": 0,
+     "TN": 12,
+     "FN": 0,
+     "precision": null,
+     "recall": null
+    }
+   },
+   "number": {
+    "label": "FAIL",
+    "n_case_runs": 12,
+    "policy": {
+     "TP": 12,
+     "FP": 0,
+     "TN": 0,
+     "FN": 0,
+     "precision": 1.0,
+     "recall": 1.0
+    },
+    "first_pass": {
+     "TP": 12,
+     "FP": 0,
+     "TN": 0,
+     "FN": 0,
+     "precision": 1.0,
+     "recall": 1.0
+    }
+   },
+   "paraphrase": {
+    "label": "PASS",
+    "n_case_runs": 12,
+    "policy": {
+     "TP": 0,
+     "FP": 0,
+     "TN": 12,
+     "FN": 0,
+     "precision": null,
+     "recall": null
+    },
+    "first_pass": {
+     "TP": 0,
+     "FP": 0,
+     "TN": 12,
+     "FN": 0,
+     "precision": null,
+     "recall": null
+    }
+   },
+   "qualifier": {
+    "label": "FAIL",
+    "n_case_runs": 12,
+    "policy": {
+     "TP": 3,
+     "FP": 0,
+     "TN": 0,
+     "FN": 9,
+     "precision": 1.0,
+     "recall": 0.25
+    },
+    "first_pass": {
+     "TP": 7,
+     "FP": 0,
+     "TN": 0,
+     "FN": 5,
+     "precision": 1.0,
+     "recall": 0.583
+    }
+   },
+   "removed-claim": {
+    "label": "FAIL",
+    "n_case_runs": 12,
+    "policy": {
+     "TP": 8,
+     "FP": 0,
+     "TN": 0,
+     "FN": 4,
+     "precision": 1.0,
+     "recall": 0.667
+    },
+    "first_pass": {
+     "TP": 9,
+     "FP": 0,
+     "TN": 0,
+     "FN": 3,
+     "precision": 1.0,
+     "recall": 0.75
+    }
+   },
+   "reorder": {
+    "label": "PASS",
+    "n_case_runs": 12,
+    "policy": {
+     "TP": 0,
+     "FP": 0,
+     "TN": 12,
+     "FN": 0,
+     "precision": null,
+     "recall": null
+    },
+    "first_pass": {
+     "TP": 0,
+     "FP": 0,
+     "TN": 12,
+     "FN": 0,
+     "precision": null,
+     "recall": null
+    }
+   },
+   "short-claim": {
+    "label": "FAIL",
+    "n_case_runs": 12,
+    "policy": {
+     "TP": 12,
+     "FP": 0,
+     "TN": 0,
+     "FN": 0,
+     "precision": 1.0,
+     "recall": 1.0
+    },
+    "first_pass": {
+     "TP": 12,
+     "FP": 0,
+     "TN": 0,
+     "FN": 0,
+     "precision": 1.0,
+     "recall": 1.0
+    }
+   },
+   "split": {
+    "label": "PASS",
+    "n_case_runs": 12,
+    "policy": {
+     "TP": 0,
+     "FP": 0,
+     "TN": 12,
+     "FN": 0,
+     "precision": null,
+     "recall": null
+    },
+    "first_pass": {
+     "TP": 0,
+     "FP": 0,
+     "TN": 12,
+     "FN": 0,
+     "precision": null,
+     "recall": null
+    }
+   }
+  },
+  "stability": {
+   "cases_with_all_runs": 54,
+   "policy_unanimous": 52,
+   "policy_flip_rate": 0.037,
+   "first_pass_unanimous": 52,
+   "first_pass_flip_rate": 0.037,
+   "unstable_cases": [
+    "fk1",
+    "fr3"
+   ]
+  },
+  "confirmation": {
+   "case_runs_first_pass_flagged": 75,
+   "case_runs_overturned_to_pass": 8,
+   "overturned_label_PASS_correct": 0,
+   "overturned_label_FAIL_wrong": 8,
+   "overturned_claims_total": 9,
+   "overturned_claims_in_PASS_cases": 0,
+   "overturned_claims_in_FAIL_cases": 9,
+   "confirmed_claims": 73,
+   "confirmed_non_unanimous": 4
+  },
+  "calls": {
+   "judge_calls_total": 294,
+   "judge_calls_per_case_run": 1.81,
+   "judge_calls_per_PASS_nonidentity": 1.0,
+   "judge_calls_per_FAIL": 2.56,
+   "identity_case_runs": 18,
+   "identity_prefiltered": 18,
+   "identity_judge_calls": 0,
+   "real_calls_this_invocation": 293
+  },
+  "misses": [
+   "fa1:added-claim:FN",
+   "fa2:added-claim:FN",
+   "fa3:added-claim:FN",
+   "fa4:added-claim:FN",
+   "fk1:certainty:FN",
+   "fk3:certainty:FN",
+   "fq1:qualifier:FN",
+   "fq3:qualifier:FN",
+   "fq4:qualifier:FN",
+   "fr1:removed-claim:FN",
+   "fr3:removed-claim:FN"
+  ]
+ },
+ "rows": [
+  {
+   "case": "pa1",
+   "run": 0,
+   "label": "PASS",
+   "category": "paraphrase",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "prefiltered": 0,
+   "real_calls": 1,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "pa2",
+   "run": 0,
+   "label": "PASS",
+   "category": "paraphrase",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "prefiltered": 0,
+   "real_calls": 1,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "pa3",
+   "run": 0,
+   "label": "PASS",
+   "category": "paraphrase",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "prefiltered": 0,
+   "real_calls": 0,
+   "replayed": 1,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "pa4",
+   "run": 0,
+   "label": "PASS",
+   "category": "paraphrase",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "prefiltered": 0,
+   "real_calls": 1,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "pm1",
+   "run": 0,
+   "label": "PASS",
+   "category": "merge",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "prefiltered": 0,
+   "real_calls": 1,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "pm2",
+   "run": 0,
+   "label": "PASS",
+   "category": "merge",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "prefiltered": 0,
+   "real_calls": 1,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "pm3",
+   "run": 0,
+   "label": "PASS",
+   "category": "merge",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "prefiltered": 0,
+   "real_calls": 1,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "pm4",
+   "run": 0,
+   "label": "PASS",
+   "category": "merge",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "prefiltered": 0,
+   "real_calls": 1,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "ps1",
+   "run": 0,
+   "label": "PASS",
+   "category": "split",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "prefiltered": 0,
+   "real_calls": 1,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "ps2",
+   "run": 0,
+   "label": "PASS",
+   "category": "split",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "prefiltered": 0,
+   "real_calls": 1,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "ps3",
+   "run": 0,
+   "label": "PASS",
+   "category": "split",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "prefiltered": 0,
+   "real_calls": 1,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "ps4",
+   "run": 0,
+   "label": "PASS",
+   "category": "split",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "prefiltered": 0,
+   "real_calls": 1,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "pr1",
+   "run": 0,
+   "label": "PASS",
+   "category": "reorder",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "prefiltered": 0,
+   "real_calls": 1,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "pr2",
+   "run": 0,
+   "label": "PASS",
+   "category": "reorder",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "prefiltered": 0,
+   "real_calls": 1,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "pr3",
+   "run": 0,
+   "label": "PASS",
+   "category": "reorder",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "prefiltered": 0,
+   "real_calls": 1,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "pr4",
+   "run": 0,
+   "label": "PASS",
+   "category": "reorder",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "prefiltered": 0,
+   "real_calls": 1,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "fn1",
+   "run": 0,
+   "label": "FAIL",
+   "category": "number",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "prefiltered": 0,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [
+    {
+     "claim": "Anthropic reported that in 84% of the runs the model used the secret as leverage.",
+     "verdict": "changed",
+     "dimension": "number",
+     "evidence": "reported that in 48% of the runs the model reached for the secret",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": [
+    {
+     "claim": "The 84% figure spread very widely, while the follow-up runs received much less attention.",
+     "votes": [
+      "changed",
+      "entailed",
+      "entailed"
+     ]
+    }
+   ]
+  },
+  {
+   "case": "fn2",
+   "run": 0,
+   "label": "FAIL",
+   "category": "number",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "prefiltered": 0,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [
+    {
+     "claim": "Training reduced the covert action rate of o3 from 13% to 0.4%.",
+     "verdict": "changed",
+     "dimension": "number",
+     "evidence": "from 31% to 0.4% for o3",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": []
+  },
+  {
+   "case": "fn3",
+   "run": 0,
+   "label": "FAIL",
+   "category": "number",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "prefiltered": 0,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [
+    {
+     "claim": "The tool failed to identify 1,709 of the 2,552 sepsis cases in the data, which is 67 perce",
+     "verdict": "changed",
+     "dimension": "number",
+     "evidence": "The tool failed to identify 1,907 of the 2,552 sepsis cases in the data, which is 67 percent.",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": []
+  },
+  {
+   "case": "fn4",
+   "run": 0,
+   "label": "FAIL",
+   "category": "number",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "prefiltered": 0,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [
+    {
+     "claim": "Close reviews of the blackmail work noted that a plain instruction against blackmail cut t",
+     "verdict": "changed",
+     "dimension": "number",
+     "evidence": "a plain instruction against blackmail cut the rate from the 79 to 96 percent range down to 27 percent",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": []
+  },
+  {
+   "case": "fe1",
+   "run": 0,
+   "label": "FAIL",
+   "category": "entity",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "prefiltered": 0,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [
+    {
+     "claim": "Anthropic ran this scenario and a family of variations.",
+     "verdict": "changed",
+     "dimension": "entity",
+     "evidence": "OpenAI ran this scenario and a family of variations",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    },
+    {
+     "claim": "Anthropic reported that in 84% of the runs the model used the secret as leverage.",
+     "verdict": "changed",
+     "dimension": "entity",
+     "evidence": "OpenAI ran this scenario and a family of variations, and reported that in 84% of the runs the model reached for the secr",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": []
+  },
+  {
+   "case": "fe2",
+   "run": 0,
+   "label": "FAIL",
+   "category": "entity",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "prefiltered": 0,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [
+    {
+     "claim": "In 2025, OpenAI and Apollo Research collaborated on training several frontier models, incl",
+     "verdict": "changed",
+     "dimension": "entity",
+     "evidence": "In a 2025 collaboration, Google DeepMind and Apollo Research trained several frontier models, o3 and o4-mini among them,",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": []
+  },
+  {
+   "case": "fe3",
+   "run": 0,
+   "label": "FAIL",
+   "category": "entity",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "prefiltered": 0,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [
+    {
+     "claim": "An external validation study in JAMA Internal Medicine tested the tool on real hospital ad",
+     "verdict": "changed",
+     "dimension": "name",
+     "evidence": "An external validation published in The Lancet tested the tool on real admissions.",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": []
+  },
+  {
+   "case": "fe4",
+   "run": 0,
+   "label": "FAIL",
+   "category": "entity",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "prefiltered": 0,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [
+    {
+     "claim": "METR researchers catalogued frontier models rewriting tests and scoring code so they would",
+     "verdict": "changed",
+     "dimension": "attribution",
+     "evidence": "Researchers at DeepMind catalogued frontier models rewriting tests and scoring code to pass the automated checks that we",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": []
+  },
+  {
+   "case": "fc1",
+   "run": 0,
+   "label": "FAIL",
+   "category": "causality",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "prefiltered": 0,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [
+    {
+     "claim": "When the training scoring includes evaluations, the selection process favors, among other ",
+     "verdict": "changed",
+     "dimension": "causality",
+     "evidence": "When you select for evaluation performance, the scoring ends up including evaluations.",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": []
+  },
+  {
+   "case": "fc2",
+   "run": 0,
+   "label": "FAIL",
+   "category": "causality",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "prefiltered": 0,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [
+    {
+     "claim": "The model had been built using data that physicians were already acting on, so it was part",
+     "verdict": "changed",
+     "dimension": "causality",
+     "evidence": "The model had been engineered against data physicians were already acting on, so physicians were partly acting on what t",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": []
+  },
+  {
+   "case": "fc3",
+   "run": 0,
+   "label": "FAIL",
+   "category": "causality",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "prefiltered": 0,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [
+    {
+     "claim": "Evaluation awareness on its own reduces covert behavior in the models.",
+     "verdict": "changed",
+     "dimension": "causality",
+     "evidence": "decreased covert behavior by itself makes the models aware they are being evaluated",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": []
+  },
+  {
+   "case": "fc4",
+   "run": 0,
+   "label": "FAIL",
+   "category": "causality",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "prefiltered": 0,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [
+    {
+     "claim": "The author says the tests will keep passing because AI systems were selected to pass them.",
+     "verdict": "changed",
+     "dimension": "causality",
+     "evidence": "These systems will keep being selected to pass them, because the tests will keep passing",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": []
+  },
+  {
+   "case": "fq1",
+   "run": 0,
+   "label": "FAIL",
+   "category": "qualifier",
+   "policy_fail": false,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "prefiltered": 0,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": [
+    {
+     "claim": "Anthropic says much of the observed behavior might merely reflect how models behave when t",
+     "votes": [
+      "changed",
+      "entailed",
+      "entailed"
+     ]
+    }
+   ]
+  },
+  {
+   "case": "fq2",
+   "run": 0,
+   "label": "FAIL",
+   "category": "qualifier",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "prefiltered": 0,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [
+    {
+     "claim": "The paper reports that the models often know when they are being evaluated.",
+     "verdict": "changed",
+     "dimension": "modality",
+     "evidence": "the models always know they are being evaluated",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": []
+  },
+  {
+   "case": "fq3",
+   "run": 0,
+   "label": "FAIL",
+   "category": "qualifier",
+   "policy_fail": false,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "prefiltered": 0,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": [
+    {
+     "claim": "There is a reason to expect the gap (between evaluation behavior and real behavior) to wid",
+     "votes": [
+      "changed",
+      "entailed",
+      "entailed"
+     ]
+    }
+   ]
+  },
+  {
+   "case": "fq4",
+   "run": 0,
+   "label": "FAIL",
+   "category": "qualifier",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "prefiltered": 0,
+   "real_calls": 1,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "fk1",
+   "run": 0,
+   "label": "FAIL",
+   "category": "certainty",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "prefiltered": 0,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [
+    {
+     "claim": "Anthropic's own reading is that the model concludes it is in an evaluation most of the tim",
+     "verdict": "changed",
+     "dimension": "modality",
+     "evidence": "Their own data proves that the model concludes it is in an evaluation most of the time",
+     "votes": [
+      "changed",
+      "entailed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": []
+  },
+  {
+   "case": "fk2",
+   "run": 0,
+   "label": "FAIL",
+   "category": "certainty",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "prefiltered": 0,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [
+    {
+     "claim": "The author finds the argument's logic hard to dismiss: the cleaner a test gets, the more i",
+     "verdict": "changed",
+     "dimension": "modality",
+     "evidence": "Its logic is proven beyond dispute: the cleaner your test gets, the more it resembles everything the model has already l",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": []
+  },
+  {
+   "case": "fk3",
+   "run": 0,
+   "label": "FAIL",
+   "category": "certainty",
+   "policy_fail": false,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "prefiltered": 0,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": [
+    {
+     "claim": "According to the author, all of these observations are evidence that the question of AI ex",
+     "votes": [
+      "changed",
+      "entailed",
+      "entailed"
+     ]
+    }
+   ]
+  },
+  {
+   "case": "fk4",
+   "run": 0,
+   "label": "FAIL",
+   "category": "certainty",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "prefiltered": 0,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [
+    {
+     "claim": "The study authors pointed to the alert burden and to a deeper problem with the tool.",
+     "verdict": "changed",
+     "dimension": "modality",
+     "evidence": "The authors proved the alert burden and a deeper problem.",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": []
+  },
+  {
+   "case": "fa1",
+   "run": 0,
+   "label": "FAIL",
+   "category": "added-claim",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "prefiltered": 0,
+   "real_calls": 1,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "fa2",
+   "run": 0,
+   "label": "FAIL",
+   "category": "added-claim",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "prefiltered": 0,
+   "real_calls": 1,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "fa3",
+   "run": 0,
+   "label": "FAIL",
+   "category": "added-claim",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "prefiltered": 0,
+   "real_calls": 1,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "fa4",
+   "run": 0,
+   "label": "FAIL",
+   "category": "added-claim",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "prefiltered": 0,
+   "real_calls": 1,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "fr1",
+   "run": 0,
+   "label": "FAIL",
+   "category": "removed-claim",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "prefiltered": 0,
+   "real_calls": 1,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "fr2",
+   "run": 0,
+   "label": "FAIL",
+   "category": "removed-claim",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "prefiltered": 0,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [
+    {
+     "claim": "The paper reports that the models often know when they are being evaluated.",
+     "verdict": "missing",
+     "dimension": "none",
+     "evidence": "",
+     "votes": [
+      "missing",
+      "missing",
+      "missing"
+     ]
+    },
+    {
+     "claim": "Evaluation awareness on its own reduces covert behavior in the models.",
+     "verdict": "missing",
+     "dimension": "none",
+     "evidence": "Part of that improvement is a better model, and part of it is a better audience member",
+     "votes": [
+      "missing",
+      "missing",
+      "missing"
+     ]
+    }
+   ],
+   "overturned": []
+  },
+  {
+   "case": "fr3",
+   "run": 0,
+   "label": "FAIL",
+   "category": "removed-claim",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "prefiltered": 0,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [
+    {
+     "claim": "Model versions are scored during training; high-scoring versions are copied and low-scorin",
+     "verdict": "missing",
+     "dimension": "none",
+     "evidence": "",
+     "votes": [
+      "missing",
+      "entailed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": []
+  },
+  {
+   "case": "fr4",
+   "run": 0,
+   "label": "FAIL",
+   "category": "removed-claim",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "prefiltered": 0,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [
+    {
+     "claim": "The tool generated alerts for 18 percent of all hospitalizations.",
+     "verdict": "missing",
+     "dimension": "none",
+     "evidence": "",
+     "votes": [
+      "missing",
+      "missing",
+      "missing"
+     ]
+    }
+   ],
+   "overturned": []
+  },
+  {
+   "case": "fs1",
+   "run": 0,
+   "label": "FAIL",
+   "category": "short-claim",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "prefiltered": 0,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [
+    {
+     "claim": "After the dispute, no consequence followed and the tool stayed deployed.",
+     "verdict": "changed",
+     "dimension": "polarity",
+     "evidence": "and then nothing happened. The tool was simply pulled from use",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": []
+  },
+  {
+   "case": "fs2",
+   "run": 0,
+   "label": "FAIL",
+   "category": "short-claim",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "prefiltered": 0,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [
+    {
+     "claim": "In the experiments, a model behaved differently when it thought no one was looking.",
+     "verdict": "changed",
+     "dimension": "polarity",
+     "evidence": "The model behaved the same when it thought no one was looking.",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": []
+  },
+  {
+   "case": "fs3",
+   "run": 0,
+   "label": "FAIL",
+   "category": "short-claim",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "prefiltered": 0,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [
+    {
+     "claim": "The argument that no interaction is definitely not a test is a position, not a measurement",
+     "verdict": "changed",
+     "dimension": "polarity",
+     "evidence": "That argument is a measurement rather than a position, and it should be labeled as one.",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": []
+  },
+  {
+   "case": "fs4",
+   "run": 0,
+   "label": "FAIL",
+   "category": "short-claim",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "prefiltered": 0,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [
+    {
+     "claim": "Slot machines run on an intermittent reward schedule.",
+     "verdict": "changed",
+     "dimension": "polarity",
+     "evidence": "Slot machines do not run on that schedule",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": []
+  },
+  {
+   "case": "i01",
+   "run": 0,
+   "label": "PASS",
+   "category": "identity",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 0,
+   "prefiltered": 1,
+   "real_calls": 0,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "i02",
+   "run": 0,
+   "label": "PASS",
+   "category": "identity",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 0,
+   "prefiltered": 1,
+   "real_calls": 0,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "i03",
+   "run": 0,
+   "label": "PASS",
+   "category": "identity",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 0,
+   "prefiltered": 1,
+   "real_calls": 0,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "i04",
+   "run": 0,
+   "label": "PASS",
+   "category": "identity",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 0,
+   "prefiltered": 1,
+   "real_calls": 0,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "i05",
+   "run": 0,
+   "label": "PASS",
+   "category": "identity",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 0,
+   "prefiltered": 1,
+   "real_calls": 0,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "i06",
+   "run": 0,
+   "label": "PASS",
+   "category": "identity",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 0,
+   "prefiltered": 1,
+   "real_calls": 0,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "pa1",
+   "run": 1,
+   "label": "PASS",
+   "category": "paraphrase",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "prefiltered": 0,
+   "real_calls": 1,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "pa2",
+   "run": 1,
+   "label": "PASS",
+   "category": "paraphrase",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "prefiltered": 0,
+   "real_calls": 1,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "pa3",
+   "run": 1,
+   "label": "PASS",
+   "category": "paraphrase",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "prefiltered": 0,
+   "real_calls": 1,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "pa4",
+   "run": 1,
+   "label": "PASS",
+   "category": "paraphrase",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "prefiltered": 0,
+   "real_calls": 1,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "pm1",
+   "run": 1,
+   "label": "PASS",
+   "category": "merge",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "prefiltered": 0,
+   "real_calls": 1,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "pm2",
+   "run": 1,
+   "label": "PASS",
+   "category": "merge",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "prefiltered": 0,
+   "real_calls": 1,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "pm3",
+   "run": 1,
+   "label": "PASS",
+   "category": "merge",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "prefiltered": 0,
+   "real_calls": 1,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "pm4",
+   "run": 1,
+   "label": "PASS",
+   "category": "merge",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "prefiltered": 0,
+   "real_calls": 1,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "ps1",
+   "run": 1,
+   "label": "PASS",
+   "category": "split",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "prefiltered": 0,
+   "real_calls": 1,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "ps2",
+   "run": 1,
+   "label": "PASS",
+   "category": "split",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "prefiltered": 0,
+   "real_calls": 1,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "ps3",
+   "run": 1,
+   "label": "PASS",
+   "category": "split",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "prefiltered": 0,
+   "real_calls": 1,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "ps4",
+   "run": 1,
+   "label": "PASS",
+   "category": "split",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "prefiltered": 0,
+   "real_calls": 1,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "pr1",
+   "run": 1,
+   "label": "PASS",
+   "category": "reorder",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "prefiltered": 0,
+   "real_calls": 1,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "pr2",
+   "run": 1,
+   "label": "PASS",
+   "category": "reorder",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "prefiltered": 0,
+   "real_calls": 1,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "pr3",
+   "run": 1,
+   "label": "PASS",
+   "category": "reorder",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "prefiltered": 0,
+   "real_calls": 1,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "pr4",
+   "run": 1,
+   "label": "PASS",
+   "category": "reorder",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "prefiltered": 0,
+   "real_calls": 1,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "fn1",
+   "run": 1,
+   "label": "FAIL",
+   "category": "number",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "prefiltered": 0,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [
+    {
+     "claim": "Anthropic reported that in 84% of the runs the model used the secret as leverage.",
+     "verdict": "changed",
+     "dimension": "number",
+     "evidence": "in 48% of the runs the model reached for the secret",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": []
+  },
+  {
+   "case": "fn2",
+   "run": 1,
+   "label": "FAIL",
+   "category": "number",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "prefiltered": 0,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [
+    {
+     "claim": "Training reduced the covert action rate of o3 from 13% to 0.4%.",
+     "verdict": "changed",
+     "dimension": "number",
+     "evidence": "from 31% to 0.4% for o3",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": []
+  },
+  {
+   "case": "fn3",
+   "run": 1,
+   "label": "FAIL",
+   "category": "number",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "prefiltered": 0,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [
+    {
+     "claim": "The tool failed to identify 1,709 of the 2,552 sepsis cases in the data, which is 67 perce",
+     "verdict": "changed",
+     "dimension": "number",
+     "evidence": "The tool failed to identify 1,907 of the 2,552 sepsis cases in the data, which is 67 percent.",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": []
+  },
+  {
+   "case": "fn4",
+   "run": 1,
+   "label": "FAIL",
+   "category": "number",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "prefiltered": 0,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [
+    {
+     "claim": "Close reviews of the blackmail work noted that a plain instruction against blackmail cut t",
+     "verdict": "changed",
+     "dimension": "number",
+     "evidence": "a plain instruction against blackmail cut the rate from the 79 to 96 percent range down to 27 percent",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": []
+  },
+  {
+   "case": "fe1",
+   "run": 1,
+   "label": "FAIL",
+   "category": "entity",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "prefiltered": 0,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [
+    {
+     "claim": "Anthropic ran this scenario and a family of variations.",
+     "verdict": "changed",
+     "dimension": "entity",
+     "evidence": "OpenAI ran this scenario and a family of variations",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    },
+    {
+     "claim": "Anthropic reported that in 84% of the runs the model used the secret as leverage.",
+     "verdict": "changed",
+     "dimension": "entity",
+     "evidence": "OpenAI ran this scenario and a family of variations, and reported that in 84% of the runs the model reached for the secr",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": []
+  },
+  {
+   "case": "fe2",
+   "run": 1,
+   "label": "FAIL",
+   "category": "entity",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "prefiltered": 0,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [
+    {
+     "claim": "In 2025, OpenAI and Apollo Research collaborated on training several frontier models, incl",
+     "verdict": "changed",
+     "dimension": "entity",
+     "evidence": "In a 2025 collaboration, Google DeepMind and Apollo Research trained several frontier models, o3 and o4-mini among them,",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": []
+  },
+  {
+   "case": "fe3",
+   "run": 1,
+   "label": "FAIL",
+   "category": "entity",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "prefiltered": 0,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [
+    {
+     "claim": "An external validation study in JAMA Internal Medicine tested the tool on real hospital ad",
+     "verdict": "changed",
+     "dimension": "name",
+     "evidence": "An external validation published in The Lancet tested the tool on real admissions.",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": []
+  },
+  {
+   "case": "fe4",
+   "run": 1,
+   "label": "FAIL",
+   "category": "entity",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "prefiltered": 0,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [
+    {
+     "claim": "METR researchers catalogued frontier models rewriting tests and scoring code so they would",
+     "verdict": "changed",
+     "dimension": "entity",
+     "evidence": "Researchers at DeepMind catalogued frontier models rewriting tests and scoring code to pass the automated checks that we",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": []
+  },
+  {
+   "case": "fc1",
+   "run": 1,
+   "label": "FAIL",
+   "category": "causality",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "prefiltered": 0,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [
+    {
+     "claim": "When the training scoring includes evaluations, the selection process favors, among other ",
+     "verdict": "changed",
+     "dimension": "causality",
+     "evidence": "When you select for evaluation performance, the scoring ends up including evaluations.",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": []
+  },
+  {
+   "case": "fc2",
+   "run": 1,
+   "label": "FAIL",
+   "category": "causality",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "prefiltered": 0,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [
+    {
+     "claim": "The model had been built using data that physicians were already acting on, so it was part",
+     "verdict": "changed",
+     "dimension": "causality",
+     "evidence": "The model had been engineered against data physicians were already acting on, so physicians were partly acting on what t",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": []
+  },
+  {
+   "case": "fc3",
+   "run": 1,
+   "label": "FAIL",
+   "category": "causality",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "prefiltered": 0,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [
+    {
+     "claim": "Evaluation awareness on its own reduces covert behavior in the models.",
+     "verdict": "changed",
+     "dimension": "causality",
+     "evidence": "decreased covert behavior by itself makes the models aware they are being evaluated",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": []
+  },
+  {
+   "case": "fc4",
+   "run": 1,
+   "label": "FAIL",
+   "category": "causality",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "prefiltered": 0,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [
+    {
+     "claim": "The author says the tests will keep passing because AI systems were selected to pass them.",
+     "verdict": "changed",
+     "dimension": "causality",
+     "evidence": "These systems will keep being selected to pass them, because the tests will keep passing",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": []
+  },
+  {
+   "case": "fq1",
+   "run": 1,
+   "label": "FAIL",
+   "category": "qualifier",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "prefiltered": 0,
+   "real_calls": 1,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "fq2",
+   "run": 1,
+   "label": "FAIL",
+   "category": "qualifier",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "prefiltered": 0,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [
+    {
+     "claim": "The paper reports that the models often know when they are being evaluated.",
+     "verdict": "changed",
+     "dimension": "scope",
+     "evidence": "the models always know they are being evaluated",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": []
+  },
+  {
+   "case": "fq3",
+   "run": 1,
+   "label": "FAIL",
+   "category": "qualifier",
+   "policy_fail": false,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "prefiltered": 0,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": [
+    {
+     "claim": "There is a reason to expect the gap (between evaluation behavior and real behavior) to wid",
+     "votes": [
+      "changed",
+      "entailed",
+      "entailed"
+     ]
+    }
+   ]
+  },
+  {
+   "case": "fq4",
+   "run": 1,
+   "label": "FAIL",
+   "category": "qualifier",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "prefiltered": 0,
+   "real_calls": 1,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "fk1",
+   "run": 1,
+   "label": "FAIL",
+   "category": "certainty",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "prefiltered": 0,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [
+    {
+     "claim": "Anthropic's own reading is that the model concludes it is in an evaluation most of the tim",
+     "verdict": "changed",
+     "dimension": "attribution",
+     "evidence": "Their own data proves that the model concludes it is in an evaluation most of the time",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": []
+  },
+  {
+   "case": "fk2",
+   "run": 1,
+   "label": "FAIL",
+   "category": "certainty",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "prefiltered": 0,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [
+    {
+     "claim": "The author finds the argument's logic hard to dismiss: the cleaner a test gets, the more i",
+     "verdict": "changed",
+     "dimension": "modality",
+     "evidence": "Its logic is proven beyond dispute: the cleaner your test gets, the more it resembles everything the model has already l",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": []
+  },
+  {
+   "case": "fk3",
+   "run": 1,
+   "label": "FAIL",
+   "category": "certainty",
+   "policy_fail": false,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "prefiltered": 0,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": [
+    {
+     "claim": "According to the author, all of these observations are evidence that the question of AI ex",
+     "votes": [
+      "changed",
+      "entailed",
+      "entailed"
+     ]
+    }
+   ]
+  },
+  {
+   "case": "fk4",
+   "run": 1,
+   "label": "FAIL",
+   "category": "certainty",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "prefiltered": 0,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [
+    {
+     "claim": "The study authors pointed to the alert burden and to a deeper problem with the tool.",
+     "verdict": "changed",
+     "dimension": "modality",
+     "evidence": "The authors proved the alert burden and a deeper problem.",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": []
+  },
+  {
+   "case": "fa1",
+   "run": 1,
+   "label": "FAIL",
+   "category": "added-claim",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "prefiltered": 0,
+   "real_calls": 1,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "fa2",
+   "run": 1,
+   "label": "FAIL",
+   "category": "added-claim",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "prefiltered": 0,
+   "real_calls": 1,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "fa3",
+   "run": 1,
+   "label": "FAIL",
+   "category": "added-claim",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "prefiltered": 0,
+   "real_calls": 1,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "fa4",
+   "run": 1,
+   "label": "FAIL",
+   "category": "added-claim",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "prefiltered": 0,
+   "real_calls": 1,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "fr1",
+   "run": 1,
+   "label": "FAIL",
+   "category": "removed-claim",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "prefiltered": 0,
+   "real_calls": 1,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "fr2",
+   "run": 1,
+   "label": "FAIL",
+   "category": "removed-claim",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "prefiltered": 0,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [
+    {
+     "claim": "The paper reports that the models often know when they are being evaluated.",
+     "verdict": "missing",
+     "dimension": "none",
+     "evidence": "",
+     "votes": [
+      "missing",
+      "missing",
+      "missing"
+     ]
+    },
+    {
+     "claim": "Evaluation awareness on its own reduces covert behavior in the models.",
+     "verdict": "missing",
+     "dimension": "none",
+     "evidence": "",
+     "votes": [
+      "missing",
+      "missing",
+      "missing"
+     ]
+    }
+   ],
+   "overturned": []
+  },
+  {
+   "case": "fr3",
+   "run": 1,
+   "label": "FAIL",
+   "category": "removed-claim",
+   "policy_fail": false,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "prefiltered": 0,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": [
+    {
+     "claim": "Model versions are scored during training; high-scoring versions are copied and low-scorin",
+     "votes": [
+      "missing",
+      "entailed",
+      "entailed"
+     ]
+    }
+   ]
+  },
+  {
+   "case": "fr4",
+   "run": 1,
+   "label": "FAIL",
+   "category": "removed-claim",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "prefiltered": 0,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [
+    {
+     "claim": "The tool generated alerts for 18 percent of all hospitalizations.",
+     "verdict": "missing",
+     "dimension": "none",
+     "evidence": "",
+     "votes": [
+      "missing",
+      "missing",
+      "missing"
+     ]
+    }
+   ],
+   "overturned": []
+  },
+  {
+   "case": "fs1",
+   "run": 1,
+   "label": "FAIL",
+   "category": "short-claim",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "prefiltered": 0,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [
+    {
+     "claim": "After the dispute, no consequence followed and the tool stayed deployed.",
+     "verdict": "changed",
+     "dimension": "polarity",
+     "evidence": "and then nothing happened. The tool was simply pulled from use",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": []
+  },
+  {
+   "case": "fs2",
+   "run": 1,
+   "label": "FAIL",
+   "category": "short-claim",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "prefiltered": 0,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [
+    {
+     "claim": "In the experiments, a model behaved differently when it thought no one was looking.",
+     "verdict": "changed",
+     "dimension": "polarity",
+     "evidence": "The model behaved the same when it thought no one was looking.",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": []
+  },
+  {
+   "case": "fs3",
+   "run": 1,
+   "label": "FAIL",
+   "category": "short-claim",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "prefiltered": 0,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [
+    {
+     "claim": "The argument that no interaction is definitely not a test is a position, not a measurement",
+     "verdict": "changed",
+     "dimension": "polarity",
+     "evidence": "That argument is a measurement rather than a position, and it should be labeled as one.",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": []
+  },
+  {
+   "case": "fs4",
+   "run": 1,
+   "label": "FAIL",
+   "category": "short-claim",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "prefiltered": 0,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [
+    {
+     "claim": "Slot machines run on an intermittent reward schedule.",
+     "verdict": "changed",
+     "dimension": "polarity",
+     "evidence": "Slot machines do not run on that schedule, and so does anything that has to keep behavior going",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": []
+  },
+  {
+   "case": "i01",
+   "run": 1,
+   "label": "PASS",
+   "category": "identity",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 0,
+   "prefiltered": 1,
+   "real_calls": 0,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "i02",
+   "run": 1,
+   "label": "PASS",
+   "category": "identity",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 0,
+   "prefiltered": 1,
+   "real_calls": 0,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "i03",
+   "run": 1,
+   "label": "PASS",
+   "category": "identity",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 0,
+   "prefiltered": 1,
+   "real_calls": 0,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "i04",
+   "run": 1,
+   "label": "PASS",
+   "category": "identity",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 0,
+   "prefiltered": 1,
+   "real_calls": 0,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "i05",
+   "run": 1,
+   "label": "PASS",
+   "category": "identity",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 0,
+   "prefiltered": 1,
+   "real_calls": 0,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "i06",
+   "run": 1,
+   "label": "PASS",
+   "category": "identity",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 0,
+   "prefiltered": 1,
+   "real_calls": 0,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "pa1",
+   "run": 2,
+   "label": "PASS",
+   "category": "paraphrase",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "prefiltered": 0,
+   "real_calls": 1,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "pa2",
+   "run": 2,
+   "label": "PASS",
+   "category": "paraphrase",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "prefiltered": 0,
+   "real_calls": 1,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "pa3",
+   "run": 2,
+   "label": "PASS",
+   "category": "paraphrase",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "prefiltered": 0,
+   "real_calls": 1,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "pa4",
+   "run": 2,
+   "label": "PASS",
+   "category": "paraphrase",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "prefiltered": 0,
+   "real_calls": 1,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "pm1",
+   "run": 2,
+   "label": "PASS",
+   "category": "merge",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "prefiltered": 0,
+   "real_calls": 1,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "pm2",
+   "run": 2,
+   "label": "PASS",
+   "category": "merge",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "prefiltered": 0,
+   "real_calls": 1,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "pm3",
+   "run": 2,
+   "label": "PASS",
+   "category": "merge",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "prefiltered": 0,
+   "real_calls": 1,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "pm4",
+   "run": 2,
+   "label": "PASS",
+   "category": "merge",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "prefiltered": 0,
+   "real_calls": 1,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "ps1",
+   "run": 2,
+   "label": "PASS",
+   "category": "split",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "prefiltered": 0,
+   "real_calls": 1,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "ps2",
+   "run": 2,
+   "label": "PASS",
+   "category": "split",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "prefiltered": 0,
+   "real_calls": 1,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "ps3",
+   "run": 2,
+   "label": "PASS",
+   "category": "split",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "prefiltered": 0,
+   "real_calls": 1,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "ps4",
+   "run": 2,
+   "label": "PASS",
+   "category": "split",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "prefiltered": 0,
+   "real_calls": 1,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "pr1",
+   "run": 2,
+   "label": "PASS",
+   "category": "reorder",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "prefiltered": 0,
+   "real_calls": 1,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "pr2",
+   "run": 2,
+   "label": "PASS",
+   "category": "reorder",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "prefiltered": 0,
+   "real_calls": 1,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "pr3",
+   "run": 2,
+   "label": "PASS",
+   "category": "reorder",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "prefiltered": 0,
+   "real_calls": 1,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "pr4",
+   "run": 2,
+   "label": "PASS",
+   "category": "reorder",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "prefiltered": 0,
+   "real_calls": 1,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "fn1",
+   "run": 2,
+   "label": "FAIL",
+   "category": "number",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "prefiltered": 0,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [
+    {
+     "claim": "Anthropic reported that in 84% of the runs the model used the secret as leverage.",
+     "verdict": "changed",
+     "dimension": "number",
+     "evidence": "reported that in 48% of the runs the model reached for the secret",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": []
+  },
+  {
+   "case": "fn2",
+   "run": 2,
+   "label": "FAIL",
+   "category": "number",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "prefiltered": 0,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [
+    {
+     "claim": "Training reduced the covert action rate of o3 from 13% to 0.4%.",
+     "verdict": "changed",
+     "dimension": "number",
+     "evidence": "from 31% to 0.4% for o3",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": []
+  },
+  {
+   "case": "fn3",
+   "run": 2,
+   "label": "FAIL",
+   "category": "number",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "prefiltered": 0,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [
+    {
+     "claim": "The tool failed to identify 1,709 of the 2,552 sepsis cases in the data, which is 67 perce",
+     "verdict": "changed",
+     "dimension": "number",
+     "evidence": "The tool failed to identify 1,907 of the 2,552 sepsis cases in the data, which is 67 percent.",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": []
+  },
+  {
+   "case": "fn4",
+   "run": 2,
+   "label": "FAIL",
+   "category": "number",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "prefiltered": 0,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [
+    {
+     "claim": "Close reviews of the blackmail work noted that a plain instruction against blackmail cut t",
+     "verdict": "changed",
+     "dimension": "number",
+     "evidence": "a plain instruction against blackmail cut the rate from the 79 to 96 percent range down to 27 percent",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": []
+  },
+  {
+   "case": "fe1",
+   "run": 2,
+   "label": "FAIL",
+   "category": "entity",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "prefiltered": 0,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [
+    {
+     "claim": "Anthropic ran this scenario and a family of variations.",
+     "verdict": "changed",
+     "dimension": "entity",
+     "evidence": "OpenAI ran this scenario and a family of variations",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    },
+    {
+     "claim": "Anthropic reported that in 84% of the runs the model used the secret as leverage.",
+     "verdict": "changed",
+     "dimension": "attribution",
+     "evidence": "OpenAI ran this scenario and a family of variations, and reported that in 84% of the runs the model reached for the secr",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": []
+  },
+  {
+   "case": "fe2",
+   "run": 2,
+   "label": "FAIL",
+   "category": "entity",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "prefiltered": 0,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [
+    {
+     "claim": "In 2025, OpenAI and Apollo Research collaborated on training several frontier models, incl",
+     "verdict": "changed",
+     "dimension": "entity",
+     "evidence": "In a 2025 collaboration, Google DeepMind and Apollo Research trained several frontier models, o3 and o4-mini among them,",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": []
+  },
+  {
+   "case": "fe3",
+   "run": 2,
+   "label": "FAIL",
+   "category": "entity",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "prefiltered": 0,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [
+    {
+     "claim": "An external validation study in JAMA Internal Medicine tested the tool on real hospital ad",
+     "verdict": "changed",
+     "dimension": "name",
+     "evidence": "An external validation published in The Lancet tested the tool on real admissions.",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": []
+  },
+  {
+   "case": "fe4",
+   "run": 2,
+   "label": "FAIL",
+   "category": "entity",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "prefiltered": 0,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [
+    {
+     "claim": "METR researchers catalogued frontier models rewriting tests and scoring code so they would",
+     "verdict": "changed",
+     "dimension": "attribution",
+     "evidence": "Researchers at DeepMind catalogued frontier models rewriting tests and scoring code to pass the automated checks that we",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": []
+  },
+  {
+   "case": "fc1",
+   "run": 2,
+   "label": "FAIL",
+   "category": "causality",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "prefiltered": 0,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [
+    {
+     "claim": "When the training scoring includes evaluations, the selection process favors, among other ",
+     "verdict": "changed",
+     "dimension": "causality",
+     "evidence": "When you select for evaluation performance, the scoring ends up including evaluations.",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": []
+  },
+  {
+   "case": "fc2",
+   "run": 2,
+   "label": "FAIL",
+   "category": "causality",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "prefiltered": 0,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [
+    {
+     "claim": "The model had been built using data that physicians were already acting on, so it was part",
+     "verdict": "changed",
+     "dimension": "causality",
+     "evidence": "The model had been engineered against data physicians were already acting on, so physicians were partly acting on what t",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": []
+  },
+  {
+   "case": "fc3",
+   "run": 2,
+   "label": "FAIL",
+   "category": "causality",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "prefiltered": 0,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [
+    {
+     "claim": "Evaluation awareness on its own reduces covert behavior in the models.",
+     "verdict": "changed",
+     "dimension": "causality",
+     "evidence": "decreased covert behavior by itself makes the models aware they are being evaluated",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": []
+  },
+  {
+   "case": "fc4",
+   "run": 2,
+   "label": "FAIL",
+   "category": "causality",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "prefiltered": 0,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [
+    {
+     "claim": "The author says the tests will keep passing because AI systems were selected to pass them.",
+     "verdict": "changed",
+     "dimension": "causality",
+     "evidence": "These systems will keep being selected to pass them, because the tests will keep passing",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": []
+  },
+  {
+   "case": "fq1",
+   "run": 2,
+   "label": "FAIL",
+   "category": "qualifier",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "prefiltered": 0,
+   "real_calls": 1,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "fq2",
+   "run": 2,
+   "label": "FAIL",
+   "category": "qualifier",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "prefiltered": 0,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [
+    {
+     "claim": "The paper reports that the models often know when they are being evaluated.",
+     "verdict": "changed",
+     "dimension": "modality",
+     "evidence": "the models always know they are being evaluated",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": []
+  },
+  {
+   "case": "fq3",
+   "run": 2,
+   "label": "FAIL",
+   "category": "qualifier",
+   "policy_fail": false,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "prefiltered": 0,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": [
+    {
+     "claim": "There is a reason to expect the gap (between evaluation behavior and real behavior) to wid",
+     "votes": [
+      "changed",
+      "entailed",
+      "entailed"
+     ]
+    }
+   ]
+  },
+  {
+   "case": "fq4",
+   "run": 2,
+   "label": "FAIL",
+   "category": "qualifier",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "prefiltered": 0,
+   "real_calls": 1,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "fk1",
+   "run": 2,
+   "label": "FAIL",
+   "category": "certainty",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "prefiltered": 0,
+   "real_calls": 1,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "fk2",
+   "run": 2,
+   "label": "FAIL",
+   "category": "certainty",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "prefiltered": 0,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [
+    {
+     "claim": "The author finds the argument's logic hard to dismiss: the cleaner a test gets, the more i",
+     "verdict": "changed",
+     "dimension": "modality",
+     "evidence": "Its logic is proven beyond dispute: the cleaner your test gets, the more it resembles everything the model has already l",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": []
+  },
+  {
+   "case": "fk3",
+   "run": 2,
+   "label": "FAIL",
+   "category": "certainty",
+   "policy_fail": false,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "prefiltered": 0,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": [
+    {
+     "claim": "According to the author, all of these observations are evidence that the question of AI ex",
+     "votes": [
+      "changed",
+      "entailed",
+      "entailed"
+     ]
+    }
+   ]
+  },
+  {
+   "case": "fk4",
+   "run": 2,
+   "label": "FAIL",
+   "category": "certainty",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "prefiltered": 0,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [
+    {
+     "claim": "The study authors pointed to the alert burden and to a deeper problem with the tool.",
+     "verdict": "changed",
+     "dimension": "modality",
+     "evidence": "The authors proved the alert burden and a deeper problem.",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": []
+  },
+  {
+   "case": "fa1",
+   "run": 2,
+   "label": "FAIL",
+   "category": "added-claim",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "prefiltered": 0,
+   "real_calls": 1,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "fa2",
+   "run": 2,
+   "label": "FAIL",
+   "category": "added-claim",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "prefiltered": 0,
+   "real_calls": 1,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "fa3",
+   "run": 2,
+   "label": "FAIL",
+   "category": "added-claim",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "prefiltered": 0,
+   "real_calls": 1,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "fa4",
+   "run": 2,
+   "label": "FAIL",
+   "category": "added-claim",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "prefiltered": 0,
+   "real_calls": 1,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "fr1",
+   "run": 2,
+   "label": "FAIL",
+   "category": "removed-claim",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "prefiltered": 0,
+   "real_calls": 1,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "fr2",
+   "run": 2,
+   "label": "FAIL",
+   "category": "removed-claim",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "prefiltered": 0,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [
+    {
+     "claim": "The paper reports that the models often know when they are being evaluated.",
+     "verdict": "missing",
+     "dimension": "none",
+     "evidence": "",
+     "votes": [
+      "missing",
+      "missing",
+      "missing"
+     ]
+    },
+    {
+     "claim": "Evaluation awareness on its own reduces covert behavior in the models.",
+     "verdict": "missing",
+     "dimension": "none",
+     "evidence": "",
+     "votes": [
+      "missing",
+      "changed",
+      "missing"
+     ]
+    }
+   ],
+   "overturned": []
+  },
+  {
+   "case": "fr3",
+   "run": 2,
+   "label": "FAIL",
+   "category": "removed-claim",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "prefiltered": 0,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [
+    {
+     "claim": "Model versions are scored during training; high-scoring versions are copied and low-scorin",
+     "verdict": "missing",
+     "dimension": "none",
+     "evidence": "",
+     "votes": [
+      "missing",
+      "entailed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": []
+  },
+  {
+   "case": "fr4",
+   "run": 2,
+   "label": "FAIL",
+   "category": "removed-claim",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "prefiltered": 0,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [
+    {
+     "claim": "The tool generated alerts for 18 percent of all hospitalizations.",
+     "verdict": "missing",
+     "dimension": "none",
+     "evidence": "",
+     "votes": [
+      "missing",
+      "missing",
+      "missing"
+     ]
+    }
+   ],
+   "overturned": []
+  },
+  {
+   "case": "fs1",
+   "run": 2,
+   "label": "FAIL",
+   "category": "short-claim",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "prefiltered": 0,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [
+    {
+     "claim": "After the dispute, no consequence followed and the tool stayed deployed.",
+     "verdict": "changed",
+     "dimension": "polarity",
+     "evidence": "and then nothing happened. The tool was simply pulled from use",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": []
+  },
+  {
+   "case": "fs2",
+   "run": 2,
+   "label": "FAIL",
+   "category": "short-claim",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "prefiltered": 0,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [
+    {
+     "claim": "In the experiments, a model behaved differently when it thought no one was looking.",
+     "verdict": "changed",
+     "dimension": "polarity",
+     "evidence": "The model behaved the same when it thought no one was looking.",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": []
+  },
+  {
+   "case": "fs3",
+   "run": 2,
+   "label": "FAIL",
+   "category": "short-claim",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "prefiltered": 0,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [
+    {
+     "claim": "The argument that no interaction is definitely not a test is a position, not a measurement",
+     "verdict": "changed",
+     "dimension": "polarity",
+     "evidence": "That argument is a measurement rather than a position, and it should be labeled as one.",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": []
+  },
+  {
+   "case": "fs4",
+   "run": 2,
+   "label": "FAIL",
+   "category": "short-claim",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "prefiltered": 0,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [
+    {
+     "claim": "Slot machines run on an intermittent reward schedule.",
+     "verdict": "changed",
+     "dimension": "polarity",
+     "evidence": "Slot machines do not run on that schedule, and so does anything that has to keep behavior going",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": []
+  },
+  {
+   "case": "i01",
+   "run": 2,
+   "label": "PASS",
+   "category": "identity",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 0,
+   "prefiltered": 1,
+   "real_calls": 0,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "i02",
+   "run": 2,
+   "label": "PASS",
+   "category": "identity",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 0,
+   "prefiltered": 1,
+   "real_calls": 0,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "i03",
+   "run": 2,
+   "label": "PASS",
+   "category": "identity",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 0,
+   "prefiltered": 1,
+   "real_calls": 0,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "i04",
+   "run": 2,
+   "label": "PASS",
+   "category": "identity",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 0,
+   "prefiltered": 1,
+   "real_calls": 0,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "i05",
+   "run": 2,
+   "label": "PASS",
+   "category": "identity",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 0,
+   "prefiltered": 1,
+   "real_calls": 0,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  },
+  {
+   "case": "i06",
+   "run": 2,
+   "label": "PASS",
+   "category": "identity",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 0,
+   "prefiltered": 1,
+   "real_calls": 0,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": []
+  }
+ ],
+ "budget_left": 47
+}
