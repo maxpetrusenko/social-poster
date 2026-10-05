@@ -17,6 +17,7 @@ from .textutil import HEADING_RE, LINK_RE, Block, parse_blocks, render_blocks, s
 
 FROZEN_KINDS = {"heading", "image", "code", "rule", "list", "quote", "table"}
 BOILERPLATE_HEAD = re.compile(r"about the author|sources?\b|references|further reading", re.I)
+PROMO_LINE = re.compile(r"^\s*(?:read next|read more|for a useful next read|related reading|further reading|up next)\b", re.I)  # "Read next: [title](url)" carries no claim
 MIN_SEGMENT_WORDS = 12
 EXTRACTOR = "claude:sonnet"  # fast; qwen3:8b works but takes ~3.5 min per segment (hidden reasoning)
 
@@ -53,6 +54,7 @@ class Segment:
     propositions: list[dict] = field(default_factory=list)
     output: str = ""
     role: str = ""
+    nonfactual: list[int] = field(default_factory=list)  # 1-based sentence ids the extractor confirmed carry no factual claim
 
     @property
     def text(self) -> str:
@@ -68,7 +70,7 @@ def segment_article(md: str) -> list[Segment]:
     def flush_run():
         if run:
             seg = Segment(len(segs), section, sec_idx, list(run))
-            if boiler or len(words(seg.text)) < MIN_SEGMENT_WORDS:
+            if boiler or len(words(seg.text)) < MIN_SEGMENT_WORDS or (PROMO_LINE.match(seg.text) and links_in(seg.text)):
                 seg.frozen = True
             segs.append(seg)
             run.clear()
@@ -96,6 +98,7 @@ def links_in(text: str) -> list[str]:
 
 EXTRACT_PROMPT = """/no_think
 Extract the atomic factual propositions from the passage below. One proposition = one self-contained claim, in plain neutral words (do not copy the passage's phrasing; keep names, numbers, units, and causal direction exact). Keep the order of the passage.
+Keep hedges, certainty words and quantifiers verbatim inside the claim text (may, might, could, likely, partly, some, many, most, all, always, never, often, rarely, suggests, shows, proves, appears, about, nearly, at least, up to, only): "X might cause Y" must never become "X causes Y", and "suggests" must never become "shows".
 Skip statements about the passage or article itself (transitions such as "the passage moves on", "this section explains"). Extract only claims about the world, people, studies, events, or the author's stated opinions.
 If a claim came from a sentence containing a markdown link, copy that link into the proposition's "links" list exactly as written.
 Every proposition carries "sentence_ids": the numbers of the numbered sentences below it was drawn from. Every factual sentence must be the source of at least one proposition.

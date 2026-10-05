@@ -17,15 +17,17 @@ from pathlib import Path
 from . import metrics as M
 from .contracts import AUTHOR_CORPUS_DIR, Category, Result
 from .added import check_added
+from .claimcheck import check_claims
 from .errors import EvaluationError
 from .extract_cache import ensure_extraction, extractor_id, sha256
 from .gateway import resolve_model
 from .guards import frozen_diff, semantic_similarity, structure_preservation
-from .judge import judge_claims
+from .judge import identical, judge_claims
 from .rewrite import segment_article
 from .textutil import core_markdown, load_author_corpus, load_pipeline_corpus
 
 SCHEMA_VERSION = 2
+JUDGE_CONFIRM_TELEMETRY = False  # True: re-judge flagged claims twice more and record the votes; they never clear a flag
 PASS, FAIL, ERROR = 0, 1, 2
 DEFAULT_AUTHOR_CORPUS = Path(__file__).resolve().parents[2] / AUTHOR_CORPUS_DIR  # frozen pre-2023 corpus shipped in the repo
 
@@ -152,6 +154,20 @@ def evaluate(article: Path, draft: Path | None, author_dir: Path | None, pipelin
         g["reference_bound_by"] = reference_bound_by
         return g
 
+    # deterministic claim checks (numbers, negations, hedge/certainty/quantifier lexicon, removed sentences): no judge call is
+    # spent on a candidate that already fails them. One embedding batch at most, and only when a reference sentence is unaligned.
+    found = check_claims(draft_md, final_md)
+    if found:
+        n_chg, n_miss = sum(f["verdict"] == "changed" for f in found), sum(f["verdict"] == "missing" for f in found)
+        skipped = {"total": 0, "claims_entailed": 0, "claims_changed": n_chg, "claims_missing": n_miss, "claims_unjudged": 0,
+                   "judge": None, "skipped": "deterministic_claim_fail", "flagged": found}
+        shown = "; ".join(f"[{f['section'] or 'intro'}] {f['reason'] if f['verdict'] == 'changed' else 'removed sentence: ' + f['claim'][:80]}" for f in found[:3])
+        advisory.update(_advisory(final_md, draft_md, author_dir, pipeline_dir, slug))
+        g = _verdict(slug, threshold, [f"deterministic claim check: changed={n_chg} missing={n_miss}: {shown}"], [Category.CONTENT_CLAIM_FAILURE.value],
+                     inputs, extractor_spec, "skipped", judge.name, skipped, {"whole": None, "section_min": None, "per_section": {}}, struct, fdiff, advisory, partial=True)
+        g["checks_skipped"] = ["claim_judge", "added", "semantic"]
+        return g
+
     segs = segment_article(draft_md)
     extraction = ensure_extraction(segs, draft_md, extractor_spec, out / "gate-extraction.json", refresh)
     prose = [s for s in segs if not s.frozen]  # frozen = headings, code, lists, quotes, short and boilerplate segments (the meta rules)
@@ -168,8 +184,11 @@ def evaluate(article: Path, draft: Path | None, author_dir: Path | None, pipelin
             by_sec.setdefault(fs.section_idx, []).append(fs.text)
     jsegs = copy.deepcopy(segs)
     for s in jsegs:
-        s.output = "\n\n".join(by_sec.get(s.section_idx, []))
-    claims = judge_claims(jsegs, judge, strict=True)
+        texts = by_sec.get(s.section_idx, [])
+        # a reference segment that survives verbatim in its section is identical: the judge's pre-filter then costs zero calls
+        # (comparing the WHOLE section text instead made every segment of a multi-segment section look edited)
+        s.output = s.text if any(identical(t, s.text) for t in texts) else "\n\n".join(texts)
+    claims = judge_claims(jsegs, judge, strict=True, confirm_telemetry=JUDGE_CONFIRM_TELEMETRY)
     if claims["claims_unjudged"] or claims["total"] == 0:
         raise EvaluationError(f"{claims['claims_unjudged']} unjudged claims, total {claims['total']}")
     sem = semantic_similarity(draft_md, final_md)

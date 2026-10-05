@@ -6,7 +6,7 @@ import pytest
 from scripts.fingerprint_eval.contracts import Category
 from scripts.fingerprint_eval.errors import EvaluationError
 from scripts.fingerprint_eval.gateway import GatewayError
-from scripts.fingerprint_eval.judge import JUDGE_PROMPT, judge_claims, majority, parse_verdicts
+from scripts.fingerprint_eval.judge import JUDGE_PROMPT, judge_claims, parse_verdicts
 from scripts.fingerprint_eval.rewrite import Segment
 from scripts.fingerprint_eval.textutil import Block
 
@@ -73,36 +73,34 @@ def test_all_entailed_costs_one_call():
     assert r["judge_calls"] == 1 and r["claims_entailed"] == 2 and r["flagged"] == []
 
 
-def test_two_of_three_overturns_a_single_false_flag():
-    m = StubModel(reply("entailed", "changed", dim="number"), reply("entailed"), reply("entailed"))
+def test_first_pass_flag_is_final_and_costs_one_call():
+    m = StubModel(reply("entailed", "changed", dim="number"))
     r = judge_claims([seg("A paraphrase.")], m, strict=True)
-    assert r["judge_calls"] == 3
-    assert r["claims_changed"] == 0 and r["claims_entailed"] == 2 and r["flagged"] == []
-    assert r["overturned"] == [{"section": "S", "claim": "13.2 months", "votes": ["changed", "entailed", "entailed"]}]
-    # confirmation re-judges only the flagged claim, renumbered from 1
+    assert r["judge_calls"] == 1 and len(m.prompts) == 1
+    assert r["claims_changed"] == 1 and r["claims_entailed"] == 1 and r["overturned"] == []
+    f = r["flagged"][0]
+    assert f["claim"] == "13.2 months" and f["verdict"] == "changed" and f["votes"] == ["changed"] and f["dimension"] == "number"
+
+
+def test_confirmation_telemetry_never_clears_a_flag():
+    m = StubModel(reply("entailed", "changed", dim="modality"), reply("entailed"), reply("entailed"))
+    r = judge_claims([seg("A paraphrase.")], m, strict=True, confirm_telemetry=True)
+    assert r["judge_calls"] == 3 and r["claims_changed"] == 1 and r["overturned"] == []
+    assert r["flagged"][0]["votes"] == ["changed", "entailed", "entailed"]
+    # telemetry re-judges only the flagged claim, renumbered from 1
     assert "1. 13.2 months" in m.prompts[1] and "40 patients" not in m.prompts[1]
 
 
-def test_two_of_three_confirms_a_true_flag_and_records_votes():
-    m = StubModel(reply("entailed", "changed", dim="number"), reply("changed", dim="number"), reply("entailed"))
-    r = judge_claims([seg("Survival rose to 12.3 months.")], m, strict=True)
-    assert r["judge_calls"] == 3 and r["claims_changed"] == 1 and r["claims_entailed"] == 1
-    f = r["flagged"][0]
-    assert f["claim"] == "13.2 months" and f["verdict"] == "changed" and f["votes"] == ["changed", "changed", "entailed"] and f["dimension"] == "number"
-
-
-def test_flag_label_is_the_most_common_non_entailed_vote():
-    assert majority(["changed", "missing", "missing"]) == "missing"
-    assert majority(["changed", "entailed", "missing"]) == "changed"
-    assert majority(["entailed", "changed", "entailed"]) == "entailed"
-    assert majority(["changed", "changed"]) == "changed"          # one confirmation failed (non-strict)
-    assert majority(["changed", "entailed"]) == "changed"         # tie: first-pass flag stands
-
-
-def test_confirmation_batches_per_segment_not_per_claim():
+def test_confirmation_telemetry_batches_per_segment_not_per_claim():
     m = StubModel(reply("changed", "changed"), reply("changed", "changed"), reply("changed", "changed"))
-    r = judge_claims([seg("Something else.")], m, strict=True)
+    r = judge_claims([seg("Something else.")], m, strict=True, confirm_telemetry=True)
     assert r["judge_calls"] == 3 and r["claims_changed"] == 2
+
+
+def test_confirmation_telemetry_failure_is_ignored_even_in_strict_mode():
+    m = StubModel(reply("changed", "entailed"), "bad", "bad", "bad", "bad")
+    r = judge_claims([seg("Other text.")], m, strict=True, confirm_telemetry=True)
+    assert r["claims_changed"] == 1 and r["flagged"][0]["votes"] == ["changed"]
 
 
 def test_garbage_retries_once_then_raises_malformed():
@@ -124,15 +122,8 @@ def test_gateway_error_keeps_its_category():
     assert ei.value.category == Category.MODEL_TIMEOUT and ei.value.dependency == "claude-cli"
 
 
-def test_confirmation_failure_is_an_error_in_strict_mode():
-    m = StubModel(reply("changed", "entailed"), "bad", "bad")
-    with pytest.raises(EvaluationError) as ei:
-        judge_claims([seg("Other text.")], m, strict=True)
-    assert ei.value.category == Category.MALFORMED_MODEL_OUTPUT
-
-
-def test_non_strict_counts_unjudged_and_tolerates_failed_confirmation():
+def test_non_strict_counts_unjudged():
     r = judge_claims([seg("Other text.")], StubModel("bad", "bad"), strict=False)
     assert r["claims_unjudged"] == 2 and r["flagged"][0]["verdict"] == "unjudged"
-    r = judge_claims([seg("Other text.")], StubModel(reply("changed", "entailed"), "bad", "bad", "bad", "bad"), strict=False)
+    r = judge_claims([seg("Other text.")], StubModel(reply("changed", "entailed")), strict=False)
     assert r["claims_changed"] == 1 and r["flagged"][0]["votes"] == ["changed"]

@@ -77,11 +77,34 @@ class Verdicts(GateBase):
         self.assertTrue(g["reference_identical"]); self.assertTrue(g["pass"]); self.assertEqual(g["exit_code"], 0)
 
     def test_changed_claim_fails(self):
-        rc, w, _ = self.run_gate(article=ARTICLE.replace("forty days", "four days"))
+        # an entity swap carries no number, negation or hedge: only the judge can see it
+        rc, w, _ = self.run_gate(article=ARTICLE.replace("The reactor ran", "The turbine ran"))
         self.assertEqual(rc, 1)
         g = gate_json(w)
-        self.assertFalse(g["reference_identical"]); self.assertTrue(g["evaluated"])
+        self.assertFalse(g["reference_identical"]); self.assertTrue(g["evaluated"] is True)
         self.assertTrue(any("claims changed" in r for r in g["reasons"]))
+
+    def test_changed_number_fails_deterministically_before_the_judge(self):
+        rc, w, f = self.run_gate(article=ARTICLE.replace("forty days", "four days"))
+        self.assertEqual(rc, 1)
+        g = gate_json(w)
+        self.assertEqual(g["evaluated"], "partial"); self.assertEqual(g["failure_categories"], ["CONTENT_CLAIM_FAILURE"])
+        self.assertTrue(any("deterministic claim check" in r and "removed forty; added four" in r for r in g["reasons"]))
+        self.assertEqual(f.calls["judge"], 0)
+        self.assertEqual(g["blocking"]["flagged_claims"][0]["dimension"], "numbers")
+
+    def test_hedge_swap_fails_deterministically(self):
+        rc, w, _ = self.run_gate(article=ARTICLE.replace("The budget doubled", "The budget may have doubled"))
+        self.assertEqual(rc, 1)
+        self.assertTrue(any("added may" in r for r in gate_json(w)["reasons"]))
+
+    def test_dropped_sentence_fails_deterministically(self):
+        longer = ARTICLE.replace("It was inspected twice by the crew.", "It was inspected twice by the crew. Engineers also logged the coolant pressure every hour.")
+        rc, w, _ = self.run_gate(article=longer.replace(" Engineers also logged the coolant pressure every hour.", ""), draft=longer)
+        self.assertEqual(rc, 1)
+        g = gate_json(w)
+        self.assertEqual(g["blocking"]["flagged_claims"][0]["verdict"], "missing")
+        self.assertEqual(g["blocking"]["flagged_claims"][0]["dimension"], "removed sentence")
 
     def test_frozen_list_change_fails_with_diff(self):
         rc, w, _ = self.run_gate(article=ARTICLE.replace("item beta two", "item beta three"))

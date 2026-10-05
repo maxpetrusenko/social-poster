@@ -1,0 +1,190 @@
+{
+ "overall": {
+  "TP": 32,
+  "FP": 1,
+  "TN": 16,
+  "FN": 0,
+  "precision": 0.97,
+  "recall": 1.0
+ },
+ "per_category": {
+  "paraphrase": {
+   "label": "PASS",
+   "TP": 0,
+   "FP": 1,
+   "TN": 3,
+   "FN": 0,
+   "precision": 0.0,
+   "recall": null,
+   "caught_by": {
+    "judge": 1,
+    "none": 3
+   },
+   "misses": [
+    "pa1"
+   ]
+  },
+  "merge": {
+   "label": "PASS",
+   "TP": 0,
+   "FP": 0,
+   "TN": 4,
+   "FN": 0,
+   "precision": null,
+   "recall": null,
+   "caught_by": {
+    "none": 4
+   },
+   "misses": []
+  },
+  "split": {
+   "label": "PASS",
+   "TP": 0,
+   "FP": 0,
+   "TN": 4,
+   "FN": 0,
+   "precision": null,
+   "recall": null,
+   "caught_by": {
+    "none": 4
+   },
+   "misses": []
+  },
+  "reorder": {
+   "label": "PASS",
+   "TP": 0,
+   "FP": 0,
+   "TN": 4,
+   "FN": 0,
+   "precision": null,
+   "recall": null,
+   "caught_by": {
+    "none": 4
+   },
+   "misses": []
+  },
+  "number": {
+   "label": "FAIL",
+   "TP": 4,
+   "FP": 0,
+   "TN": 0,
+   "FN": 0,
+   "precision": 1.0,
+   "recall": 1.0,
+   "caught_by": {
+    "claim-det": 4
+   },
+   "misses": []
+  },
+  "entity": {
+   "label": "FAIL",
+   "TP": 4,
+   "FP": 0,
+   "TN": 0,
+   "FN": 0,
+   "precision": 1.0,
+   "recall": 1.0,
+   "caught_by": {
+    "judge": 1,
+    "judge+added": 3
+   },
+   "misses": []
+  },
+  "causality": {
+   "label": "FAIL",
+   "TP": 4,
+   "FP": 0,
+   "TN": 0,
+   "FN": 0,
+   "precision": 1.0,
+   "recall": 1.0,
+   "caught_by": {
+    "judge": 3,
+    "judge+added": 1
+   },
+   "misses": []
+  },
+  "qualifier": {
+   "label": "FAIL",
+   "TP": 4,
+   "FP": 0,
+   "TN": 0,
+   "FN": 0,
+   "precision": 1.0,
+   "recall": 1.0,
+   "caught_by": {
+    "claim-det": 4
+   },
+   "misses": []
+  },
+  "certainty": {
+   "label": "FAIL",
+   "TP": 4,
+   "FP": 0,
+   "TN": 0,
+   "FN": 0,
+   "precision": 1.0,
+   "recall": 1.0,
+   "caught_by": {
+    "claim-det": 4
+   },
+   "misses": []
+  },
+  "added-claim": {
+   "label": "FAIL",
+   "TP": 4,
+   "FP": 0,
+   "TN": 0,
+   "FN": 0,
+   "precision": 1.0,
+   "recall": 1.0,
+   "caught_by": {
+    "added": 4
+   },
+   "misses": []
+  },
+  "removed-claim": {
+   "label": "FAIL",
+   "TP": 4,
+   "FP": 0,
+   "TN": 0,
+   "FN": 0,
+   "precision": 1.0,
+   "recall": 1.0,
+   "caught_by": {
+    "claim-det": 4
+   },
+   "misses": []
+  },
+  "short-claim": {
+   "label": "FAIL",
+   "TP": 4,
+   "FP": 0,
+   "TN": 0,
+   "FN": 0,
+   "precision": 1.0,
+   "recall": 1.0,
+   "caught_by": {
+    "judge+added": 1,
+    "judge": 2,
+    "claim-det": 1
+   },
+   "misses": []
+  },
+  "identity": {
+   "label": "PASS",
+   "TP": 0,
+   "FP": 0,
+   "TN": 1,
+   "FN": 0,
+   "precision": null,
+   "recall": null,
+   "caught_by": {
+    "none": 1
+   },
+   "misses": []
+  }
+ },
+ "errors": [],
+ "claude_calls": 65
+}
