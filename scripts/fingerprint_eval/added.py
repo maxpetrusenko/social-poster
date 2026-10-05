@@ -12,7 +12,7 @@ import re
 from .contracts import Category
 from .errors import EvaluationError
 from .gateway import GatewayError, extract_json, resolve_model
-from .judge import _FENCE
+from .judge import _FENCE, normalize
 from .rewrite import Segment, is_meta_claim, request_extraction, segment_article
 from .textutil import Block, split_sentences, strip_inline, words
 
@@ -85,6 +85,12 @@ def _ref_sentences(md: str) -> list[tuple[set, tuple, set[str]]]:
     return out
 
 
+def _ref_texts(md: str) -> list[str]:
+    """The sentences behind `_ref_sentences`, same order."""
+    return [s for seg in segment_article(md) for b in seg.blocks if b.kind != "heading"
+            for ln in (b.text.split("\n") if b.kind == "list" else [b.text]) for s in split_sentences(strip_inline(ln))]
+
+
 MERGE_MIN_TOKENS = 6   # a merged sentence is long; shorter ones recombining two reference sentences are treated as new
 MERGE_COVER = 0.85
 
@@ -121,11 +127,13 @@ def new_sentences(draft_md: str, final_md: str) -> dict[str, list[str]]:
     A counterpart needs word overlap >= JACCARD AND identical numbers, negations and named entities. No length exemption:
     sentences that are short and carry no number, proper noun or negation are skipped only when `_stylistic_echo`."""
     ref = _ref_sentences(draft_md)
+    ref_text = _ref_texts(draft_md)
     out: dict[str, list[str]] = {}
     sec_tokens: dict[str, set[str]] = {}
     finals = [(seg.section, s) for seg in segment_article(final_md) if not seg.frozen  # frozen blocks are compared byte-exact elsewhere
               for s in split_sentences(strip_inline(seg.text).replace("\n", " "))]
-    retained = {i for i, (r, rsig, _) in enumerate(ref) if any(_jacc(set(words(s)), r) >= JACCARD and _signature(s) == rsig for _, s in finals)}
+    final_norm = {normalize(s) for _, s in finals}
+    retained = {i for i, text in enumerate(ref_text) if normalize(text) in final_norm}  # whole and verbatim: not a split or a merge
     for section, s in finals:
         ws, sig = set(words(s)), _signature(s)
         if any(_jacc(ws, r) >= JACCARD and sig == rsig for r, rsig, _ in ref):
