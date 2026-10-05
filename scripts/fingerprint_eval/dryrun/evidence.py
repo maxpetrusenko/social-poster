@@ -15,6 +15,10 @@ def _cell(v) -> str:
     return str(v).replace("|", "\\|").replace("\n", " ")
 
 
+def _kv(d: dict) -> str:
+    return ", ".join(f"{k}={json.dumps(v)}" for k, v in sorted(d.items()))
+
+
 def _diff(expected: list[dict], actual: dict) -> str:
     """Keys of the closest expected outcome that differ from actual."""
     best = min(expected, key=lambda e: sum(e.get(k) != actual.get(k) for k in set(e) | set(actual)))
@@ -29,14 +33,13 @@ def summary(doc: dict) -> str:
              f"- source package: `{doc['source_package']}` (untouched: {doc['source_untouched']})",
              f"- evaluator id: `{doc['evaluator_id']}`", f"- author corpus sha256: `{doc['author_corpus_sha256']}`",
              f"- guard: `{doc['guard']['file']}` sha256 `{doc['guard']['sha256']}`", f"- generated: {doc['generated_utc']}", "",
-             "| # | case | expected | actual | result | exit codes | hashes (in -> out) |", "|---|---|---|---|---|---|---|"]
+             "| # | case | result | actual outcome (matched expected) | release exit codes | hashes (in -> out) |", "|---|---|---|---|---|---|"]
     for i, c in enumerate(cs, 1):
-        exp = " OR ".join(json.dumps(e, sort_keys=True) for e in c["expected"])
+        act = _kv(c["actual"]) or c.get("error") or ""
         h = c["hashes"]
-        flow = f"{(h.get('input') or h.get('source_final') or h.get('final_before') or '')[:10]} -> {(h.get('authorized') or h.get('second_authorized') or h.get('final_after') or '-')[:10]}"
-        lines.append(f"| {i} | {c['name']} | {_cell(exp)} | {_cell(json.dumps(c['actual'], sort_keys=True))} | {'PASS' if c['passed'] else 'FAIL'} | "
-                     f"{_cell(json.dumps(c['exit_codes']))} | {flow} |")
+        flow = f"{(h.get('input') or h.get('source_final') or h.get('final_before') or '-')[:10]} -> {(h.get('authorized') or h.get('second_authorized') or h.get('final_after') or '-')[:10]}"
+        lines.append(f"| {i} | {c['name']} | {'PASS' if c['passed'] else 'FAIL'} | {_cell(act)} | {_cell(json.dumps(c['exit_codes']))} | {flow} |")
     if failed:
         lines += ["", "## Failures", ""] + [f"- {c['name']}: {c.get('error') or _diff(c['expected'], c['actual'])}" for c in failed]
-    lines += ["", "Per-case ledger states, heal cycles, guard decisions and artifact paths are in `dryrun-evidence.json`.", ""]
+    lines += ["", "Expected outcomes (with the allowed alternatives), per-case ledger states, heal cycles, guard decisions and artifact paths are in `dryrun-evidence.json`.", ""]
     return "\n".join(lines)
