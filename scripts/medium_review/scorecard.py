@@ -14,6 +14,9 @@ import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 
+from scripts.fingerprint_eval.authz import CHILD_ENV_KEYS
+from scripts.fingerprint_eval.gateway import child_env
+
 from . import DISCLAIMER, REVIEW_VERSION
 
 REPO = Path(__file__).resolve().parents[2]
@@ -24,7 +27,7 @@ DIMENSIONS = ("writer_experience", "originality", "reader_value", "craftsmanship
 
 def _git(*args: str) -> str:
     try:
-        return subprocess.run(["git", "-C", str(REPO), *args], capture_output=True, text=True, timeout=20).stdout.strip()
+        return subprocess.run(["git", "-C", str(REPO), *args], capture_output=True, text=True, timeout=20, env=child_env(CHILD_ENV_KEYS)).stdout.strip()
     except (OSError, subprocess.TimeoutExpired):
         return ""
 
@@ -151,3 +154,54 @@ def summary_md(rec: dict) -> str:
     L += ["", "## Author input", "", f"Required: {a['required']}. {a['reason']}"]
     L += [f"- {m['path']}:{m.get('line', '')} {m.get('excerpt', '')}" for m in a["candidate_trusted_material"]]
     return "\n".join(L) + "\n"
+
+
+_RATINGS = ("strong", "adequate", "weak", "n/a")
+_HEX64 = frozenset("0123456789abcdef")
+
+
+def validate_review(rec, content_sha: str | None = None, evaluator: str | None = None) -> str | None:
+    """Strict MEDIUM_REVIEW check for consumers that trust it (the publish route). Returns None when valid, else why not.
+
+    Verifies status, schema/review versions, every required dimension, the typed scorecard fields, the policy binding, and
+    (when given) the content hash and the evaluator id the record must have been produced by."""
+    if not isinstance(rec, dict):
+        return "review is not an object"
+    if rec.get("status") != "REVIEWED":
+        return f"status is {rec.get('status')!r}, not REVIEWED"
+    if rec.get("schema_version") != 1 or rec.get("review_version") != REVIEW_VERSION:
+        return "schema_version/review_version mismatch"
+    b, sc = rec.get("binding"), rec.get("scorecard")
+    if not isinstance(b, dict) or not isinstance(sc, dict):
+        return "binding or scorecard missing"
+    ch = b.get("content_sha256")
+    if not (isinstance(ch, str) and len(ch) == 64 and set(ch) <= _HEX64):
+        return "binding.content_sha256 malformed"
+    if content_sha is not None and ch != content_sha:
+        return "binding.content_sha256 does not match the article bytes"
+    ps, pv = b.get("policy_sha256"), b.get("policy_version")
+    if not (isinstance(ps, str) and len(ps) == 64 and set(ps) <= _HEX64) or not isinstance(pv, str) or not pv.startswith(ps[:12] + "@"):
+        return "binding.policy_version/policy_sha256 malformed"
+    ev = b.get("evaluator_id")
+    if not isinstance(ev, str) or not ev or (evaluator is not None and ev != evaluator):
+        return "binding.evaluator_id missing or not the current evaluator"
+    dims = sc.get("dimensions")
+    if not isinstance(dims, dict):
+        return "scorecard.dimensions missing"
+    for k in DIMENSIONS:
+        if not isinstance(dims.get(k), dict) or dims[k].get("rating") not in _RATINGS:
+            return f"dimension {k} missing or has an invalid rating"
+    if sc.get("boost_candidate") not in ("YES", "NO", "UNCERTAIN") or sc.get("general_distribution_risk") not in ("LOW", "MEDIUM", "HIGH"):
+        return "boost_candidate/general_distribution_risk invalid"
+    ac = sc.get("author_contribution")
+    if not isinstance(ac, dict) or not isinstance(ac.get("present"), bool) or not isinstance(ac.get("integral"), bool):
+        return "scorecard.author_contribution malformed"
+    if not isinstance(sc.get("derivative_summary"), bool):
+        return "scorecard.derivative_summary malformed"
+    for k in ("hard_policy_risks", "warnings", "safe_auto_fixes"):
+        if not isinstance(rec.get(k), list):
+            return f"{k} missing"
+    aiq = rec.get("author_input_required")
+    if not isinstance(aiq, dict) or not isinstance(aiq.get("required"), bool):
+        return "author_input_required malformed"
+    return None

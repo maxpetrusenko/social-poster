@@ -18,6 +18,7 @@ from typing import Callable
 from scripts.fingerprint_eval.gateway import CLAUDE_ENV_KEYS, child_env
 from scripts.medium_review import checks as CK
 from scripts.medium_review.package import resolve
+from scripts.medium_review.scorecard import evaluator_id, validate_review
 
 from . import publications as PUB
 from . import repair as RP
@@ -25,7 +26,11 @@ from .decide import ROUTES, decide
 
 REPO = Path(__file__).resolve().parents[2]
 MAX_ROUTE_CYCLES = 2
-ROUTE_ENV_KEYS = CLAUDE_ENV_KEYS + ("LLM_GATEWAY_API_KEY", "LLM_GATEWAY_URL", "SSL_CERT_FILE", "FINGERPRINT_EVAL_KEY_FILE", "FG_JUDGE", "FG_EXTRACTOR")
+# Per-child allowlists. Only the integrity gate (embeddings via the gateway) receives the gateway key; the Medium review
+# child (claude -p only) gets subscription auth and no gateway/API secrets.
+REVIEW_ENV_KEYS = CLAUDE_ENV_KEYS + ("SSL_CERT_FILE",)
+RELEASE_ENV_KEYS = CLAUDE_ENV_KEYS + ("LLM_GATEWAY_API_KEY", "LLM_GATEWAY_URL", "SSL_CERT_FILE", "FINGERPRINT_EVAL_KEY_FILE", "FG_JUDGE", "FG_EXTRACTOR")
+ROUTE_ENV_KEYS = RELEASE_ENV_KEYS  # back-compat alias
 ROUTE_REL = Path("evals") / "publish-route" / "route.json"
 REVIEW_REL = Path("evals") / "medium-distribution" / "MEDIUM_REVIEW.json"
 Runner = Callable[[list[str]], tuple[int, str]]
@@ -33,7 +38,7 @@ Runner = Callable[[list[str]], tuple[int, str]]
 
 def default_runner(argv: list[str]) -> tuple[int, str]:
     try:
-        p = subprocess.run(argv, capture_output=True, text=True, timeout=1800, cwd=REPO, env=child_env(ROUTE_ENV_KEYS))
+        p = subprocess.run(argv, capture_output=True, text=True, timeout=1800, cwd=REPO, env=child_env(REVIEW_ENV_KEYS if "scripts.medium_review" in argv else RELEASE_ENV_KEYS))
     except (OSError, subprocess.SubprocessError) as e:
         return 127, f"{type(e).__name__}: {e}"
     return p.returncode, p.stdout + (("\n" + p.stderr) if p.returncode else "")
@@ -80,10 +85,9 @@ def gather_check1(package: Path, cur_sha: str, runner: Runner) -> dict:
 
 
 def gather_review(package: Path, cur_sha: str) -> dict | None:
+    """Strictly validated (schema, evaluator, policy, dimensions, content hash); anything else is None, so the route fails closed to C."""
     rec = _read_json(package / REVIEW_REL)
-    if rec.get("status") == "REVIEWED" and rec.get("binding", {}).get("content_sha256") == cur_sha:
-        return rec
-    return None
+    return rec if validate_review(rec, cur_sha, evaluator_id()) is None else None
 
 
 def _titles(*srcs: dict) -> tuple[list, list]:

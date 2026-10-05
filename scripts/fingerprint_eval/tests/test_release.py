@@ -334,3 +334,52 @@ def test_cache_key_includes_source_notes_and_models(tmp_path, monkeypatch):
     assert authz._cache_extra(ctx) != k1
     monkeypatch.setitem(authz.MODELS, "judge", "qwen3:8b")
     assert authz._cache_extra(ctx)["judge"] == "qwen3:8b"
+
+
+def test_cache_key_binds_gateway_embedding_threshold_and_prompts(tmp_path, monkeypatch):
+    from scripts.fingerprint_eval import authz, added, gateway, judge, rewrite
+    from scripts.fingerprint_eval.contracts import PackageCtx
+    ctx = PackageCtx(package=tmp_path, slug="s", final_path=tmp_path / "f.md", final_rule="x", reference_path=None, source_notes=None)
+
+    def ident(digest):
+        monkeypatch.setattr(authz, "_embed_identity", lambda ep: {"name": authz.EMBED_MODEL, "endpoint": ep, "digest": digest})
+
+    ident("d1")
+    base = authz._cache_extra(ctx)
+    assert base["gateway"]["endpoint"] == gateway.BASE_URL and base["threshold"] == authz.THRESHOLD
+    assert base["embedding"]["digest"] == "d1" and base["models"]["judge"]["version"]
+    ident("d2")
+    assert authz._cache_extra(ctx) != base  # embedding digest changed
+    ident("d1")
+    assert authz._cache_extra(ctx) == base
+    for mod, attr, val in ((gateway, "BASE_URL", "https://other.example/v1"), (authz, "THRESHOLD", 0.95),
+                           (judge, "JUDGE_PROMPT", judge.JUDGE_PROMPT + " tweak"), (added, "SUPPORT_PROMPT", added.SUPPORT_PROMPT + " tweak"),
+                           (rewrite, "EXTRACT_PROMPT", rewrite.EXTRACT_PROMPT + " tweak")):
+        with monkeypatch.context() as m:
+            m.setattr(mod, attr, val)
+            m.setattr(authz, "_embed_identity", lambda ep: {"name": authz.EMBED_MODEL, "endpoint": ep, "digest": "d1"})
+            assert authz._cache_extra(ctx) != base, attr
+
+
+def test_embed_identity_without_key_is_name_plus_endpoint(monkeypatch):
+    from scripts.fingerprint_eval import authz
+    monkeypatch.delenv("LLM_GATEWAY_API_KEY", raising=False)
+    monkeypatch.setattr(authz, "_EMBED_ID", {})
+    assert authz._embed_identity("https://x/v1") == {"name": authz.EMBED_MODEL, "endpoint": "https://x/v1", "digest": None}
+
+
+def test_resolve_package_rejects_symlink_escapes(tmp_path):
+    import pytest
+    from scripts.fingerprint_eval import authz
+    outside = tmp_path / "outside.md"
+    outside.write_text("secret")
+    pkg = tmp_path / "pkg"
+    (pkg / "sources").mkdir(parents=True)
+    (pkg / "article-medium.md").symlink_to(outside)
+    with pytest.raises(authz.PackageError, match="escapes"):
+        authz.resolve_package(pkg)
+    (pkg / "article-medium.md").unlink()
+    (pkg / "article-medium.md").write_text("ok")
+    (pkg / "sources" / "source-notes.md").symlink_to(outside)
+    with pytest.raises(authz.PackageError, match="escapes"):
+        authz.resolve_package(pkg)

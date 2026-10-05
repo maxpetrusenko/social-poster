@@ -19,6 +19,8 @@ from __future__ import annotations
 
 import re
 
+from scripts.medium_review.scorecard import validate_review
+
 from . import publications as PUB
 
 ROUTES = {"A": "DIRECT_PUBLISH", "B": "PUBLICATION_ROUTE", "C": "AUTO_REPAIR", "D": "QUARANTINE"}
@@ -57,8 +59,10 @@ def decide(check1: dict, review: dict | None, meta: dict, publications: list[dic
     state = check1.get("state")
     if state == "QUARANTINED":
         return _out("D", [f"Check 1 quarantine: {check1.get('reason') or 'integrity gate quarantined these bytes'}"], topics=topics)
-    if review is None:
-        return _out("C", ["Check 2 missing, stale for the current bytes, or ERROR: rerun the Medium review"],
+    bad = None if review is None else validate_review(review)
+    if review is None or bad:
+        why = "missing, stale for the current bytes, or ERROR" if review is None else f"malformed ({bad})"
+        return _out("C", [f"Check 2 {why}: rerun the Medium review"],
                     actions=["review"] + (["authorize"] if state != "PASS" else []), topics=topics)
 
     reasons: list[str] = []

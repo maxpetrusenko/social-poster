@@ -25,8 +25,11 @@ def sha(t: str) -> str:
 
 def review_for(text: str, *, boost="NO", risk="LOW", derivative=False, integral=True, weak=(), hard=(), fixes=(), aiq=False,
                material=(), warnings=(), policy="pol1@x") -> dict:
-    dims = {k: {"rating": "weak" if k in weak else "adequate"} for k in ("writer_experience", "originality", "reader_value")}
-    return {"status": "REVIEWED", "binding": {"content_sha256": sha(text), "policy_version": policy},
+    from scripts.medium_review import scorecard as SC
+    dims = {k: {"rating": "weak" if k in weak else "adequate"} for k in SC.DIMENSIONS}
+    psha = "b" * 64
+    return {"schema_version": 1, "review_version": 1, "status": "REVIEWED",
+            "binding": {"content_sha256": sha(text), "policy_version": psha[:12] + "@" + policy, "policy_sha256": psha, "evaluator_id": SC.evaluator_id()},
             "scorecard": {"dimensions": dims, "boost_candidate": boost, "general_distribution_risk": risk, "derivative_summary": derivative,
                           "author_contribution": {"present": True, "integral": integral, "evidence": []}},
             "hard_policy_risks": [{"source": "model", "category": "hard_policy", "message": m, "evidence_quote": ""} for m in hard],
@@ -314,3 +317,47 @@ def test_apply_own_repairs_use_only_approved_text():
     assert new == "# Real Title\n\n*Approved short subtitle*\n\nBody.\n" and len(applied) == 2
     same, none = RP.apply_own(text, [{"kind": "title_suffix_strip", "suffix": "Other"}])
     assert same == text and none == []
+
+
+def test_forged_minimal_review_fails_closed_to_c(tmp_path):
+    p = make_pkg(tmp_path, GOOD)
+    forged = {"status": "REVIEWED", "binding": {"content_sha256": sha(GOOD)}, "scorecard": {"author_contribution": {"integral": True}}}
+    d = p / "evals" / "medium-distribution"
+    d.mkdir(parents=True)
+    (d / "MEDIUM_REVIEW.json").write_text(json.dumps(forged))
+    assert OR.gather_review(p, sha(GOOD)) is None
+    assert decide(PASS, forged, meta(), [])["route_code"] == "C"          # decide alone never yields A from a forged record
+    assert decide(PASS, {**review_for(GOOD), "scorecard": {}}, meta(), [])["route_code"] == "C"
+    assert decide(PASS, review_for(GOOD), meta(), [])["route_code"] == "A"
+
+
+def test_review_with_wrong_evaluator_or_hash_is_not_loaded(tmp_path):
+    p = make_pkg(tmp_path, GOOD)
+    d = p / "evals" / "medium-distribution"
+    d.mkdir(parents=True)
+    rec = review_for(GOOD)
+    (d / "MEDIUM_REVIEW.json").write_text(json.dumps(rec))
+    assert OR.gather_review(p, sha(GOOD)) is not None
+    assert OR.gather_review(p, sha(GOOD + "x")) is None
+    rec["binding"]["evaluator_id"] = "some-other-evaluator"
+    (d / "MEDIUM_REVIEW.json").write_text(json.dumps(rec))
+    assert OR.gather_review(p, sha(GOOD)) is None
+
+
+def test_subprocess_env_is_per_child_allowlist(monkeypatch):
+    seen = []
+
+    class P:
+        returncode, stdout, stderr = 0, "", ""
+
+    monkeypatch.setenv("LLM_GATEWAY_API_KEY", "gw-secret")
+    monkeypatch.setenv("DOPPLER_TOKEN", "dp-secret")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "an-secret")
+    monkeypatch.setattr(OR.subprocess, "run", lambda argv, **k: seen.append((argv, k["env"])) or P())
+    OR.default_runner(["py", "-m", "scripts.medium_review", "review"])
+    OR.default_runner(["py", "-m", "scripts.fingerprint_eval.release", "authorize"])
+    review_env, release_env = seen[0][1], seen[1][1]
+    assert "LLM_GATEWAY_API_KEY" not in review_env
+    assert release_env.get("LLM_GATEWAY_API_KEY") == "gw-secret"
+    for e in (review_env, release_env):
+        assert "DOPPLER_TOKEN" not in e and "ANTHROPIC_API_KEY" not in e

@@ -18,6 +18,9 @@ from datetime import datetime, timedelta, timezone
 from html.parser import HTMLParser
 from pathlib import Path
 
+from scripts.fingerprint_eval.authz import CHILD_ENV_KEYS
+from scripts.fingerprint_eval.gateway import child_env
+
 POLICY_URL = ("https://help.medium.com/hc/en-us/articles/360006362473-Medium-s-Distribution-Guidelines-"
               "How-curators-review-stories-for-Boost-General-and-Network-Distribution")
 API_URL = "https://help.medium.com/api/v2/help_center/en-us/articles/360006362473.json"
@@ -104,7 +107,7 @@ def _from_browse_sh() -> tuple[str, str | None]:
     exe = shutil.which("browse.sh")
     if not exe:
         raise PolicyError("browse.sh not installed")
-    p = subprocess.run([exe, "get", POLICY_URL], capture_output=True, text=True, timeout=120)
+    p = subprocess.run([exe, "get", POLICY_URL], capture_output=True, text=True, timeout=120, env=child_env(CHILD_ENV_KEYS))
     if p.returncode != 0:
         raise PolicyError(f"browse.sh rc={p.returncode}")
     out = p.stdout
@@ -151,7 +154,10 @@ def _now() -> datetime:
 def _load_current(pdir: Path) -> dict | None:
     try:
         meta = json.loads((pdir / "CURRENT.json").read_text())
-        meta["text"] = (pdir / meta["file"]).read_text()
+        fp = (pdir / meta["file"]).resolve()
+        if not fp.is_relative_to(pdir.resolve()):
+            return None
+        meta["text"] = fp.read_text()
         if hashlib.sha256(meta["text"].encode()).hexdigest() != meta["sha256"]:
             return None
         return meta

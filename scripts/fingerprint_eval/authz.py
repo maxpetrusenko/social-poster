@@ -55,6 +55,14 @@ def sha256_file(p: Path) -> str:
 
 
 # ---- resolution -----------------------------------------------------------------------------------------------
+def contained(package: Path, p: Path, what: str) -> Path:
+    """Resolve p (following symlinks) and require it to stay inside the resolved package."""
+    r = Path(p).resolve()
+    if not r.is_relative_to(Path(package).resolve()):
+        raise PackageError(f"{what} {str(p)!r} escapes the package")
+    return r
+
+
 def _inside(package: Path, rel: str, what: str) -> Path:
     p = (package / rel).resolve()
     if not p.is_relative_to(package.resolve()):
@@ -132,12 +140,14 @@ def resolve_package(package: Path | str) -> PackageCtx:
     if vj.get("finalFile"):
         final, rule = _inside(package, str(vj["finalFile"]), "finalFile"), "version.json.finalFile"
     elif (package / "article-medium.md").is_file():
-        final, rule = (package / "article-medium.md").resolve(), "article-medium.md"
+        final, rule = contained(package, package / "article-medium.md", "article-medium.md"), "article-medium.md"
     elif vj.get("articleFile"):
         final, rule = _inside(package, str(vj["articleFile"]), "articleFile"), "version.json.articleFile"
     else:
         raise PackageError("no final candidate: no version.json.finalFile, article-medium.md or version.json.articleFile")
     notes = package / "sources" / "source-notes.md"
+    if notes.is_file():
+        notes = contained(package, notes, "source notes")
     return PackageCtx(package=package, slug=str(vj.get("slug") or package.name), final_path=final, final_rule=rule,
                       reference_path=_reference(package, vj), source_notes=notes if notes.is_file() else None)
 
@@ -236,7 +246,38 @@ def _cache_extra(ctx: PackageCtx) -> dict:
             notes = sha256_file(ctx.source_notes)
         except OSError:
             notes = "unreadable"
-    return {"source_notes_sha256": notes, "extractor": MODELS["extractor"], "judge": MODELS["judge"]}
+    from . import added as AD, extract_cache as EC, gateway as GW, judge as JG, rewrite as RW
+    prompts = {"extract": _sha(RW.EXTRACT_PROMPT.encode()), "judge": _sha(JG.JUDGE_PROMPT.encode()), "added": _sha(AD.SUPPORT_PROMPT.encode()),
+               "extract_schema_version": EC.SCHEMA_VERSION}
+    return {"source_notes_sha256": notes, "extractor": MODELS["extractor"], "judge": MODELS["judge"],
+            "models": {"extractor": _model_info(MODELS["extractor"]), "judge": _model_info(MODELS["judge"])},
+            "gateway": {"endpoint": GW.BASE_URL}, "embedding": _embed_identity(GW.BASE_URL), "threshold": THRESHOLD, "prompts": prompts}
+
+
+_EMBED_ID: dict[str, dict] = {}
+
+
+def _embed_identity(endpoint: str) -> dict:
+    """Embedding model name + endpoint, plus the gateway's model digest when /v1/models exposes one (else digest None)."""
+    if endpoint in _EMBED_ID and _EMBED_ID[endpoint].get("digest") is not None:
+        return _EMBED_ID[endpoint]
+    ident = {"name": EMBED_MODEL, "endpoint": endpoint, "digest": None}
+    key = os.environ.get("LLM_GATEWAY_API_KEY")
+    if key:
+        try:
+            import urllib.request
+            from .gateway import _ssl_ctx
+            req = urllib.request.Request(f"{endpoint}/models", headers={"Authorization": f"Bearer {key}", "User-Agent": "fingerprint-eval/1.0 (curl-compatible)"})
+            with urllib.request.urlopen(req, timeout=5, context=_ssl_ctx()) as r:
+                items = json.loads(r.read()).get("data", [])
+            for it in items if isinstance(items, list) else []:
+                if isinstance(it, dict) and it.get("id") in (EMBED_MODEL, EMBED_MODEL.split(":")[0]):
+                    ident["digest"] = next((str(it[k]) for k in ("digest", "version", "sha256", "modified_at", "created") if it.get(k)), None)
+                    break
+        except Exception:  # noqa: BLE001  digest is best-effort; name + endpoint still bind the key
+            pass
+    _EMBED_ID[endpoint] = ident
+    return ident
 
 
 def _cached(package: Path, binding: Binding, ref_sha: str | None, extra: dict) -> tuple[Path, EvalRecord] | None:
