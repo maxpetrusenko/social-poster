@@ -53,6 +53,7 @@ class Segment:
     propositions: list[dict] = field(default_factory=list)
     output: str = ""
     role: str = ""
+    nonfactual: list[int] = field(default_factory=list)  # 1-based sentence ids the extractor confirmed carry no factual claim
 
     @property
     def text(self) -> str:

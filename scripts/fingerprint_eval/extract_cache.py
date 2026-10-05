@@ -47,7 +47,7 @@ def reference_gaps(seg: Segment) -> list[int]:
     tagged = {i for p in seg.propositions for i in p.get("sentence_ids", []) if isinstance(i, int)}
     claims = [p["claim"] for p in seg.propositions]
     return [i for i, sent in enumerate(segment_sentences(seg), 1)
-            if _is_factual(strip_inline(sent)) and not sentence_covered(strip_inline(sent), claims, i in tagged)]
+            if i not in seg.nonfactual and _is_factual(strip_inline(sent)) and not sentence_covered(strip_inline(sent), claims, i in tagged)]
 
 
 def _cover_reference(prose: list[Segment], extractor_spec: str) -> bool:
@@ -61,7 +61,15 @@ def _cover_reference(prose: list[Segment], extractor_spec: str) -> bool:
         sents = segment_sentences(s)
         try:
             _, props = request_extraction([sents[i - 1] for i in gaps], s.section, extractor_spec)
-        except (GatewayError, ValueError) as e:
+        except GatewayError as e:
+            if "empty propositions" not in str(e):
+                raise EvaluationError(f"re-extraction of {len(gaps)} uncovered reference sentence(s) failed in segment {s.idx}: {str(e)[:200]}", category=getattr(e, "category", Category.MALFORMED_MODEL_OUTPUT), dependency=getattr(e, "dependency", None)) from None
+            # the extractor, asked about exactly these sentences, found no factual claim in them (rhetoric: "Here is the part that
+            # keeps the picture honest."). Recorded in the cache, not skipped silently; claimcheck still fails their removal.
+            s.nonfactual = sorted(set(s.nonfactual) | set(gaps))
+            changed = True
+            continue
+        except ValueError as e:
             raise EvaluationError(f"re-extraction of {len(gaps)} uncovered reference sentence(s) failed in segment {s.idx}: {str(e)[:200]}", category=getattr(e, "category", Category.MALFORMED_MODEL_OUTPUT), dependency=getattr(e, "dependency", None)) from None
         for p in props:
             p["sentence_ids"] = [gaps[i - 1] for i in p["sentence_ids"]]
@@ -83,6 +91,7 @@ def ensure_extraction(segs: list[Segment], md: str, extractor_spec: str, cache: 
         for s in prose:
             e = entries[str(s.idx)]
             s.role = str(e.get("role", ""))
+            s.nonfactual = [i for i in e.get("nonfactual", []) if isinstance(i, int) and not isinstance(i, bool)]
             s.propositions = [q for q in e.get("propositions", []) if isinstance(q, dict) and isinstance(q.get("claim"), str) and not is_meta_claim(q["claim"])]
         source = "cache"
     else:
@@ -97,7 +106,7 @@ def ensure_extraction(segs: list[Segment], md: str, extractor_spec: str, cache: 
         raise EvaluationError(f"prose segments with zero claims: {empty}", category=Category.MALFORMED_MODEL_OUTPUT)
     if _cover_reference(prose, extractor_spec) or source == "extracted":
         body = {"schema_version": SCHEMA_VERSION, "source_sha256": sha256(md), "extractor": ext,
-                "segments": {str(s.idx): {"hash": segment_hash(s), "section": s.section, "role": s.role, "propositions": s.propositions} for s in prose}}
+                "segments": {str(s.idx): {"hash": segment_hash(s), "section": s.section, "role": s.role, "propositions": s.propositions, "nonfactual": s.nonfactual} for s in prose}}
         try:
             cache.write_text(json.dumps(body, indent=1, ensure_ascii=False))
         except OSError as e:
