@@ -195,8 +195,30 @@ def pipeline_corpus_sha256(articles_dir: Path) -> str:
         return "unavailable"
 
 
+def reference_hashes(ctx: PackageCtx) -> tuple[str, str]:
+    """(reference_sha256, reference_record_sha256) recomputed from the package as it is now; "" when absent/unreadable."""
+    ref = ctx.reference_path
+    if ref is None:
+        return "", ""
+    try:
+        ref_sha = sha256_file(ref)
+    except OSError:
+        return "", ""
+    rec_rel = reference_binding(ctx.package, ref)
+    try:
+        return ref_sha, sha256_file(ctx.package / rec_rel) if rec_rel else ""
+    except OSError:
+        return ref_sha, ""
+
+
+def make_binding(ctx: PackageCtx, content_sha256: str, ev: EvaluatorVersion) -> Binding:
+    ref_sha, ref_rec = reference_hashes(ctx)
+    return Binding(content_sha256=content_sha256, evaluator_id=ev.id, author_corpus_sha256=corpus_sha256(), evaluator_tree_sha256=ev.tree_sha256,
+                   reference_sha256=ref_sha, reference_record_sha256=ref_rec)
+
+
 def current_binding(ctx: PackageCtx, candidate: Path) -> Binding:
-    return Binding(content_sha256=sha256_file(candidate), evaluator_id=evaluator_version().id, author_corpus_sha256=corpus_sha256())
+    return make_binding(ctx, sha256_file(candidate), evaluator_version())
 
 
 # ---- the gate ----------------------------------------------------------------------------------------------------
@@ -305,10 +327,10 @@ def evaluate_package(ctx: PackageCtx, candidate: Path) -> EvalRecord:
         early = None
     try:
         ev = evaluator_version()
-        binding = Binding(content, ev.id, corpus_sha256())
+        binding = make_binding(ctx, content, ev)
         tree_sha = ev.tree_sha256
     except Exception as e:  # noqa: BLE001
-        binding, tree_sha = Binding(content, "unknown", "unknown"), "unknown"
+        binding, tree_sha = Binding(content, "unknown", "unknown", "unknown"), "unknown"
         early = early or _error_gate(Category.DEPENDENCY_FAILURE, f"cannot establish evaluator/corpus identity: {e}")
     ledger_ok = True
     try:
@@ -337,7 +359,16 @@ def evaluate_package(ctx: PackageCtx, candidate: Path) -> EvalRecord:
             gate = early
         else:
             gate, raw_rel = _run_gate(ctx, candidate, ref, ts, content)
+        raw_sha = None
+        if raw_rel:
+            try:
+                raw_sha = sha256_file(pkg / raw_rel)
+            except OSError:
+                raw_rel = ""
+        if not raw_rel and early is None and gate.get("result") == Result.PASS.value:  # a PASS must be backed by a persisted raw report
+            gate = _error_gate(Category.UNKNOWN_ERROR, "cannot persist the raw gate report: a PASS without it is not authorizable")
         rec = _build_record(ctx, binding, tree_sha, ref_sha, gate, ts, round(time.monotonic() - t0, 3), raw_rel)
+        rec = dataclasses.replace(rec, raw_report_sha256=raw_sha)
         try:
             path = R.write_record(pkg, rec)
         except (OSError, R.RecordError) as e:

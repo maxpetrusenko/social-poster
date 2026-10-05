@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from .contracts import LEDGER, RELEASE_ARTICLE, RUNS_DIR, Binding, LedgerEvent, LedgerState, PackageCtx, Result
-from .record import RecordError, jsonable, list_records, load_authorization, load_record, now_utc
+from .record import RecordError, check_raw_report, jsonable, list_records, load_authorization, load_record, load_record_in, now_utc
 
 
 def append(package: Path, state: LedgerState, content_sha256: str, evaluator_id: str, detail: dict | None = None) -> LedgerEvent:
@@ -73,7 +73,7 @@ def reconstruct(ctx: PackageCtx, current: Binding | None, evaluator_dirty: bool 
         return st
     st.content_sha256 = cur_sha
     st.requested = any(e.state is LedgerState.GATE_REQUESTED and e.content_sha256 == cur_sha for e in read(pkg))
-    files = sorted((pkg / RUNS_DIR).glob(f"*-{cur_sha[:12]}.json"))
+    files = sorted(p for p in (pkg / RUNS_DIR).glob(f"*-{cur_sha[:12]}.json") if not p.is_symlink())
     st.executed = bool(files)
     if not files:
         st.reasons.append("no evaluation record for the current content")
@@ -112,7 +112,8 @@ def reconstruct(ctx: PackageCtx, current: Binding | None, evaluator_dirty: bool 
         st.reasons.append("evaluator tree is dirty")
     else:
         try:
-            arec = load_record(pkg / auth.record_path)
+            arec = load_record_in(pkg, auth.record_path)
+            check_raw_report(pkg, arec)
             rel = _sha((pkg / RELEASE_ARTICLE).read_bytes())
             ok = (arec.result is Result.PASS and arec.binding == auth.binding == current and rel == cur_sha == auth.release_article_sha256)
             st.authorized = ok
