@@ -186,6 +186,8 @@ def check_authorization(pkg: Path) -> tuple[bool, str]:
         return False, f"release/medium-final.md sha256 {actual[:12]} != authorization content hash {auth.binding.content_sha256[:12]}"
     if rec.binding.content_sha256 != actual:
         return False, "authorization record is for different release bytes"
+    if rec.binding != auth.binding:
+        return False, "authorization record binding != authorization binding"
     return True, "ok"
 
 

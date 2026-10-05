@@ -98,9 +98,13 @@ EXTRACT_PROMPT = """/no_think
 Extract the atomic factual propositions from the passage below. One proposition = one self-contained claim, in plain neutral words (do not copy the passage's phrasing; keep names, numbers, units, and causal direction exact). Keep the order of the passage.
 Skip statements about the passage or article itself (transitions such as "the passage moves on", "this section explains"). Extract only claims about the world, people, studies, events, or the author's stated opinions.
 If a claim came from a sentence containing a markdown link, copy that link into the proposition's "links" list exactly as written.
-Return ONLY JSON: {{"role": "<what this passage does, max 8 words>", "propositions": [{{"claim": "...", "links": []}}]}}
+Every proposition carries "sentence_ids": the numbers of the numbered sentences below it was drawn from. Every factual sentence must be the source of at least one proposition.
+Return ONLY JSON: {{"role": "<what this passage does, max 8 words>", "propositions": [{{"claim": "...", "links": [], "sentence_ids": [1]}}]}}
 
 Section: {section}
+Numbered sentences:
+{numbered}
+
 Passage:
 {text}
 """
@@ -116,25 +120,55 @@ def is_meta_claim(claim: str) -> bool:
     return bool(META_CLAIM_RE.match(claim))
 
 
-def extract_propositions(seg: Segment, model: str = EXTRACTOR) -> None:
+def segment_sentences(seg: Segment) -> list[str]:
+    """The numbered sentences of a prose segment (raw markdown, so links survive); ids in sentence_ids are 1-based into this list."""
+    return [s for b in seg.blocks for s in split_sentences(b.text.replace("\n", " "))]
+
+
+def numbered(sentences: list[str]) -> str:
+    return "\n".join(f"[{i}] {s}" for i, s in enumerate(sentences, 1))
+
+
+def parse_extraction(data, n_sentences: int) -> tuple[str, list[dict]]:
+    """Strict: propositions is a list; sentence_ids, when present, is a list of in-range ints (bool rejected). Meta claims dropped."""
+    if not isinstance(data, dict) or not isinstance(data.get("propositions", []), list):
+        raise GatewayError("propositions is not a list")
+    props = []
+    for p in data.get("propositions", []):
+        if not isinstance(p, dict) or not p.get("claim") or is_meta_claim(str(p["claim"])):
+            continue
+        ids = p.get("sentence_ids", [])
+        if not isinstance(ids, list) or any(isinstance(i, bool) or not isinstance(i, int) or not 1 <= i <= n_sentences for i in ids):
+            raise GatewayError(f"bad sentence_ids {str(ids)[:60]}")
+        props.append({"claim": str(p["claim"]).strip(), "links": [l for l in p.get("links", []) if isinstance(l, str)], "sentence_ids": sorted(set(ids))})
+    if not props:
+        raise GatewayError("empty propositions")
+    return str(data.get("role", ""))[:80], props
+
+
+def request_extraction(sentences: list[str], section: str, model: str = EXTRACTOR, text: str | None = None) -> tuple[str, list[dict]]:
+    """One extraction call (two attempts) over the given numbered sentences. Raises GatewayError with a category."""
     from .gateway import resolve_model
     m = resolve_model(model)
     last: Exception | None = None
+    prompt = EXTRACT_PROMPT.format(section=section or "(intro)", numbered=numbered(sentences), text=text if text is not None else " ".join(sentences))
     for _ in range(2):
         try:
-            data = extract_json(m.complete(EXTRACT_PROMPT.format(section=seg.section or "(intro)", text=seg.text), **({"temperature": 0.1, "max_tokens": 6000} if m.backend == "gateway" else {})))
-            props = [p for p in data.get("propositions", []) if isinstance(p, dict) and p.get("claim") and not is_meta_claim(str(p["claim"]))]
-            if not props:
-                raise GatewayError("empty propositions")
-            seg.role = str(data.get("role", ""))[:80]
-            seg.propositions = [{"claim": str(p["claim"]).strip(), "links": [l for l in p.get("links", []) if isinstance(l, str)]} for p in props]
-            _attach_missing_links(seg)
-            return
+            return parse_extraction(extract_json(m.complete(prompt, **({"temperature": 0.1, "max_tokens": 6000} if m.backend == "gateway" else {}))), len(sentences))
         except (GatewayError, AttributeError, TypeError) as e:
             last = e
     from .contracts import Category
     cat = getattr(last, "category", Category.UNKNOWN_ERROR)
-    raise GatewayError(f"extraction failed for segment {seg.idx}: {last}", Category.MALFORMED_MODEL_OUTPUT if cat is Category.UNKNOWN_ERROR else cat, getattr(last, "dependency", None))
+    raise GatewayError(f"extraction failed: {last}", Category.MALFORMED_MODEL_OUTPUT if cat is Category.UNKNOWN_ERROR else cat, getattr(last, "dependency", None))
+
+
+def extract_propositions(seg: Segment, model: str = EXTRACTOR) -> None:
+    try:
+        role, props = request_extraction(segment_sentences(seg), seg.section, model, seg.text)
+    except GatewayError as e:
+        raise GatewayError(f"extraction failed for segment {seg.idx}: {e}", getattr(e, "category", None), getattr(e, "dependency", None)) from None
+    seg.role, seg.propositions = role, props
+    _attach_missing_links(seg)
 
 
 def _attach_missing_links(seg: Segment) -> None:

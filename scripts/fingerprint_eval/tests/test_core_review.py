@@ -83,8 +83,11 @@ class AddedSentences(unittest.TestCase):
         for s in ("It cost 40 dollars.", "It's Boeing's design.", "It did not fail.", "Nobody objected.", "They never agreed."):
             self.assertIn(s, self.new(self.REF + " " + s), s)
 
-    def test_plain_short_fragments_still_ignored(self):
-        self.assertEqual(self.new(self.REF + " Notice, decide, and remember."), [])
+    def test_short_fragments_are_stylistic_only_when_every_token_is_in_the_reference_section(self):
+        self.assertEqual(self.new(self.REF + " Crew inspected."), [])  # all content tokens occur in the section
+        self.assertEqual(self.new(self.REF + " ..."), [])  # no content token
+        self.assertEqual(self.new(self.REF + " Notice, decide, and remember."), ["Notice, decide, and remember."])
+        self.assertEqual(self.new(self.REF + " They won."), ["They won."])
 
     def test_fuzzy_match_with_changed_number_negation_or_entity_is_new(self):
         for old, new in (("forty days", "fourteen days"), ("for forty days", "for 40 days"), ("ran for forty days without", "did not run for forty days without"),

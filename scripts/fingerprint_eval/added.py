@@ -13,11 +13,11 @@ from .contracts import Category
 from .errors import EvaluationError
 from .gateway import GatewayError, extract_json, resolve_model
 from .judge import _FENCE
-from .rewrite import EXTRACT_PROMPT, Segment, is_meta_claim, segment_article
+from .rewrite import Segment, is_meta_claim, request_extraction, segment_article
 from .textutil import Block, split_sentences, strip_inline, words
 
 JACCARD = 0.8
-MIN_WORDS = 5  # fragments are not claims (same cut as the extractor); shorter sentences are skipped unless they carry a number, a proper noun or a negation
+MIN_WORDS = 5  # `is_factual` cut for reference coverage; new sentences are all checked (short ones through `_stylistic_echo` first)
 MAX_NOTES_CHARS = 60000
 SUPPORT_VERDICTS = ("supported", "unsupported")
 
@@ -84,20 +84,33 @@ def _ref_sentences(md: str) -> list[tuple[set, tuple]]:
     return out
 
 
+def _stylistic_echo(sentence: str, ref_tokens: set[str]) -> bool:
+    """Short non-factual sentences (punctuation, interjections, 'They won.'): stylistic only if they carry no content token or
+    every content token already occurs in the same reference section. Anything else goes to the model."""
+    toks = _content_tokens(sentence)
+    return not toks or toks <= ref_tokens
+
+
 def new_sentences(draft_md: str, final_md: str) -> dict[str, list[str]]:
     """{section: [sentence, ...]} for final prose sentences with no fuzzy counterpart anywhere in the reference.
-    A counterpart needs word overlap >= JACCARD AND identical numbers, negations and named entities."""
+    A counterpart needs word overlap >= JACCARD AND identical numbers, negations and named entities. No length exemption:
+    sentences that are short and carry no number, proper noun or negation are skipped only when `_stylistic_echo`."""
     ref = _ref_sentences(draft_md)
     out: dict[str, list[str]] = {}
+    sec_tokens: dict[str, set[str]] = {}
     for seg in segment_article(final_md):
         if seg.frozen:
             continue  # frozen blocks are compared byte-exact elsewhere
         for s in split_sentences(strip_inline(seg.text).replace("\n", " ")):
-            if not _is_factual(s):
-                continue
             ws, sig = set(words(s)), _signature(s)
-            if not any(_jacc(ws, r) >= JACCARD and sig == rsig for r, rsig in ref):
-                out.setdefault(seg.section, []).append(s)
+            if any(_jacc(ws, r) >= JACCARD and sig == rsig for r, rsig in ref):
+                continue
+            if not _is_factual(s):
+                if seg.section not in sec_tokens:
+                    sec_tokens[seg.section] = _content_tokens(strip_inline(_reference_section(draft_md, seg.section)))
+                if _stylistic_echo(s, sec_tokens[seg.section]):
+                    continue
+            out.setdefault(seg.section, []).append(s)
     return out
 
 
@@ -147,35 +160,31 @@ def _content_tokens(text: str) -> set[str]:
     return {t for t in re.findall(r"[a-z0-9]+", text.lower().replace("\u2019", "'")) if t not in _CLAIM_STOP}
 
 
-def uncovered_sentences(sentences: list[str], claims: list[str]) -> list[str]:
-    """New factual sentences with no extracted claim that overlaps them (>= COVER of the smaller token set)."""
-    ctoks = [_content_tokens(c) for c in claims]
-    out = []
-    for s in sentences:
-        st = _content_tokens(s)
-        if not st or not any(c and len(st & c) / min(len(st), len(c)) >= COVER for c in ctoks):
-            out.append(s)
-    return out
+def sentence_covered(sentence: str, claims: list[str], tagged: bool = False) -> bool:
+    """Sentence-side coverage: the extractor tagged it, or >= COVER of the sentence's content tokens occur in ONE claim
+    (so a one-token claim cannot cover a long sentence)."""
+    if tagged:
+        return True
+    st = _content_tokens(sentence)
+    return bool(st) and any(len(st & _content_tokens(c)) / len(st) >= COVER for c in claims)
 
 
-def _extract_claims(sentences: list[str], section: str, extractor_spec: str) -> list[str]:
-    m = resolve_model(extractor_spec)
-    prompt = EXTRACT_PROMPT.format(section=section or "(intro)", text=" ".join(sentences))
-    last: Exception | None = None
-    for _ in range(2):
-        try:
-            data = extract_json(_call(m, prompt, "extract"))
-            props = data.get("propositions", [])
-            if not isinstance(props, list):
-                raise ValueError("propositions is not a list")
-            if not props:  # new factual sentences exist: an empty extraction is a failed extraction, never a pass
-                raise ValueError("extractor returned no propositions for non-empty new factual sentences")
-            return [str(p["claim"]).strip() for p in props if isinstance(p, dict) and p.get("claim") and not is_meta_claim(str(p["claim"]))]
-        except GatewayError as e:
-            last, cat = e, _gateway_cat(m)
-        except (ValueError, AttributeError, TypeError) as e:
-            last, cat = e, Category.MALFORMED_MODEL_OUTPUT
-    raise _fail(f"added-claim extraction failed for section {section!r}: {str(last)[:200]}", cat)
+def uncovered_sentences(sentences: list[str], claims: list[str], tagged_ids: set[int] | frozenset = frozenset()) -> list[str]:
+    """Sentences (ids are 1-based into `sentences`) with no tagging proposition and no claim covering >= COVER of their tokens."""
+    return [s for i, s in enumerate(sentences, 1) if not sentence_covered(s, claims, i in tagged_ids)]
+
+
+def _extract_claims(sentences: list[str], section: str, extractor_spec: str) -> tuple[list[str], set[int]]:
+    """(claims, tagged sentence ids). Extraction runs over the new sentences only."""
+    try:
+        _, props = request_extraction(sentences, section, extractor_spec)
+    except GatewayError as e:
+        if "empty propositions" in str(e):
+            raise _fail(f"added-claim extraction returned no factual claims for {len(sentences)} new sentence(s) in section {section!r}", Category.MALFORMED_MODEL_OUTPUT) from None
+        raise _fail(f"added-claim extraction failed for section {section!r}: {str(e)[:200]}", e.category) from None
+    claims = [p["claim"] for p in props]
+    tagged = {i for p in props for i in p.get("sentence_ids", [])}
+    return claims, tagged
 
 
 def check_added(draft_md: str, final_md: str, notes: str | None, extractor_spec: str, judge_spec: str) -> dict:
@@ -187,12 +196,12 @@ def check_added(draft_md: str, final_md: str, notes: str | None, extractor_spec:
     judge = resolve_model(judge_spec)
     notes_txt = (notes or "")[:MAX_NOTES_CHARS]
     for section, sents in new.items():
-        claims = _extract_claims(sents, section, extractor_spec)
+        claims, tagged = _extract_claims(sents, section, extractor_spec)
         if not claims:  # new factual sentences exist: an empty post-filter extraction is a failed extraction, never a pass
-            raise _fail(f"added-claim extraction returned no factual claims for {len(sents)} new factual sentence(s) in section {section!r}", Category.MALFORMED_MODEL_OUTPUT)
-        gaps = uncovered_sentences(sents, claims)
-        if gaps:  # sentence-to-claim coverage: every new factual sentence maps to >= 1 claim
-            raise _fail(f"added-claim extraction left {len(gaps)} new factual sentence(s) without a claim in section {section!r}: {gaps[0][:100]!r}", Category.MALFORMED_MODEL_OUTPUT)
+            raise _fail(f"added-claim extraction returned no factual claims for {len(sents)} new sentence(s) in section {section!r}", Category.MALFORMED_MODEL_OUTPUT)
+        gaps = uncovered_sentences(sents, claims, tagged)
+        if gaps:  # sentence-to-claim coverage: every new sentence maps to >= 1 claim
+            raise _fail(f"added-claim extraction left {len(gaps)} new sentence(s) without a claim in section {section!r}: {gaps[0][:100]!r}", Category.MALFORMED_MODEL_OUTPUT)
         ref = _reference_section(draft_md, section)
         parts = [p for p in (ref and f"Reference section:\n{ref}", notes_txt and f"Source notes:\n{notes_txt}") if p]
         material = "\n\n".join(parts) or "(none: there is no reference text and no source notes for this section)"
