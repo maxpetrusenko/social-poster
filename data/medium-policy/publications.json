@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "version": "0.0.0",
+  "schema": {
+    "name": "string, the publication's name",
+    "url": "string, the publication's Medium URL",
+    "topics": "non-empty list of lowercase topic tags matched against the article's tags",
+    "submission_url": "string, where writers submit (from the official guidelines)",
+    "editorial_review": "must be true: a human editor reviews submissions",
+    "accepts_ai_assisted_with_disclosure": "true | false | \"unknown\" (false entries are never offered; unknown entries are flagged)",
+    "source_url": "string, the official submission guidelines page the entry was verified against",
+    "verified_at": "ISO date a human verified the entry against source_url"
+  },
+  "publications": []
+}
