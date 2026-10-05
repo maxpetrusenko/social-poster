@@ -266,3 +266,56 @@ def core_markdown(md: str) -> str:
         if not skip:
             out.append(b)
     return render_blocks(out)
+
+
+PIPELINE_CORPUS_ENV = "FINGERPRINT_PIPELINE_CORPUS"
+DEFAULT_PIPELINE_CORPUS = Path(".cache/fingerprint-eval/pipeline")
+
+
+def resolve_pipeline_corpus(environ=None, repo: Path | None = None) -> Path | None:
+    """The advisory pipeline-comparison corpus: env FINGERPRINT_PIPELINE_CORPUS, else <repo>/.cache/fingerprint-eval/pipeline when
+    it exists, else None (the advisory comparison is skipped). Never derived from a package path: a package's parent can be an
+    arbitrary directory (a Desktop) that takes minutes to scan."""
+    import os
+    environ = os.environ if environ is None else environ
+    repo = repo or Path(__file__).resolve().parents[2]
+    configured = (environ.get(PIPELINE_CORPUS_ENV) or "").strip()
+    for cand in ([Path(configured).expanduser()] if configured else []) + [repo / DEFAULT_PIPELINE_CORPUS]:
+        if cand.is_dir():
+            return cand
+    return None
+
+
+DEFAULT_MAX_PARALLEL = 4
+
+
+def max_parallel(environ=None) -> int:
+    """FG_MAX_PARALLEL (default 4), clamped to 1..16; an unparsable value falls back to the default."""
+    import os
+    environ = os.environ if environ is None else environ
+    try:
+        return max(1, min(16, int(environ.get("FG_MAX_PARALLEL", DEFAULT_MAX_PARALLEL))))
+    except (TypeError, ValueError):
+        return DEFAULT_MAX_PARALLEL
+
+
+def parallel_map(fn, items: list, workers: int | None = None) -> list:
+    """[fn(x) for x in items] on a bounded thread pool. Results keep the input order. If any call raises, every call is still
+    awaited (no orphan threads) and the exception of the EARLIEST failing item is re-raised, so a failure is deterministic and the
+    caller stays fail-closed."""
+    items = list(items)
+    n = min(workers or max_parallel(), len(items))
+    if n <= 1:
+        return [fn(x) for x in items]
+    from concurrent.futures import ThreadPoolExecutor
+    with ThreadPoolExecutor(max_workers=n) as pool:
+        futures = [pool.submit(fn, x) for x in items]
+        out, first = [], None
+        for f in futures:
+            try:
+                out.append(f.result())
+            except BaseException as e:  # noqa: BLE001  re-raised below
+                first = first or e
+        if first is not None:
+            raise first
+    return out

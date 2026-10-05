@@ -9,8 +9,16 @@ from .refs import find_refs, lost
 from .textutil import Block, parse_blocks, strip_inline
 
 
+EMBED_BATCH = 64  # max texts per embeddings request
+
+
 def _embed(texts: list[str]) -> list[list[float]]:
-    return validate_embeddings(embed(texts), len(texts))  # re-validated here: count, dims, finite
+    """One request per EMBED_BATCH texts (not one per sentence/section), order preserved; every vector re-validated here."""
+    vecs: list[list[float]] = []
+    for i in range(0, len(texts), EMBED_BATCH):
+        part = texts[i:i + EMBED_BATCH]
+        vecs += validate_embeddings(embed(part), len(part))
+    return validate_embeddings(vecs, len(texts)) if texts else vecs
 
 
 def _cos(a: list[float], b: list[float]) -> float:
@@ -63,20 +71,28 @@ def semantic_similarity(original: str, rewrite: str) -> dict:
     """nomic-embed-text cosine: whole document (mean-pooled chunks) and per section. Sections present on only one side
     still count toward the whole-document score (dropped original sections and added rewrite sections both pull it down)."""
     so, sr = dict(sections(original)), dict(sections(rewrite))
+    extra = [h for h in sr if h not in so]
+    # every chunk of the document pair goes out in as few requests as possible (<= EMBED_BATCH texts each), then is sliced back
+    plan: list[tuple[str, str, list[str]]] = [("o", h, _chunks(t)) for h, t in so.items()]
+    plan += [("r", h, _chunks(sr[h])) for h in so if h in sr] + [("r", h, _chunks(sr[h])) for h in extra]
+    flat = _embed([c for _, _, cs in plan for c in cs])
+    vecs: dict[tuple[str, str], list[list[float]]] = {}
+    pos = 0
+    for side, h, cs in plan:
+        vecs[(side, h)] = flat[pos:pos + len(cs)]
+        pos += len(cs)
     per: dict[str, float] = {}
     all_o, all_r = [], []
-    for h, t in so.items():
-        co = _embed(_chunks(t))
+    for h in so:
+        co = vecs[("o", h)]
         all_o += co
         if h not in sr:
             per[h] = 0.0
             continue
-        cr = _embed(_chunks(sr[h]))
-        per[h] = _cos(_mean(co), _mean(cr))
-        all_r += cr
-    extra = [h for h in sr if h not in so]
+        per[h] = _cos(_mean(co), _mean(vecs[("r", h)]))
+        all_r += vecs[("r", h)]
     for h in extra:
-        all_r += _embed(_chunks(sr[h]))
+        all_r += vecs[("r", h)]
     whole = _cos(_mean(all_o), _mean(all_r)) if all_o and all_r else 0.0
     vals = list(per.values())
     return {"whole": whole, "section_mean": sum(vals) / max(len(vals), 1), "section_min": min(vals) if vals else 0.0, "per_section": per,

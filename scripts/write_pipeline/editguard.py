@@ -15,6 +15,7 @@ from typing import Callable
 from scripts.fingerprint_eval.contracts import AUTHOR_CORPUS_DIR
 from scripts.fingerprint_eval.guards import frozen_diff, structure_preservation
 from scripts.fingerprint_eval.gateway import child_env, claude_env
+from scripts.fingerprint_eval.textutil import resolve_pipeline_corpus
 
 from . import mdlib as M
 
@@ -27,7 +28,7 @@ CLAIM_CATS = {"CONTENT_CLAIM_FAILURE", "ADDED_UNSUPPORTED_CLAIM"}
 # Non-secret configuration only for every child. The Doppler tokens and every other API key are never passed, and claude -p
 # children get subscription auth through claude_env(). Only the evaluator/gate children (fingerprint_eval run and release) also
 # receive LLM_GATEWAY_API_KEY: non-identity claims gates call the gateway judge and would block without it.
-RUNNER_CONFIG_KEYS = ("LLM_GATEWAY_URL", "SSL_CERT_FILE", "FINGERPRINT_EVAL_KEY_FILE", "FG_JUDGE", "FG_EXTRACTOR")
+RUNNER_CONFIG_KEYS = ("FINGERPRINT_PIPELINE_CORPUS", "FG_MAX_PARALLEL", "LLM_GATEWAY_URL", "SSL_CERT_FILE", "FINGERPRINT_EVAL_KEY_FILE", "FG_JUDGE", "FG_EXTRACTOR")
 GATE_ENV_KEYS = ("LLM_GATEWAY_API_KEY", "LLM_GATEWAY_URL")
 GATE_MODULES = ("scripts.fingerprint_eval.run", "scripts.fingerprint_eval.release")
 
@@ -121,9 +122,14 @@ def edit_guard(ref: str, cand: str, *, known_urls: set[str], blob_numbers: Count
     return {"ok": not reasons, "reasons": reasons, "categories": sorted(set(cats))}
 
 
-def gate_argv(article: Path, draft: Path, out: Path, package: Path) -> list[str]:
-    return [sys.executable, "-m", "scripts.fingerprint_eval.run", "--gate", "--article", str(article), "--draft", str(draft),
-            "--author-corpus", str(REPO / AUTHOR_CORPUS_DIR), "--pipeline-corpus", str(package.parent), "--out", str(out)]
+def gate_argv(article: Path, draft: Path, out: Path, package: Path, environ=None) -> list[str]:
+    """The pipeline corpus is configured (env FINGERPRINT_PIPELINE_CORPUS or <repo>/.cache/fingerprint-eval/pipeline), never the
+    package's parent: that can be a whole Desktop and scanning it timed the gate out. No corpus: the flag is omitted and the gate
+    skips its advisory pipeline comparison (advisory_errors "pipeline corpus unavailable")."""
+    argv = [sys.executable, "-m", "scripts.fingerprint_eval.run", "--gate", "--article", str(article), "--draft", str(draft),
+            "--author-corpus", str(REPO / AUTHOR_CORPUS_DIR), "--out", str(out)]
+    corpus = resolve_pipeline_corpus(environ, REPO)
+    return argv + ["--pipeline-corpus", str(corpus)] if corpus else argv
 
 
 def claims_gate(runner: Runner, article: Path, draft: Path, out: Path, package: Path) -> dict:
