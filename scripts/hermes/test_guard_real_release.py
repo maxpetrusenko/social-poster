@@ -16,6 +16,7 @@ REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import medium_publish_guard as g  # noqa: E402
+from guard_testutil import install_fake_guard  # noqa: E402
 from scripts.fingerprint_eval import release  # noqa: E402
 from scripts.fingerprint_eval.tests.fakes import ARTICLE, Fakes  # noqa: E402
 
@@ -34,8 +35,8 @@ def world(tmp_path, monkeypatch):
     with Fakes():
         rc = release.authorize(pkg, out=lambda *a: None)
     assert rc == 0, "authorize must PASS with stubbed models"
-    env = {"FINGERPRINT_EVAL_WORKSPACE": str(ws), "MEDIUM_GUARD_STATE": str(tmp_path / "state.json"),
-           "MEDIUM_GUARD_REPO": str(REPO)}
+    env = {"FINGERPRINT_EVAL_WORKSPACE": str(ws), "MEDIUM_GUARD_REPO": str(REPO),
+           **install_fake_guard(tmp_path)}
     return pkg, env
 
 
@@ -59,8 +60,8 @@ def test_real_verify_gates_navigation_paste_and_click(world):
     assert call(paste, env, lambda e: ("other text " * 10, None, "")) == 2
     assert call(paste, env, clip_ok) == 0          # exact release bytes
     assert call(click, env, clip_ok) == 0          # receipt for this session
-    receipts = (pkg / "release" / "paste-receipts.jsonl").read_text().splitlines()
-    assert len(receipts) == 1 and json.loads(receipts[0])["kind"] == "full"
+    receipts = (Path(env["MEDIUM_GUARD_STATE_DIR"]) / "receipts.jsonl").read_text().splitlines()
+    assert len(receipts) == 1 and json.loads(receipts[0])["rec"]["kind"] == "full"
 
 
 def test_article_changed_after_authorize_blocks_everything(world):

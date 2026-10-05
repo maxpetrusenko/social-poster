@@ -11,6 +11,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import medium_publish_guard as g  # noqa: E402
+from guard_testutil import install_fake_guard  # noqa: E402
 
 BODY = "# Title\n\nA long released paragraph that is definitely longer than forty characters in total.\n"
 
@@ -28,8 +29,7 @@ def env(tmp_path):
     (pkg / "release" / "medium-final.md").write_text(BODY)
     (ws / "release").mkdir()
     (ws / "release" / "ACTIVE.json").write_text(json.dumps({"package": "pkg1"}))
-    return {"MEDIUM_GUARD_WORKSPACE": str(ws), "MEDIUM_GUARD_STATE": str(tmp_path / "state.json"),
-            "MEDIUM_GUARD_REPO": str(tmp_path)}
+    return {"MEDIUM_GUARD_WORKSPACE": str(ws), "MEDIUM_GUARD_REPO": str(tmp_path), **install_fake_guard(tmp_path)}
 
 
 good_clip = lambda env: (BODY, None, "")  # noqa: E731
@@ -69,7 +69,7 @@ READS = {
 
 @pytest.mark.parametrize("name", MUTATIONS)
 def test_mutation_denied_without_active_release(name, tmp_path):
-    env = {"MEDIUM_GUARD_WORKSPACE": str(tmp_path), "MEDIUM_GUARD_STATE": str(tmp_path / "s.json")}
+    env = {"MEDIUM_GUARD_WORKSPACE": str(tmp_path), **install_fake_guard(tmp_path)}
     d = g.decide(MUTATIONS[name], env, ok)
     assert not d.allow and "no active release" in d.reason
 
@@ -100,7 +100,7 @@ def test_click_family_blocked_before_verified_paste_allowed_after(name, env):
 
 @pytest.mark.parametrize("name", READS)
 def test_read_only_allowed_even_without_release(name, tmp_path):
-    env = {"MEDIUM_GUARD_WORKSPACE": str(tmp_path), "MEDIUM_GUARD_STATE": str(tmp_path / "s.json")}
+    env = {"MEDIUM_GUARD_WORKSPACE": str(tmp_path), **install_fake_guard(tmp_path)}
     assert g.decide(READS[name], env, bad).allow
 
 
@@ -180,9 +180,11 @@ def test_guard_crash_denied_for_mutation_like(env, monkeypatch):
     assert run_main(payload("terminal", {"command": "ls"}), env, ok) == 0
 
 
-def test_state_write_failure_does_not_break(env):
-    env["MEDIUM_GUARD_STATE"] = "/proc/nope/x.json"
-    assert g.decide(READS["nav_stats"], env, bad).allow
+def test_state_write_failure_on_clearly_non_medium_nav_passes(env, tmp_path):
+    blocker = tmp_path / "afile"
+    blocker.write_text("x")
+    env["MEDIUM_GUARD_STATE_DIR"] = str(blocker / "state")
+    assert g.decide(READS["nav_other"], env, bad).allow
 
 
 # ---- clipboard / receipts ---------------------------------------------------------------------------
@@ -194,8 +196,8 @@ def paste(keys="cmd+v", session="s1"):
 
 
 def receipts(env):
-    p = Path(env["MEDIUM_GUARD_WORKSPACE"]) / "articles" / "pkg1" / "release" / "paste-receipts.jsonl"
-    return [json.loads(x) for x in p.read_text().splitlines()] if p.exists() else []
+    p = Path(env["MEDIUM_GUARD_STATE_DIR"]) / "receipts.jsonl"
+    return [json.loads(x)["rec"] for x in p.read_text().splitlines()] if p.exists() else []
 
 
 @pytest.mark.parametrize("keys", PASTE_KEYS)

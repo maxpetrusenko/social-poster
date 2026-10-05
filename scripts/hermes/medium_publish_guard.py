@@ -21,9 +21,17 @@ Tool surfaces covered (see docs/hermes-medium-release.md for the evidence):
     Medium page are mutations.
   * terminal / execute_code: Medium URLs combined with write verbs, browse-CLI input verbs on a Medium
     page, osascript / cliclick / cua-driver / peekaboo input.
+
+Hardening (see docs/hermes-medium-release.md, "Tamper resistance"): the guard fails closed (any error on a
+mutation or possible mutation blocks, only clearly read-only calls pass on an error), runs from a pinned
+copy under ~/.hermes/guards with a sha256 manifest it checks against itself, and keeps url memory and
+paste receipts in ~/.hermes/guards/state signed with an HMAC key. Best effort against file-edit tampering
+by the same OS user; NOT a defence against a determined same-user process (it can read the key).
 """
 from __future__ import annotations
 
+import hashlib
+import hmac
 import json
 import os
 import re
@@ -109,38 +117,149 @@ def _strings(obj: Any) -> list[str]:
     return out
 
 
-def state_path(env: dict[str, str]) -> Path:
-    home = Path(env.get("HERMES_HOME") or Path.home() / ".hermes")
-    return Path(env.get("MEDIUM_GUARD_STATE") or home / "cache" / "medium-guard-state.json")
+class StateError(Exception):
+    """Guard state, key, manifest or receipt store is unreadable, unwritable or tampered with."""
+
+
+def guard_dir(env: dict[str, str]) -> Path:
+    return Path(env.get("MEDIUM_GUARD_DIR") or Path.home() / ".hermes" / "guards")
+
+
+def state_dir(env: dict[str, str]) -> Path:
+    return Path(env.get("MEDIUM_GUARD_STATE_DIR") or guard_dir(env) / "state")
+
+
+def _canon(obj: Any) -> bytes:
+    return json.dumps(obj, sort_keys=True, separators=(",", ":")).encode("utf-8")
+
+
+def _key(env: dict[str, str]) -> bytes:
+    path = guard_dir(env) / "key"
+    try:
+        raw = path.read_bytes().strip()
+    except OSError as exc:
+        raise StateError(f"cannot read HMAC key {path}: {exc}") from exc
+    if len(raw) < 32:
+        raise StateError(f"HMAC key {path} is too short")
+    return raw
+
+
+def _sign(env: dict[str, str], obj: Any) -> str:
+    return hmac.new(_key(env), _canon(obj), hashlib.sha256).hexdigest()
+
+
+def _verify_sig(env: dict[str, str], obj: Any, sig: Any) -> bool:
+    return isinstance(sig, str) and hmac.compare_digest(_sign(env, obj), sig)
 
 
 def _load_state(env: dict[str, str]) -> dict[str, str]:
+    """Signed url memory. Missing file is an empty state; unreadable, unsigned or tampered raises StateError."""
+    path = state_dir(env) / "url-memory.json"
     try:
-        data = json.loads(state_path(env).read_text())
-        return data if isinstance(data, dict) else {}
-    except (OSError, ValueError):
+        raw = path.read_text(encoding="utf-8")
+    except FileNotFoundError:
         return {}
+    except OSError as exc:
+        raise StateError(f"cannot read {path}: {exc}") from exc
+    try:
+        doc = json.loads(raw)
+        data, sig = doc["data"], doc["sig"]
+        if not isinstance(data, dict):
+            raise ValueError("data is not an object")
+    except (ValueError, KeyError, TypeError) as exc:
+        raise StateError(f"{path} is corrupt or unsigned: {exc}") from exc
+    if not _verify_sig(env, data, sig):
+        raise StateError(f"{path} signature mismatch (tampered)")
+    return data
 
 
 def _remember_url(env: dict[str, str], session: str, url: str) -> None:
-    """Best-effort: last browser URL host per session. Failure never changes a decision for this call."""
+    """Record last browser URL per session in signed state. Raises StateError on ANY failure."""
     try:
-        p = state_path(env)
-        p.parent.mkdir(parents=True, exist_ok=True)
+        p = state_dir(env) / "url-memory.json"
+        p.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
         state = _load_state(env)
         if len(state) > 200:
             state = dict(list(state.items())[-100:])
         state[session or "_"] = url
         fd, tmp = tempfile.mkstemp(dir=str(p.parent), prefix=".mg-")
         with os.fdopen(fd, "w") as fh:
-            json.dump(state, fh)
+            json.dump({"data": state, "sig": _sign(env, state)}, fh)
         os.replace(tmp, p)
-    except OSError:
-        pass
+    except StateError:
+        raise
+    except Exception as exc:  # noqa: BLE001 - every write failure is a guard error
+        raise StateError(f"cannot write guard state: {exc}") from exc
+
+
+def _remember_nav(env: dict[str, str], session: str, url: str) -> None:
+    """Remember a navigation. A write failure only matters if the target could be Medium (or is unparseable);
+    for a clearly non-Medium URL a stale memory can only over-block later, never under-block."""
+    try:
+        _remember_url(env, session, url)
+    except StateError:
+        if _could_be_medium(url):
+            raise
+
+
+def _could_be_medium(url: str) -> bool:
+    try:
+        host = urlparse(url if "//" in url else "https://" + url).hostname
+    except ValueError:
+        return True
+    return (not host) or bool(MEDIUM_HOST_RE.search(host))
 
 
 def _on_medium(env: dict[str, str], session: str) -> bool:
     return _is_medium_url(_load_state(env).get(session or "_", ""))
+
+
+# ---- integrity (guard file, config, key) ----------------------------------------------------------
+def _manifest(env: dict[str, str]) -> dict[str, str]:
+    path = guard_dir(env) / "manifest.sha256"
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except OSError as exc:
+        raise StateError(f"cannot read manifest {path}: {exc}") from exc
+    out: dict[str, str] = {}
+    for ln in lines:
+        parts = ln.split()
+        if len(parts) == 2 and re.fullmatch(r"[0-9a-f]{64}", parts[0]):
+            out[parts[1].lstrip("*")] = parts[0]
+    return out
+
+
+def self_check(env: dict[str, str]) -> tuple[bool, str]:
+    """Verify this file (and config.json, if any) against the manifest, and the key file's permissions."""
+    try:
+        man = _manifest(env)
+        me = Path(__file__).resolve()
+        want = man.get("medium_publish_guard.py")
+        if not want:
+            return False, "manifest has no entry for medium_publish_guard.py"
+        if _sha(me.read_bytes()) != want:
+            return False, "guard file hash does not match the manifest (modified after install)"
+        cfg = guard_dir(env) / "config.json"
+        if cfg.exists() or "config.json" in man:
+            if "config.json" not in man or not cfg.exists() or _sha(cfg.read_bytes()) != man["config.json"]:
+                return False, "config.json does not match the manifest"
+        keyp = guard_dir(env) / "key"
+        if keyp.stat().st_mode & 0o077:
+            return False, f"{keyp} is group/world accessible"
+        _key(env)
+        return True, ""
+    except StateError as exc:
+        return False, str(exc)
+    except Exception as exc:  # noqa: BLE001
+        return False, f"integrity check error ({type(exc).__name__}: {exc})"
+
+
+def _config(env: dict[str, str]) -> dict[str, Any]:
+    try:
+        data = json.loads((guard_dir(env) / "config.json").read_text(encoding="utf-8"))
+        return data if isinstance(data, dict) else {}
+    except (OSError, ValueError):
+        return {}
 
 
 # ---- classify -------------------------------------------------------------------------------------
@@ -165,7 +284,7 @@ def classify(payload: dict[str, Any], env: dict[str, str]) -> tuple[bool, str]:
     if BROWSER_ALL_RE.match(tool):
         if tool in BROWSER_NAV_TOOLS:
             url = str(args.get("url") or "")
-            _remember_url(env, session, url)
+            _remember_nav(env, session, url)
             if _is_medium_write_url(url):
                 return True, f"browser_navigate to Medium write page {url}"
             return False, ""
@@ -195,7 +314,7 @@ def _classify_command(text: str, env: dict[str, str], session: str) -> tuple[boo
         return False, ""
     medium_urls = MEDIUM_URL_RE.findall(text)
     for g in BROWSE_GOTO_RE.finditer(text):
-        _remember_url(env, session, g.group(1))
+        _remember_nav(env, session, g.group(1))
         if _is_medium_write_url(g.group(1)):
             return True, f"browse goto Medium write page {g.group(1)}"
     on_medium = bool(medium_urls) or _on_medium(env, session)
@@ -219,11 +338,11 @@ def _classify_command(text: str, env: dict[str, str], session: str) -> tuple[boo
 # ---- release verify -------------------------------------------------------------------------------
 def workspace(env: dict[str, str]) -> Path:
     return Path(env.get("MEDIUM_GUARD_WORKSPACE") or env.get("FINGERPRINT_EVAL_WORKSPACE")
-                or REPO_ROOT / "data" / "article-workspace")
+                or _config(env).get("workspace") or REPO_ROOT / "data" / "article-workspace")
 
 
 def repo_root(env: dict[str, str]) -> Path:
-    return Path(env.get("MEDIUM_GUARD_REPO") or REPO_ROOT)
+    return Path(env.get("MEDIUM_GUARD_REPO") or _config(env).get("repo") or REPO_ROOT)
 
 
 def find_uv(env: dict[str, str]) -> str:
@@ -267,17 +386,19 @@ def run_verify(package: Path, env: dict[str, str]) -> tuple[int, str]:
 
 def authorize_mutation(env: dict[str, str], verifier: Callable[[Path, dict[str, str]], tuple[int, str]]
                        ) -> tuple[bool, str, Path | None]:
-    pkg, why = active_package(env)
-    if pkg is None:
-        return False, why, None
-    rc, out = verifier(pkg, env)
+    try:
+        pkg, why = active_package(env)
+        if pkg is None:
+            return False, why, None
+        rc, out = verifier(pkg, env)
+    except Exception as exc:  # noqa: BLE001 - never allow from a handler
+        return False, f"release authorization error ({type(exc).__name__}: {exc})", None
     if rc == 0:
         return True, "", pkg
     return False, f"release verify failed for {pkg.name} (exit {rc}): {out or 'no output'}", None
 
 
 FRAGMENT_MIN_CHARS = 40  # typed/pasted fragments at least this long must be substrings of the release text
-RECEIPTS = Path("release") / "paste-receipts.jsonl"
 URL_ONLY_RE = re.compile(r"^\s*(https?://\S+|[\w.-]+\.[a-z]{2,}/\S*)\s*$", re.I)
 PASTE_MODS = {"cmd", "command", "ctrl", "control", "meta", "super", "win", "windows"}
 ENTER_KEYS = {"return", "enter", "space", "kp_enter", "numpad_enter"}
@@ -292,7 +413,6 @@ def _loose(s: str) -> str:
 
 
 def _sha(b: bytes | str) -> str:
-    import hashlib
     return hashlib.sha256(b if isinstance(b, bytes) else b.encode("utf-8")).hexdigest()
 
 
@@ -385,29 +505,50 @@ def check_clipboard(clip: tuple[str | None, str | None, str], release_text: str)
 
 
 # ---- receipts -------------------------------------------------------------------------------------
-def write_receipt(pkg: Path, session: str, clip_text: str, release_sha: str, kind: str) -> None:
+def receipts_path(env: dict[str, str]) -> Path:
+    return state_dir(env) / "receipts.jsonl"
+
+
+def write_receipt(env: dict[str, str], pkg: Path, session: str, clip_text: str, release_sha: str, kind: str) -> None:
+    """Append an HMAC-signed receipt to guard state (not the article package). Raises StateError on failure."""
     import datetime
     rec = {"ts": datetime.datetime.now(datetime.timezone.utc).isoformat().replace("+00:00", "Z"),
-           "session_id": session, "clipboard_sha256": _sha(clip_text), "release_sha256": release_sha, "kind": kind}
-    path = pkg / RECEIPTS
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "a", encoding="utf-8") as fh:
-        fh.write(json.dumps(rec, sort_keys=True) + "\n")
-        fh.flush()
-        os.fsync(fh.fileno())
-
-
-def has_full_receipt(pkg: Path, session: str, release_sha: str) -> bool:
+           "session_id": session, "package": str(pkg.resolve()), "clipboard_sha256": _sha(clip_text),
+           "release_sha256": release_sha, "kind": kind}
     try:
-        lines = (pkg / RECEIPTS).read_text(encoding="utf-8").splitlines()
-    except OSError:
+        line = json.dumps({"rec": rec, "sig": _sign(env, rec)}, sort_keys=True)
+        path = receipts_path(env)
+        path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+        with open(path, "a", encoding="utf-8") as fh:
+            fh.write(line + "\n")
+            fh.flush()
+            os.fsync(fh.fileno())
+    except StateError:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        raise StateError(f"cannot write receipt: {exc}") from exc
+
+
+def has_full_receipt(env: dict[str, str], pkg: Path, session: str, release_sha: str) -> bool:
+    """True only for a correctly signed full-paste receipt for this session, package and release hash.
+    Unsigned, unparseable or tampered lines are ignored. Key problems raise StateError."""
+    try:
+        lines = receipts_path(env).read_text(encoding="utf-8").splitlines()
+    except FileNotFoundError:
         return False
+    except OSError as exc:
+        raise StateError(f"cannot read receipts: {exc}") from exc
+    pkg_s = str(pkg.resolve())
     for ln in lines:
         try:
-            r = json.loads(ln)
-        except ValueError:
+            doc = json.loads(ln)
+            r, sig = doc["rec"], doc["sig"]
+        except (ValueError, KeyError, TypeError):
             continue
-        if r.get("session_id") == session and r.get("release_sha256") == release_sha and r.get("kind") == "full":
+        if not isinstance(r, dict) or not _verify_sig(env, r, sig):
+            continue
+        if (r.get("session_id") == session and r.get("release_sha256") == release_sha
+                and r.get("package") == pkg_s and r.get("kind") == "full"):
             return True
     return False
 
@@ -423,7 +564,15 @@ def _last_typed(env: dict[str, str], session: str) -> str:
 # ---- policy once the release is valid -------------------------------------------------------------
 def content_policy(payload: dict[str, Any], pkg: Path, env: dict[str, str],
                    clipboard: Callable[[dict[str, str]], tuple[str | None, str | None, str]]) -> str:
-    """Return a block reason or ''. Runs only after `release verify` passed."""
+    """Return a block reason or ''. Runs only after `release verify` passed. Any error is a block reason."""
+    try:
+        return _content_policy(payload, pkg, env, clipboard)
+    except Exception as exc:  # noqa: BLE001 - never allow from a handler
+        return f"guard error during content policy ({type(exc).__name__}: {exc}); failing closed"
+
+
+def _content_policy(payload: dict[str, Any], pkg: Path, env: dict[str, str],
+                    clipboard: Callable[[dict[str, str]], tuple[str | None, str | None, str]]) -> str:
     args = payload.get("tool_input") if isinstance(payload.get("tool_input"), dict) else {}
     session = str(payload.get("session_id") or "")
     rel = pkg / "release" / "medium-final.md"
@@ -442,7 +591,7 @@ def content_policy(payload: dict[str, Any], pkg: Path, env: dict[str, str],
         found, why = check_clipboard(clip, release_text)
         if not found:
             return f"paste blocked: {why}"
-        write_receipt(pkg, session, clip[0] or "", release_sha, found)
+        write_receipt(env, pkg, session, clip[0] or "", release_sha, found)
         return ""
     if kind == "type":
         text = _norm(str(args.get("text") or ""))
@@ -456,26 +605,78 @@ def content_policy(payload: dict[str, Any], pkg: Path, env: dict[str, str],
     if kind in {"nav", "key"}:
         return ""
     if kind == "enter":
-        if has_full_receipt(pkg, session, release_sha) or URL_ONLY_RE.match(_last_typed(env, session)):
+        if has_full_receipt(env, pkg, session, release_sha) or URL_ONLY_RE.match(_last_typed(env, session)):
             return ""
         return "Enter/Space before a verified paste in this session (only allowed to submit a typed URL)"
     # click, set_value, drag, browser_click/console/exec/cdp, browse CLI input ...
-    if has_full_receipt(pkg, session, release_sha):
+    if has_full_receipt(env, pkg, session, release_sha):
         return ""
     return ("no verified paste receipt for the active release in this session: paste release/medium-final.md "
             "(clipboard must equal it) before any click")
+
+
+# ---- fail-closed classification of "could this call mutate?" --------------------------------------
+BROWSER_READ_TOOLS = {"browser_snapshot", "browser_vision", "browser_get_images", "browser_screenshot",
+                      "browser_scroll"}
+SHELL_TOOLS = {"terminal", "execute_code", "process", "bash", "shell"}
+SHELL_HINT_RE = re.compile(
+    BROWSE_BIN + r"|chrome|chromium|gstack|osascript|cliclick|cua-driver|peekaboo|playwright|puppeteer|patchright"
+    r"|pbcopy|--remote-debugging|9222", re.I)
+
+
+def could_mutate(payload: Any) -> bool:
+    """Conservative, independent of classify(): True unless the call is clearly read-only. Used ONLY when the
+    normal path errored, so a wrong True costs a blocked call and a wrong False would be a fail-open."""
+    try:
+        if not isinstance(payload, dict):
+            return True
+        tool = payload.get("tool_name")
+        if not isinstance(tool, str) or not tool.strip():
+            return True
+        args = payload.get("tool_input")
+        if tool == "computer_use":
+            if not isinstance(args, dict):
+                return True
+            return str(args.get("action") or "").strip().lower() not in CU_READ_ACTIONS
+        if tool.startswith("browser_"):
+            if tool in BROWSER_READ_TOOLS:
+                return False
+            if tool == "browser_navigate":
+                return not isinstance(args, dict) or _could_be_medium(str(args.get("url") or ""))
+            return True
+        text = "\n".join(_strings(args)).lower() if args is not None else ""
+        if tool in SHELL_TOOLS:
+            return (not isinstance(args, dict)) or "medium" in text or bool(SHELL_HINT_RE.search(text))
+        return "medium" in text or "medium" in json.dumps(payload, default=str).lower()
+    except Exception:  # noqa: BLE001
+        return True
+
+
+def fail_closed(payload: Any, exc: BaseException, where: str) -> "Decision":
+    """The only handler body for guard errors: block unless the call is clearly read-only."""
+    if could_mutate(payload):
+        return Decision(False, f"medium_publish_guard error in {where} ({type(exc).__name__}: {exc}) on a call that "
+                               "could mutate Medium; failing closed", True)
+    return Decision(True)
 
 
 # ---- entry ----------------------------------------------------------------------------------------
 def decide(payload: dict[str, Any], env: dict[str, str] | None = None,
            verifier: Callable[[Path, dict[str, str]], tuple[int, str]] | None = None,
            clipboard: Callable[[dict[str, str]], tuple[str | None, str | None, str]] | None = None) -> Decision:
-    env = dict(os.environ) if env is None else env
-    verifier = verifier or run_verify
-    clipboard = clipboard or read_clipboard
-    mutation, why = classify(payload, env)
+    try:
+        env = dict(os.environ) if env is None else env
+        verifier = verifier or run_verify
+        clipboard = clipboard or read_clipboard
+        mutation, why = classify(payload, env)
+    except Exception as exc:  # noqa: BLE001
+        return fail_closed(payload, exc, "classify")
     if not mutation:
         return Decision(True)
+    ok_int, why_int = self_check(env)
+    if not ok_int:
+        return Decision(False, f"Medium mutation blocked ({why}): guard integrity check failed: {why_int}. "
+                               "Reinstall with scripts/hermes/install_guard.sh and review who changed it.", True)
     ok, reason, pkg = authorize_mutation(env, verifier)
     if ok and pkg is not None:
         extra = content_policy(payload, pkg, env, clipboard)
@@ -487,7 +688,7 @@ def decide(payload: dict[str, Any], env: dict[str, str] | None = None,
 
 
 def log_decision(env: dict[str, str], payload: dict[str, Any], allow: bool, reason: str, note: str = "") -> None:
-    """Append-only JSONL decision log (observability; never affects the decision)."""
+    """Append-only JSONL decision log (observability; never affects the decision, returns nothing)."""
     try:
         import datetime
         home = Path(env.get("HERMES_HOME") or Path.home() / ".hermes")
@@ -504,34 +705,42 @@ def log_decision(env: dict[str, str], payload: dict[str, Any], allow: bool, reas
 
 
 def _block(reason: str) -> int:
-    sys.stdout.write(json.dumps({"action": "block", "message": reason}))
-    sys.stderr.write(reason + "\n")
+    try:
+        sys.stdout.write(json.dumps({"action": "block", "message": reason}))
+        sys.stderr.write(reason + "\n")
+    except Exception:  # noqa: BLE001 - the exit code is the decision
+        pass
     return BLOCK_EXIT
 
 
 def main(stdin: Any = None, env: dict[str, str] | None = None,
          verifier: Callable[[Path, dict[str, str]], tuple[int, str]] | None = None,
          clipboard: Callable[[dict[str, str]], tuple[str | None, str | None, str]] | None = None) -> int:
-    raw = (stdin or sys.stdin).read()
     try:
+        raw = (stdin or sys.stdin).read()
         payload = json.loads(raw)
         if not isinstance(payload, dict):
             raise ValueError("payload is not an object")
-    except ValueError as exc:
-        return _block(f"medium_publish_guard: unparseable hook payload ({exc}); failing closed")
+        if not isinstance(payload.get("tool_name"), str) or not payload["tool_name"].strip():
+            raise ValueError("payload has no tool_name")
+    except Exception as exc:  # noqa: BLE001 - unreadable/unknown payload: cannot prove it read-only
+        return _block(f"medium_publish_guard: unparseable hook payload ({type(exc).__name__}: {exc}); failing closed")
     try:
         d = decide(payload, env, verifier, clipboard)
-    except Exception as exc:  # noqa: BLE001 - guard must never crash open
-        crude = (str(payload.get("tool_name")) == "computer_use" or "medium.com" in raw.lower()
-                 or str(payload.get("tool_name", "")).startswith("browser_"))
-        if crude:
-            return _block(f"medium_publish_guard crashed on a mutation-like call ({type(exc).__name__}: {exc}); failing closed")
-        return 0
-    eff = os.environ if env is None else env
-    if (d.mutation or not d.allow) and (env is None or "MEDIUM_GUARD_LOG" in eff or "HERMES_HOME" in eff):
-        log_decision(eff, payload, d.allow, d.reason, "mutation")
+    except Exception as exc:  # noqa: BLE001
+        d = fail_closed(payload, exc, "decide")
+    try:
+        eff = os.environ if env is None else env
+        if (d.mutation or not d.allow) and (env is None or "MEDIUM_GUARD_LOG" in eff or "HERMES_HOME" in eff):
+            log_decision(eff, payload, d.allow, d.reason, "mutation")
+    except Exception:  # noqa: BLE001
+        pass
     return 0 if d.allow else _block(d.reason)
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    try:
+        code = main()
+    except BaseException as exc:  # noqa: BLE001 - last resort: never fall through to allow
+        code = _block(f"medium_publish_guard: unexpected {type(exc).__name__}: {exc}; failing closed")
+    sys.exit(code)
