@@ -1039,6 +1039,17 @@ def _blocked(why: str, reason: str) -> Decision:
                            f"authorize --package <dir>` and paste only release/medium-final.md.", True)
 
 
+def _args_shape(args: dict[str, Any]) -> dict[str, Any]:
+    """Never log raw tool input (it can carry secrets or article text): keys, value types, lengths and a
+    sha256 prefix per value are enough to correlate a decision with a call."""
+    import hashlib
+    out: dict[str, Any] = {}
+    for k, v in list(args.items())[:20]:
+        raw = v if isinstance(v, str) else json.dumps(v, sort_keys=True, default=str)
+        out[str(k)[:40]] = {"type": type(v).__name__, "len": len(raw), "sha256_12": hashlib.sha256(raw.encode()).hexdigest()[:12]}
+    return out
+
+
 def log_decision(env: dict[str, str], payload: dict[str, Any], allow: bool, reason: str, note: str = "") -> None:
     """Append-only JSONL decision log (observability; never affects the decision, returns nothing)."""
     try:
@@ -1049,7 +1060,7 @@ def log_decision(env: dict[str, str], payload: dict[str, Any], allow: bool, reas
         args = payload.get("tool_input") if isinstance(payload.get("tool_input"), dict) else {}
         rec = {"ts": datetime.datetime.now(datetime.timezone.utc).isoformat().replace("+00:00", "Z"),
                "session_id": payload.get("session_id"), "tool": payload.get("tool_name"), "allow": allow,
-               "reason": reason[:300], "note": note, "args_preview": json.dumps(args)[:160]}
+               "reason": reason[:300], "note": note, "args_shape": _args_shape(args)}
         with open(path, "a", encoding="utf-8") as fh:
             fh.write(json.dumps(rec) + "\n")
     except Exception:  # noqa: BLE001
