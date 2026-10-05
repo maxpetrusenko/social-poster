@@ -42,8 +42,8 @@ def test_verify_for_other_bytes_is_not_a_pass(d):
     d.to_stage("integrity")
     d.runner.verify_sha = "0" * 64
     rc, out = d.cli("run", "integrity")
-    assert rc == 1 and "does not confirm the exact final bytes" in out["reasons"][0]
-    assert st(d)["overall"] != "READY_FOR_REVIEW"
+    assert rc == 3 and "does not confirm the exact final bytes" in out["reasons"][0]
+    assert st(d)["overall"] == "NOT_READY"
 
 
 def test_user_edit_after_pass_is_detected_and_invalidates_final_stages(d):

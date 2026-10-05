@@ -73,6 +73,9 @@ class Runner:
         self.gate_cats: list[str] = []
         self.forbidden: list[str] = []  # phrases that make the claims gate see a changed claim
         self.required: list[str] = []   # phrases whose deletion makes the gate see a missing claim
+        self.paraphrases: list[str] = []  # phrases that make the unresolved-claims reference look entailed by the text (a paraphrase survived)
+        self.unresolved_runs = 0
+        self.unresolved_error = False
         self.authorize_rc = 0
         self.authorize_seen: list[str] = []  # sha256 of FINAL.md at the moment each authorize call ran
         self.verify_sha: str | None = None
@@ -90,6 +93,11 @@ class Runner:
             out = Path(arg("--out"))
             art, ref = Path(arg("--article")).read_text(), Path(arg("--draft")).read_text()
             state, cats = self.gate, list(self.gate_cats)
+            if "/work/unresolved/" in arg("--draft"):  # unresolved-claims reference: a clean text has every claim MISSING (FAIL)
+                state, cats = ("PASS", []) if any(p in art for p in self.paraphrases) else ("FAIL", ["CONTENT_CLAIM_FAILURE"])
+                self.unresolved_runs += 1
+                if self.unresolved_error:
+                    state = "ERROR"
             if any(p in art for p in self.forbidden):
                 state, cats = "FAIL", ["CONTENT_CLAIM_FAILURE"]
             if any(p in ref and p not in art for p in self.required):

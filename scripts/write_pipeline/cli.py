@@ -19,7 +19,7 @@ from . import editguard as G
 from . import final as FN
 from . import runs as RN
 from . import submit as SB
-from .core import (BLOCKED, DEPS, DONE, FAILED, KIND, NAMES, NOT_READY, NUM, PENDING, STALE, Pipeline, PipelineError, sha_bytes)
+from .core import (BLOCKED, DEPS, DONE, FAILED, KIND, NAMES, NOT_READY, NUM, PENDING, STALE, Pipeline, PipelineError, fail_exc, sha_bytes)
 
 EXIT = {"OK": 0, "INVALID": 1, "USAGE": 2, "WAITING": 2, "NOT_READY": 3, "BLOCKED": 4, "BLOCKED_INPUT": 4, "QUARANTINED": 5}
 DEFAULT_FRAMEWORK = Path.home() / "Desktop/Projects/medium-automation/FRAMEWORK.md"
@@ -30,7 +30,7 @@ SPEC = {
     "angle": "JSON {question, reader, angle, verdict adds|summary_only, contributions:[{id, text, kind, evidence_ids}], author_opportunities:[{id, prompt, why}]}",
     "outline": "JSON {sections:[{heading, purpose, evidence_ids}]} (2+ sections, unique headings)",
     "draft": "Markdown starting with '# Title'. Links only from the evidence set; numbers only from sources or evidence; no tables, em dashes or invented experience.",
-    "validate": "Markdown plus --report JSON {checked:[...], removals:[{text, reason}]}. Unresolved claims must not appear.",
+    "validate": "Markdown plus --report JSON {checked:[{claim_id, verdict}, ...one entry per research claim id, unresolved ones verdict omitted], removals:[{text, reason}]}. An unresolved claim must not be asserted in any wording, verbatim or paraphrased.",
     "editorial": "Markdown plus --report {unslop:{applied:true, prose_checker:ran|unavailable}, removals:[{text, reason}]}. No link or number may be lost or invented.",
     "voice": "Markdown plus --report {unslop:{...}, removals:[...]}. Meaning must survive (claims gate).",
     "title": "JSON {candidates:[10+ strings], pick, rationale, subtitle (140 chars max)}",
@@ -254,6 +254,19 @@ def main(argv: list[str] | None = None, runner=None, critic=None) -> int:
         _out({"ok": False, "code": "BLOCKED", "state": "BLOCKED_FRAMEWORK", "reasons": [err]})
         return 4
     runner = runner or G.make_runner(pipe.pkg / "write-pipeline" / "workspace")
+    try:
+        return _dispatch(a, pipe, runner, critic)
+    except Exception as e:  # noqa: BLE001  stage boundary: persist a terminal state instead of escaping with pending state
+        stage = getattr(a, "stage", None) or {"antifp": "antifp", "repair": "repair", "finalize": "integrity", "revalidate": "integrity", "rebase": "integrity"}.get(a.cmd)
+        if stage is None:
+            _out({"ok": False, "code": "USAGE", "reasons": [f"{type(e).__name__}: {str(e)[:200]}"]})
+            return 2
+        r = fail_exc(pipe, stage, e)
+        _out(r)
+        return _code(r)
+
+
+def _dispatch(a, pipe: Pipeline, runner, critic) -> int:
     um = FN.sync_user_edit(pipe)
     if um and a.cmd not in ("status", "revalidate", "rebase"):
         _out({"ok": False, "code": "USER_MODIFIED", "reasons": ["FINAL.md changed after PASS; run 'revalidate' (reruns the affected analysis and the final gate)"], "user_modified": um})
@@ -296,9 +309,9 @@ def main(argv: list[str] | None = None, runner=None, critic=None) -> int:
         res = r.get("results", {}).get(r.get("failed_at", ""), r.get("result", r))
         return _code(res) if isinstance(res, dict) and res.get("code") else 1
     if a.cmd == "rebase":
-        r = FN.rebase(pipe, a.reason)
+        r = FN.rebase(pipe, a.reason, runner)
         _out(r)
-        return 0 if r["ok"] else 2
+        return 0 if r["ok"] else (_code(r) if r.get("code") else 2)
     pipe.set(a.stage, BLOCKED, reasons=[a.reason], extra={"category": a.category})
     pipe.save()
     _out({"ok": False, "code": "BLOCKED", "stage": a.stage, "category": a.category, "reasons": [a.reason]})

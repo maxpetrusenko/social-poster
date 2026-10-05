@@ -433,7 +433,7 @@ def test_final_bytes_that_drift_from_the_reference_never_reach_the_evaluator(d):
     path = d.pkg / st["candidate"]["path"]
     path.write_text(path.read_text().replace("[test report](https://example.com/lab-report)", "test report"))
     rc, out = d.cli("run", "integrity")
-    assert rc == 3 and "MISSING_LINK" in out["categories"] and d.runner.n("scripts.fingerprint_eval.release") == 0
+    assert rc == 3 and "changed on disk" in out["reasons"][0] and d.runner.n("scripts.fingerprint_eval.release") == 0
     assert overall(d) == "NOT_READY"
 
 

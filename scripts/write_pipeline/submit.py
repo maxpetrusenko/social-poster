@@ -8,7 +8,7 @@ from . import editguard as G
 from . import frame as FR
 from . import mdlib as M
 from . import validators as V
-from .core import BLOCKED, DONE, FAILED, KIND, NOT_READY, Pipeline, atomic_write, sha_bytes, sha_json
+from .core import BLOCKED, DONE, FAILED, KIND, NOT_READY, Pipeline, atomic_write, fail_exc, sha_bytes, sha_json
 
 JSON_STAGES = {"source": "json", "research": "json", "angle": "json", "outline": "json", "title": "json", "images": "json"}
 TEXT_STAGES = {"draft": "md", "validate": "md", "editorial": "md", "voice": "md"}
@@ -69,14 +69,20 @@ def submit(pipe: Pipeline, stage: str, file: Path, report: Path | None, runner: 
         rep, err = _json(report)
         if rep is None:
             return _fail(pipe, stage, [f"report {err}"])
-    c = deps_ctx(pipe)
-    if stage in JSON_STAGES:
-        data, err = _json(file)
-        if data is None:
-            return _fail(pipe, stage, [err])
-        return _json_stage(pipe, stage, data, c)
-    text = raw.decode("utf-8", "replace")
-    return _text_stage(pipe, stage, text, rep, rep_raw, c, runner)
+    try:  # stage boundary: nothing raised below may leave the stage pending
+        c = deps_ctx(pipe)
+        if stage in JSON_STAGES:
+            data, err = _json(file)
+            if data is None:
+                return _fail(pipe, stage, [err])
+            return _json_stage(pipe, stage, data, c)
+        try:
+            text = raw.decode("utf-8")
+        except UnicodeDecodeError as e:
+            return _fail(pipe, stage, [f"the text is not valid UTF-8 ({e.reason} at byte {e.start}); re-save it as UTF-8"])
+        return _text_stage(pipe, stage, text, rep, rep_raw, c, runner)
+    except Exception as e:  # noqa: BLE001
+        return fail_exc(pipe, stage, e)
 
 
 def _json_stage(pipe: Pipeline, stage: str, data: dict, c: dict) -> dict:
@@ -87,6 +93,8 @@ def _json_stage(pipe: Pipeline, stage: str, data: dict, c: dict) -> dict:
             pipe.set(stage, BLOCKED, reasons=r["reasons"], extra={"category": r["blocked"]})
             pipe.save()
             return {"ok": False, "code": r["blocked"], "stage": stage, "reasons": r["reasons"]}
+        if r["ok"]:  # every captured file is re-hashed from disk before any cache hit or downstream use
+            extra = {"external": {s["file"]: s["sha256"] for s in data["sources"] if s.get("status") == "captured"}}
     elif stage == "research":
         r = V.evidence(data, c["src"])
     elif stage == "angle":
@@ -109,7 +117,8 @@ def _json_stage(pipe: Pipeline, stage: str, data: dict, c: dict) -> dict:
             else:
                 pipe.state["candidate"] = {"path": str(pipe.store("images", "candidate.md", cand.encode())), "sha256": sha_bytes(cand.encode()), "origin": "frame"}
                 pipe.state["critic"] = {"rounds": 0, "history": [], "repair_rejected": 0}
-                extra = {"candidate_sha256": sha_bytes(cand.encode()), "reference_frame": pipe.store("images", "reference-frame.md", refframe.encode()),
+                extra = {"external": {i["path"]: i["sha256"] for i in imgs},
+                         "candidate_sha256": sha_bytes(cand.encode()), "reference_frame": pipe.store("images", "reference-frame.md", refframe.encode()),
                          "reference_frame_sha256": sha_bytes(refframe.encode())}
     if not r["ok"]:
         return _fail(pipe, stage, r["reasons"])
@@ -147,6 +156,8 @@ def _text_stage(pipe: Pipeline, stage: str, text: str, rep: dict | None, rep_raw
         u = (rep or {}).get("unslop") or {}
         if u.get("applied") is not True or u.get("prose_checker") not in ("ran", "unavailable"):
             reasons.append("--report must attest the unslop gate: {\"unslop\": {\"applied\": true, \"prose_checker\": \"ran\" | \"unavailable\"}}")
+    if stage in ("editorial", "voice"):
+        reasons += V.asserted_unresolved(text, c["ev"])
     removals = (rep or {}).get("removals") if stage in ("validate", "editorial", "voice") else None
     if stage in PREV:
         g = G.edit_guard(pipe.read_art(PREV[stage]) or "", text, known_urls=c["known_urls"], blob_numbers=c["blob_numbers"], strict=False,
@@ -154,6 +165,20 @@ def _text_stage(pipe: Pipeline, stage: str, text: str, rep: dict | None, rep_raw
         reasons += g["reasons"]
     if reasons:
         return _fail(pipe, stage, reasons)
+    if stage == "validate" and any(isinstance(x, dict) and x.get("status") == "unresolved" for x in c["ev"].get("claims", [])):
+        # semantic ceiling above the lexical floor: a paraphrase must not survive. The gate's claim judge is asked about the unresolved
+        # claims alone, so a clean text has them all MISSING (FAIL); a PASS means the text still entails them.
+        base = pipe.pkg / "write-pipeline" / "work" / "unresolved"
+        atomic_write(base / "candidate" / "article.md", text.encode())
+        atomic_write(base / "reference" / "reference.md", V.unresolved_reference(c["ev"]).encode())
+        gate = G.claims_gate(runner, base / "candidate" / "article.md", base / "reference" / "reference.md", base / "gate", pipe.pkg)
+        if gate["state"] == "ERROR":
+            msg = ["claims gate could not check the unresolved claims (retry later): " + "; ".join(gate["reasons"])[:200]]
+            pipe.set(stage, BLOCKED, reasons=msg, extra={"category": "MODEL_UNAVAILABLE"})
+            pipe.save()
+            return {"ok": False, "code": "BLOCKED", "stage": stage, "reasons": msg}
+        if gate["state"] == "PASS":
+            return _fail(pipe, stage, ["the evaluator gate finds an unresolved claim still asserted in the text (paraphrase): remove it"])
     if stage in ("editorial", "voice"):  # the evaluator's claim judge: meaning must survive the pass (only claim categories block here)
         prev = pipe.read_art(PREV[stage]) or ""
         base = pipe.pkg / "write-pipeline" / "work" / stage
