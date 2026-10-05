@@ -1,0 +1,363 @@
+{
+  "schema_version": 1,
+  "review_version": 1,
+  "status": "REVIEWED",
+  "advisory": true,
+  "disclaimer": "A score does not guarantee Boost. Medium curators make the final call, and the guidelines describe nuanced characteristics, not a checklist.",
+  "binding": {
+    "article_path": "/Users/maxpetrusenko/Desktop/Projects/social-poster/.claude/worktrees/agent-aae067b8efd9cc798/experiments/youtube-body-thinks-before-mind-bgyi1l1p4nw/draft-v1.md",
+    "content_sha256": "e2fa59ad4afa6ff906721d880c9e79b869f55fb1cadc1af72c34e437ac018cba",
+    "policy_version": "958efce45387@2026-09-22T01:30:11Z",
+    "policy_sha256": "958efce45387b629a96a56f7d3a90cfe03aa2b866c831730ae31d0b12a8c1f53",
+    "policy_date": "2026-10-04",
+    "policy_updated_at": "2026-09-22T01:30:11Z",
+    "policy_fetch_status": "cache-fresh",
+    "policy_fetch_method": "page",
+    "evaluator_id": "7a5339ba8244b5c33dba34cb80ced3ae2c121658",
+    "timestamp_utc": "2026-10-05T00:13:35+00:00"
+  },
+  "scorecard": {
+    "dimensions": {
+      "writer_experience": {
+        "rating": "weak",
+        "evidence_quote": "The episode followed the same sequence. A signal enters below the reportable layer.",
+        "note": "The piece is built from a Russian YouTube digest and published papers; the author never appears, and no first-hand experience or reason for writing is given.",
+        "quote_found": true
+      },
+      "originality": {
+        "rating": "weak",
+        "evidence_quote": "Source episode: SciOne, [\"\u041d\u0435\u0439\u0440\u043e\u0443\u0447\u0451\u043d\u044b\u0435 \u043f\u043e\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u043b\u0438 \u043f\u043e\u0434\u043e\u0437\u0440\u0435\u043d\u0438\u044f | \u041f\u0443\u0448\u043a\u0430. \u041c\u043e\u0437\u0433\"](https://www.youtube.com/watch?v=bgyI1L1p4Nw).",
+        "note": "The structure and topic sequence follow the source episode; the original contribution is a thematic framing (the 'hidden control layer') applied to the episode's items.",
+        "quote_found": true
+      },
+      "reader_value": {
+        "rating": "adequate",
+        "evidence_quote": "The self you can narrate is real. It is also late.",
+        "note": "Readers get an accessible, mostly accurately hedged tour of recent studies with a unifying idea, but little they could not find in the cited sources.",
+        "quote_found": true
+      },
+      "craftsmanship": {
+        "rating": "adequate",
+        "evidence_quote": "A sentence can be processed without becoming your sentence.",
+        "note": "The prose is polished, with clear sections and sourced claims, but it relies on repeated aphoristic one-line paragraphs and stacked metaphors (building at night, bureaucracy, governance) that read as formulaic.",
+        "quote_found": true
+      },
+      "title_quality": {
+        "rating": "weak",
+        "evidence_quote": "Neuroscientists Have Confirmed Our Suspicions | Pushka. Brain",
+        "note": "The title is a vague clickbait-style claim that is not supported by the content, and it carries a leaked publication tag after the pipe; the subtitle is also over-long.",
+        "quote_found": true
+      },
+      "image_quality": {
+        "rating": "weak",
+        "evidence_quote": "![The animated tumor is crude, but the mechanism is memorable: clear space, gain room.](assets/youtube-frames/selected-v3/10-cancer-cell-graphic.jpg)",
+        "note": "Many images are frames from the source YouTube video, with no credit or provenance and likely copyright problems; others are generated bitmaps, and the paths are local assets.",
+        "quote_found": true
+      },
+      "sourcing": {
+        "rating": "adequate",
+        "evidence_quote": "The [Nature paper](https://www.nature.com/articles/s41586-026-10448-0) had a short window, about ten to twenty minutes per patient.",
+        "note": "Claims link to primary papers and institutional releases, but several lean on press releases, and the video that drives the structure is only credited in a footnote.",
+        "quote_found": true
+      }
+    },
+    "weakest_dimension": "writer_experience",
+    "boost_candidate": "NO",
+    "general_distribution_risk": "HIGH",
+    "derivative_summary": true,
+    "author_contribution": {
+      "present": true,
+      "integral": false,
+      "evidence": [
+        "The self you can narrate is real. It is also late.",
+        "The deeper lesson is architectural. Cancer is a broken control system"
+      ]
+    }
+  },
+  "hard_policy_risks": [
+    {
+      "source": "model",
+      "category": "hard_policy",
+      "message": "Video frames used as images without credit or permission",
+      "evidence_quote": "![Surgical sleep leaves some high-level processing active.](assets/youtube-frames/selected-v3/05-surgical-sleep-mri.jpg)"
+    }
+  ],
+  "warnings": [
+    {
+      "source": "deterministic",
+      "id": "title_pipe_suffix",
+      "message": "title carries a ' | ' suffix (publication tag leaking into the title?)",
+      "severity": "info",
+      "evidence": [
+        "Neuroscientists Have Confirmed Our Suspicions | Pushka. Brain"
+      ]
+    },
+    {
+      "source": "deterministic",
+      "id": "subtitle_long",
+      "message": "subtitle is 191 chars (>140)",
+      "severity": "warn",
+      "evidence": [
+        "A Russian science digest moves from infrasound and anesthesia to cancer and spinal repair, and keeps finding the same pattern: hidden control systems act before consciousness can report them."
+      ]
+    },
+    {
+      "source": "deterministic",
+      "id": "image_provenance_unknown",
+      "message": "no provenance recorded for images; credit not checkable",
+      "severity": "info",
+      "evidence": [
+        "10"
+      ]
+    },
+    {
+      "source": "model",
+      "category": "derivative",
+      "message": "Derivative retelling of a YouTube science digest, following its sequence of topics",
+      "evidence_quote": "The episode is a digest, so it jumps: haunted lab, infrasound, anesthesia, dreams, pancreatic cancer, tumor ecology, prolactin, spinal repair."
+    },
+    {
+      "source": "model",
+      "category": "other",
+      "message": "Title overpromises and has a leaked publication suffix; the article does not demonstrate that neuroscientists 'confirmed suspicions'",
+      "evidence_quote": "Neuroscientists Have Confirmed Our Suspicions | Pushka. Brain"
+    },
+    {
+      "source": "model",
+      "category": "formulaic",
+      "message": "Template-like meta-intro that describes the article rather than engaging the reader",
+      "evidence_quote": "This article follows the evidence behind a familiar story, then turns it into a practical way to read the system, its limits, and the decision a careful reader can make next."
+    },
+    {
+      "source": "model",
+      "category": "content_marketing",
+      "message": "Self-promotional cross-link and author bio with site links add a promotional feel",
+      "evidence_quote": "For a useful next read, try [Why Most People Are Dead Wrong About Global Wealth]"
+    },
+    {
+      "source": "model",
+      "category": "other",
+      "message": "Medical claims drawn from press releases (cancer survival, spinal repair) with limited independent verification",
+      "evidence_quote": "median overall survival was about 13.2 months with daraxonrasib versus about 6.7 months with standard chemotherapy."
+    }
+  ],
+  "boost_quality_opportunities": [
+    {
+      "source": "model",
+      "recommendation": "Replace the clickbait title with one that says what the article argues, and drop the ' | Pushka. Brain' suffix; shorten the subtitle to under 140 characters."
+    },
+    {
+      "source": "model",
+      "recommendation": "Remove or replace the YouTube frames with original, licensed or properly credited images, and add credits and alt text."
+    },
+    {
+      "source": "model",
+      "recommendation": "State the source episode and the author's relationship to it near the top, and delete the meta-description blockquote."
+    },
+    {
+      "source": "model",
+      "recommendation": "Add the author's own perspective, such as why they care about this topic, what they checked beyond the video, or where they disagree with the episode, only if that is genuinely theirs to give."
+    },
+    {
+      "source": "model",
+      "recommendation": "Make the synthesis the center of the piece: pick two or three studies and examine them in depth against the primary papers rather than touring eight topics in order."
+    },
+    {
+      "source": "model",
+      "recommendation": "Cut the repeated aphoristic one-line paragraphs and stacked metaphors, and keep the cross-link only if it is directly relevant."
+    },
+    {
+      "source": "model",
+      "dimension": "writer_experience",
+      "rating": "weak",
+      "recommendation": "The piece is built from a Russian YouTube digest and published papers; the author never appears, and no first-hand experience or reason for writing is given."
+    },
+    {
+      "source": "model",
+      "dimension": "originality",
+      "rating": "weak",
+      "recommendation": "The structure and topic sequence follow the source episode; the original contribution is a thematic framing (the 'hidden control layer') applied to the episode's items."
+    },
+    {
+      "source": "model",
+      "dimension": "title_quality",
+      "rating": "weak",
+      "recommendation": "The title is a vague clickbait-style claim that is not supported by the content, and it carries a leaked publication tag after the pipe; the subtitle is also over-long."
+    },
+    {
+      "source": "model",
+      "dimension": "image_quality",
+      "rating": "weak",
+      "recommendation": "Many images are frames from the source YouTube video, with no credit or provenance and likely copyright problems; others are generated bitmaps, and the paths are local assets."
+    }
+  ],
+  "safe_auto_fixes": [
+    {
+      "kind": "formatting",
+      "status": "available",
+      "description": "formatting: 2 change(s)",
+      "changes": [
+        "L154: extra blank line removed",
+        "L157: extra blank line removed"
+      ]
+    }
+  ],
+  "author_input_required": {
+    "required": true,
+    "reason": "writer experience is weak or the author contribution is not integral; trusted author material found, confirm and use it",
+    "candidate_trusted_material": [
+      {
+        "path": "data/fingerprint-eval/author-corpus/2021-11-27_Don-t-Miss-This-Transfer-of-Wealth-c358dcee6850.txt",
+        "line": 13,
+        "excerpt": "After a little bit of research, I found that The Greatest Wealth Transfer is here, just google it.",
+        "overlap_terms": [
+          "found",
+          "little",
+          "wealth"
+        ],
+        "note": "suggestion only; author must confirm it is theirs and still true"
+      },
+      {
+        "path": "data/fingerprint-eval/author-corpus/2021-12-02_Top-10-Cryptocurrencies-to-Buy-in-2022-e46cb9cd487c.txt",
+        "line": 30,
+        "excerpt": "My portfolio is a little bit different, but that\u2019s because I started investing all the way back in 2016.",
+        "overlap_terms": [
+          "little",
+          "started"
+        ],
+        "note": "suggestion only; author must confirm it is theirs and still true"
+      },
+      {
+        "path": "data/fingerprint-eval/author-corpus/2021-12-03_Web-3-0-Explained-8f4032ee39d4.txt",
+        "line": 19,
+        "excerpt": "Below, I\u2019ll offer a simpler explanation.",
+        "overlap_terms": [
+          "below",
+          "explanation"
+        ],
+        "note": "suggestion only; author must confirm it is theirs and still true"
+      },
+      {
+        "path": "data/fingerprint-eval/author-corpus/2021-12-05_What-is-Metaverse--ab517f0d9d3.txt",
+        "line": 29,
+        "excerpt": "I would encourage people to be more present as we choose our own future.",
+        "overlap_terms": [
+          "people",
+          "present"
+        ],
+        "note": "suggestion only; author must confirm it is theirs and still true"
+      },
+      {
+        "path": "data/fingerprint-eval/author-corpus/2021-12-07_What-is-Proof-of-Work--POW---b76a0f47ecfc.txt",
+        "line": 17,
+        "excerpt": "If you\u2019d like to see how it looks like and learn how to mine and to learn about different types of mining equipment and coins you can mine I recommend you watch this video:",
+        "overlap_terms": [
+          "equipment",
+          "looks",
+          "watch"
+        ],
+        "note": "suggestion only; author must confirm it is theirs and still true"
+      },
+      {
+        "path": "data/fingerprint-eval/author-corpus/2021-12-26_The-Best-Crypto-Twitter-Accounts-to-Follow-9644200f18e0.txt",
+        "line": 45,
+        "excerpt": "If you ended scrolled through the whole list you might want to follow me as well ;)",
+        "overlap_terms": [
+          "might",
+          "whole"
+        ],
+        "note": "suggestion only; author must confirm it is theirs and still true"
+      },
+      {
+        "path": "data/fingerprint-eval/author-corpus/2021-12-27_What-is-Decentralized-Finance--DeFi--118adcdc0342.txt",
+        "line": 3,
+        "excerpt": "With this article, I would like to help you get started\u2026",
+        "overlap_terms": [
+          "article",
+          "started"
+        ],
+        "note": "suggestion only; author must confirm it is theirs and still true"
+      },
+      {
+        "path": "data/fingerprint-eval/author-corpus/2021-12-27_What-is-Decentralized-Finance--DeFi--118adcdc0342.txt",
+        "line": 7,
+        "excerpt": "With this article, I would like to help you get started with learning the basic fundamentals of DeFi.",
+        "overlap_terms": [
+          "article",
+          "started"
+        ],
+        "note": "suggestion only; author must confirm it is theirs and still true"
+      },
+      {
+        "path": "data/fingerprint-eval/author-corpus/2021-12-27_What-is-Decentralized-Finance--DeFi--118adcdc0342.txt",
+        "line": 44,
+        "excerpt": "Here is a great post I found that goes even into more detail:",
+        "overlap_terms": [
+          "detail",
+          "found"
+        ],
+        "note": "suggestion only; author must confirm it is theirs and still true"
+      },
+      {
+        "path": "data/fingerprint-eval/author-corpus/2022-01-06_Walmart-Metaverse-Could-Be-Amazing--or-Not--a2db50a9fecb.txt",
+        "line": 9,
+        "excerpt": "> I\u2019ve often felt like shopping would be more enjoyable if i was accompanied by the floating ghost of a retail worker whose pronouncements are periodically drowned out by the hellish sounds of clanking machinery",
+        "overlap_terms": [
+          "ghost",
+          "machinery",
+          "often",
+          "sounds",
+          "whose",
+          "worker"
+        ],
+        "note": "suggestion only; author must confirm it is theirs and still true"
+      }
+    ]
+  },
+  "deterministic": {
+    "metrics": {
+      "words": 1971,
+      "reading_minutes": 7.4,
+      "images": 10,
+      "links": 24,
+      "headings": 9,
+      "title": "Neuroscientists Have Confirmed Our Suspicions | Pushka. Brain",
+      "subtitle": "A Russian science digest moves from infrasound and anesthesia to cancer and spinal repair, and keeps finding the same pattern: hidden control systems act before consciousness can report them.",
+      "title_chars": 61,
+      "subtitle_chars": 191
+    },
+    "findings": [
+      {
+        "id": "title_pipe_suffix",
+        "bucket": "warning",
+        "severity": "info",
+        "message": "title carries a ' | ' suffix (publication tag leaking into the title?)",
+        "evidence": [
+          "Neuroscientists Have Confirmed Our Suspicions | Pushka. Brain"
+        ],
+        "fixable": false
+      },
+      {
+        "id": "subtitle_long",
+        "bucket": "warning",
+        "severity": "warn",
+        "message": "subtitle is 191 chars (>140)",
+        "evidence": [
+          "A Russian science digest moves from infrasound and anesthesia to cancer and spinal repair, and keeps finding the same pattern: hidden control systems act before consciousness can report them."
+        ],
+        "fixable": false
+      },
+      {
+        "id": "image_provenance_unknown",
+        "bucket": "warning",
+        "severity": "info",
+        "message": "no provenance recorded for images; credit not checkable",
+        "evidence": [
+          "10"
+        ],
+        "fixable": false
+      }
+    ]
+  },
+  "cache_hit": false
+}

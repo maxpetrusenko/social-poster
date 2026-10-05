@@ -379,5 +379,55 @@ class Nightly(Base):
         self.assertIsNone(NL.row_from_package(self.pkg))
 
 
+class Resolver(Base):
+    def test_canonical_rule_and_explicit_override(self):
+        (self.pkg / "article-medium.md").write_text(ARTICLE)
+        c = resolve(self.pkg)
+        self.assertEqual((c.article_path.name, c.article_rule), ("article-medium.md", "article-medium.md"))
+        (self.pkg / "version.json").write_text(json.dumps({"finalFile": "draft.md"}))
+        c = resolve(self.pkg)
+        self.assertEqual((c.article_path.name, c.article_rule), ("draft.md", "version.json.finalFile"))
+        self.assertEqual(resolve(self.pkg, Path("article-medium.md")).article_rule, "explicit --article")
+
+    def test_no_candidate_is_file_not_found(self):
+        with self.assertRaises(FileNotFoundError):
+            resolve(self.pkg)
+
+
+class LlmWrapper(unittest.TestCase):
+    def run_with(self, rc, out, err):
+        from unittest import mock
+        from scripts.medium_review import llm
+        cp = mock.Mock(returncode=rc, stdout=out, stderr=err)
+        with mock.patch.object(llm.subprocess, "run", return_value=cp):
+            return llm.run_claude("p")
+
+    def test_failure_keeps_stdout_and_stderr_tail(self):
+        from scripts.fingerprint_eval.gateway import GatewayError
+        with self.assertRaises(GatewayError) as cm:
+            self.run_with(1, "partial stdout text", "boom stderr")
+        self.assertIn("partial stdout text", str(cm.exception))
+        self.assertIn("boom stderr", str(cm.exception))
+
+    def test_limit_messages_map_to_model_unavailable(self):
+        from scripts.fingerprint_eval.gateway import GatewayError
+        for rc, out, err in [(0, "You've hit your session limit, resets 5pm", ""), (1, "", "Error 429 rate limit exceeded")]:
+            with self.assertRaises(GatewayError) as cm:
+                self.run_with(rc, out, err)
+            self.assertEqual(cm.exception.category.value, "MODEL_UNAVAILABLE")
+
+    def test_error_record_carries_category_and_tail(self):
+        from scripts.fingerprint_eval.gateway import GatewayError
+        from scripts.fingerprint_eval.contracts import Category
+
+        def llm(_p):
+            raise GatewayError("claude -p failed rc=1; stdout tail: 'usage limit'", Category.MODEL_UNAVAILABLE, "claude-cli")
+        art = ARTICLE
+        with self.assertRaises(RV.ReviewError) as cm:
+            RV.call_model("p", art, llm)
+        self.assertIn("[MODEL_UNAVAILABLE]", str(cm.exception))
+        self.assertIn("usage limit", str(cm.exception))
+
+
 if __name__ == "__main__":
     unittest.main()
