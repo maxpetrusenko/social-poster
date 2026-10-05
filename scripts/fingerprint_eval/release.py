@@ -33,34 +33,46 @@ def _sha(b: bytes) -> str:
 
 # ---- verify ------------------------------------------------------------------------------------------------------
 def verify_package(package: Path) -> tuple[bool, str]:
+    ok, why, _ = verify_package_detail(package)
+    return ok, why
+
+
+def verify_package_detail(package: Path) -> tuple[bool, str, str | None]:
+    """(valid, reason, verified content sha256). The hash is computed from the exact bytes that were checked,
+    so a caller comparing against it never re-derives it from a file that could change after verification."""
+    ok, why, sha = _verify(package)
+    return ok, why, sha if ok else None
+
+
+def _verify(package: Path) -> tuple[bool, str, str | None]:
     try:
         ctx = authz.resolve_package(package)
         final = ctx.final_path.read_bytes()
         ev = authz.evaluator_version()
         if ev.dirty:
-            return False, "evaluator tree has uncommitted changes (dirty): release blocked"
+            return False, "evaluator tree has uncommitted changes (dirty): release blocked", None
         current = authz.make_binding(ctx, _sha(final), ev)
         rel = (ctx.package / RELEASE_ARTICLE).read_bytes()
     except FileNotFoundError as e:
-        return False, f"missing release artifact: {e.filename}"
+        return False, f"missing release artifact: {e.filename}", None
     except (authz.PackageError, authz.EnvError, OSError) as e:
-        return False, f"cannot establish current state: {e}"
+        return False, f"cannot establish current state: {e}", None
     if rel != final:
-        return False, "release article bytes differ from the current final bytes"
+        return False, "release article bytes differ from the current final bytes", None
     try:
         auth = R.load_authorization(ctx.package)  # signature checked
         rec = R.load_record_in(ctx.package, auth.record_path)  # contained in <package>/evals/fingerprint-gate/runs/, signature checked
         R.check_raw_report(ctx.package, rec)  # raw gate report exists, contained, sha256 == the signed field
     except (R.RecordError, OSError) as e:
-        return False, str(e)
+        return False, str(e), None
     if rec.result is not Result.PASS:
-        return False, f"authorization record is {rec.result.value}, not PASS"
+        return False, f"authorization record is {rec.result.value}, not PASS", None
     if auth.release_article_sha256 != current.content_sha256:
-        return False, "authorization is for different release bytes"
+        return False, "authorization is for different release bytes", None
     if auth.binding != current or rec.binding != current:
         diffs = [f.name for f in dataclasses.fields(Binding) if getattr(auth.binding, f.name) != getattr(current, f.name) or getattr(rec.binding, f.name) != getattr(current, f.name)]
-        return False, "authorization binding differs from current: " + ", ".join(diffs)
-    return True, "authorized"
+        return False, "authorization binding differs from current: " + ", ".join(diffs), None
+    return True, "authorized", current.content_sha256
 
 
 # ---- authorize ---------------------------------------------------------------------------------------------------
@@ -239,6 +251,7 @@ def main(argv: list[str] | None = None) -> int:
     a.add_argument("--dry-run", action="store_true")
     v = sub.add_parser("verify")
     v.add_argument("--package", required=True, type=Path)
+    v.add_argument("--json", action="store_true")
     s = sub.add_parser("status")
     s.add_argument("--package", required=True, type=Path)
     s.add_argument("--json", action="store_true")
@@ -246,8 +259,11 @@ def main(argv: list[str] | None = None) -> int:
     if n.cmd == "authorize":
         return authorize(n.package, n.max_repairs, n.dry_run)
     if n.cmd == "verify":
-        ok, why = verify_package(n.package)
-        print(("VERIFIED: " if ok else "NOT AUTHORIZED: ") + why)
+        ok, why, sha = verify_package_detail(n.package)
+        if n.json:  # release bytes == final bytes when valid, so both hashes are the verified content hash
+            print(json.dumps({"valid": ok, "reason": why, "content_sha256": sha, "release_article_sha256": sha}))
+        else:
+            print(("VERIFIED: " if ok else "NOT AUTHORIZED: ") + why)
         return 0 if ok else 1
     try:
         d = status(n.package)

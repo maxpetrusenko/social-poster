@@ -251,3 +251,9 @@ class ReleaseCycles(Base):
         with mock.patch.object(release, "_load_heal", lambda: (lambda ctx, gate, rep, n: seen.append(n) or release._single_run(ctx, gate), None)):
             release.authorize(self.pkg, max_repairs=99, out=lambda *a: None)
         self.assertEqual(seen, [MAX_REPAIR_CYCLES])
+
+
+def test_verify_detail_hash_comes_from_checked_bytes_and_is_none_when_invalid(tmp_path):
+    from scripts.fingerprint_eval import release
+    ok, why, sha = release.verify_package_detail(tmp_path)  # not a package: invalid
+    assert not ok and sha is None
