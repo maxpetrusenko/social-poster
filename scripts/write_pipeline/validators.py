@@ -276,14 +276,34 @@ def factual_report(report: dict, text: str, ev: dict) -> list[str]:
     return reasons
 
 
-def unresolved_reference(ev: dict) -> str:
-    """A document holding only the unresolved claims, as the evaluator gate's reference: a clean text must be MISSING every one."""
+def unresolved_reference(ev: dict, text: str | None = None) -> str:
+    """The evaluator gate's reference for the unresolved claims: a clean text must be MISSING every one. With `text`, the reference is the
+    candidate's own frozen skeleton (headings, lists, quotes, code, short paragraphs) plus one claims paragraph, so the gate's structure and
+    frozen-block checks pass and only the claims are judged."""
     rows = []
     for c in ev.get("claims", []):
         if isinstance(c, dict) and c.get("status") == "unresolved" and c.get("claim"):
             t = str(c["claim"]).strip()
             rows.append(t if t.endswith((".", "!", "?")) else t + ".")
-    return "# Unresolved claims\n\n## Claims the article must not assert\n\n" + "\n\n".join(rows) + "\n"
+    if text is None:
+        return "# Unresolved claims\n\n## Claims the article must not assert\n\n" + "\n\n".join(rows) + "\n"
+    from scripts.fingerprint_eval.rewrite import MIN_SEGMENT_WORDS, segment_article
+    from scripts.fingerprint_eval.textutil import words
+    para = " ".join(rows)
+    if len(words(para)) < MIN_SEGMENT_WORDS:  # a frozen (short) paragraph would be compared byte for byte: lead in so it is judged as prose
+        para = "The following claims are not established and the article must not assert any of them. " + para
+    out, placed = [], False
+    for seg in segment_article(text):
+        if not seg.frozen:
+            continue
+        for b in seg.blocks:
+            out.append(b.text)
+            if not placed and b.kind == "heading":
+                out.append(para)
+                placed = True
+    if not placed:
+        out.insert(0, para)
+    return "\n\n".join(out) + "\n"
 
 
 def titles(data: dict, body: str) -> dict:

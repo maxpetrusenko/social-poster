@@ -220,3 +220,80 @@ def test_non_utf8_framework_is_persisted_not_ready(d):
     rc, out = d.cli("next")
     assert rc == 3 and out["code"] == "NOT_READY"
     assert json.loads((d.pkg / "write-pipeline/state.json").read_text())["invalid"]
+
+
+# ---- A. declared editorial cuts ---------------------------------------------------------------------------------------
+CUT = "The team has not published tail latency, so the median alone cannot say whether the slowest requests improved."
+REP = {"unslop": {"applied": True, "prose_checker": "ran"}}
+
+
+def _cut_text():
+    from .fakes import EDITORIAL
+    assert CUT in EDITORIAL
+    return EDITORIAL.replace(" " + CUT, "")
+
+
+def test_declared_editorial_cut_is_accepted_and_ledgered(d):
+    d.to_stage("editorial")
+    d.runner.required = [CUT]
+    rc, out = d.submit("editorial", _cut_text(), report={**REP, "removals": [{"text": CUT, "reason": "speculative aside"}]})
+    assert rc == 0, out
+    ref = (d.pkg / "write-pipeline/work/editorial/reference/reference.md").read_text()
+    assert CUT not in ref  # the gate compared against the reference minus the declared cut, and still judged the rest
+    s = json.loads((d.pkg / "write-pipeline/state.json").read_text())
+    (e,) = s["removals_ledger"]
+    assert e["stage"] == "editorial" and e["sentence_sha256"] == sha(CUT.encode()) and e["reason"] == "speculative aside"
+    led = json.loads((d.pkg / "write-pipeline/removals-ledger.json").read_text())
+    R.check_signature(led, "ledger")
+    led["entries"][0]["reason"] = "x"
+    with pytest.raises(R.RecordError):
+        R.check_signature(led, "ledger")
+
+
+def test_undeclared_or_inexact_cut_still_blocks(d):
+    d.to_stage("editorial")
+    d.runner.required = [CUT]
+    assert d.submit("editorial", _cut_text(), report=REP)[0] == 1
+    inexact = {**REP, "removals": [{"text": CUT.replace("tail latency", "tail latencies"), "reason": "x"}]}
+    rc, out = d.submit("editorial", _cut_text(), report=inexact)
+    assert rc == 1 and "changed meaning" in out["reasons"][0]
+    assert not json.loads((d.pkg / "write-pipeline/state.json").read_text()).get("removals_ledger")
+
+
+def test_changed_claim_blocks_even_when_a_cut_is_declared(d):
+    d.to_stage("editorial")
+    d.runner.required = [CUT]
+    d.runner.forbidden = ["to the network"]
+    rc, out = d.submit("editorial", _cut_text().replace("to the cache", "to the network"), report={**REP, "removals": [{"text": CUT, "reason": "aside"}]})
+    assert rc == 1 and "changed meaning" in out["reasons"][0]
+
+
+def test_declared_cut_flows_to_the_final_gate_reference(d):
+    d.to_stage("editorial")
+    assert d.submit("editorial", _cut_text(), report={**REP, "removals": [{"text": CUT, "reason": "aside"}]})[0] == 0
+    d.texts["voice"] = _cut_text().replace("A reader with a different request mix should rerun", "Anyone with a different request mix should rerun")
+    d.to_stage("integrity")
+    assert d.cli("finalize")[0] == 0
+    assert CUT not in (d.pkg / "FINAL.md").read_text()
+
+
+# ---- B. unresolved-claims semantic check is not vacuous ---------------------------------------------------------------
+def test_unresolved_reference_matches_the_candidate_structure():
+    from scripts.fingerprint_eval.guards import frozen_diff, structure_preservation
+    from scripts.write_pipeline import validators as V
+    from .fakes import DRAFT, Driver
+    ref = V.unresolved_reference(Driver.EVIDENCE, DRAFT)
+    st = structure_preservation(ref, DRAFT)
+    assert st["headings"]["preserved"] and st["codes"]["preserved"] and st["images"]["preserved"] and not frozen_diff(ref, DRAFT)
+    assert "hosting costs" in ref  # the unresolved claim itself is the only prose
+
+
+def test_structural_fail_on_the_unresolved_check_is_inconclusive(d):
+    d.to_stage("validate")
+    d.runner.unresolved_cats = ["STRUCTURAL_DAMAGE"]
+    rc, out = d.submit("validate", d.texts["validate"], report=d.FACTUAL)
+    assert rc == 3 and out["code"] == "NOT_READY" and "inconclusive" in out["reasons"][0]
+    stage = {r["stage"]: r["state"] for r in d.cli("status", "--json")[1]["stages"]}
+    assert stage["validate"] == "NOT_READY"
+    d.runner.unresolved_cats = ["CONTENT_CLAIM_FAILURE"]  # a claims-only FAIL is the clean result
+    assert d.submit("validate", d.texts["validate"], report=d.FACTUAL)[0] == 0

@@ -139,6 +139,6 @@ def claims_gate(runner: Runner, article: Path, draft: Path, out: Path, package: 
     if g.get("error_category"):
         cats.append(g["error_category"])
     if rc == 0 and g.get("pass") is True:
-        return {"state": "PASS", "categories": [], "reasons": [], "rc": rc}
+        return {"state": "PASS", "categories": [], "reasons": [], "rc": rc, "evaluated": g.get("evaluated")}
     state = "FAIL" if rc == 1 and g.get("evaluated") else "ERROR"
-    return {"state": state, "categories": cats, "reasons": list(g.get("reasons") or [text.strip()[-200:]])[:5], "rc": rc}
+    return {"state": state, "categories": cats, "reasons": list(g.get("reasons") or [text.strip()[-200:]])[:5], "rc": rc, "evaluated": g.get("evaluated")}
