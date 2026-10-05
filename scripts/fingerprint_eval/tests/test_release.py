@@ -353,7 +353,7 @@ def test_cache_key_binds_gateway_embedding_threshold_and_prompts(tmp_path, monke
     ident("d1")
     assert authz._cache_extra(ctx) == base
     for mod, attr, val in ((gateway, "BASE_URL", "https://other.example/v1"), (authz, "THRESHOLD", 0.95),
-                           (judge, "JUDGE_PROMPT", judge.JUDGE_PROMPT + " tweak"), (added, "SUPPORT_PROMPT", added.SUPPORT_PROMPT + " tweak"),
+                           (judge, "JUDGE_PROMPT", judge.JUDGE_PROMPT + " tweak"), (judge, "JUDGE_BATCH", judge.JUDGE_BATCH + 1), (added, "SUPPORT_PROMPT", added.SUPPORT_PROMPT + " tweak"),
                            (rewrite, "EXTRACT_PROMPT", rewrite.EXTRACT_PROMPT + " tweak")):
         with monkeypatch.context() as m:
             m.setattr(mod, attr, val)
