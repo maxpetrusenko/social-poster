@@ -20,56 +20,100 @@ class Block:
     text: str
 
 
+_MD = None
+
+
+def md_parser():
+    """CommonMark parser (markdown-it-py, pinned in scripts/fingerprint_eval/requirements.txt) plus GFM tables and strikethrough."""
+    global _MD
+    if _MD is None:
+        from markdown_it import MarkdownIt
+        _MD = MarkdownIt("commonmark").enable(["table", "strikethrough"])
+    return _MD
+
+
+class _TagCollector(HTMLParser):
+    """Raw HTML: the a/img tags it carries and whether any visible text remains."""
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.tags: list[tuple[str, str]] = []  # ("a", href) / ("img", src)
+        self.text = ""
+
+    def handle_starttag(self, tag, attrs):
+        d = dict(attrs)
+        if tag == "a" and d.get("href"):
+            self.tags.append(("a", d["href"]))
+        elif tag == "img" and d.get("src"):
+            self.tags.append(("img", d["src"]))
+
+    handle_startendtag = handle_starttag
+
+    def handle_data(self, data):
+        self.text += data
+
+
+def html_tags(html: str) -> _TagCollector:
+    c = _TagCollector()
+    try:
+        c.feed(html)
+        c.close()
+    except Exception:  # noqa: BLE001  malformed HTML: whatever parsed so far is what counts
+        pass
+    return c
+
+
+def _block_kind(tokens: list, i: int) -> tuple[str, int]:
+    """(kind, index of the matching close token) for the top-level block opening at tokens[i]."""
+    t = tokens[i]
+    close = i
+    if t.nesting == 1:
+        close = next(j for j in range(i + 1, len(tokens)) if tokens[j].level == t.level and tokens[j].nesting == -1)
+    kind = {"heading_open": "heading", "bullet_list_open": "list", "ordered_list_open": "list", "blockquote_open": "quote",
+            "table_open": "table", "hr": "rule", "fence": "code", "code_block": "code", "html_block": "paragraph", "paragraph_open": "paragraph"}.get(t.type)
+    if kind is None:
+        kind = "paragraph"
+    if t.type == "paragraph_open":
+        kids = tokens[i + 1].children or []
+        if kids and all(k.type == "image" or (k.type in ("text", "softbreak") and not k.content.strip()) for k in kids) and any(k.type == "image" for k in kids):
+            kind = "image"
+        elif kids and all(k.type == "html_inline" or (k.type in ("text", "softbreak") and not k.content.strip()) for k in kids):
+            c = html_tags("".join(k.content for k in kids))
+            if c.tags and not c.text.strip() and all(tag == "img" for tag, _ in c.tags):
+                kind = "image"
+    elif t.type == "html_block":
+        c = html_tags(t.content)
+        if c.tags and not c.text.strip() and all(tag == "img" for tag, _ in c.tags):
+            kind = "image"
+    return kind, close
+
+
 def parse_blocks(md: str) -> list[Block]:
-    """Split markdown into blocks. Code fences and image lines stay intact."""
+    """Top-level CommonMark blocks (GFM tables included) with their source text. Setext headings are normalised to ATX form."""
+    md = md.replace("\r\n", "\n")
+    lines = md.split("\n")
+    tokens = md_parser().parse(md)
     blocks: list[Block] = []
-    lines = md.replace("\r\n", "\n").split("\n")
     i = 0
-    buf: list[str] = []
-
-    def flush() -> None:
-        if buf:
-            text = "\n".join(buf).strip("\n")
-            if text.strip():
-                first = text.lstrip().split("\n", 1)[0]
-                if all(ln.strip().startswith("|") for ln in text.split("\n")) and len(text.split("\n")) >= 2:
-                    kind = "table"
-                elif LIST_RE.match(first):
-                    kind = "list"
-                elif first.lstrip().startswith(">"):
-                    kind = "quote"
-                else:
-                    kind = "paragraph"
-                blocks.append(Block(kind, text))
-            buf.clear()
-
-    while i < len(lines):
-        line = lines[i]
-        if line.lstrip().startswith("```"):
-            flush()
-            fence = [line]
+    while i < len(tokens):
+        t = tokens[i]
+        if t.level != 0 or not t.map or t.nesting == -1:
             i += 1
-            while i < len(lines) and not lines[i].lstrip().startswith("```"):
-                fence.append(lines[i])
-                i += 1
-            if i < len(lines):
-                fence.append(lines[i])
-            blocks.append(Block("code", "\n".join(fence)))
-        elif not line.strip():
-            flush()
-        elif HEADING_RE.match(line):
-            flush()
-            blocks.append(Block("heading", line.strip()))
-        elif IMAGE_RE.match(line):
-            flush()
-            blocks.append(Block("image", line.strip()))
-        elif re.match(r"^\s*([-*_])\1{2,}\s*$", line):
-            flush()
-            blocks.append(Block("rule", line.strip()))
+            continue
+        kind, close = _block_kind(tokens, i)
+        start, end = t.map
+        if kind == "heading":
+            if t.markup in ("=", "-"):  # setext: the source is two lines; keep one ATX line
+                text = "#" * int(t.tag[1]) + " " + tokens[i + 1].content.strip()
+            else:
+                text = lines[start].strip()
         else:
-            buf.append(line)
-        i += 1
-    flush()
+            text = "\n".join(lines[start:end]).strip("\n")
+            if kind == "paragraph":
+                text = text.strip()
+        if text.strip():
+            blocks.append(Block(kind, text))
+        i = close + 1
     return blocks
 
 
@@ -77,12 +121,29 @@ def render_blocks(blocks: list[Block]) -> str:
     return "\n\n".join(b.text for b in blocks) + "\n"
 
 
+REF_DEF_LINE_RE = re.compile(r"^ {0,3}\[[^\]]+\]:[ \t]*\S+.*$", re.M)  # definitions live at block level; inline parsing cannot resolve them
+UNRESOLVED_REF_RE = re.compile(r"\[([^\]]+)\]\[[^\]]*\]")
+
+
+def _inline_plain(children: list) -> str:
+    out: list[str] = []
+    for k in children or []:
+        if k.type == "image":
+            continue
+        if k.type in ("text", "code_inline"):
+            out.append(k.content)
+        elif k.type in ("softbreak", "hardbreak"):
+            out.append("\n")
+        elif k.type == "html_inline":
+            continue
+    return "".join(out)
+
+
 def strip_inline(text: str) -> str:
-    """Drop link URLs, emphasis marks, inline code ticks."""
-    text = LINK_RE.sub(r"\1", text)
-    text = re.sub(r"`([^`]*)`", r"\1", text)
-    text = re.sub(r"(\*\*|__|\*|_)(?=\S)(.+?)(?<=\S)\1", r"\2", text)
-    return text
+    """Plain text of inline markdown: link URLs, emphasis marks, code ticks, raw HTML tags and images dropped."""
+    text = REF_DEF_LINE_RE.sub("", text)
+    plain = "".join(_inline_plain(t.children) for t in md_parser().parseInline(text))
+    return UNRESOLVED_REF_RE.sub(r"\1", plain).strip("\n")
 
 
 def prose_paragraphs(md: str) -> list[str]:

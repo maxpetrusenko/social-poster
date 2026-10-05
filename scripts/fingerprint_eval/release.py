@@ -92,8 +92,10 @@ def _single_run(ctx: PackageCtx, gate_fn) -> HealOutcome:
 
 def _write_quarantine(ctx: PackageCtx, outcome: HealOutcome, evaluator_id: str) -> int:
     cat = outcome.category if outcome.category is not Category.PASS else Category.UNKNOWN_ERROR
-    infra = cat in INFRA_CATEGORIES
     rec = outcome.record
+    if cat is Category.NEEDS_REVIEW and rec is not None and rec.category is Category.MISSING_SOURCE:
+        cat = Category.MISSING_SOURCE  # the terminal cause is more useful than the generic review bucket
+    infra = cat in INFRA_CATEGORIES
     content = rec.binding.content_sha256 if rec else _sha(outcome.final_path.read_bytes())
     arts = []
     if rec:
@@ -131,7 +133,7 @@ def authorize(package: Path, max_repairs: int = MAX_REPAIR_CYCLES, dry_run: bool
         if not package.is_dir():
             return 2
         zero = "0" * 64
-        q = {"category": Category.MISSING_SOURCE.value, "kind": "content", "retryable": False, "created_at_utc": R.now_utc(),
+        q = {"status": "NEEDS_REVIEW", "category": Category.MISSING_SOURCE.value, "kind": "content", "retryable": False, "created_at_utc": R.now_utc(),
              "content_sha256": zero, "evaluator_id": "unknown", "cycles": [], "artifacts": []}
         if not dry_run:
             R.atomic_write(package / QUARANTINE, (json.dumps(q, indent=1, sort_keys=True) + "\n").encode())
@@ -146,7 +148,7 @@ def authorize(package: Path, max_repairs: int = MAX_REPAIR_CYCLES, dry_run: bool
         if not dry_run:
             content = _sha(ctx.final_path.read_bytes())
             ledger.append(ctx.package, LedgerState.PUBLISH_BLOCKED, content, ev.id, {"reason": Category.DEPENDENCY_FAILURE.value, "detail": "dirty evaluator"})
-            q = {"category": Category.DEPENDENCY_FAILURE.value, "kind": "infra", "retryable": True, "created_at_utc": R.now_utc(),
+            q = {"status": "NEEDS_REVIEW", "category": Category.DEPENDENCY_FAILURE.value, "kind": "infra", "retryable": True, "created_at_utc": R.now_utc(),
                  "content_sha256": content, "evaluator_id": ev.id, "cycles": [], "artifacts": []}
             R.atomic_write(ctx.package / QUARANTINE, (json.dumps(q, indent=1, sort_keys=True) + "\n").encode())
         return EXIT_INFRA_QUARANTINED

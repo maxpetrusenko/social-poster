@@ -8,7 +8,7 @@ from unittest import mock
 
 from scripts.fingerprint_eval import gate as GATE
 from scripts.fingerprint_eval.run import main
-from scripts.fingerprint_eval.tests.fakes import ARTICLE, Fakes, argv, gate_json, workspace
+from scripts.fingerprint_eval.tests.fakes import ARTICLE, ARTICLE_REORDERED, Fakes, argv, gate_json, workspace
 
 REPO = Path(__file__).resolve().parents[3]
 
@@ -152,7 +152,7 @@ class ErrorsAreExit2(GateBase):
     def test_judge_garbage_is_error_after_one_retry(self):
         f = Fakes()
         f.judge_reply = lambda p: 'Sure! [{"i": 1, "verdict": "entailed"}] hope that helps'
-        rc, w, _ = self.run_gate(fakes=f)
+        rc, w, _ = self.run_gate(article=ARTICLE_REORDERED, fakes=f)
         self.assert_error(rc, w, "judge failed")
         self.assertEqual(f.calls["judge"], 2)
 
@@ -172,7 +172,7 @@ class ErrorsAreExit2(GateBase):
         def boom(p):
             raise GatewayError("network: down")
         f.judge_reply = boom
-        rc, w, _ = self.run_gate(fakes=f)
+        rc, w, _ = self.run_gate(article=ARTICLE_REORDERED, fakes=f)
         self.assert_error(rc, w, "judge failed")
 
     def test_embedding_failures_are_error(self):

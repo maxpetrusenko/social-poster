@@ -107,6 +107,12 @@ def from_dict(d) -> EvalRecord:
     reasons = _need(d, "reasons", (list,))
     if not all(isinstance(r, str) for r in reasons):
         raise RecordError("record: reasons must be strings")
+    structure = _need(d, "structure", (dict,))
+    claims = _need(d, "claims", (dict,))
+    if structure.get("evaluated") == "partial" and result is Result.PASS:
+        raise RecordError("record: a partial evaluation (claims/semantic checks skipped) cannot be a PASS")
+    if result is Result.PASS and claims.get("judged_by") == "identity" and not claims.get("reference_bound_by"):
+        raise RecordError("record: identity judgement without reference_bound_by (reference is not the rated, hash-bound version)")
     rec = EvalRecord(
         schema_version=SCHEMA_VERSION, slug=_need(d, "slug", (str,)), binding=binding_from_dict(d.get("binding")),
         final_path=_need(d, "final_path", (str,)), final_rule=_need(d, "final_rule", (str,)),
@@ -114,8 +120,8 @@ def from_dict(d) -> EvalRecord:
         reference_sha256=ref_sha, reference_identical=_need(d, "reference_identical", (bool,)),
         timestamp_utc=_need(d, "timestamp_utc", (str,)), evaluator_tree_sha256=_need(d, "evaluator_tree_sha256", (str,)),
         pipeline_corpus_sha256=_need(d, "pipeline_corpus_sha256", (str,)),
-        models=_need(d, "models", (dict,)), claims=_need(d, "claims", (dict,)), links=_need(d, "links", (dict,)),
-        structure=_need(d, "structure", (dict,)), semantic=_need(d, "semantic", (dict,)), advisory=_need(d, "advisory", (dict,)),
+        models=_need(d, "models", (dict,)), claims=claims, links=_need(d, "links", (dict,)),
+        structure=structure, semantic=_need(d, "semantic", (dict,)), advisory=_need(d, "advisory", (dict,)),
         result=result, category=category, reasons=reasons, runtime_s=float(_need(d, "runtime_s", (int, float))),
         raw_report_path=_need(d, "raw_report_path", (str,)), heal_cycle=int(_need(d, "heal_cycle", (int,))),
         parent_content_sha256=d.get("parent_content_sha256") if isinstance(d.get("parent_content_sha256"), (str, type(None))) else _bad("parent_content_sha256"),

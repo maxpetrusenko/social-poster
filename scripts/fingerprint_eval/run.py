@@ -15,7 +15,7 @@ from pathlib import Path
 
 from . import metrics as M
 from .errors import EvaluationError
-from .gateway import GatewayError, Model, resolve_model
+from .gateway import GatewayError, Model, child_env, resolve_model
 from .extract_cache import ensure_extraction
 from .guards import semantic_similarity, structure_preservation
 from .judge import judge_claims
@@ -35,11 +35,20 @@ METRIC_GROUPS = {
 }
 
 
+DOPPLER_ENV_KEYS = ("PATH", "HOME", "USER", "LOGNAME", "LANG", "LC_ALL", "TMPDIR",
+                    "DOPPLER_TOKEN", "DOPPLER_CONFIG_DIR", "DOPPLER_PROJECT", "DOPPLER_CONFIG", "DOPPLER_ENABLE_VERSION_CHECK")
+
+
+def doppler_env(environ=None) -> dict[str, str]:
+    """Allowlisted env for the doppler child: OPENAI_/ANTHROPIC_ keys and every other secret in this process never reach it."""
+    return child_env(DOPPLER_ENV_KEYS, environ)
+
+
 def load_gateway_key() -> None:
     """Fill LLM_GATEWAY_API_KEY from Doppler into this process env only (never printed)."""
     if os.environ.get("LLM_GATEWAY_API_KEY"):
         return
-    env = {**os.environ, "HTTPS_PROXY": "", "HTTP_PROXY": ""}
+    env = {**doppler_env(), "HTTPS_PROXY": "", "HTTP_PROXY": ""}
     p = subprocess.run(["doppler", "secrets", "get", "LLM_GATEWAY_API_KEY", "-p", "api_keys", "-c", "dev", "--plain"], capture_output=True, text=True, env=env)
     if p.returncode == 0 and p.stdout.strip():
         os.environ["LLM_GATEWAY_API_KEY"] = p.stdout.strip()

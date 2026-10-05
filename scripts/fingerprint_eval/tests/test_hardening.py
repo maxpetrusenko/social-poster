@@ -134,9 +134,8 @@ class RefsAndStructure(unittest.TestCase):
     def test_reference_style_image_and_links_and_definitions(self):
         t = "See [the docs][d] and ![pic][p].\n\n[d]: https://example.com/docs\n[p]: https://example.com/p.png\n"
         refs = find_refs(t)
-        self.assertEqual(refs["images"], ["![pic][p]"])
-        self.assertIn("[the docs][d]", refs["links"])
-        self.assertIn("[d]: https://example.com/docs", refs["links"])
+        self.assertEqual(refs["images"], ["![pic](https://example.com/p.png)"])
+        self.assertEqual(refs["links"], ["[the docs](https://example.com/docs)"])
         self.assertFalse(self.lost(t, t.replace("[the docs][d]", "the docs"), "links")["preserved"])
         self.assertFalse(self.lost(t, t.replace("[d]: https://example.com/docs\n", ""), "links")["preserved"])
         self.assertFalse(self.lost(t, t.replace("![pic][p]", ""), "images")["preserved"])

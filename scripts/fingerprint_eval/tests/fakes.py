@@ -26,6 +26,12 @@ The reactor ran for forty days without a single fault. It was inspected twice by
 The budget doubled in 2021 because of delays in shipping parts. Nobody disputed that figure.
 """
 
+# Same claims, one prose segment non-identical to ARTICLE (sentences swapped): the claim judge's identity pre-filter
+# gives a segment equal to the reference zero model calls, so tests that need the judge to run use this as the final.
+ARTICLE_REORDERED = ARTICLE.replace("The reactor ran for forty days without a single fault. It was inspected twice by the crew.",
+                                    "It was inspected twice by the crew. The reactor ran for forty days without a single fault.")
+assert ARTICLE_REORDERED != ARTICLE
+
 
 class Fakes:
     """Patches Model.complete and guards.embed. `judge_reply(raw_claims, passage, n)` and `extract_reply(text)` may be overridden."""
@@ -45,6 +51,11 @@ class Fakes:
 
     @staticmethod
     def _judge(prompt: str) -> str:
+        if "supported by the reference material" in prompt:  # added.SUPPORT_PROMPT: supported when every word already occurs in the material
+            body = prompt.split("Claims:\n", 1)[1]
+            claims = re.findall(r"^(\d+)\. (.*)$", body.split("\n\nReference material:", 1)[0], re.M)
+            material = set(re.findall(r"\w+", body.split("Reference material:\n", 1)[1].lower()))
+            return json.dumps([{"i": int(i), "verdict": "supported" if set(re.findall(r"\w+", c.lower())) <= material else "unsupported", "reason": "r"} for i, c in claims])
         claims = re.findall(r"^(\d+)\. (.*)$", prompt.split("Claims:\n", 1)[1].split("\n\nRewritten passage:", 1)[0], re.M)
         passage = prompt.split("Rewritten passage:\n", 1)[1]
         return json.dumps([{"i": int(i), "verdict": "entailed" if c in passage else "changed", "reason": "r"} for i, c in claims])

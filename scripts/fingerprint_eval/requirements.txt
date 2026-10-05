@@ -1,0 +1,3 @@
+# Runtime dependencies of scripts/fingerprint_eval (pytest is test-only).
+# markdown-it-py 4.2.0: CommonMark reference-compliant parser, executablebooks (also behind Jupyter Book, MyST), released 2026-05-07, active.
+markdown-it-py==4.2.0

@@ -100,8 +100,11 @@ def _deterministic(struct: dict, fdiff: list[str]) -> tuple[list[str], list[str]
 
 
 def _verdict(slug: str, threshold: float, reasons: list[str], cats: list[str], inputs: dict, extractor_spec: str, extraction: str,
-             judge_name: str, claims: dict, sem: dict, struct: dict, fdiff: list[str], advisory: dict) -> dict:
-    return {"schema_version": SCHEMA_VERSION, "pass": not reasons, "evaluated": True, "exit_code": FAIL if reasons else PASS,
+             judge_name: str, claims: dict, sem: dict, struct: dict, fdiff: list[str], advisory: dict, partial: bool = False) -> dict:
+    """partial: a deterministic early FAIL that never ran the claim and semantic checks. It is labelled as such and can only FAIL."""
+    if partial and not reasons:
+        raise EvaluationError("internal: a partial evaluation cannot pass")
+    g = {"schema_version": SCHEMA_VERSION, "pass": not reasons, "evaluated": "partial" if partial else True, "exit_code": FAIL if reasons else PASS,
             "result": (Result.FAIL if reasons else Result.PASS).value, "error_category": None, "failure_categories": cats,
             "slug": slug, "threshold": threshold, "reasons": reasons, "reference_identical": inputs["reference_identical"], "inputs": inputs,
             "extractor": {"spec": extractor_spec, "id": extractor_id(extractor_spec), "source": extraction}, "judge": judge_name,
@@ -109,12 +112,18 @@ def _verdict(slug: str, threshold: float, reasons: list[str], cats: list[str], i
                          "claims": claims, "flagged_claims": claims.get("flagged", []), "semantic_similarity_whole": sem["whole"], "structure": struct,
                          "frozen_blocks_identical": not fdiff},
             "advisory": advisory}
+    if partial:
+        g["checks_skipped"] = ["claims", "semantic"]
+    return g
 
 
 def evaluate(article: Path, draft: Path | None, author_dir: Path | None, pipeline_dir: Path, out: Path, judge_spec: str,
-             extractor_spec: str, threshold: float, refresh: bool, identity_shortcut: bool = False, source_notes: Path | None = None) -> dict:
+             extractor_spec: str, threshold: float, refresh: bool, identity_shortcut: bool = False, source_notes: Path | None = None,
+             reference_bound_by: str | None = None) -> dict:
     """identity_shortcut (release path): a final byte-identical to the reference skips the extractor, judge and embeddings
-    (claims judged_by "identity"). Off by default so the standalone --gate CLI keeps exercising every model."""
+    (claims judged_by "identity"), but ONLY when reference_bound_by names the rating/prepublish record whose recorded hash
+    equals the reference sha256 (the caller, authz, verified that). Otherwise every check runs. Off by default so the
+    standalone --gate CLI keeps exercising every model."""
     author_dir = author_dir or DEFAULT_AUTHOR_CORPUS
     _check_inputs(article, draft, author_dir, pipeline_dir, threshold)
     final_md, draft_md = _read(article, "article"), _read(draft, "draft")
@@ -133,13 +142,15 @@ def evaluate(article: Path, draft: Path | None, author_dir: Path | None, pipelin
                    "judge": None, "skipped": "deterministic_fail", "flagged": []}
         advisory.update(_advisory(final_md, draft_md, author_dir, pipeline_dir, slug))
         return _verdict(slug, threshold, det_reasons, det_cats, inputs, extractor_spec, "skipped", judge.name, skipped,
-                        {"whole": None, "section_min": None, "per_section": {}}, struct, fdiff, advisory)
-    if identity_shortcut and inputs["reference_identical"]:
+                        {"whole": None, "section_min": None, "per_section": {}}, struct, fdiff, advisory, partial=True)
+    if identity_shortcut and inputs["reference_identical"] and reference_bound_by:
         ident = {"total": 0, "claims_entailed": 0, "claims_changed": 0, "claims_missing": 0, "claims_unjudged": 0,
-                 "judge": "identity", "skipped": "identical", "flagged": []}
+                 "judge": "identity", "skipped": "identical", "reference_bound_by": reference_bound_by, "flagged": []}
         advisory.update(_advisory(final_md, draft_md, author_dir, pipeline_dir, slug))
-        return _verdict(slug, threshold, [], [], inputs, extractor_spec, "skipped", judge.name, ident,
-                        {"whole": 1.0, "section_min": 1.0, "per_section": {}}, struct, fdiff, advisory)
+        g = _verdict(slug, threshold, [], [], inputs, extractor_spec, "skipped", judge.name, ident,
+                     {"whole": 1.0, "section_min": 1.0, "per_section": {}}, struct, fdiff, advisory)
+        g["reference_bound_by"] = reference_bound_by
+        return g
 
     segs = segment_article(draft_md)
     extraction = ensure_extraction(segs, draft_md, extractor_spec, out / "gate-extraction.json", refresh)
@@ -190,12 +201,13 @@ def evaluate(article: Path, draft: Path | None, author_dir: Path | None, pipelin
 
 
 def run_gate(article: Path, draft: Path | None, author_dir: Path | None, pipeline_dir: Path, out: Path, judge_spec: str,
-             threshold: float, extractor_spec: str, refresh: bool = False, identity_shortcut: bool = False, source_notes: Path | None = None) -> int:
+             threshold: float, extractor_spec: str, refresh: bool = False, identity_shortcut: bool = False, source_notes: Path | None = None,
+             reference_bound_by: str | None = None) -> int:
     """Never raises: every failure to evaluate, including bugs, is exit 2."""
     try:
         out.mkdir(parents=True, exist_ok=True)
         (out / "gate.json").unlink(missing_ok=True)  # a stale verdict must never outlive a failed run
-        gate = evaluate(article, draft, author_dir, pipeline_dir, out, judge_spec, extractor_spec, threshold, refresh, identity_shortcut, source_notes)
+        gate = evaluate(article, draft, author_dir, pipeline_dir, out, judge_spec, extractor_spec, threshold, refresh, identity_shortcut, source_notes, reference_bound_by)
     except Exception as e:  # noqa: BLE001  fail closed
         msg = f"{type(e).__name__}: {e}" if not isinstance(e, EvaluationError) else str(e)
         cat = getattr(e, "category", None)  # errors.EvaluationError carries a Category (older builds: absent)

@@ -44,32 +44,43 @@ def _mean(vs: list[list[float]]) -> list[float]:
 
 
 def sections(md: str) -> list[tuple[str, str]]:
-    """(heading, prose text) per h2+ section; intro first. Prose = paragraphs only."""
+    """(key, prose text) per h2+ section; intro first. Prose = paragraphs only.
+    key = heading text, with an occurrence suffix from the second use of the same heading on (`Heading #2`),
+    so repeated headings never collapse into one entry."""
     out: list[tuple[str, list[str]]] = [("(intro)", [])]
+    seen: dict[str, int] = {}
     for b in parse_blocks(md):
         if b.kind == "heading" and not b.text.startswith("# "):
-            out.append((b.text.lstrip("# ").strip(), []))
+            h = b.text.lstrip("# ").strip()
+            seen[h] = seen.get(h, 0) + 1
+            out.append((h if seen[h] == 1 else f"{h} #{seen[h]}", []))
         elif b.kind == "paragraph":
             out[-1][1].append(strip_inline(b.text).replace("\n", " "))
     return [(h, "\n\n".join(ps)) for h, ps in out if ps]
 
 
 def semantic_similarity(original: str, rewrite: str) -> dict:
-    """nomic-embed-text cosine: whole document (mean-pooled chunks) and per section."""
+    """nomic-embed-text cosine: whole document (mean-pooled chunks) and per section. Sections present on only one side
+    still count toward the whole-document score (dropped original sections and added rewrite sections both pull it down)."""
     so, sr = dict(sections(original)), dict(sections(rewrite))
     per: dict[str, float] = {}
     all_o, all_r = [], []
     for h, t in so.items():
+        co = _embed(_chunks(t))
+        all_o += co
         if h not in sr:
             per[h] = 0.0
             continue
-        co, cr = _embed(_chunks(t)), _embed(_chunks(sr[h]))
+        cr = _embed(_chunks(sr[h]))
         per[h] = _cos(_mean(co), _mean(cr))
-        all_o += co
         all_r += cr
-    whole = _cos(_mean(all_o), _mean(all_r)) if all_o else 0.0
+    extra = [h for h in sr if h not in so]
+    for h in extra:
+        all_r += _embed(_chunks(sr[h]))
+    whole = _cos(_mean(all_o), _mean(all_r)) if all_o and all_r else 0.0
     vals = list(per.values())
-    return {"whole": whole, "section_mean": sum(vals) / max(len(vals), 1), "section_min": min(vals) if vals else 0.0, "per_section": per}
+    return {"whole": whole, "section_mean": sum(vals) / max(len(vals), 1), "section_min": min(vals) if vals else 0.0, "per_section": per,
+            "unmatched_rewrite_sections": extra}
 
 
 def structure_preservation(original: str, rewrite: str) -> dict:
