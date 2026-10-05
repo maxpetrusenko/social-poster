@@ -15,7 +15,8 @@ from scripts.fingerprint_eval.textutil import core_markdown
 
 from . import editguard as G
 from . import mdlib as M
-from .core import Pipeline, atomic_write, sha_bytes
+from .core import Pipeline, PipelineError, atomic_write, sha_bytes
+from .validators import asserted_unresolved
 
 MAX_ATTEMPTS = 12
 MAX_CHANGED_BLOCKS = 3
@@ -64,6 +65,15 @@ def _save(pipe: Pipeline, loop: dict) -> None:
     atomic_write(_dir(pipe) / "loop.json", (json.dumps(loop, indent=1, sort_keys=True) + "\n").encode())
 
 
+def _current(pipe: Pipeline, loop: dict) -> str:
+    """current.md, but only if its bytes are exactly the last text the loop accepted (the baseline or a gated, kept try)."""
+    raw = (_dir(pipe) / "current.md").read_bytes()
+    if not loop.get("current_sha256") or sha_bytes(raw) != loop["current_sha256"]:
+        raise PipelineError("antifp current.md does not match the hash of the last gated attempt (edited on disk without a gated 'try'); "
+                            "submit the edit through 'antifp try', or rerun 'antifp baseline' to restart the loop from the reference")
+    return raw.decode("utf-8")
+
+
 def reference_text(pipe: Pipeline) -> str:
     return pipe.read_art("voice") or ""
 
@@ -72,18 +82,23 @@ def baseline(pipe: Pipeline) -> dict:
     ref = reference_text(pipe)
     ref_sha = sha_bytes(ref.encode())
     loop = _loop(pipe)
-    if loop.get("reference_sha") == ref_sha:
+    intact = True
+    try:
+        _current(pipe, loop)
+    except (OSError, ValueError, PipelineError):
+        intact = False  # an un-gated disk edit is never resumed from: the loop restarts from the reference
+    if loop.get("reference_sha") == ref_sha and intact:
         return {"ok": True, "resumed": True, **_view(pipe, loop)}
     sig = signals(ref)
     atomic_write(_dir(pipe) / "current.md", ref.encode())
     loop = {"reference_sha": ref_sha, "baseline": {"composite": sig["composite"], "values": sig["values"], "templates": sig["templates"]},
-            "attempts": [], "kept": 0}
+            "attempts": [], "kept": 0, "current_sha256": ref_sha}
     _save(pipe, loop)
     return {"ok": True, "resumed": False, **_view(pipe, loop)}
 
 
 def _view(pipe: Pipeline, loop: dict) -> dict:
-    cur = (_dir(pipe) / "current.md").read_text()
+    cur = _current(pipe, loop)
     sig = signals(cur)
     return {"baseline_composite": loop["baseline"]["composite"], "current_composite": sig["composite"], "attempts": len(loop["attempts"]),
             "kept": loop["kept"], "strongest": ranking(sig), "current_file": str(DIR_REL / "current.md")}
@@ -104,7 +119,10 @@ def try_edit(pipe: Pipeline, cand: str, target: str, runner: G.Runner, ctx: dict
         return {"ok": False, "kept": False, "reasons": [f"attempt budget ({MAX_ATTEMPTS}) used; run 'antifp finish'"]}
     if target not in WEIGHTS:
         return {"ok": False, "kept": False, "reasons": [f"--signal must be one of {sorted(WEIGHTS)}"]}
-    cur = (_dir(pipe) / "current.md").read_text()
+    try:
+        cur = _current(pipe, loop)
+    except (OSError, ValueError, PipelineError) as e:
+        return {"ok": False, "kept": False, "reasons": [str(e)]}
     ref = reference_text(pipe)
     rec = {"n": len(loop["attempts"]) + 1, "target": target, "kept": False, "reasons": [], "candidate_sha256": sha_bytes(cand.encode())}
     before, after = signals(cur), signals(cand)
@@ -120,6 +138,8 @@ def try_edit(pipe: Pipeline, cand: str, target: str, runner: G.Runner, ctx: dict
         if not g["ok"]:
             rec["reasons"] += ["guard: " + r for r in g["reasons"]]
             rec["guard_categories"] = g["categories"]
+        if ctx.get("ev"):
+            rec["reasons"] += asserted_unresolved(cand, ctx["ev"])
     if not rec["reasons"]:
         if not after["values"][target] < before["values"][target] - 1e-9:
             rec["reasons"].append(f"targeted signal {target} did not improve")
@@ -141,6 +161,7 @@ def try_edit(pipe: Pipeline, cand: str, target: str, runner: G.Runner, ctx: dict
     loop["attempts"].append(rec)
     if rec["kept"]:
         atomic_write(_dir(pipe) / "current.md", cand.encode())
+        loop["current_sha256"] = rec["candidate_sha256"]  # finish accepts exactly these bytes and no others
         loop["kept"] += 1
     _save(pipe, loop)
     pipe.log("antifp_try", **{k: rec[k] for k in ("n", "target", "kept")})
@@ -151,7 +172,10 @@ def finish(pipe: Pipeline) -> dict:
     loop = _loop(pipe)
     if not loop:
         return {"ok": False, "reasons": ["run 'antifp baseline' first"]}
-    cur = (_dir(pipe) / "current.md").read_text()
+    try:
+        cur = _current(pipe, loop)
+    except (OSError, ValueError, PipelineError) as e:
+        return {"ok": False, "reasons": [str(e)]}
     sig = signals(cur)
     heavy = sig["values"]["template_hits"] >= HEAVY_TEMPLATE_HITS or sig["composite"] >= HEAVY_COMPOSITE
     report = {"policy": "own style-fingerprint metrics only; no third-party AI detector was used or targeted",

@@ -10,7 +10,7 @@ from scripts.fingerprint_eval.gateway import GatewayError, extract_json
 
 from . import editguard as G
 from . import mdlib as M
-from .core import BLOCKED, DONE, FAILED, NOT_READY, Pipeline, atomic_write, sha_bytes, sha_json
+from .core import BLOCKED, DONE, FAILED, NOT_READY, Pipeline, PipelineError, atomic_write, safe_path, sha_bytes, sha_json
 from .submit import _finish, deps_ctx
 
 Critic = Callable[[str], str]
@@ -26,7 +26,7 @@ def run_review(pipe: Pipeline, runner: G.Runner) -> dict:
     rec = pipe.rec("review")
     if rec and pipe.status("review") == DONE:
         return {"ok": True, "cached": True, "stage": "review", "bundle_sha256": rec["bundle_sha256"]}
-    art = pipe.pkg / (pipe.rec("antifp") or {})["artifact"]
+    art = safe_path(pipe.pkg, (pipe.rec("antifp") or {})["artifact"])
     rc, out = runner([sys.executable, "-m", "scripts.medium_review", "review", "--package", str(pipe.pkg), "--article", str(art), "--json"])
     try:
         record = json.loads(out[out.index("{"):out.rindex("}") + 1])
@@ -52,12 +52,35 @@ def _fail_review(pipe: Pipeline, msg: str) -> dict:
 # ---- candidate ------------------------------------------------------------------------------------------------
 def candidate_text(pipe: Pipeline) -> str:
     c = pipe.state.get("candidate") or {}
-    return (pipe.pkg / c["path"]).read_text() if c.get("path") else ""
+    if not c.get("path"):
+        return ""
+    raw = safe_path(pipe.pkg, c["path"]).read_bytes()
+    if c.get("sha256") and sha_bytes(raw) != c["sha256"]:
+        raise PipelineError("the candidate file changed on disk after it was accepted")
+    return raw.decode("utf-8")
+
+
+def gate_reference_frame(pipe: Pipeline) -> str:
+    """The pre-anti-fingerprint reference the evaluator gate compares against. Never replaced by a rebase."""
+    rec = pipe.rec("images") or {}
+    if not rec.get("reference_frame"):
+        return ""
+    raw = safe_path(pipe.pkg, rec["reference_frame"]).read_bytes()
+    if sha_bytes(raw) != rec.get("reference_frame_sha256"):
+        raise PipelineError("the reference frame changed on disk after the images stage recorded it")
+    return raw.decode("utf-8")
 
 
 def reference_frame(pipe: Pipeline) -> str:
-    rel = (pipe.rec("images") or {}).get("reference_frame")
-    return (pipe.pkg / rel).read_text() if rel else ""
+    """The reference the deterministic edit guard uses: the gate reference, or the author-approved rebase of it for the current candidate."""
+    rb = pipe.state.get("rebase")
+    cand = (pipe.state.get("candidate") or {}).get("sha256")
+    if rb and rb.get("accepted") and rb.get("candidate_sha256") == cand:
+        raw = safe_path(pipe.pkg, rb["path"]).read_bytes()
+        if sha_bytes(raw) != rb["new_reference_sha256"]:
+            raise PipelineError("the rebased reference changed on disk after it was approved")
+        return raw.decode("utf-8")
+    return gate_reference_frame(pipe)
 
 
 CRITIC_PROMPT = """You are an independent editorial critic. You have no knowledge of how this article was produced. Judge only the text below.
@@ -111,10 +134,15 @@ def run_critic(pipe: Pipeline, critic: Critic, framework_text: str) -> dict:
         pipe.set("critic", BLOCKED, reasons=msg, extra={"category": cat})
         pipe.save()
         return {"ok": False, "code": "BLOCKED", "stage": "critic", "reasons": msg}
+    except Exception as e:  # noqa: BLE001  an unexpected critic failure must not leave the stage pending
+        msg = [f"critic failed unexpectedly ({type(e).__name__}): {str(e)[:200]}"]
+        pipe.set("critic", BLOCKED, reasons=msg, extra={"category": "DEPENDENCY_FAILURE"})
+        pipe.save()
+        return {"ok": False, "code": "BLOCKED", "stage": "critic", "reasons": msg}
     try:
         data = extract_json(raw)
         findings = _check_critic(data, cand)
-    except (GatewayError, ValueError) as e:
+    except Exception as e:  # noqa: BLE001  malformed nested JSON of any shape is a rejected critic reply, not a crash
         pipe.set("critic", FAILED, reasons=[f"critic output is malformed: {str(e)[:200]}"])
         pipe.save()
         return {"ok": False, "code": "INVALID", "stage": "critic", "reasons": [f"critic output is malformed: {str(e)[:200]}"]}
@@ -164,12 +192,13 @@ def repair_try(pipe: Pipeline, cand: str, runner: G.Runner) -> dict:
         return {"ok": False, "code": "USAGE", "stage": "repair", "reasons": ["no open major finding on the current candidate: run the critic, or 'repair done'"]}
     st = pipe.state.setdefault("critic", {"rounds": 0, "history": [], "repair_rejected": 0})
     ref, c = reference_frame(pipe), deps_ctx(pipe)
+    gate_ref = gate_reference_frame(pipe)
     g = G.edit_guard(ref, cand, known_urls=c["known_urls"], blob_numbers=c["blob_numbers"], strict=True, author_material=c["author_material"])
     reasons = list(g["reasons"])
     if not reasons:
         base = pipe.pkg / "write-pipeline" / "work" / "repair"
         atomic_write(base / "candidate" / "article.md", cand.encode())
-        atomic_write(base / "reference" / "reference.md", ref.encode())
+        atomic_write(base / "reference" / "reference.md", gate_ref.encode())
         gate = G.claims_gate(runner, base / "candidate" / "article.md", base / "reference" / "reference.md", base / "gate", pipe.pkg)
         if gate["state"] == "ERROR":
             msg = ["claims gate could not evaluate the repair (retry later): " + "; ".join(gate["reasons"])[:200]]

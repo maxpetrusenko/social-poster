@@ -14,8 +14,7 @@ from typing import Callable
 
 from scripts.fingerprint_eval.contracts import AUTHOR_CORPUS_DIR
 from scripts.fingerprint_eval.guards import frozen_diff, structure_preservation
-from scripts.fingerprint_eval.gateway import child_env
-from scripts.publish_route.orchestrate import ROUTE_ENV_KEYS
+from scripts.fingerprint_eval.gateway import child_env, claude_env
 
 from . import mdlib as M
 
@@ -25,11 +24,20 @@ CONTENT_CATS = {"CONTENT_CLAIM_FAILURE", "ADDED_UNSUPPORTED_CLAIM", "MISSING_LIN
 CLAIM_CATS = {"CONTENT_CLAIM_FAILURE", "ADDED_UNSUPPORTED_CLAIM"}
 
 
+# Non-secret configuration only. The gateway key, Doppler tokens and every API key are NOT passed: the evaluator child loads what it
+# needs itself, and claude -p gets subscription auth through claude_env().
+RUNNER_CONFIG_KEYS = ("LLM_GATEWAY_URL", "SSL_CERT_FILE", "FINGERPRINT_EVAL_KEY_FILE", "FG_JUDGE", "FG_EXTRACTOR")
+
+
+def runner_env(environ=None) -> dict[str, str]:
+    return {**claude_env(environ), **child_env(RUNNER_CONFIG_KEYS, environ)}
+
+
 def make_runner(workspace: Path) -> Runner:
     """Subprocess runner with the evaluator's allowlisted env. FINGERPRINT_EVAL_WORKSPACE points at a pipeline-private directory so a
     release authorize here writes its ACTIVE selector there and never replaces the production selector another article may hold."""
     def run(argv: list[str]) -> tuple[int, str]:
-        env = child_env(ROUTE_ENV_KEYS)
+        env = runner_env()
         env["FINGERPRINT_EVAL_WORKSPACE"] = str(workspace)
         try:
             p = subprocess.run(argv, capture_output=True, text=True, timeout=1800, cwd=REPO, env=env)

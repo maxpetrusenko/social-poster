@@ -7,7 +7,7 @@ from collections import Counter
 from pathlib import Path
 
 from . import mdlib as M
-from .core import sha_bytes, sha_file
+from .core import PipelineError, safe_path, sha_bytes, sha_file
 
 SOURCE_KINDS = {"url", "text", "transcript", "draft", "note", "author"}
 CLAIM_STATUS = {"supported", "attributed", "inference", "unresolved"}
@@ -22,6 +22,28 @@ VIDEO_FRAME = re.compile(r"video frame|thumbnail|presenter|talking head|speaker|
 STOP = set("the a an of to in on for and or with from by is are was were be as at it this that these those your you how what why when".split())
 
 
+def _dict_items(items, where: str, reasons: list[str]) -> list[dict]:
+    """Nested JSON is untrusted: a non-object row is a reason, never an AttributeError."""
+    out = []
+    for i, x in enumerate(items if isinstance(items, list) else []):
+        if isinstance(x, dict):
+            out.append(x)
+        else:
+            reasons.append(f"{where}[{i}]: must be an object, got {type(x).__name__}")
+            out.append({})
+    return out
+
+
+def _list(d: dict, key: str, where: str, reasons: list[str]) -> list:
+    v = d.get(key)
+    if v is None or v == "":
+        return []
+    if not isinstance(v, list):
+        reasons.append(f"{where}: '{key}' must be a list")
+        return []
+    return v
+
+
 def _req(d: dict, keys: tuple[str, ...], where: str, reasons: list[str]) -> None:
     for k in keys:
         if d.get(k) in (None, "", [], {}):
@@ -34,7 +56,7 @@ def sources(data: dict, pkg: Path) -> dict:
     if not isinstance(items, list) or not items:
         return {"ok": False, "reasons": ["sources: at least one source entry is required"]}
     seen, captured = set(), 0
-    for i, s in enumerate(items):
+    for i, s in enumerate(_dict_items(items, "sources", reasons)):
         where = f"sources[{i}]"
         _req(s, ("id", "kind", "status"), where, reasons)
         if s.get("id") in seen:
@@ -43,9 +65,15 @@ def sources(data: dict, pkg: Path) -> dict:
         if s.get("kind") not in SOURCE_KINDS:
             reasons.append(f"{where}: kind must be one of {sorted(SOURCE_KINDS)}")
         if s.get("status") == "captured":
-            f = pkg / str(s.get("file", ""))
-            if not s.get("file") or not f.is_file() or not f.read_bytes().strip():
-                reasons.append(f"{where}: captured source file missing or empty: {s.get('file')!r}")
+            try:
+                f = safe_path(pkg, s.get("file"))
+                ok_file = f.is_file() and bool(f.read_bytes().strip())
+            except (OSError, PipelineError) as e:
+                f, ok_file = None, False
+                if isinstance(e, PipelineError):
+                    reasons.append(f"{where}: {e}")
+            if not ok_file:
+                reasons.append(f"{where}: captured source file missing, empty or outside the package: {str(s.get('file'))[:120]!r}")
             else:
                 s["sha256"] = sha_file(f)
                 captured += 1
@@ -63,13 +91,14 @@ def sources(data: dict, pkg: Path) -> dict:
 
 
 def source_blob(data: dict, pkg: Path) -> str:
+    """Every captured source must be readable inside the package and still match its recorded hash; otherwise raise (never skip silently)."""
     out = []
     for s in data.get("sources", []):
         if s.get("status") == "captured":
-            try:
-                out.append((pkg / s["file"]).read_text(errors="ignore"))
-            except OSError:
-                pass
+            raw = safe_path(pkg, s.get("file")).read_bytes()
+            if s.get("sha256") and sha_bytes(raw) != s["sha256"]:
+                raise PipelineError(f"captured source {s.get('file')!r} changed on disk since it was recorded")
+            out.append(raw.decode("utf-8", "replace"))
     return "\n".join(out)
 
 
@@ -98,7 +127,7 @@ def evidence(data: dict, src: dict) -> dict:
         return {"ok": False, "reasons": ["evidence: a claims list is required"]}
     ids = {s.get("id") for s in src.get("sources", [])}
     seen = set()
-    for i, c in enumerate(claims):
+    for i, c in enumerate(_dict_items(claims, "claims", reasons)):
         w = f"claims[{i}]"
         _req(c, ("id", "claim", "status"), w, reasons)
         if c.get("id") in seen:
@@ -106,8 +135,8 @@ def evidence(data: dict, src: dict) -> dict:
         seen.add(c.get("id"))
         if c.get("status") not in CLAIM_STATUS:
             reasons.append(f"{w}: status must be one of {sorted(CLAIM_STATUS)}")
+        ev = _dict_items(_list(c, "evidence", w, reasons), f"{w}.evidence", reasons)
         if c.get("status") in ("supported", "attributed"):
-            ev = c.get("evidence") or []
             good = [e for e in ev if e.get("passage") and (str(e.get("url", "")).startswith(("http://", "https://")) or e.get("source_id") in ids)]
             if not good:
                 reasons.append(f"{w} ({c.get('id')}): {c.get('status')} claim has no inspected source with url or source_id and passage (missing source)")
@@ -122,19 +151,19 @@ def angle(data: dict, ev: dict, src: dict) -> dict:
     _req(data, ("question", "reader", "angle", "verdict"), "angle", reasons)
     ids = {c.get("id") for c in ev.get("claims", [])}
     author = any(s.get("kind") == "author" and s.get("status") == "captured" for s in src.get("sources", []))
-    for i, c in enumerate(data.get("contributions") or []):
+    for i, c in enumerate(_dict_items(data.get("contributions") or [], "contributions", reasons)):
         w = f"contributions[{i}]"
         _req(c, ("id", "text", "kind"), w, reasons)
         if c.get("kind") not in CONTRIB_KINDS:
             reasons.append(f"{w}: kind must be one of {sorted(CONTRIB_KINDS)}")
         if c.get("kind") == "author_experience" and not author:
             reasons.append(f"{w}: author_experience needs author-supplied material in the source manifest; list it under author_opportunities instead")
-        bad = [e for e in c.get("evidence_ids") or [] if e not in ids]
+        bad = [e for e in _list(c, "evidence_ids", w, reasons) if e not in ids]
         if bad:
             reasons.append(f"{w}: unknown evidence ids {bad}")
         if c.get("kind") != "author_experience" and not (c.get("evidence_ids") or []):
             reasons.append(f"{w}: a contribution must cite evidence ids")
-    for i, o in enumerate(data.get("author_opportunities") or []):
+    for i, o in enumerate(_dict_items(data.get("author_opportunities") or [], "author_opportunities", reasons)):
         _req(o, ("id", "prompt", "why"), f"author_opportunities[{i}]", reasons)
     if data.get("verdict") not in ("adds", "summary_only"):
         reasons.append("angle: verdict must be 'adds' or 'summary_only'")
@@ -153,12 +182,13 @@ def outline(data: dict, ev: dict) -> dict:
     if not isinstance(secs, list) or len(secs) < 2:
         return {"ok": False, "reasons": ["outline: at least two sections are required"]}
     ids = {c.get("id") for c in ev.get("claims", [])}
+    secs = _dict_items(secs, "sections", reasons)
     heads = [M.norm(str(s.get("heading", ""))) for s in secs]
     if len(set(heads)) != len(heads):
         reasons.append("outline: duplicate section headings (merge sections that restate one point)")
     for i, s in enumerate(secs):
         _req(s, ("heading", "purpose"), f"sections[{i}]", reasons)
-        bad = [e for e in s.get("evidence_ids") or [] if e not in ids]
+        bad = [e for e in _list(s, "evidence_ids", f"sections[{i}]", reasons) if e not in ids]
         if bad:
             reasons.append(f"sections[{i}]: unknown evidence ids {bad}")
     return {"ok": not reasons, "reasons": reasons, "data": data}
@@ -183,18 +213,77 @@ def unsupported_numbers(text: str, allowed: Counter) -> list[str]:
     return [f"number not found in the sources or evidence: {sorted(bad)[:5]}"] if bad else []
 
 
-def factual_report(report: dict, text: str, ev: dict) -> list[str]:
-    reasons: list[str] = []
-    if not isinstance(report.get("checked"), list) or not report["checked"]:
-        reasons.append("factual report: a 'checked' list is required")
+OMITTED = {"omitted", "removed"}
+PARAPHRASE_OVERLAP = 0.6
+
+
+def _tokens(t: str) -> set[str]:
+    return {w for w in re.findall(r"[a-z0-9']+", M.norm(t)) if w not in STOP and (len(w) > 2 or w.isdigit())}
+
+
+def asserted_unresolved(text: str, ev: dict) -> list[str]:
+    """Deterministic floor: an unresolved claim that survives verbatim or by close lexical overlap with one sentence.
+    The evaluator gate (submit.py) is the semantic ceiling."""
+    out = []
     n = M.norm(text)
+    sents = [_tokens(x) for x in M.sentences(text)]
     for c in ev.get("claims", []):
-        if c.get("status") == "unresolved":
-            for frag in (c.get("claim"), c.get("supported_wording")):
-                if frag and len(str(frag)) > 25 and M.norm(str(frag)) in n:
-                    reasons.append(f"unresolved claim {c.get('id')} is still asserted in the text: remove or narrow it")
-                    break
+        if not isinstance(c, dict) or c.get("status") != "unresolved":
+            continue
+        hit = False
+        for frag in (c.get("claim"), c.get("supported_wording")):
+            frag = str(frag or "")
+            if len(frag) >= 12 and M.norm(frag) in n:
+                hit = True
+            toks = _tokens(frag)
+            if len(toks) >= 3 and any(len(toks & st) / len(toks) >= PARAPHRASE_OVERLAP for st in sents):
+                hit = True
+        if hit:
+            out.append(f"unresolved claim {c.get('id')} is still asserted in the text (verbatim or paraphrased): remove it, do not reword it")
+    return out
+
+
+def factual_report(report: dict, text: str, ev: dict) -> list[str]:
+    """Exact claim-ID coverage: every research claim is accounted for once, every unresolved one is declared omitted, none survives in the text."""
+    checked = report.get("checked")
+    if not isinstance(checked, list) or not checked:
+        return ["factual report: a 'checked' list is required"]
+    reasons: list[str] = []
+    seen: Counter = Counter()
+    verdict: dict[str, str] = {}
+    for i, e in enumerate(checked):
+        if not isinstance(e, dict) or not isinstance(e.get("claim_id"), str) or not e["claim_id"].strip():
+            reasons.append(f"factual report: checked[{i}] needs a string claim_id")
+            continue
+        seen[e["claim_id"]] += 1
+        verdict[e["claim_id"]] = str(e.get("verdict", "")).strip().lower()
+    claims = [c for c in ev.get("claims", []) if isinstance(c, dict)]
+    ids = [str(c.get("id")) for c in claims]
+    missing = [i for i in ids if i not in seen]
+    if missing:
+        reasons.append(f"factual report does not cover claim ids {missing[:5]}: every research claim id needs exactly one checked entry")
+    unknown = sorted(k for k in seen if k not in ids)
+    if unknown:
+        reasons.append(f"factual report names unknown claim ids {unknown[:5]}")
+    dup = sorted(k for k, v in seen.items() if v > 1)
+    if dup:
+        reasons.append(f"factual report lists claim ids more than once: {dup[:5]}")
+    for c in claims:
+        cid = str(c.get("id"))
+        if c.get("status") == "unresolved" and cid in seen and verdict.get(cid) not in OMITTED:
+            reasons.append(f"unresolved claim {cid} must be reported as omitted or removed")
+    reasons += asserted_unresolved(text, ev)
     return reasons
+
+
+def unresolved_reference(ev: dict) -> str:
+    """A document holding only the unresolved claims, as the evaluator gate's reference: a clean text must be MISSING every one."""
+    rows = []
+    for c in ev.get("claims", []):
+        if isinstance(c, dict) and c.get("status") == "unresolved" and c.get("claim"):
+            t = str(c["claim"]).strip()
+            rows.append(t if t.endswith((".", "!", "?")) else t + ".")
+    return "# Unresolved claims\n\n## Claims the article must not assert\n\n" + "\n\n".join(rows) + "\n"
 
 
 def titles(data: dict, body: str) -> dict:
@@ -274,7 +363,7 @@ def images(data: dict, pkg: Path, body: str) -> dict:
     heads = {M.norm(b.text.lstrip("# ").strip()) for b in M.blocks(body) if b.kind == "heading"}
     n_par = sum(1 for b in M.blocks(body) if b.kind == "paragraph")
     heroes, hashes = 0, set()
-    for i, im in enumerate(imgs):
+    for i, im in enumerate(_dict_items(imgs, "images", reasons)):
         w = f"images[{i}]"
         _req(im, ("id", "path", "purpose", "placement", "method", "provenance", "license", "caption", "alt"), w, reasons)
         if im.get("method") not in IMG_METHODS:
@@ -298,11 +387,14 @@ def images(data: dict, pkg: Path, body: str) -> dict:
             pass
         elif pl:
             reasons.append(f"{w}: placement must be hero, after:<heading> or after-paragraph:<n>")
-        f = pkg / str(im.get("path", ""))
-        if not f.is_file():
-            reasons.append(f"{w}: file not found: {im.get('path')!r}")
+        try:
+            f = safe_path(pkg, im.get("path"))
+            b = f.read_bytes() if f.is_file() else None
+        except (OSError, PipelineError):
+            b = None
+        if b is None:
+            reasons.append(f"{w}: file not found or outside the package: {str(im.get('path'))[:120]!r}")
             continue
-        b = f.read_bytes()
         im["sha256"] = sha_bytes(b)
         if im["sha256"] in hashes:
             reasons.append(f"{w}: duplicate image bytes")
