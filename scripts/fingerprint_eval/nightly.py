@@ -3,7 +3,7 @@
     python -m scripts.fingerprint_eval.nightly --workspace data/article-workspace [--since-days 30]
         [--retry-infra-quarantine] [--out DIR] [--enforced-since YYYY-MM-DD] [--no-probes]
 
-Exit 5 if any scheduled/published package lacks a matching PASS authorization (CRITICAL), else 0.
+Exit 5 if any scheduled/published package lacks a valid signed PASS authorization for its release bytes (CRITICAL), else 0.
 The only write inside a package tree is whatever `release authorize` does when --retry-infra-quarantine
 re-runs an infrastructure quarantine. Editorial quarantines are never retried.
 """

@@ -10,6 +10,7 @@ from pathlib import Path
 from unittest import mock
 
 from scripts.fingerprint_eval import nightly as N
+from scripts.fingerprint_eval import record as R
 from scripts.fingerprint_eval import watchdog as W
 
 TODAY = date(2026, 10, 4)
@@ -22,25 +23,43 @@ def sha(b: bytes) -> str:
     return hashlib.sha256(b).hexdigest()
 
 
+def _binding(h: str) -> dict:
+    return {"content_sha256": h, "evaluator_id": "e" * 12, "author_corpus_sha256": "c" * 64}
+
+
+def _record_dict(slug: str, h: str, result: str, raw_rel: str, raw_sha: str) -> dict:
+    cat = {"PASS": "PASS", "FAIL": "CONTENT_CLAIM_FAILURE"}.get(result, "UNKNOWN_ERROR")
+    return {"schema_version": R.SCHEMA_VERSION, "slug": slug, "binding": _binding(h), "final_path": "article-v1.md", "final_rule": "test",
+            "reference_path": None, "reference_sha256": None, "reference_identical": False, "timestamp_utc": "2026-09-20T10:00:00Z",
+            "evaluator_tree_sha256": "t" * 64, "pipeline_corpus_sha256": "p" * 64, "models": {}, "claims": {}, "links": {},
+            "structure": {}, "semantic": {}, "advisory": {}, "result": result, "category": cat, "reasons": [], "runtime_s": 1.0,
+            "raw_report_path": raw_rel, "heal_cycle": 0, "parent_content_sha256": None, "cache_hit": False, "raw_report_sha256": raw_sha}
+
+
 def make_pkg(ws: Path, slug: str, body: str = PROSE, *, medium=None, release="match", result="PASS",
-             quarantine=None, updated="2026-09-20T10:00:00Z", runs=True):
+             quarantine=None, updated="2026-09-20T10:00:00Z", runs=True, sign=True):
+    """Records and authorization are signed with the conftest test key like the real gate; sign=False writes forged unsigned files."""
     pkg = ws / "articles" / slug
     (pkg / "evals/fingerprint-gate/runs").mkdir(parents=True)
+    (pkg / "evals/fingerprint-gate/raw").mkdir(parents=True)
     (pkg / "article-v1.md").write_text(body)
     (pkg / "version.json").write_text(json.dumps({"articleFile": "article-v1.md", "updatedAt": updated}))
     wf = {"mediumDraft": medium} if medium is not None else {}
     (pkg / "workflow.json").write_text(json.dumps(wf))
     h = sha(body.encode())
+    rec_rel = f"evals/fingerprint-gate/runs/20260920T100000Z-{h[:12]}.json"
+    out = R.signed if sign else (lambda d: d)
     if runs:
-        rec = {"slug": slug, "binding": {"content_sha256": h}, "result": result}
-        (pkg / f"evals/fingerprint-gate/runs/2026-09-20T10-00-00Z-{h[:12]}.json").write_text(json.dumps(rec))
+        raw = b'{"gate": "raw"}'
+        (pkg / "evals/fingerprint-gate/raw/gate.json").write_bytes(raw)
+        rec = _record_dict(slug, h, result, "evals/fingerprint-gate/raw/gate.json", sha(raw))
+        (pkg / rec_rel).write_text(json.dumps(out(rec)))
     if release:
         (pkg / "release").mkdir()
         rel = body.encode() if release == "match" else b"edited after authorization"
         (pkg / "release/medium-final.md").write_bytes(rel)
-        (pkg / "release/authorization.json").write_text(json.dumps({
-            "binding": {"content_sha256": h}, "record_path": f"evals/fingerprint-gate/runs/2026-09-20T10-00-00Z-{h[:12]}.json",
-            "authorized_at_utc": "2026-09-20T10:05:00Z", "release_article_sha256": h}))
+        auth = {"binding": _binding(h), "record_path": rec_rel, "authorized_at_utc": "2026-09-20T10:05:00Z", "release_article_sha256": h}
+        (pkg / "release/authorization.json").write_text(json.dumps(out(auth)))
     if quarantine:
         (pkg / "QUARANTINE.json").write_text(json.dumps({"status": "NEEDS_REVIEW", "category": quarantine}))
     return pkg
@@ -95,6 +114,57 @@ class Integrity(Base):
     def test_fail_record_is_critical_even_with_matching_hash(self):
         make_pkg(self.ws, "x", medium={"status": "scheduled"}, result="FAIL")
         rc, _ = run_main(self.ws, "--enforced-since", "2026-01-01")
+        self.assertEqual(rc, 5)
+
+    def _crit_reason(self, slug="x"):
+        rc, _ = run_main(self.ws, "--enforced-since", "2026-01-01")
+        self.assertEqual(rc, 5)
+        return {c["slug"]: c["integrity_reason"] for c in self.report()["watchdog"]["critical"]}[slug]
+
+    def test_forged_unsigned_record_is_critical(self):
+        make_pkg(self.ws, "x", medium={"status": "scheduled"}, sign=False)
+        self.assertIn("unsigned", self._crit_reason())
+
+    def test_tampered_authorization_is_critical(self):
+        pkg = make_pkg(self.ws, "x", medium={"status": "scheduled"})
+        p = pkg / "release/authorization.json"
+        d = json.loads(p.read_text())
+        d["authorized_at_utc"] = "2026-09-21T00:00:00Z"  # edit without re-signing
+        p.write_text(json.dumps(d))
+        self.assertIn("signature invalid", self._crit_reason())
+
+    def test_tampered_signed_record_is_critical(self):
+        pkg = make_pkg(self.ws, "x", medium={"status": "scheduled"})
+        rec = next((pkg / "evals/fingerprint-gate/runs").glob("*.json"))
+        d = json.loads(rec.read_text())
+        d["reasons"] = ["edited"]
+        rec.write_text(json.dumps(d))
+        self.assertIn("signature invalid", self._crit_reason())
+
+    def test_uncontained_record_path_is_critical(self):
+        pkg = make_pkg(self.ws, "x", medium={"status": "scheduled"})
+        h = sha(PROSE.encode())
+        (pkg / "release/elsewhere.json").write_text(next((pkg / "evals/fingerprint-gate/runs").glob("*.json")).read_text())
+        auth = {"binding": _binding(h), "record_path": "release/elsewhere.json",
+                "authorized_at_utc": "2026-09-20T10:05:00Z", "release_article_sha256": h}
+        (pkg / "release/authorization.json").write_text(json.dumps(R.signed(auth)))
+        self.assertIn("outside", self._crit_reason())
+
+    def test_raw_report_hash_mismatch_is_critical(self):
+        pkg = make_pkg(self.ws, "x", medium={"status": "scheduled"})
+        (pkg / "evals/fingerprint-gate/raw/gate.json").write_bytes(b'{"gate": "swapped"}')
+        self.assertIn("raw gate report", self._crit_reason())
+
+    def test_later_edit_to_current_final_does_not_flag_published_release(self):
+        pkg = make_pkg(self.ws, "x", medium={"status": "scheduled"})
+        (pkg / "article-v1.md").write_text(PROSE + "A later edit after publication.\n\n")
+        rc, _ = run_main(self.ws, "--enforced-since", "2026-01-01")
+        self.assertEqual(rc, 0)
+        self.assertEqual({p["slug"]: p["integrity"] for p in self.report()["watchdog"]["packages"]}["x"], "OK")
+
+    def test_invalid_authorization_is_not_hidden_as_legacy(self):
+        make_pkg(self.ws, "old", medium={"status": "scheduled", "publishDate": "2026-08-18"}, sign=False, updated="2026-08-10T10:00:00Z")
+        rc, _ = run_main(self.ws, "--enforced-since", "2026-10-01")
         self.assertEqual(rc, 5)
 
     def test_legacy_package_is_legacy_ungated(self):

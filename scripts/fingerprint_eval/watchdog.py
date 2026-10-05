@@ -162,31 +162,39 @@ def _is_pass(rec: dict) -> bool:
 
 
 def check_authorization(pkg: Path) -> tuple[bool, str]:
-    """True iff authorization.json binds sha256(release/medium-final.md) AND a PASS record exists for that hash."""
-    auth_p, rel_p = pkg / RELEASE_AUTH, pkg / RELEASE_ARTICLE
-    if not auth_p.is_file():
-        return False, "no release/authorization.json"
-    if not rel_p.is_file():
-        return False, "no release/medium-final.md"
-    auth = read_json(auth_p)
-    bound = ((auth or {}).get("binding") or {}).get("content_sha256") if isinstance(auth, dict) else None
-    if not bound:
-        return False, "authorization.json has no binding.content_sha256"
-    actual = sha256_file(rel_p)
-    if actual != bound:
-        return False, f"release/medium-final.md sha256 {actual[:12]} != binding.content_sha256 {bound[:12]}"
-    rp = auth.get("record_path")
-    rec = None
-    if isinstance(rp, str) and rp:
-        p = Path(rp) if Path(rp).is_absolute() else pkg / rp
-        rec = read_json(p) if p.is_file() else None
-    if rec is not None:
-        if _is_pass(rec) and _rec_hash(rec) == bound:
-            return True, "ok"
-        return False, "authorization record_path does not say PASS for the bound hash"
-    if any(_is_pass(r) and _rec_hash(r) == bound for r in run_records(pkg)):
-        return True, "ok"
-    return False, "no PASS eval record for the bound hash"
+    """Integrity of the PUBLISHED release bytes, using the same signed primitives `release verify` uses (record.load_authorization,
+    load_record_in, check_raw_report). The current final may legitimately differ after publication (a later edit), so the
+    current-binding comparison release.verify_package makes is deliberately not part of this audit; everything else is:
+    authorization + record HMACs, record_path / raw report containment, raw report sha256, PASS, and
+    sha256(release/medium-final.md) == the authorization's content hash == the record's content hash."""
+    from . import record as R
+    try:
+        rel_p = pkg / RELEASE_ARTICLE
+        if not (pkg / RELEASE_AUTH).is_file():
+            return False, "no release/authorization.json"
+        if not rel_p.is_file() or rel_p.is_symlink():
+            return False, "no release/medium-final.md"
+        auth = R.load_authorization(pkg)                       # HMAC checked
+        rec = R.load_record_in(pkg, auth.record_path)          # contained in runs/, HMAC checked
+        R.check_raw_report(pkg, rec)                           # contained in raw/, sha256 == signed field
+        actual = sha256_file(rel_p)
+    except (R.RecordError, OSError) as e:
+        return False, str(e)
+    if rec.result.value != "PASS":
+        return False, f"authorization record is {rec.result.value}, not PASS"
+    if actual != auth.release_article_sha256 or actual != auth.binding.content_sha256:
+        return False, f"release/medium-final.md sha256 {actual[:12]} != authorization content hash {auth.binding.content_sha256[:12]}"
+    if rec.binding.content_sha256 != actual:
+        return False, "authorization record is for different release bytes"
+    return True, "ok"
+
+
+def _signed_pass_artifacts(pkg: Path) -> int:
+    from . import record as R
+    try:
+        return len({r.binding.content_sha256 for _, r in R.list_records(pkg) if r.result.value == "PASS"})
+    except (R.RecordError, OSError):
+        return 0
 
 
 def quarantine_info(pkg: Path) -> dict | None:
@@ -207,7 +215,7 @@ def inspect_package(pkg: Path, queue_item: dict | None, enforced_since: date) ->
         "generated": resolve_final(pkg) is not None,
         "evaluated": bool(recs),
         "authorized": authorized,
-        "pass_artifacts": len({_rec_hash(r) for r in recs if _is_pass(r)}),
+        "pass_artifacts": _signed_pass_artifacts(pkg),
         "last_result": str(last.get("result")) if last else None,
         "unresolved_error": bool(last) and str(last.get("result", "")).upper() == "ERROR",
         "quarantine": quarantine_info(pkg),
@@ -219,7 +227,7 @@ def inspect_package(pkg: Path, queue_item: dict | None, enforced_since: date) ->
     if ms.scheduled_or_published:
         if authorized:
             info["integrity"] = OK
-        elif ms.when is not None and ms.when < enforced_since:
+        elif ms.when is not None and ms.when < enforced_since and not (pkg / RELEASE_AUTH).exists():  # an existing-but-invalid authorization is never legacy
             info["integrity"] = LEGACY
             info["integrity_reason"] = why
         else:
