@@ -97,6 +97,7 @@ def caught_by(g: dict) -> str:
 def run_case(cid: str, label: str, cat: str, final: str, ref: str, root: Path, meter: Meter) -> dict:
     _tl.case = cid
     d = root / cid
+    shutil.rmtree(d, ignore_errors=True)  # an interrupted earlier attempt of this case leaves a half-written workspace
     (d / "article").mkdir(parents=True)
     (d / "out").mkdir()
     art, draft = d / "article" / "article.md", d / "reference.md"
@@ -138,6 +139,7 @@ def main() -> None:
     ap.add_argument("--max-calls", type=int, default=200)
     ap.add_argument("--workers", type=int, default=4)
     ap.add_argument("--resume", action="store_true")
+    ap.add_argument("--work", type=Path, help="persistent workspace (keeps the reference extraction across resumed invocations)")
     ap.add_argument("--report-only", action="store_true")
     a = ap.parse_args()
     res, ref, cases = load(a.set)
@@ -152,9 +154,10 @@ def main() -> None:
         run_mod.load_gateway_key()
         meter = Meter(a.max_calls)
         GW.claude_cli, GU.embed = meter.cli, meter.embed
-        root = Path(tempfile.mkdtemp(prefix=f"fg-e2e-set{a.set}-"))
+        root = a.work or Path(tempfile.mkdtemp(prefix=f"fg-e2e-set{a.set}-"))
+        root.mkdir(parents=True, exist_ok=True)
         _tl.case = "(extraction)"
-        ensure_extraction(segment_article(ref), ref, MODEL, root / "gate-extraction.json", refresh=True)
+        ensure_extraction(segment_article(ref), ref, MODEL, root / "gate-extraction.json", refresh=False)
         extraction_calls = meter.by_case["(extraction)"]
         todo = [c for c in cases if c[0] not in done]
         mode = "a" if out_path.exists() else "w"
