@@ -1,0 +1,29 @@
+--- a/skills/medium-article-generator/SKILL.md	2026-10-05 10:01:25
++++ b/skills/medium-article-generator/SKILL.md	2026-10-05 10:01:25
+@@ -36,6 +36,26 @@
+ blockquote format, or automatic numeric score target. Review feedback informs a
+ holistic revision; it does not turn the generator into a score-chasing loop.
+ 
++## Write pipeline (one invocation to a review package)
++
++`/generate-article` runs the full production pipeline through the deterministic CLI `scripts/write_pipeline` in the social-poster checkout and stops at the review package (stage 18, READY_FOR_REVIEW). The canonical instructions are in `generate-article.md` (`~/.codex/prompts/`); this section only tells Hermes when the pipeline applies. The CLI calls the existing `scripts.fingerprint_eval`, `scripts.medium_review` and `scripts.publish_route` modules and never publishes, schedules, or mutates Medium.
++
++Applies only when a run is started as `/generate-article` or when the caller's prompt names the pipeline. A caller that supplies its own contract keeps it. In particular the `youtube-playlist-to-medium-article` cron keeps following its prompt, `docs/hermes/weekly-youtube-medium-article.md` and the five `source-of-truth-*` skills unchanged; it does not call the pipeline CLI and does not depend on it being installed.
++
++```bash
++cd <social-poster checkout> && ~/.local/bin/uv run --python 3.12 --with markdown-it-py==4.2.0 python -m scripts.write_pipeline status --package <package-dir>
++```
++
++The CLI exists on a host only after the write-pipeline PR is merged and that checkout is updated. If `scripts/write_pipeline` is absent, skip this section and use the generation workflow below.
++
++Pipeline notes for Hermes:
++
++- Semantic stages run on Sonnet through `claude -p` (subscription, API keys stripped). The CLI keeps state, hashes, cache, gates and metrics. Do not edit `write-pipeline/state.json` or the artifacts by hand.
++- The pipeline follows FRAMEWORK.md V6 and does not add a TLDR block, a Read next footer, or a bottom bio; the full-gate list below still governs the cron.
++- Anti-fingerprint edits use our own metrics only. Never use or optimize against a third-party AI detector.
++- The final integrity gate runs `release authorize` with `FINGERPRINT_EVAL_WORKSPACE` pointed at the package's own `write-pipeline/workspace`, so it never replaces the production ACTIVE selector. Publishing still needs the normal `release authorize` and `release verify` in the production workspace for the exact bytes.
++- Real gaps become AUTHOR OPPORTUNITIES. Never invent experience, credentials, sources, quotes, numbers or results.
++
+ ## Local corpus and required intake
+ 
+ Use the real local projects when present:
