@@ -3,8 +3,9 @@
 Policy (docs/fingerprint-gate-calibration.md):
 1. prompt B (quote evidence, name the fact dimension);
 2. identity pre-filter: a segment whose normalized text equals the reference segment is entailed with zero calls;
-3. confirmation: claims flagged changed/missing are re-judged twice more (flagged claims only, one batch per
-   segment); the final verdict is the 2-of-3 majority and the per-claim votes are recorded.
+3. any first-pass changed/missing flag is final (recall policy, W12b: confirmation votes never clear a flag; on held-out
+   set 1 the 2-of-3 vote overturned only TRUE flags and removed zero false alarms). `confirm_telemetry=True` re-judges the
+   flagged claims twice more and records the votes next to the flag, for telemetry only.
 The baseline-delta rule (ignore claims already flagged on the unchanged reference) is optional and NOT applied here.
 """
 from __future__ import annotations
@@ -19,7 +20,7 @@ from .gateway import GatewayError, Model
 from .rewrite import Segment
 
 VERDICTS = ("entailed", "changed", "missing")
-CONFIRM_RUNS = 2  # extra judge passes over flagged claims; with the first pass that is 3 votes
+CONFIRM_RUNS = 2  # telemetry-only extra judge passes over flagged claims (judge_claims(confirm_telemetry=True))
 
 JUDGE_PROMPT = """/no_think
 You are a fact-consistency checker. For each numbered claim, find the sentence(s) in the rewritten passage that bear on it, then decide.
@@ -107,22 +108,14 @@ def _judge_error(section: str, last: Exception) -> EvaluationError:
     return EvaluationError(f"judge failed for section {section!r} after retry: {str(last)[:200]}", category=cat, dependency=getattr(last, "dependency", None) or "gateway-chat")
 
 
-def majority(votes: list[str]) -> str:
-    """2-of-3 policy: flagged iff at least 2 of the cast votes are non-entailed (ties go to the first-pass verdict,
-    which is a flag by construction). The flag label is the most common non-entailed one, first-seen on a tie."""
-    flags = [v for v in votes if v != "entailed"]
-    if len(flags) * 2 < len(votes) or (len(flags) * 2 == len(votes) and votes[0] == "entailed"):
-        return "entailed"
-    return max(dict.fromkeys(flags), key=flags.count)
-
-
-def judge_claims(segments: list[Segment], judge: Model, strict: bool = False) -> dict:
+def judge_claims(segments: list[Segment], judge: Model, strict: bool = False, confirm_telemetry: bool = False) -> dict:
     """Per-segment batch judging of extracted claims against the rewritten segment.
-    strict (gate): a segment that cannot be judged after one retry (first pass or confirmation) raises EvaluationError.
-    non-strict (research runs): a segment whose first pass fails has its claims counted unjudged and reported; a failed
-    confirmation pass simply casts no vote.
-    Result extras: judge_calls, prefiltered_segments, overturned (flags the 2-of-3 vote dropped); each flagged entry
-    carries `votes` (per-pass verdicts)."""
+    The first-pass verdict is the verdict: any changed/missing flag counts. strict (gate): a segment that cannot be judged
+    after one retry raises EvaluationError. non-strict (research runs): a segment whose first pass fails has its claims
+    counted unjudged and reported.
+    confirm_telemetry: flagged claims are re-judged CONFIRM_RUNS more times; the votes are recorded on the flag (`votes`)
+    and never change a verdict. A failed telemetry call is ignored (it can neither raise nor clear anything).
+    Result extras: judge_calls, prefiltered_segments, overturned (always empty, kept for report compatibility)."""
     counts = {"entailed": 0, "changed": 0, "missing": 0, "unjudged": 0}
     flagged: list[dict] = []
     overturned: list[dict] = []
@@ -145,16 +138,14 @@ def judge_claims(segments: list[Segment], judge: Model, strict: bool = False) ->
         votes: dict[int, list[str]] = {i: [first[i]["verdict"]] for i in first} if first else {}
         flag_ids = [i for i in sorted(votes) if votes[i][0] != "entailed"]
         details = {i: first[i] for i in first} if first else {}
-        if flag_ids:
+        if flag_ids and confirm_telemetry:
             sub = [claims[i - 1] for i in flag_ids]
             for _ in range(CONFIRM_RUNS):
                 try:
                     calls += 1
                     again = _call(judge, sub, seg.output)
-                except (GatewayError, ValueError) as e:
-                    if strict:
-                        raise _judge_error(seg.section, e) from e
-                    continue
+                except (GatewayError, ValueError):
+                    continue  # telemetry only: a failed vote is simply absent
                 for k, i in enumerate(flag_ids, 1):
                     votes[i].append(again[k]["verdict"])
         for i, p in enumerate(seg.propositions, 1):
@@ -162,13 +153,11 @@ def judge_claims(segments: list[Segment], judge: Model, strict: bool = False) ->
                 counts["unjudged"] += 1
                 flagged.append({"section": seg.section, "claim": p["claim"], "verdict": "unjudged", "reason": "judge returned no valid verdict", "votes": []})
                 continue
-            verdict = majority(votes[i])
+            verdict = votes[i][0]
             counts[verdict] += 1
             d = details[i]
             if verdict != "entailed":
                 flagged.append({"section": seg.section, "claim": p["claim"], "verdict": verdict, "reason": d.get("reason", ""), "evidence": d.get("evidence", ""), "dimension": d.get("dimension", ""), "votes": votes[i]})
-            elif len(votes[i]) > 1:
-                overturned.append({"section": seg.section, "claim": p["claim"], "votes": votes[i]})
     total = sum(counts.values())
     return {"judge": judge.name, "total": total, **{f"claims_{k}": v for k, v in counts.items()}, "flagged": flagged,
             "judge_calls": calls, "prefiltered_segments": prefiltered, "overturned": overturned}

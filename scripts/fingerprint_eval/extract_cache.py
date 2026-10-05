@@ -15,7 +15,7 @@ from .added import _is_factual, sentence_covered
 from .rewrite import Segment, extract_propositions, is_meta_claim, request_extraction, segment_sentences
 from .textutil import strip_inline
 
-SCHEMA_VERSION = 3  # 3: propositions carry sentence_ids; reference sentence coverage is enforced
+SCHEMA_VERSION = 4  # 3: propositions carry sentence_ids; reference sentence coverage is enforced. 4: extractor keeps hedges and quantifiers verbatim in the claim text
 
 
 def sha256(text: str) -> str:
