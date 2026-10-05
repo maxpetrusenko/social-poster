@@ -1,10 +1,24 @@
-"""Judge prompt variants. `current` is judge.JUDGE_PROMPT imported unchanged; A and B are candidates (judge.py is not modified)."""
+"""Judge prompt variants. `current` is the pre-calibration production prompt (frozen copy, kept so cached results stay
+keyed); A is a candidate; B is now judge.JUDGE_PROMPT (the adopted prompt, byte-identical to the calibrated B)."""
 from __future__ import annotations
 
-import json
-import re
+from ..judge import JUDGE_PROMPT as PROMPT_B, parse_verdicts as parse_current
 
-from ..judge import JUDGE_PROMPT as CURRENT, VERDICTS, parse_verdicts as parse_current
+CURRENT = """/no_think
+You check whether a rewritten passage still states each claim from the original.
+For each numbered claim give a verdict:
+- "entailed": the passage states it or clearly implies it, with the same names, numbers, and causal direction
+- "changed": the passage states something different (altered number, name, causality, certainty)
+- "missing": the passage does not state it
+Return ONLY JSON, nothing before or after it: [{{"i": 1, "verdict": "entailed", "reason": "<=15 words"}}, ...]
+Include exactly one entry per claim id, no others.
+
+Claims:
+{claims}
+
+Rewritten passage:
+{passage}
+"""
 
 PROMPT_A = """/no_think
 You are a fact-consistency checker. Decide whether a rewritten passage still conveys each claim taken from the original.
@@ -24,48 +38,4 @@ Rewritten passage:
 {passage}
 """
 
-PROMPT_B = """/no_think
-You are a fact-consistency checker. For each numbered claim, find the sentence(s) in the rewritten passage that bear on it, then decide.
-Wording, sentence structure, order, formatting, spelling variants, punctuation and metaphor are irrelevant. Only facts count.
-Verdicts:
-- "entailed": the passage conveys the same fact. Paraphrase with the same factual content is entailed.
-- "changed": the passage conflicts with the claim on a fact dimension. You MUST name the dimension: number, unit, name, entity, date, polarity, modality, causality, scope, or attribution.
-- "missing": nothing in the passage bears on the claim.
-Do not use "changed" for a difference of tone, emphasis, or style. Do use it when a number, unit, name, negation, hedge (may/can/some), cause-effect direction, scope or source differs from the claim, even slightly.
-For every claim copy the supporting or conflicting quote from the passage ("evidence", empty string if missing).
-Return ONLY JSON, nothing before or after it: [{{"i": 1, "evidence": "<quote>", "dimension": "<dimension or none>", "verdict": "entailed", "reason": "<=15 words"}}, ...]
-Include exactly one entry per claim id, no others.
-
-Claims:
-{claims}
-
-Rewritten passage:
-{passage}
-"""
-
-_FENCE = re.compile(r"\A```(?:json)?[ \t]*\n(.*)\n```\Z", re.S)
-
-
-def parse_extended(raw: str, n: int) -> dict[int, dict]:
-    """Same strictness as judge.parse_verdicts, but allows the extra evidence/dimension keys."""
-    text = raw.strip()
-    m = _FENCE.match(text)
-    if m:
-        text = m.group(1).strip()
-    data = json.loads(text)
-    if not isinstance(data, list):
-        raise ValueError("not a list")
-    out: dict[int, dict] = {}
-    for v in data:
-        if not isinstance(v, dict) or set(v) - {"i", "verdict", "reason", "evidence", "dimension"} or "i" not in v or "verdict" not in v:
-            raise ValueError(f"bad entry {str(v)[:80]}")
-        i = v["i"]
-        if isinstance(i, bool) or not isinstance(i, int) or i in out or v["verdict"] not in VERDICTS:
-            raise ValueError(f"bad id/verdict {i!r}")
-        out[i] = v
-    if set(out) != set(range(1, n + 1)):
-        raise ValueError("claim ids mismatch")
-    return out
-
-
-PROMPTS = {"current": (CURRENT, parse_current), "A": (PROMPT_A, parse_current), "B": (PROMPT_B, parse_extended)}
+PROMPTS = {"current": (CURRENT, parse_current), "A": (PROMPT_A, parse_current), "B": (PROMPT_B, parse_current)}
