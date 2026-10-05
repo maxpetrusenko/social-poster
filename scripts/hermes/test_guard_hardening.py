@@ -6,6 +6,7 @@ from __future__ import annotations
 import io
 import json
 import os
+import re
 import stat
 import subprocess
 import sys
@@ -16,7 +17,7 @@ import pytest
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 import medium_publish_guard as g  # noqa: E402
-from guard_testutil import install_fake_guard  # noqa: E402
+from guard_testutil import install_fake_guard, write_active  # noqa: E402
 from test_medium_publish_guard import (BODY, MUTATIONS, READS, bad, env, good_clip, ok, paste, payload,  # noqa: E402,F401
                                        receipts, run_main)
 
@@ -245,7 +246,7 @@ def test_receipt_for_other_package_rejected(env):
     pkg2 = ws / "articles" / "pkg2"
     (pkg2 / "release").mkdir(parents=True)
     (pkg2 / "release" / "medium-final.md").write_text(BODY)  # same bytes, different package
-    (ws / "release" / "ACTIVE.json").write_text(json.dumps({"package": "pkg2"}))
+    write_active(ws, Path(env["MEDIUM_GUARD_RECORD_KEY"]), pkg2, g._sha(BODY))
     assert not g.decide(CLICK, env, ok, good_clip).allow
 
 
@@ -349,6 +350,7 @@ def test_installer_modes_manifest_and_hash(installed):
     assert len((dest / "key").read_text()) == 64
     cfg = json.loads((dest / "config.json").read_text())
     assert Path(cfg["repo"]).samefile(HERE.parents[1])
+    assert cfg["record_key"].endswith("fingerprint-eval/record.key")
 
 
 def test_installer_reinstall_keeps_key_and_rotate_replaces_it(installed):
@@ -365,7 +367,8 @@ def test_selftest_passes_on_clean_install(installed):
     assert p.returncode == 0
     r = subprocess.run(["bash", str(HERE / "guard_selftest.sh")], env=e, capture_output=True, text=True)
     assert r.returncode == 0, r.stdout + r.stderr
-    assert "FAIL" not in r.stdout and "17/17" in r.stdout
+    m = re.search(r"guard selftest: (\d+)/(\d+) correct", r.stdout)
+    assert "FAIL" not in r.stdout and m and m.group(1) == m.group(2) and int(m.group(1)) >= 40
 
 
 def test_selftest_exits_nonzero_when_install_is_tampered(installed):

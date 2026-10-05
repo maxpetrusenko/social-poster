@@ -11,7 +11,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import medium_publish_guard as g  # noqa: E402
-from guard_testutil import install_fake_guard  # noqa: E402
+from guard_testutil import install_fake_guard, write_active  # noqa: E402
 
 BODY = "# Title\n\nA long released paragraph that is definitely longer than forty characters in total.\n"
 
@@ -28,9 +28,10 @@ def env(tmp_path):
     (pkg / "release").mkdir(parents=True)
     (pkg / "release" / "medium-final.md").write_text(BODY)
     (ws / "release").mkdir()
-    (ws / "release" / "ACTIVE.json").write_text(json.dumps({"package": "pkg1"}))
     (pkg / "workflow.json").write_text(json.dumps({"medium": {"draft_edit_url": EDIT_URL}}))
-    return {"MEDIUM_GUARD_WORKSPACE": str(ws), "MEDIUM_GUARD_REPO": str(tmp_path), **install_fake_guard(tmp_path)}
+    e = {"MEDIUM_GUARD_WORKSPACE": str(ws), "MEDIUM_GUARD_REPO": str(tmp_path), **install_fake_guard(tmp_path)}
+    write_active(ws, Path(e["MEDIUM_GUARD_RECORD_KEY"]), pkg, g._sha(BODY))
+    return e
 
 
 good_clip = lambda env: (BODY, None, "")  # noqa: E731
@@ -132,7 +133,8 @@ def test_verify_timeout_or_missing_uv_denied(env):
 
 
 def test_active_names_missing_dir_denied(env):
-    Path(env["MEDIUM_GUARD_WORKSPACE"], "release", "ACTIVE.json").write_text('{"package": "ghost"}')
+    ws = Path(env["MEDIUM_GUARD_WORKSPACE"])
+    write_active(ws, Path(env["MEDIUM_GUARD_RECORD_KEY"]), ws / "articles" / "ghost", g._sha(BODY))
     assert not g.decide(MUTATIONS["cu_click"], env, ok).allow
 
 

@@ -76,6 +76,14 @@ def _verify(package: Path) -> tuple[bool, str, str | None]:
 
 
 # ---- authorize ---------------------------------------------------------------------------------------------------
+def write_active(ctx: PackageCtx, content_sha256: str) -> Path:
+    """Write the HMAC-signed ACTIVE selector (record key, same as records/authorizations). The Medium guard verifies it."""
+    active = {"package": str(ctx.package.resolve()), "slug": ctx.slug, "content_sha256": content_sha256, "activated_at_utc": R.now_utc()}
+    path = workspace_root() / RELEASE_ACTIVE
+    R.atomic_write(path, (json.dumps(R.signed(active), indent=1, sort_keys=True) + "\n").encode())
+    return path
+
+
 def _load_heal():
     """(run_heal_loop, repairer) or None when heal/repair are not importable yet."""
     try:
@@ -206,8 +214,7 @@ def authorize(package: Path, max_repairs: int = MAX_REPAIR_CYCLES, dry_run: bool
     auth = Authorization(binding=rec.binding, record_path=str(rec_path.relative_to(ctx.package)), authorized_at_utc=R.now_utc(),
                          release_article_sha256=_sha((ctx.package / RELEASE_ARTICLE).read_bytes()))
     R.write_authorization(ctx.package, auth)
-    active = {"package": str(ctx.package.resolve()), "slug": ctx.slug, "content_sha256": rec.binding.content_sha256, "activated_at_utc": R.now_utc()}
-    R.atomic_write(workspace_root() / RELEASE_ACTIVE, (json.dumps(active, indent=1, sort_keys=True) + "\n").encode())
+    write_active(ctx, rec.binding.content_sha256)
     R.write_summary(ctx.package, rec, outcome.cycles)
     ledger.append(ctx.package, LedgerState.PUBLISH_AUTHORIZED, rec.binding.content_sha256, rec.binding.evaluator_id,
                   {"record": auth.record_path, "release": str(RELEASE_ARTICLE)})
