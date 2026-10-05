@@ -9,6 +9,8 @@ import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 
+from scripts.fingerprint_eval import record as R
+
 from . import PIPELINE_VERSION
 
 # (name, kind, dependencies). kind: agent = semantic work done by the skill's model, cli = executed by this CLI.
@@ -90,24 +92,93 @@ def safe_path(pkg: Path, rel) -> Path:
     return p
 
 
+INPUT_ROOTS_ENV = "WRITE_PIPELINE_INPUT_ROOTS"
+
+
+def input_roots(pkg: Path) -> list[Path]:
+    """Directories a caller-supplied input file may live in: the package plus explicit allowlisted roots (os.pathsep separated)."""
+    roots = [Path(pkg).resolve()]
+    roots += [Path(v).resolve() for v in os.environ.get(INPUT_ROOTS_ENV, "").split(os.pathsep) if v]
+    return roots
+
+
+def contain_input(pkg: Path, path, *, exact: tuple[Path, ...] = ()) -> Path:
+    """Resolve a caller-supplied input path (symlinks followed) and require it to sit inside the package or an allowlisted root,
+    or to be one of the `exact` allowlisted files. A symlink that escapes resolves outside and is refused."""
+    if path in (None, "") or not isinstance(path, (str, Path)) or "\x00" in str(path):
+        raise PipelineError(f"invalid input path: {path!r}")
+    p = Path(path)
+    r = (p if p.is_absolute() else Path.cwd() / p).resolve()
+    if r in exact or any(r.is_relative_to(x) for x in input_roots(pkg)):
+        return r
+    raise PipelineError(f"input path is outside the package and the allowlisted roots ({INPUT_ROOTS_ENV}): {str(path)[:120]!r}")
+
+
+def read_input(pkg: Path, path) -> bytes:
+    return contain_input(pkg, path).read_bytes()
+
+
+def _check_shape(d: dict) -> None:
+    if not isinstance(d.get("stages"), dict) or not all(isinstance(v, dict) and isinstance(v.get("status"), str) for v in d["stages"].values()):
+        raise PipelineError("stages malformed")
+    if d["stages"].keys() - set(NAMES):
+        raise PipelineError("unknown stage in state")
+    t = d.get("terminal")
+    if t is not None and not (isinstance(t, dict) and t.get("stage") in NAMES and isinstance(t.get("state"), str)):
+        raise PipelineError("terminal malformed")
+    if not isinstance(d.get("overrides", []), list):
+        raise PipelineError("overrides malformed")
+    for k in ("framework", "final", "candidate"):
+        if d.get(k) is not None and not isinstance(d[k], dict):
+            raise PipelineError(f"{k} malformed")
+
+
 class Pipeline:
     def __init__(self, package: Path):
         self.pkg = Path(package).resolve()
         self.path = self.pkg / STATE_REL
-        self.state = self._load()
         self._memo: dict | None = None
+        self.final_verifier = None  # callable(Pipeline) -> list[str] of failures; None means READY_FOR_REVIEW can never be reported
+        self.state = self._load()
+        if self.state.get("invalid") and not self.path.exists():
+            self.save()
+
+    def mark_invalid(self, reason: str) -> None:
+        """Persist a NOT_READY state: unusable input is a recorded outcome, never an uncaught exception."""
+        self.state["invalid"] = {"reason": reason[:300], "at": now()}
+        self.state["awaiting_review"] = False
+        self.log("invalid", reason=reason[:300])
+        self.save()
 
     # ---- persistence -----------------------------------------------------------------------------------------
+    def _fresh(self) -> dict:
+        return {"schema": 1, "pipeline_version": PIPELINE_VERSION, "slug": self.pkg.name, "stages": {}, "terminal": None,
+                "final": None, "published": False, "overrides": [], "user_modified": None}
+
     def _load(self) -> dict:
         if not self.path.exists():
-            return {"schema": 1, "pipeline_version": PIPELINE_VERSION, "slug": self.pkg.name, "stages": {}, "terminal": None,
-                    "final": None, "published": False, "overrides": [], "user_modified": None}
+            return self._fresh()
         try:
             d = json.loads(self.path.read_text())
-        except (OSError, ValueError) as e:
-            raise PipelineError(f"state.json unreadable: {e}") from None
-        if not isinstance(d, dict) or "stages" not in d:
-            raise PipelineError("state.json is not a pipeline state")
+            if not isinstance(d, dict):
+                raise PipelineError("state.json is not a pipeline state")
+            _check_shape(d)
+            R.check_signature(d, "state.json")  # HMAC with the record key: a hand-edited or unsigned state is never trusted
+            for n, r in d["stages"].items():
+                R.check_signature(r, f"stage record {n}")
+        except (OSError, ValueError, PipelineError, R.RecordError) as e:
+            return self._quarantine(f"state.json rejected: {type(e).__name__}: {e}")
+        return d
+
+    def _quarantine(self, reason: str) -> dict:
+        """The bad state file is kept aside (never deleted), and a fresh NOT_READY state replaces it."""
+        try:
+            raw = self.path.read_bytes()
+            self.path.replace(self.path.with_name(f"state.json.invalid-{sha_bytes(raw)[:8]}"))
+        except OSError:
+            pass
+        d = self._fresh()
+        d["invalid"] = {"reason": reason[:300], "at": now()}
         return d
 
     @property
@@ -116,6 +187,9 @@ class Pipeline:
 
     def save(self) -> None:
         self.state["published"] = False  # no code path in this package publishes; the flag exists so a reader can check it
+        for r in self.state["stages"].values():
+            r[R.SIG_FIELD] = R.sign(r)
+        self.state[R.SIG_FIELD] = R.sign(self.state)
         atomic_write(self.path, (json.dumps(self.state, indent=1, sort_keys=True) + "\n").encode())
 
     def log(self, event: str, **kw) -> None:
@@ -189,6 +263,8 @@ class Pipeline:
         return sha_json(self.input_shas(stage))
 
     def can_run(self, stage: str) -> tuple[bool, str]:
+        if self.state.get("invalid"):
+            return False, f"pipeline state is invalid: {self.state['invalid'].get('reason')}"
         for d in DEPS[stage]:
             if self.status(d) != DONE:
                 return False, f"upstream stage '{d}' is {self.status(d)}"
@@ -274,6 +350,8 @@ class Pipeline:
 
     def overall(self) -> str:
         """One word for the whole run."""
+        if self.state.get("invalid"):
+            return NOT_READY
         um = self.state.get("user_modified")
         if um and not um.get("adopted_sha256"):  # adopted = revalidate has taken the edit as the new candidate and is re-proving it
             return "USER_MODIFIED"
@@ -287,8 +365,17 @@ class Pipeline:
         if self.status("stop") == DONE:
             if self.read_json("package").get("route_code") not in READY_ROUTES:  # a quarantined (D) or unknown route is never ready
                 return QUARANTINED
-            return "READY_FOR_REVIEW"
+            return NOT_READY if self.verify_final() else "READY_FOR_REVIEW"
         return "IN_PROGRESS"
+
+    def verify_final(self, before_stop: bool = False) -> list[str]:
+        """Independent recomputation of everything READY_FOR_REVIEW claims, from the files on disk. Empty list = verified."""
+        if self.final_verifier is None:
+            return ["no final verifier is configured: READY_FOR_REVIEW is never reported unverified"]
+        try:
+            return list(self.final_verifier(self, before_stop))
+        except Exception as e:  # noqa: BLE001  fail closed
+            return [f"final verification could not run: {type(e).__name__}: {str(e)[:200]}"]
 
 
 READY_ROUTES = ("A", "B", "C")

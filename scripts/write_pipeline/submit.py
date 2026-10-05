@@ -8,7 +8,7 @@ from . import editguard as G
 from . import frame as FR
 from . import mdlib as M
 from . import validators as V
-from .core import BLOCKED, DONE, FAILED, KIND, NOT_READY, Pipeline, atomic_write, fail_exc, sha_bytes, sha_json
+from .core import BLOCKED, DONE, FAILED, KIND, NOT_READY, Pipeline, PipelineError, atomic_write, contain_input, fail_exc, sha_bytes, sha_json
 
 JSON_STAGES = {"source": "json", "research": "json", "angle": "json", "outline": "json", "title": "json", "images": "json"}
 TEXT_STAGES = {"draft": "md", "validate": "md", "editorial": "md", "voice": "md"}
@@ -57,14 +57,16 @@ def submit(pipe: Pipeline, stage: str, file: Path, report: Path | None, runner: 
     if KIND[stage] != "agent" or stage == "repair":
         return {"ok": False, "code": "USAGE", "stage": stage, "reasons": [f"stage '{stage}' is not submitted; use its run command"]}
     try:
-        raw = Path(file).read_bytes()
-    except OSError as e:
+        file = contain_input(pipe.pkg, file)  # symlinks resolved: an escaping link is refused
+        raw = file.read_bytes()
+    except (OSError, PipelineError) as e:
         return {"ok": False, "code": "USAGE", "stage": stage, "reasons": [f"cannot read {file}: {e}"]}
     rep_raw, rep = None, None
     if report is not None:
         try:
-            rep_raw = Path(report).read_bytes()
-        except OSError as e:
+            report = contain_input(pipe.pkg, report)
+            rep_raw = report.read_bytes()
+        except (OSError, PipelineError) as e:
             return {"ok": False, "code": "USAGE", "stage": stage, "reasons": [f"cannot read report {report}: {e}"]}
         rep, err = _json(report)
         if rep is None:

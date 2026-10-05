@@ -23,7 +23,7 @@ def no_publish(d):
     s = json.loads((d.pkg / "write-pipeline/state.json").read_text())
     assert s["published"] is False and not s.get("awaiting_review")
     assert {m for m, _ in d.runner.calls} <= {"scripts.fingerprint_eval.run", "scripts.fingerprint_eval.release", "scripts.medium_review", "scripts.publish_route"}
-    assert all(argv[3] == "decide" for m, argv in d.runner.calls if m == "scripts.publish_route")
+    assert all(argv[3] in ("decide", "verify") for m, argv in d.runner.calls if m == "scripts.publish_route")
 
 
 def antifp_edit(d, text, signal="template_hits"):

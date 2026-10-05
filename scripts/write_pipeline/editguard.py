@@ -24,20 +24,30 @@ CONTENT_CATS = {"CONTENT_CLAIM_FAILURE", "ADDED_UNSUPPORTED_CLAIM", "MISSING_LIN
 CLAIM_CATS = {"CONTENT_CLAIM_FAILURE", "ADDED_UNSUPPORTED_CLAIM"}
 
 
-# Non-secret configuration only. The gateway key, Doppler tokens and every API key are NOT passed: the evaluator child loads what it
-# needs itself, and claude -p gets subscription auth through claude_env().
+# Non-secret configuration only for every child. The Doppler tokens and every other API key are never passed, and claude -p
+# children get subscription auth through claude_env(). Only the evaluator/gate children (fingerprint_eval run and release) also
+# receive LLM_GATEWAY_API_KEY: non-identity claims gates call the gateway judge and would block without it.
 RUNNER_CONFIG_KEYS = ("LLM_GATEWAY_URL", "SSL_CERT_FILE", "FINGERPRINT_EVAL_KEY_FILE", "FG_JUDGE", "FG_EXTRACTOR")
+GATE_ENV_KEYS = ("LLM_GATEWAY_API_KEY", "LLM_GATEWAY_URL")
+GATE_MODULES = ("scripts.fingerprint_eval.run", "scripts.fingerprint_eval.release")
 
 
-def runner_env(environ=None) -> dict[str, str]:
-    return {**claude_env(environ), **child_env(RUNNER_CONFIG_KEYS, environ)}
+def is_gate_child(argv: list[str] | None) -> bool:
+    return bool(argv) and len(argv) > 2 and argv[1] == "-m" and argv[2] in GATE_MODULES
+
+
+def runner_env(environ=None, argv: list[str] | None = None) -> dict[str, str]:
+    env = {**claude_env(environ), **child_env(RUNNER_CONFIG_KEYS, environ)}
+    if is_gate_child(argv):
+        env.update(child_env(GATE_ENV_KEYS, environ))
+    return env
 
 
 def make_runner(workspace: Path) -> Runner:
     """Subprocess runner with the evaluator's allowlisted env. FINGERPRINT_EVAL_WORKSPACE points at a pipeline-private directory so a
     release authorize here writes its ACTIVE selector there and never replaces the production selector another article may hold."""
     def run(argv: list[str]) -> tuple[int, str]:
-        env = runner_env()
+        env = runner_env(argv=argv)
         env["FINGERPRINT_EVAL_WORKSPACE"] = str(workspace)
         try:
             p = subprocess.run(argv, capture_output=True, text=True, timeout=1800, cwd=REPO, env=env)

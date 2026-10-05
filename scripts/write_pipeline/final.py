@@ -9,7 +9,7 @@ import json
 import sys
 from pathlib import Path
 
-from scripts.publish_route.orchestrate import integrity_record_id
+from scripts.publish_route.orchestrate import ROUTE_REL, integrity_record_id
 
 from . import editguard as G
 from . import frame as FR
@@ -228,8 +228,13 @@ def _run_package(pipe: Pipeline, runner: G.Runner) -> dict:
     pmd = build_package_md(pipe, review, route, sha)
     atomic_write(pipe.pkg / "PACKAGE.md", pmd.encode())
     files = {n: sha_bytes(safe_path(pipe.pkg, n).read_bytes()) for n in (FINAL_NAME, "FINAL.html", "PACKAGE.md")}
+    rt = str(ROUTE_REL)
+    try:
+        files[rt] = sha_bytes(safe_path(pipe.pkg, rt).read_bytes())
+    except (OSError, PipelineError):
+        files[rt] = None  # route.json missing: tracked as None so the record can never be current
     main = (json.dumps({"files": files, "route_code": route["route_code"], "review_binding": review.get("binding")}, indent=1, sort_keys=True) + "\n").encode()
-    return _finish(pipe, "package", main, "json")
+    return _finish(pipe, "package", main, "json", extra={"external": files})
 
 
 def run_stop(pipe: Pipeline) -> dict:
@@ -248,6 +253,12 @@ def _run_stop(pipe: Pipeline) -> dict:
         pipe.set("stop", QUARANTINED, reasons=msg)
         pipe.save()
         return {"ok": False, "code": "QUARANTINED", "stage": "stop", "reasons": msg}
+    bad = pipe.verify_final(before_stop=True)
+    if bad:
+        msg = ["final verification recomputed from the files failed: " + "; ".join(bad)[:400]]
+        pipe.set("stop", NOT_READY, reasons=msg)
+        pipe.save()
+        return {"ok": False, "code": "NOT_READY", "stage": "stop", "reasons": msg}
     main = (json.dumps({"state": "READY_FOR_REVIEW", "published": False, "note": "stopped for Max's review; nothing was published, scheduled or mutated"}, indent=1) + "\n").encode()
     out = _finish(pipe, "stop", main, "json")
     pipe.state["awaiting_review"] = True

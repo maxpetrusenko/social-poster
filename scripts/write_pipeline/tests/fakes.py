@@ -64,6 +64,30 @@ def png(path: Path, w: int = 1280, h: int = 720, tint: int = 7) -> None:
     path.write_bytes(b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 2, 0, 0, 0)) + chunk(b"IDAT", zlib.compress(raw)) + chunk(b"IEND", b""))
 
 
+def resign_state(pkg: Path, mutate) -> None:
+    """Edit state.json the way a holder of the record key would: mutate, then re-sign every record and the state."""
+    from scripts.fingerprint_eval import record as R
+    p = Path(pkg) / "write-pipeline" / "state.json"
+    s = json.loads(p.read_text())
+    mutate(s)
+    for r in s["stages"].values():
+        r[R.SIG_FIELD] = R.sign(r)
+    s[R.SIG_FIELD] = R.sign(s)
+    p.write_text(json.dumps(s))
+
+
+GATE_REC = "evals/fake-gate-record.json"
+
+
+def fake_record_check(pkg, final_sha):
+    """Stand-in for the evaluator's signed gate record check: the record must carry a valid record-key HMAC, PASS, and these bytes."""
+    from scripts.fingerprint_eval import record as R
+    d = json.loads((Path(pkg) / GATE_REC).read_text())
+    R.check_signature(d, "gate record")
+    if d.get("result") != "PASS" or d.get("content_sha256") != final_sha:
+        raise R.RecordError("gate record is not PASS for these bytes")
+
+
 class Runner:
     """Answers the evaluator CLIs the pipeline calls. Every call is recorded in .calls as (module, argv)."""
 
@@ -112,6 +136,10 @@ class Runner:
         if mod == "scripts.fingerprint_eval.release" and argv[3] == "authorize":
             pkg = Path(arg("--package"))
             self.authorize_seen.append(sha((pkg / "FINAL.md").read_bytes()))
+            if self.authorize_rc == 0:
+                from scripts.fingerprint_eval import record as R
+                (pkg / GATE_REC).parent.mkdir(parents=True, exist_ok=True)
+                (pkg / GATE_REC).write_text(json.dumps(R.signed({"result": "PASS", "content_sha256": sha((pkg / "FINAL.md").read_bytes())})))
             if self.authorize_rc == 3:
                 (pkg / "QUARANTINE.json").write_text(json.dumps({"category": "CONTENT_CLAIM_FAILURE", "kind": "content", "retryable": False}))
             if self.authorize_rc == 4:
@@ -128,7 +156,21 @@ class Runner:
             return 0, json.dumps({"status": "REVIEWED", "binding": {"content_sha256": sha(art.read_bytes()), "policy_version": "p1"},
                                   "scorecard": {"boost_candidate": "NO", "general_distribution_risk": "LOW", "weakest_dimension": "originality"},
                                   "author_input_required": {"required": False}, "disclaimer": "advisory"})
+        if mod == "scripts.publish_route" and argv[3] == "verify":
+            from scripts.publish_route.orchestrate import _canon
+            try:
+                rec = json.loads((Path(arg("--package")) / "evals/publish-route/route.json").read_text())
+            except (OSError, ValueError):
+                return 1, "route.json missing"
+            ok = rec.get("route_sha256") == sha(_canon(rec)) and rec["binding"]["content_sha256"] == sha(Path(arg("--article")).read_bytes())
+            return (0 if ok else 1), "verify"
         if mod == "scripts.publish_route":
+            from scripts.publish_route.orchestrate import _canon
+            rec = {**self.route, "binding": {"content_sha256": sha(Path(arg("--article")).read_bytes())}}
+            rec["route_sha256"] = sha(_canon(rec))
+            rp = Path(arg("--package")) / "evals/publish-route/route.json"
+            rp.parent.mkdir(parents=True, exist_ok=True)
+            rp.write_text(json.dumps(rec, indent=2, sort_keys=True))
             return 0, json.dumps(self.route)
         raise AssertionError(f"unexpected call {argv}")
 
