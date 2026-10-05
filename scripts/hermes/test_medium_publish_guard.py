@@ -29,12 +29,20 @@ def env(tmp_path):
     (pkg / "release" / "medium-final.md").write_text(BODY)
     (ws / "release").mkdir()
     (ws / "release" / "ACTIVE.json").write_text(json.dumps({"package": "pkg1"}))
+    (pkg / "workflow.json").write_text(json.dumps({"medium": {"draft_edit_url": EDIT_URL}}))
     return {"MEDIUM_GUARD_WORKSPACE": str(ws), "MEDIUM_GUARD_REPO": str(tmp_path), **install_fake_guard(tmp_path)}
 
 
 good_clip = lambda env: (BODY, None, "")  # noqa: E731
-ok = lambda pkg, env: (0, "")  # noqa: E731
+def verify_json(pkg, env=None, sha=None):
+    """What `release verify --json` prints: the sha256 of the release bytes the verifier vouched for."""
+    s = sha or g._sha((pkg / "release" / "medium-final.md").read_bytes())
+    return json.dumps({"valid": True, "content_sha256": s, "release_article_sha256": s})
+
+
+ok = lambda pkg, env: (0, verify_json(pkg))  # noqa: E731
 bad = lambda pkg, env: (1, "content hash mismatch")  # noqa: E731
+EDIT_URL = "https://medium.com/p/a6ee8afb8283/edit"
 
 MUTATIONS = {
     "cu_click": payload("computer_use", {"action": "click", "element": 7, "app": "Google Chrome for Testing"}),
@@ -80,12 +88,21 @@ def test_mutation_denied_when_verify_fails(name, env):
     assert not d.allow and "release verify failed" in d.reason
 
 
-NO_RECEIPT_OK = ["cu_type", "nav_new_story", "nav_edit", "nav_submission", "term_goto_edit"]
-NEEDS_RECEIPT = ["cu_click", "cu_click_frontmost", "cu_set_value", "term_curl_post", "term_osascript"]
+NO_RECEIPT_OK = ["nav_new_story", "nav_edit"]  # exact editor URLs: new-story and workflow.json's draft edit URL
+NEEDS_RECEIPT = ["cu_click", "cu_click_frontmost", "cu_set_value", "term_curl_post", "term_osascript", "cu_type"]
+NAV_NEEDS_RECEIPT = ["nav_submission", "term_goto_edit"]  # Medium write pages that are NOT an exact editor URL
 
 
 @pytest.mark.parametrize("name", NO_RECEIPT_OK)
-def test_navigation_and_short_typing_allowed_with_valid_release(name, env):
+def test_exact_editor_navigation_allowed_before_receipt(name, env):
+    assert g.decide(MUTATIONS[name], env, ok, good_clip).allow
+
+
+@pytest.mark.parametrize("name", NAV_NEEDS_RECEIPT)
+def test_other_medium_write_navigation_blocked_before_receipt_allowed_after(name, env):
+    d = g.decide(MUTATIONS[name], env, ok, good_clip)
+    assert not d.allow and "exact editor URL" in d.reason
+    assert g.decide(paste(), env, ok, good_clip).allow
     assert g.decide(MUTATIONS[name], env, ok, good_clip).allow
 
 
@@ -124,12 +141,13 @@ def test_active_corrupt_denied(env):
     assert not g.decide(MUTATIONS["cu_click"], env, ok).allow
 
 
-def test_browser_click_after_medium_navigation(env):
+def test_browser_click_is_a_mutation_on_any_page(env):
     assert g.decide(payload("browser_navigate", {"url": "https://medium.com/me/stats"}), env, bad).allow
     assert not g.decide(payload("browser_click", {"ref": "@e1"}), env, bad).allow
-    assert g.decide(payload("browser_click", {"ref": "@e1"}, session="s2"), env, bad).allow
+    assert not g.decide(payload("browser_click", {"ref": "@e1"}, session="s2"), env, bad).allow  # default is mutation
     g.decide(payload("browser_navigate", {"url": "https://example.com"}), env, bad)
-    assert g.decide(payload("browser_click", {"ref": "@e1"}), env, bad).allow
+    assert not g.decide(payload("browser_click", {"ref": "@e1"}), env, bad).allow
+    assert g.decide(payload("browser_snapshot", {}), env, bad).allow
 
 
 def test_terminal_browse_click_after_goto_medium(env):
@@ -138,11 +156,12 @@ def test_terminal_browse_click_after_goto_medium(env):
 
 
 def test_typed_text_must_be_release_bytes(env):
-    long_ok = payload("computer_use", {"action": "type", "app": "GStack Browser",
-                                       "text": "A long released paragraph that is definitely longer than forty characters in total."})
-    long_bad = payload("computer_use", {"action": "type", "app": "GStack Browser",
-                                        "text": "Something the gate never evaluated, written fresh by the agent."})
-    short = payload("computer_use", {"action": "type", "app": "GStack Browser", "text": "10:30"})
+    typ = lambda t: payload("computer_use", {"action": "type", "app": "GStack Browser", "text": t})  # noqa: E731
+    long_ok = typ("A long released paragraph that is definitely longer than forty characters in total.")
+    long_bad = typ("Something the gate never evaluated, written fresh by the agent.")
+    short = typ("10:30")
+    assert not g.decide(long_ok, env, ok).allow and not g.decide(short, env, ok).allow  # no receipt yet
+    assert g.decide(paste(), env, ok, good_clip).allow
     assert g.decide(long_ok, env, ok).allow
     assert not g.decide(long_bad, env, ok).allow
     assert g.decide(short, env, ok).allow
@@ -151,6 +170,7 @@ def test_typed_text_must_be_release_bytes(env):
 def test_pbcopy_must_source_release(env):
     assert not g.decide(MUTATIONS["term_pbcopy"], env, ok).allow
     good = payload("terminal", {"command": "pbcopy < data/article-workspace/articles/pkg1/release/medium-final.md"})
+    assert g.decide(good, env, ok).allow  # clipboard load is allowed pre-receipt (the paste is byte-checked)
     assert g.decide(good, env, ok).allow
 
 
@@ -214,13 +234,17 @@ def test_paste_key_in_browser_and_browse_cli_is_checked(env):
     assert not g.decide(payload("terminal", {"command": "$B goto https://medium.com/new-story && $B paste"}), env, ok, wrong).allow
 
 
-def test_clipboard_exact_allows_trailing_whitespace_only(env):
-    assert g.decide(paste(), env, ok, lambda e: (BODY.rstrip() + "\n\n\n", None, "")).allow
-    assert not g.decide(paste(), env, ok, lambda e: (BODY.replace("long", "LONG"), None, "")).allow
+def test_clipboard_full_paste_is_exact_bytes_no_rstrip(env):
+    assert g.decide(paste(), env, ok, lambda e: (BODY.encode(), None, "")).allow  # bytes, as pbpaste returns
+    for variant in (BODY.rstrip(), BODY + "\n", BODY.rstrip() + "\n\n\n", BODY.replace("long", "LONG"),
+                    BODY.replace("\n", "\r\n")):
+        assert not g.decide(paste(session="fresh" + g._sha(variant)[:6]), env, ok,
+                            lambda e, v=variant: (v, None, "")).allow, repr(variant[-6:])
 
 
 def test_clipboard_fragment_rules(env):
     frag = "A long released paragraph that is definitely longer than forty characters in total."
+    assert g.decide(paste(), env, ok, good_clip).allow  # full paste first: fragments are only legal afterwards
     assert g.decide(paste(), env, ok, lambda e: (frag, None, "")).allow
     assert not g.decide(paste(), env, ok, lambda e: ("A long released", None, "")).allow  # < 40 chars
     assert not g.decide(paste(), env, ok, lambda e: ("", None, "")).allow
@@ -243,10 +267,11 @@ def test_receipt_written_and_scoped_to_session(env):
     assert not g.decide(click("sB"), env, ok, good_clip).allow  # other session never pasted
 
 
-def test_fragment_paste_does_not_unlock_clicks(env):
+def test_fragment_paste_before_full_paste_is_blocked_and_unlocks_nothing(env):
     frag = "A long released paragraph that is definitely longer than forty characters in total."
-    assert g.decide(paste(), env, ok, lambda e: (frag, None, "")).allow
-    assert receipts(env)[0]["kind"] == "fragment"
+    d = g.decide(paste(), env, ok, lambda e: (frag, None, ""))
+    assert not d.allow and "fragment" in d.reason
+    assert receipts(env) == []
     assert not g.decide(MUTATIONS["cu_click"], env, ok, good_clip).allow
 
 
@@ -264,16 +289,24 @@ def test_failed_paste_writes_no_receipt(env):
 
 def test_right_click_always_blocked_and_enter_rules(env):
     rc = payload("computer_use", {"action": "right_click", "element": 1, "app": "GStack Browser"})
-    assert not g.decide(rc, env, ok, good_clip).allow
+    typ = lambda t: payload("computer_use", {"action": "type", "text": t, "app": "GStack Browser"})  # noqa: E731
     ret = payload("computer_use", {"action": "key", "keys": "return", "app": "GStack Browser"})
-    assert not g.decide(ret, env, ok, good_clip).allow
-    g.decide(payload("computer_use", {"action": "type", "text": "https://medium.com/p/abc/edit", "app": "GStack Browser"}),
-             env, ok, good_clip)
-    assert g.decide(ret, env, ok, good_clip).allow  # submits a typed URL
-    g.decide(payload("computer_use", {"action": "type", "text": "Title", "app": "GStack Browser"}), env, ok, good_clip)
-    assert not g.decide(ret, env, ok, good_clip).allow
     tab = payload("computer_use", {"action": "key", "keys": "tab", "app": "GStack Browser"})
-    assert g.decide(tab, env, ok, good_clip).allow
+    assert not g.decide(rc, env, ok, good_clip).allow
+    assert not g.decide(ret, env, ok, good_clip).allow
+    assert not g.decide(tab, env, ok, good_clip).allow  # other keys: blocked before the receipt
+    assert not g.decide(typ("https://medium.com/p/abc/edit"), env, ok, good_clip).allow  # not an exact editor URL
+    assert not g.decide(ret, env, ok, good_clip).allow
+    assert g.decide(typ(EDIT_URL), env, ok, good_clip).allow  # exact editor URL from workflow.json
+    assert g.decide(ret, env, ok, good_clip).allow  # submits the typed URL
+    assert not g.decide(ret, env, ok, good_clip).allow  # one Enter per typed URL
+    assert g.decide(typ("https://medium.com/new-story"), env, ok, good_clip).allow
+    assert g.decide(ret, env, ok, good_clip).allow
+    assert g.decide(paste(), env, ok, good_clip).allow
+    assert g.decide(tab, env, ok, good_clip).allow  # after the full paste
+    assert not g.decide(rc, env, ok, good_clip).allow  # right-click is never allowed
+    g.decide(typ("Title"), env, ok, good_clip)
+    assert g.decide(ret, env, ok, good_clip).allow  # post-receipt Enter is allowed again
 
 
 def test_read_actions_still_allowed_before_receipt(env):

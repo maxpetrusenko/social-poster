@@ -22,6 +22,12 @@ Tool surfaces covered (see docs/hermes-medium-release.md for the evidence):
   * terminal / execute_code: Medium URLs combined with write verbs, browse-CLI input verbs on a Medium
     page, osascript / cliclick / cua-driver / peekaboo input.
 
+Round 3: unknown browser tools are mutations (read-only allowlist only); before a verified FULL paste only editor
+navigation, Enter on that typed URL, cmd+a and the full paste pass (exact bytes, no clicks); verify runs as
+`release verify --json` under a flock, the release bytes are read once and must match the verified content_sha256;
+the verifier path comes from the pinned config.json (env overrides only under MEDIUM_GUARD_TEST_MODE=1 + pytest);
+subprocesses get an allowlisted env.
+
 Hardening (see docs/hermes-medium-release.md, "Tamper resistance"): the guard fails closed (any error on a
 mutation or possible mutation blocks, only clearly read-only calls pass on an error), runs from a pinned
 copy under ~/.hermes/guards with a sha256 manifest it checks against itself, and keeps url memory and
@@ -30,14 +36,18 @@ by the same OS user; NOT a defence against a determined same-user process (it ca
 """
 from __future__ import annotations
 
+import fcntl
 import hashlib
 import hmac
 import json
 import os
 import re
+import stat
 import subprocess
 import sys
 import tempfile
+import time
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Callable
 from urllib.parse import urlparse
@@ -52,9 +62,16 @@ CU_INPUT_ACTIONS = {"click", "double_click", "right_click", "middle_click", "dra
 BROWSER_APP_RE = re.compile(r"chrome|chromium|gstack|browser|safari|firefox|arc|brave|edge|medium", re.I)
 
 BROWSER_NAV_TOOLS = {"browser_navigate"}
-BROWSER_INPUT_TOOLS = {"browser_click", "browser_type", "browser_press", "browser_console", "browser_exec",
-                       "browser_cdp", "browser_dialog"}
+# Explicit read-only allowlist. EVERY other browser_* tool (and any unrecognized browser-touching tool) is a
+# mutation by default: unknown means fail closed, not fail open.
+BROWSER_READ_TOOLS = {"browser_snapshot", "browser_vision", "browser_get_images", "browser_screenshot",
+                      "browser_capture", "browser_get_text", "browser_list", "browser_list_tabs",
+                      "browser_wait", "browser_scroll"}
 BROWSER_ALL_RE = re.compile(r"^browser_")
+# Tokens of a tool name that mean "this can drive a browser or the desktop".
+BROWSER_TOUCH_TOKENS = {"browser", "chrome", "chromium", "gstack", "playwright", "puppeteer", "patchright", "cdp",
+                        "selenium", "webdriver", "computer", "mouse", "keyboard", "keystroke", "click", "desktop",
+                        "peekaboo", "cliclick", "osascript", "applescript", "cua"}
 
 MEDIUM_HOST_RE = re.compile(r"(^|\.)medium\.com$", re.I)
 MEDIUM_URL_RE = re.compile(r"https?://(?:[\w-]+\.)*medium\.com[^\s'\"<>)]*", re.I)
@@ -121,12 +138,31 @@ class StateError(Exception):
     """Guard state, key, manifest or receipt store is unreadable, unwritable or tampered with."""
 
 
+def test_mode(env: dict[str, str]) -> bool:
+    """Env overrides (guard dir, state dir, workspace, verifier, repo) are honoured ONLY when
+    MEDIUM_GUARD_TEST_MODE=1 AND the process is running under pytest. In production they are ignored, so a
+    poisoned hook environment cannot repoint the verifier or the state."""
+    return env.get("MEDIUM_GUARD_TEST_MODE") == "1" and ("pytest" in sys.modules or "PYTEST_CURRENT_TEST" in os.environ)
+
+
+def _ovr(env: dict[str, str], *names: str) -> str:
+    if test_mode(env):
+        for n in names:
+            if env.get(n):
+                return env[n]
+    return ""
+
+
 def guard_dir(env: dict[str, str]) -> Path:
-    return Path(env.get("MEDIUM_GUARD_DIR") or Path.home() / ".hermes" / "guards")
+    o = _ovr(env, "MEDIUM_GUARD_DIR")
+    if o:
+        return Path(o)
+    here = Path(__file__).resolve().parent
+    return here if (here / "manifest.sha256").exists() else Path.home() / ".hermes" / "guards"
 
 
 def state_dir(env: dict[str, str]) -> Path:
-    return Path(env.get("MEDIUM_GUARD_STATE_DIR") or guard_dir(env) / "state")
+    return Path(_ovr(env, "MEDIUM_GUARD_STATE_DIR") or guard_dir(env) / "state")
 
 
 def _canon(obj: Any) -> bytes:
@@ -281,32 +317,35 @@ def classify(payload: dict[str, Any], env: dict[str, str]) -> tuple[bool, str]:
             return False, ""
         return False, ""
 
-    if BROWSER_ALL_RE.match(tool):
+    if BROWSER_ALL_RE.match(tool) or tool.split("__")[-1] in BROWSER_READ_TOOLS:
         if tool in BROWSER_NAV_TOOLS:
             url = str(args.get("url") or "")
             _remember_nav(env, session, url)
             if _is_medium_write_url(url):
                 return True, f"browser_navigate to Medium write page {url}"
             return False, ""
-        if tool in BROWSER_INPUT_TOOLS and _on_medium(env, session):
-            return True, f"{tool} while the session is on Medium"
-        if tool in BROWSER_INPUT_TOOLS:
-            for s in _strings(args):
-                if MEDIUM_URL_RE.search(s):
-                    return True, f"{tool} mentions a Medium URL"
-        return False, ""
+        if tool in BROWSER_READ_TOOLS or tool.split("__")[-1] in BROWSER_READ_TOOLS:
+            return False, ""
+        return True, f"{tool}: browser tool not on the read-only allowlist (default is mutation)"
 
     if tool in {"terminal", "execute_code", "process", "bash", "shell"}:
         texts = [str(args.get(k) or "") for k in (*TERMINAL_KEYS, *CODE_KEYS)] or _strings(args)
         text = "\n".join(t for t in texts if t) or "\n".join(_strings(args))
         return _classify_command(text, env, session)
 
-    # unknown tool: mutation only if it explicitly carries a Medium write URL
+    # unknown tool: a browser/desktop-touching name is a mutation by default; otherwise mutation only if it
+    # explicitly carries a Medium write URL
+    if _touches_browser(tool):
+        return True, f"{tool}: unrecognized tool that can touch the browser (default is mutation)"
     for s in _strings(args):
         for m in MEDIUM_URL_RE.finditer(s):
             if _is_medium_write_url(m.group(0)):
                 return True, f"{tool} carries Medium write URL"
     return False, ""
+
+
+def _touches_browser(tool: str) -> bool:
+    return bool(set(re.split(r"[^a-z0-9]+", tool.lower())) & BROWSER_TOUCH_TOKENS)
 
 
 def _classify_command(text: str, env: dict[str, str], session: str) -> tuple[bool, str]:
@@ -337,20 +376,78 @@ def _classify_command(text: str, env: dict[str, str], session: str) -> tuple[boo
 
 # ---- release verify -------------------------------------------------------------------------------
 def workspace(env: dict[str, str]) -> Path:
-    return Path(env.get("MEDIUM_GUARD_WORKSPACE") or env.get("FINGERPRINT_EVAL_WORKSPACE")
+    return Path(_ovr(env, "MEDIUM_GUARD_WORKSPACE", "FINGERPRINT_EVAL_WORKSPACE")
                 or _config(env).get("workspace") or REPO_ROOT / "data" / "article-workspace")
 
 
 def repo_root(env: dict[str, str]) -> Path:
-    return Path(env.get("MEDIUM_GUARD_REPO") or _config(env).get("repo") or REPO_ROOT)
+    return Path(_ovr(env, "MEDIUM_GUARD_REPO") or _config(env).get("repo") or REPO_ROOT)
 
 
-def find_uv(env: dict[str, str]) -> str:
-    for cand in (env.get("MEDIUM_GUARD_UV"), str(Path.home() / ".local" / "bin" / "uv"), "/opt/homebrew/bin/uv",
-                 "/usr/local/bin/uv"):
-        if cand and Path(cand).exists():
+def _owned_by_me(path: Path, *, need_dir: bool = False) -> str:
+    """'' if `path` is absolute, exists, owned by the current user and not group/world writable, else why not."""
+    if not path.is_absolute():
+        return f"{path} is not an absolute path"
+    try:
+        st = os.stat(path)
+    except OSError as exc:
+        return f"cannot stat {path}: {exc}"
+    if need_dir != stat.S_ISDIR(st.st_mode):
+        return f"{path} is not a {'directory' if need_dir else 'file'}"
+    if st.st_uid != os.getuid():
+        return f"{path} is not owned by the current user"
+    if st.st_mode & 0o022:
+        return f"{path} is group/world writable"
+    return ""
+
+
+def pinned_verifier(env: dict[str, str]) -> tuple[str, Path]:
+    """(uv path, repo path) from the pinned, manifest-checked config.json written by install_guard.sh. The uv file
+    must hash to config's uv_sha256. Env overrides apply only in test mode. Raises StateError on any problem."""
+    cfg = _config(env)
+    uv = _ovr(env, "MEDIUM_GUARD_UV")
+    if uv:
+        why = _owned_by_me(Path(uv))
+        if why:
+            raise StateError(f"verifier rejected: {why}")
+    else:
+        uv = cfg.get("uv")
+        want = cfg.get("uv_sha256")
+        if not isinstance(uv, str) or not isinstance(want, str) or not re.fullmatch(r"[0-9a-f]{64}", want):
+            if test_mode(env):
+                uv = find_uv_for_tests()
+                want = None
+            else:
+                raise StateError("config.json pins no verifier (uv, uv_sha256); rerun install_guard.sh")
+        why = _owned_by_me(Path(uv))
+        if why:
+            raise StateError(f"verifier rejected: {why}")
+        if want is not None and _sha(Path(uv).read_bytes()) != want:
+            raise StateError(f"verifier {uv} does not match the pinned sha256 (changed after install)")
+    repo = repo_root(env)
+    why = _owned_by_me(repo, need_dir=True)
+    if why:
+        raise StateError(f"repo rejected: {why}")
+    return uv, repo
+
+
+def find_uv_for_tests() -> str:
+    for cand in (str(Path.home() / ".local" / "bin" / "uv"), "/opt/homebrew/bin/uv", "/usr/local/bin/uv"):
+        if Path(cand).exists():
             return cand
-    return "uv"
+    raise StateError("no uv found (test mode)")
+
+
+SUBPROCESS_ENV_KEYS = ("PATH", "HOME", "USER", "LANG", "TMPDIR", "UV_CACHE_DIR", "UV_PYTHON_INSTALL_DIR")
+
+
+def sub_env(env: dict[str, str] | None = None, extra: dict[str, str] | None = None) -> dict[str, str]:
+    """Allowlisted environment for uv / pbpaste / osascript. No API keys, tokens or anything else leaks in."""
+    src = os.environ if env is None else {**os.environ, **env}
+    out = {k: src[k] for k in SUBPROCESS_ENV_KEYS if k in src}
+    out.setdefault("PATH", "/usr/bin:/bin:/usr/sbin:/sbin")
+    out.update(extra or {})
+    return out
 
 
 def active_package(env: dict[str, str]) -> tuple[Path | None, str]:
@@ -373,29 +470,88 @@ def active_package(env: dict[str, str]) -> tuple[Path | None, str]:
 
 
 def run_verify(package: Path, env: dict[str, str]) -> tuple[int, str]:
-    cmd = [find_uv(env), "run", "--python", "3.12", "python", "-m", "scripts.fingerprint_eval.release",
-           "verify", "--package", str(package)]
+    """Run `release verify --package P --json` with the pinned uv/repo and an allowlisted env.
+    Returns (exit code, stdout JSON on success | error text on failure)."""
     try:
-        proc = subprocess.run(cmd, cwd=str(repo_root(env)), capture_output=True, text=True, timeout=VERIFY_TIMEOUT_S)
+        uv, repo = pinned_verifier(env)
+    except StateError as exc:
+        return 127, str(exc)
+    cmd = [uv, "run", "--python", "3.12", "python", "-m", "scripts.fingerprint_eval.release",
+           "verify", "--package", str(package), "--json"]
+    try:
+        proc = subprocess.run(cmd, cwd=str(repo), capture_output=True, text=True, timeout=VERIFY_TIMEOUT_S,
+                              env=sub_env(env, {"FINGERPRINT_EVAL_WORKSPACE": str(workspace(env))}),
+                              stdin=subprocess.DEVNULL)
     except subprocess.TimeoutExpired:
         return 124, f"release verify timed out after {VERIFY_TIMEOUT_S}s"
     except OSError as exc:
         return 127, f"release verify could not start: {exc}"
+    if proc.returncode == 0:
+        return 0, proc.stdout
     return proc.returncode, (proc.stderr or proc.stdout or "").strip()[-400:]
 
 
-def authorize_mutation(env: dict[str, str], verifier: Callable[[Path, dict[str, str]], tuple[int, str]]
-                       ) -> tuple[bool, str, Path | None]:
+class Verified:
+    """Result of one successful `verify --json`: the hash of the exact bytes the verifier vouched for."""
+    __slots__ = ("pkg", "sha")
+
+    def __init__(self, pkg: Path, sha: str) -> None:
+        self.pkg, self.sha = pkg, sha
+
+
+def parse_verify_json(out: str) -> tuple[str, str]:
+    """(content_sha256, why). why is '' on success. release_article_sha256, if present, must agree."""
     try:
-        pkg, why = active_package(env)
-        if pkg is None:
-            return False, why, None
+        doc = json.loads(out)
+    except (ValueError, TypeError):
+        return "", "verify --json did not print a JSON object (is the G1 verifier installed?)"
+    if not isinstance(doc, dict) or doc.get("valid") is not True:
+        return "", "verify --json did not report valid: true"
+    sha = doc.get("content_sha256")
+    if not isinstance(sha, str) or not re.fullmatch(r"[0-9a-f]{64}", sha):
+        return "", "verify --json carries no usable content_sha256"
+    rel = doc.get("release_article_sha256")
+    if rel is not None and rel != sha:
+        return "", "verify --json: release_article_sha256 differs from content_sha256"
+    return sha, ""
+
+
+@contextmanager
+def release_lock(pkg: Path, timeout_s: float = 20.0):
+    """flock on <package>/release/.guard.lock, held across verify AND the content comparison."""
+    path = pkg / "release" / ".guard.lock"
+    try:
+        fh = open(path, "a")
+    except OSError as exc:
+        raise StateError(f"cannot open {path}: {exc}") from exc
+    try:
+        deadline = time.monotonic() + timeout_s
+        while True:
+            try:
+                fcntl.flock(fh.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except OSError as exc:
+                if time.monotonic() >= deadline:
+                    raise StateError(f"cannot lock {path}: {exc}") from exc
+                time.sleep(0.05)
+        yield
+    finally:
+        fh.close()  # closing releases the flock
+
+
+def authorize_mutation(pkg: Path, env: dict[str, str], verifier: Callable[[Path, dict[str, str]], tuple[int, str]]
+                       ) -> tuple[bool, str, "Verified | None"]:
+    """Verify the package once. Caller must hold release_lock(pkg) (see decide)."""
+    try:
         rc, out = verifier(pkg, env)
     except Exception as exc:  # noqa: BLE001 - never allow from a handler
         return False, f"release authorization error ({type(exc).__name__}: {exc})", None
-    if rc == 0:
-        return True, "", pkg
-    return False, f"release verify failed for {pkg.name} (exit {rc}): {out or 'no output'}", None
+    if rc != 0:
+        return False, f"release verify failed for {pkg.name} (exit {rc}): {out or 'no output'}", None
+    sha, bad = parse_verify_json(out)
+    if bad:
+        return False, f"release verify output rejected for {pkg.name}: {bad}", None
+    return True, "", Verified(pkg, sha)
 
 
 FRAGMENT_MIN_CHARS = 40  # typed/pasted fragments at least this long must be substrings of the release text
@@ -424,6 +580,11 @@ def is_paste_keys(keys: str) -> bool:
     return ("v" in parts and bool(parts & PASTE_MODS)) or ("insert" in parts and "shift" in parts)
 
 
+def is_select_all(keys: str) -> bool:
+    parts = {t.strip().lower() for t in re.split(r"[+\s-]+", keys or "") if t.strip()}
+    return "a" in parts and len(parts) == 2 and bool(parts & {"cmd", "command", "ctrl", "control", "meta", "super"})
+
+
 def kind_of(payload: dict[str, Any]) -> str:
     """Sub-kind of a call already classified as a mutation: paste|type|enter|key|nav|click|clipboard|deny."""
     tool = str(payload.get("tool_name") or "")
@@ -438,6 +599,8 @@ def kind_of(payload: dict[str, Any]) -> str:
             keys = str(args.get("keys") or "")
             if is_paste_keys(keys):
                 return "paste"
+            if is_select_all(keys):
+                return "selectall"
             if {t.lower() for t in re.split(r"[+\s]+", keys) if t} & ENTER_KEYS:
                 return "enter"
             return "key"
@@ -446,7 +609,9 @@ def kind_of(payload: dict[str, Any]) -> str:
         return "nav"
     if tool == "browser_press":
         key = str(args.get("key") or "")
-        return "paste" if is_paste_keys(key) else ("enter" if key.lower() in ENTER_KEYS else "key")
+        if is_paste_keys(key):
+            return "paste"
+        return "selectall" if is_select_all(key) else ("enter" if key.lower() in ENTER_KEYS else "key")
     if tool == "browser_type":
         return "type"
     text = "\n".join(_strings(args))
@@ -464,19 +629,22 @@ def kind_of(payload: dict[str, Any]) -> str:
 
 
 # ---- clipboard ------------------------------------------------------------------------------------
-def read_clipboard(env: dict[str, str]) -> tuple[str | None, str | None, str]:
-    """(plain_text, html_text_or_None, error). Rich flavor is best effort; plain failure => error."""
+def read_clipboard(env: dict[str, str]) -> tuple[bytes | None, str | None, str]:
+    """(plain_bytes, html_text_or_None, error). Plain bytes are raw pbpaste output: no decoding, no stripping.
+    pbpaste does not add a trailing newline (verified: printf abc | pbcopy; pbpaste | xxd -> 616263), so no
+    newline normalisation is applied anywhere. Rich flavor is best effort; plain failure => error."""
+    senv = sub_env(env)
     try:
-        p = subprocess.run(["pbpaste"], capture_output=True, timeout=5)
+        p = subprocess.run(["pbpaste"], capture_output=True, timeout=5, env=senv, stdin=subprocess.DEVNULL)
     except (OSError, subprocess.TimeoutExpired) as exc:
         return None, None, f"pbpaste failed: {exc}"
     if p.returncode != 0:
         return None, None, f"pbpaste exited {p.returncode}"
-    plain = p.stdout.decode("utf-8", errors="replace")
+    plain = p.stdout
     html = None
     try:
         o = subprocess.run(["osascript", "-e", "the clipboard as «class HTML»"], capture_output=True,
-                           timeout=5, text=True)
+                           timeout=5, text=True, env=senv, stdin=subprocess.DEVNULL)
         m = re.search(r"«data HTML([0-9A-Fa-f]+)»", o.stdout or "")
         if o.returncode == 0 and m:
             raw = bytes.fromhex(m.group(1)).decode("utf-8", errors="replace")
@@ -486,22 +654,25 @@ def read_clipboard(env: dict[str, str]) -> tuple[str | None, str | None, str]:
     return plain, html, ""
 
 
-def check_clipboard(clip: tuple[str | None, str | None, str], release_text: str) -> tuple[str, str]:
-    """Return (kind, reason). kind is 'full', 'fragment' or '' (block, reason set)."""
+def check_clipboard(clip: tuple[Any, str | None, str], release_bytes: bytes) -> tuple[str, str]:
+    """Return (kind, reason). kind is 'full' (EXACT bytes), 'fragment' or '' (block, reason set)."""
     plain, html, err = clip
     if plain is None:
         return "", f"cannot read the clipboard ({err}); failing closed"
-    if not plain.strip():
+    pb = plain if isinstance(plain, bytes) else str(plain).encode("utf-8")
+    text = pb.decode("utf-8", errors="replace")
+    if not text.strip():
         return "", "clipboard is empty"
-    if html is not None and _loose(html) and _loose(html) not in _loose(plain) and _loose(plain) not in _loose(html):
+    if html is not None and _loose(html) and _loose(html) not in _loose(text) and _loose(text) not in _loose(html):
         return "", "clipboard rich (HTML) flavor differs from its plain-text flavor"
-    if plain.rstrip() == release_text.rstrip():
+    if pb == release_bytes:
         return "full", ""
-    n = _norm(plain)
+    release_text = release_bytes.decode("utf-8", errors="replace")
+    n = _norm(text)
     if len(n) >= FRAGMENT_MIN_CHARS and n in _norm(release_text):
         return "fragment", ""
-    return "", ("clipboard is neither the exact release text nor a >=40 char substring of it "
-                f"(clipboard sha256 {_sha(plain)[:12]})")
+    return "", ("clipboard is neither the exact release bytes nor a >=40 char substring of the release text "
+                f"(clipboard sha256 {_sha(pb)[:12]}, release sha256 {_sha(release_bytes)[:12]})")
 
 
 # ---- receipts -------------------------------------------------------------------------------------
@@ -562,37 +733,110 @@ def _last_typed(env: dict[str, str], session: str) -> str:
 
 
 # ---- policy once the release is valid -------------------------------------------------------------
-def content_policy(payload: dict[str, Any], pkg: Path, env: dict[str, str],
-                   clipboard: Callable[[dict[str, str]], tuple[str | None, str | None, str]]) -> str:
-    """Return a block reason or ''. Runs only after `release verify` passed. Any error is a block reason."""
+NEW_STORY_URL = "https://medium.com/new-story"
+DRAFT_URL_RE = re.compile(r"https://medium\.com/p/[0-9a-f]{6,}/edit")
+
+
+def editor_urls(pkg: Path) -> set[str]:
+    """Exact editor URLs a pre-receipt navigation may target: new-story, plus the package's recorded draft edit
+    URL(s) from workflow.json (a string value shaped https://medium.com/p/<hex>/edit under a key mentioning
+    draft or edit). Unreadable workflow.json just means only new-story."""
+    urls = {NEW_STORY_URL}
     try:
-        return _content_policy(payload, pkg, env, clipboard)
+        doc = json.loads((pkg / "workflow.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return urls
+
+    def walk(o: Any, key: str = "") -> None:
+        if isinstance(o, dict):
+            for k, v in o.items():
+                walk(v, str(k))
+        elif isinstance(o, list):
+            for v in o:
+                walk(v, key)
+        elif isinstance(o, str) and re.search(r"draft|edit", key, re.I) and DRAFT_URL_RE.fullmatch(o):
+            urls.add(o)
+    walk(doc)
+    return urls
+
+
+def _nav_urls(payload: dict[str, Any]) -> list[str]:
+    args = payload.get("tool_input") if isinstance(payload.get("tool_input"), dict) else {}
+    if str(payload.get("tool_name") or "") == "browser_navigate":
+        return [str(args.get("url") or "")]
+    text = "\n".join(_strings(args))
+    return [m.group(1) for m in BROWSE_GOTO_RE.finditer(text)]
+
+
+def pre_receipt_policy(payload: dict[str, Any], kind: str, pkg: Path, env: dict[str, str]) -> str:
+    """Before a verified FULL paste of the active release hash exists in this session, allow only:
+    (a) navigation to an exact Medium editor URL, plus Enter submitting that typed URL; cmd+a (keyboard-only
+        focus/select, no clicks); the clipboard load of release bytes;
+    (b) the bootstrap full paste (handled by the caller). Everything else is blocked, clicks included."""
+    session = str(payload.get("session_id") or "")
+    tool = str(payload.get("tool_name") or "")
+    args = payload.get("tool_input") if isinstance(payload.get("tool_input"), dict) else {}
+    allowed = editor_urls(pkg)
+    if kind == "nav":
+        urls = _nav_urls(payload)
+        if urls and all(u in allowed for u in urls):
+            return ""
+        return f"navigation before a verified full paste may only target an exact editor URL ({sorted(allowed)})"
+    if kind == "selectall":
+        return ""
+    if kind == "clipboard":  # loading the clipboard is not a browser mutation; the paste itself is byte-checked
+        cmd = "\n".join(_strings(args))
+        return "" if "release/medium-final" in cmd else "clipboard write must source release/medium-final.* of the active package"
+    if kind == "type" and tool == "computer_use" and str(args.get("text") or "") in allowed:
+        _remember_typed(env, session, str(args.get("text")))
+        return ""
+    if kind == "enter" and tool in {"computer_use", "browser_press"} and _last_typed(env, session) in allowed:
+        _remember_typed(env, session, "")  # one Enter per typed URL
+        return ""
+    return (f"no verified full-paste receipt for the active release in this session: before it only editor "
+            f"navigation, Enter on a typed editor URL, cmd+a and the full paste are allowed (got {kind or '?'}); "
+            "no clicks, typing, other keys or fragment pastes")
+
+
+def content_policy(payload: dict[str, Any], pkg: Path, env: dict[str, str],
+                   clipboard: Callable[[dict[str, str]], tuple[Any, str | None, str]],
+                   release_bytes: bytes | None = None, verified_sha: str | None = None) -> str:
+    """Return a block reason or ''. Runs only after `release verify` passed, with the release bytes read once
+    (by decide, under the lock) and matching verified_sha. Any error is a block reason."""
+    try:
+        return _content_policy(payload, pkg, env, clipboard, release_bytes, verified_sha)
     except Exception as exc:  # noqa: BLE001 - never allow from a handler
         return f"guard error during content policy ({type(exc).__name__}: {exc}); failing closed"
 
 
 def _content_policy(payload: dict[str, Any], pkg: Path, env: dict[str, str],
-                    clipboard: Callable[[dict[str, str]], tuple[str | None, str | None, str]]) -> str:
+                    clipboard: Callable[[dict[str, str]], tuple[Any, str | None, str]],
+                    release_bytes: bytes | None, verified_sha: str | None) -> str:
     args = payload.get("tool_input") if isinstance(payload.get("tool_input"), dict) else {}
     session = str(payload.get("session_id") or "")
-    rel = pkg / "release" / "medium-final.md"
-    try:
-        release_bytes = rel.read_bytes()
-        release_text = release_bytes.decode("utf-8")
-    except (OSError, UnicodeDecodeError) as exc:
-        return f"cannot read {rel}: {exc}"
+    if release_bytes is None:  # direct callers (tests); decide() always passes the once-read bytes
+        release_bytes = (pkg / "release" / "medium-final.md").read_bytes()
     release_sha = _sha(release_bytes)
+    if verified_sha is not None and release_sha != verified_sha:
+        return "release bytes do not match the hash release verify vouched for (changed after verify)"
+    release_text = release_bytes.decode("utf-8")
     kind = kind_of(payload)
 
     if kind == "deny":
         return "right-click is blocked: a context-menu Paste cannot be checked against the release bytes"
+    receipt = has_full_receipt(env, pkg, session, release_sha)
     if kind == "paste":
         clip = clipboard(env)
-        found, why = check_clipboard(clip, release_text)
+        found, why = check_clipboard(clip, release_bytes)
         if not found:
             return f"paste blocked: {why}"
-        write_receipt(env, pkg, session, clip[0] or "", release_sha, found)
+        if found != "full" and not receipt:
+            return ("paste blocked: only the exact full release may be pasted before a verified full-paste "
+                    "receipt exists in this session (fragment paste)")
+        write_receipt(env, pkg, session, clip[0] if clip[0] is not None else b"", release_sha, found)
         return ""
+    if not receipt:
+        return pre_receipt_policy(payload, kind, pkg, env)
     if kind == "type":
         text = _norm(str(args.get("text") or ""))
         if len(text) >= FRAGMENT_MIN_CHARS and text not in _norm(release_text):
@@ -602,22 +846,11 @@ def _content_policy(payload: dict[str, Any], pkg: Path, env: dict[str, str],
     if kind == "clipboard":
         cmd = "\n".join(_strings(args))
         return "" if "release/medium-final" in cmd else "clipboard write must source release/medium-final.* of the active package"
-    if kind in {"nav", "key"}:
-        return ""
-    if kind == "enter":
-        if has_full_receipt(env, pkg, session, release_sha) or URL_ONLY_RE.match(_last_typed(env, session)):
-            return ""
-        return "Enter/Space before a verified paste in this session (only allowed to submit a typed URL)"
-    # click, set_value, drag, browser_click/console/exec/cdp, browse CLI input ...
-    if has_full_receipt(env, pkg, session, release_sha):
-        return ""
-    return ("no verified paste receipt for the active release in this session: paste release/medium-final.md "
-            "(clipboard must equal it) before any click")
+    # nav, key, selectall, enter, click, set_value, drag, browser_*, browse CLI input ... : receipt exists
+    return ""
 
 
 # ---- fail-closed classification of "could this call mutate?" --------------------------------------
-BROWSER_READ_TOOLS = {"browser_snapshot", "browser_vision", "browser_get_images", "browser_screenshot",
-                      "browser_scroll"}
 SHELL_TOOLS = {"terminal", "execute_code", "process", "bash", "shell"}
 SHELL_HINT_RE = re.compile(
     BROWSE_BIN + r"|chrome|chromium|gstack|osascript|cliclick|cua-driver|peekaboo|playwright|puppeteer|patchright"
@@ -647,7 +880,8 @@ def could_mutate(payload: Any) -> bool:
         text = "\n".join(_strings(args)).lower() if args is not None else ""
         if tool in SHELL_TOOLS:
             return (not isinstance(args, dict)) or "medium" in text or bool(SHELL_HINT_RE.search(text))
-        return "medium" in text or "medium" in json.dumps(payload, default=str).lower()
+        return ("medium" in text or "medium" in json.dumps(payload, default=str).lower()
+                or (_touches_browser(tool) and tool.split("__")[-1] not in BROWSER_READ_TOOLS))
     except Exception:  # noqa: BLE001
         return True
 
@@ -677,14 +911,27 @@ def decide(payload: dict[str, Any], env: dict[str, str] | None = None,
     if not ok_int:
         return Decision(False, f"Medium mutation blocked ({why}): guard integrity check failed: {why_int}. "
                                "Reinstall with scripts/hermes/install_guard.sh and review who changed it.", True)
-    ok, reason, pkg = authorize_mutation(env, verifier)
-    if ok and pkg is not None:
-        extra = content_policy(payload, pkg, env, clipboard)
-        if not extra:
-            return Decision(True, mutation=True)
-        ok, reason = False, extra
+    try:
+        pkg, why_pkg = active_package(env)
+        if pkg is None:
+            return _blocked(why, why_pkg)
+        with release_lock(pkg):
+            ok, reason, ver = authorize_mutation(pkg, env, verifier)
+            if ok and ver is not None:
+                # read the release ONCE, after verify, inside the lock; never re-read it afterwards
+                rel_bytes = (pkg / "release" / "medium-final.md").read_bytes()
+                extra = content_policy(payload, pkg, env, clipboard, rel_bytes, ver.sha)
+                if not extra:
+                    return Decision(True, mutation=True)
+                reason = extra
+    except Exception as exc:  # noqa: BLE001 - never allow from a handler
+        reason = f"release authorization error ({type(exc).__name__}: {exc})"
+    return _blocked(why, reason)
+
+
+def _blocked(why: str, reason: str) -> Decision:
     return Decision(False, f"Medium mutation blocked ({why}): {reason}. Run `python -m scripts.fingerprint_eval.release "
-                            f"authorize --package <dir>` and paste only release/medium-final.md.", True)
+                           f"authorize --package <dir>` and paste only release/medium-final.md.", True)
 
 
 def log_decision(env: dict[str, str], payload: dict[str, Any], allow: bool, reason: str, note: str = "") -> None:

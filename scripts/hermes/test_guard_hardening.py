@@ -323,7 +323,8 @@ def test_delegated_child_session_needs_its_own_verified_paste(env):
 @pytest.fixture()
 def installed(tmp_path):
     dest = tmp_path / "home" / ".hermes" / "guards"
-    e = {**os.environ, "HERMES_GUARD_DIR": str(dest), "HOME": str(tmp_path / "home")}
+    e = {**os.environ, "HERMES_GUARD_DIR": str(dest), "HOME": str(tmp_path / "home"),
+         "HERMES_GUARD_UV": g.find_uv_for_tests()}
     (tmp_path / "home").mkdir()
     p = subprocess.run(["bash", str(HERE / "install_guard.sh")], capture_output=True, text=True, env=e)
     yield dest, e, p
@@ -364,7 +365,7 @@ def test_selftest_passes_on_clean_install(installed):
     assert p.returncode == 0
     r = subprocess.run(["bash", str(HERE / "guard_selftest.sh")], env=e, capture_output=True, text=True)
     assert r.returncode == 0, r.stdout + r.stderr
-    assert "FAIL" not in r.stdout and "7/7" in r.stdout
+    assert "FAIL" not in r.stdout and "17/17" in r.stdout
 
 
 def test_selftest_exits_nonzero_when_install_is_tampered(installed):

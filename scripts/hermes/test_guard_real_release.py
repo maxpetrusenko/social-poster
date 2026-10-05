@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import io
 import json
-import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -20,7 +20,19 @@ from guard_testutil import install_fake_guard  # noqa: E402
 from scripts.fingerprint_eval import release  # noqa: E402
 from scripts.fingerprint_eval.tests.fakes import ARTICLE, Fakes  # noqa: E402
 
-pytestmark = pytest.mark.skipif(not (shutil.which("uv") or (Path.home() / ".local/bin/uv").exists()), reason="uv missing")
+def _verify_json_supported() -> bool:
+    """`release verify --json` comes from the G1 PR; until it lands on this branch these tests cannot run."""
+    try:
+        uv = g.find_uv_for_tests()
+        p = subprocess.run([uv, "run", "--python", "3.12", "python", "-m", "scripts.fingerprint_eval.release",
+                            "verify", "--help"], cwd=str(REPO), capture_output=True, text=True, timeout=120)
+        return "--json" in (p.stdout + p.stderr)
+    except Exception:  # noqa: BLE001
+        return False
+
+
+pytestmark = pytest.mark.skipif(not _verify_json_supported(),
+                                reason="needs uv and `release verify --json` (depends on the G1 PR)")
 
 
 @pytest.fixture()
