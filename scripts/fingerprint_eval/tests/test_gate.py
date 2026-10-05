@@ -94,12 +94,13 @@ class Verdicts(GateBase):
         self.assertEqual(g["blocking"]["flagged_claims"][0]["dimension"], "numbers")
 
     def test_hedge_swap_fails_deterministically(self):
-        rc, w, _ = self.run_gate(article=ARTICLE.replace("Nobody disputed that figure.", "Nobody disputed that figure.").replace("The budget doubled", "The budget may have doubled"))
+        rc, w, _ = self.run_gate(article=ARTICLE.replace("The budget doubled", "The budget may have doubled"))
         self.assertEqual(rc, 1)
         self.assertTrue(any("added may" in r for r in gate_json(w)["reasons"]))
 
     def test_dropped_sentence_fails_deterministically(self):
-        rc, w, _ = self.run_gate(article=ARTICLE.replace(" It was inspected twice by the crew.", ""))
+        longer = ARTICLE.replace("It was inspected twice by the crew.", "It was inspected twice by the crew. Engineers also logged the coolant pressure every hour.")
+        rc, w, _ = self.run_gate(article=longer.replace(" Engineers also logged the coolant pressure every hour.", ""), draft=longer)
         self.assertEqual(rc, 1)
         g = gate_json(w)
         self.assertEqual(g["blocking"]["flagged_claims"][0]["verdict"], "missing")
