@@ -13,7 +13,7 @@ from .errors import EvaluationError
 from .gateway import GatewayError, resolve_model
 from .added import _is_factual, sentence_covered
 from .rewrite import Segment, extract_propositions, is_meta_claim, request_extraction, segment_sentences
-from .textutil import strip_inline
+from .textutil import parallel_map, strip_inline
 
 SCHEMA_VERSION = 4  # 3: propositions carry sentence_ids; reference sentence coverage is enforced. 4: extractor keeps hedges and quantifiers verbatim in the claim text
 
@@ -50,27 +50,38 @@ def reference_gaps(seg: Segment) -> list[int]:
             if i not in seg.nonfactual and _is_factual(strip_inline(sent)) and not sentence_covered(strip_inline(sent), claims, i in tagged)]
 
 
+def _reextract(s: Segment, extractor_spec: str) -> tuple[list[int], list[str], str, list[dict] | None]:
+    """One targeted re-extraction for segment s (thread-safe: reads only). (gaps, sentences, outcome, props) with outcome
+    "none" (nothing to do), "nonfactual" (the extractor found no factual claim in the gaps) or "props"."""
+    gaps = reference_gaps(s)
+    if not gaps:
+        return gaps, [], "none", None
+    sents = segment_sentences(s)
+    try:
+        _, props = request_extraction([sents[i - 1] for i in gaps], s.section, extractor_spec)
+    except GatewayError as e:
+        if "empty propositions" not in str(e):
+            raise EvaluationError(f"re-extraction of {len(gaps)} uncovered reference sentence(s) failed in segment {s.idx}: {str(e)[:200]}", category=getattr(e, "category", Category.MALFORMED_MODEL_OUTPUT), dependency=getattr(e, "dependency", None)) from None
+        return gaps, sents, "nonfactual", None
+    except ValueError as e:
+        raise EvaluationError(f"re-extraction of {len(gaps)} uncovered reference sentence(s) failed in segment {s.idx}: {str(e)[:200]}", category=getattr(e, "category", Category.MALFORMED_MODEL_OUTPUT), dependency=getattr(e, "dependency", None)) from None
+    return gaps, sents, "props", props
+
+
 def _cover_reference(prose: list[Segment], extractor_spec: str) -> bool:
     """Every factual sentence of every prose segment must be covered. One targeted re-extraction of just the uncovered
-    sentences per segment, then EvaluationError (MALFORMED_MODEL_OUTPUT). Returns True if any re-extraction changed a segment."""
+    sentences per segment (parallel, bounded), then EvaluationError (MALFORMED_MODEL_OUTPUT). Segments are updated in order.
+    Returns True if any re-extraction changed a segment."""
     changed = False
-    for s in prose:
-        gaps = reference_gaps(s)
-        if not gaps:
+    for s, (gaps, sents, outcome, props) in zip(prose, parallel_map(lambda s: _reextract(s, extractor_spec), prose)):
+        if outcome == "none":
             continue
-        sents = segment_sentences(s)
-        try:
-            _, props = request_extraction([sents[i - 1] for i in gaps], s.section, extractor_spec)
-        except GatewayError as e:
-            if "empty propositions" not in str(e):
-                raise EvaluationError(f"re-extraction of {len(gaps)} uncovered reference sentence(s) failed in segment {s.idx}: {str(e)[:200]}", category=getattr(e, "category", Category.MALFORMED_MODEL_OUTPUT), dependency=getattr(e, "dependency", None)) from None
+        if outcome == "nonfactual":
             # the extractor, asked about exactly these sentences, found no factual claim in them (rhetoric: "Here is the part that
             # keeps the picture honest."). Recorded in the cache, not skipped silently; claimcheck still fails their removal.
             s.nonfactual = sorted(set(s.nonfactual) | set(gaps))
             changed = True
             continue
-        except ValueError as e:
-            raise EvaluationError(f"re-extraction of {len(gaps)} uncovered reference sentence(s) failed in segment {s.idx}: {str(e)[:200]}", category=getattr(e, "category", Category.MALFORMED_MODEL_OUTPUT), dependency=getattr(e, "dependency", None)) from None
         for p in props:
             p["sentence_ids"] = [gaps[i - 1] for i in p["sentence_ids"]]
         s.propositions = s.propositions + props
@@ -95,11 +106,12 @@ def ensure_extraction(segs: list[Segment], md: str, extractor_spec: str, cache: 
             s.propositions = [q for q in e.get("propositions", []) if isinstance(q, dict) and isinstance(q.get("claim"), str) and not is_meta_claim(q["claim"])]
         source = "cache"
     else:
-        for s in prose:
+        def extract(s: Segment) -> None:  # each worker mutates only its own segment
             try:
                 extract_propositions(s, extractor_spec)
             except (GatewayError, ValueError) as e:
                 raise EvaluationError(f"extraction failed: {str(e)[:250]}", category=getattr(e, "category", Category.MALFORMED_MODEL_OUTPUT), dependency=getattr(e, "dependency", None)) from None
+        parallel_map(extract, prose)  # any worker exception re-raises (earliest segment first): fail closed
         source = "extracted"
     empty = [s.idx for s in prose if not s.propositions]
     if empty:

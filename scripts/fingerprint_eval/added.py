@@ -14,7 +14,7 @@ from .errors import EvaluationError
 from .gateway import GatewayError, extract_json, resolve_model
 from .judge import ask_chunked, normalize, parse_entries
 from .rewrite import Segment, is_meta_claim, request_extraction, segment_article
-from .textutil import Block, split_sentences, strip_inline, words
+from .textutil import Block, parallel_map, split_sentences, strip_inline, words
 
 JACCARD = 0.8
 MIN_WORDS = 5  # `is_factual` cut for reference coverage; new sentences are all checked (short ones through `_stylistic_echo` first)
@@ -209,7 +209,8 @@ def check_added(draft_md: str, final_md: str, notes: str | None, extractor_spec:
         return res
     judge = resolve_model(judge_spec)
     notes_txt = (notes or "")[:MAX_NOTES_CHARS]
-    for section, sents in new.items():
+    def check_section(item: tuple[str, list[str]]) -> tuple[list[str], dict[int, dict]]:
+        section, sents = item
         claims, tagged = _extract_claims(sents, section, extractor_spec)
         if not claims:  # new factual sentences exist: an empty post-filter extraction is a failed extraction, never a pass
             raise _fail(f"added-claim extraction returned no factual claims for {len(sents)} new sentence(s) in section {section!r}", Category.MALFORMED_MODEL_OUTPUT)
@@ -219,7 +220,8 @@ def check_added(draft_md: str, final_md: str, notes: str | None, extractor_spec:
         ref = _reference_section(draft_md, section)
         parts = [p for p in (ref and f"Reference section:\n{ref}", notes_txt and f"Source notes:\n{notes_txt}") if p]
         material = "\n\n".join(parts) or "(none: there is no reference text and no source notes for this section)"
-        def ask(sub, material=material):
+
+        def ask(sub):
             return _call(judge, SUPPORT_PROMPT.format(claims="\n".join(f"{i}. {c}" for i, c in enumerate(sub, 1)), material=material), "judge")
 
         try:
@@ -228,6 +230,11 @@ def check_added(draft_md: str, final_md: str, notes: str | None, extractor_spec:
             raise _fail(f"added-claim judge failed for section {section!r} after retry: {str(e)[:200]}", _gateway_cat(judge)) from None
         except ValueError as e:
             raise _fail(f"added-claim judge failed for section {section!r} after retry: {str(e)[:200]}", Category.MALFORMED_MODEL_OUTPUT) from None
+        return claims, verdicts
+
+    items = list(new.items())
+    # sections run on a bounded pool; results are merged in section order (any worker exception re-raises: fail closed)
+    for (section, _), (claims, verdicts) in zip(items, parallel_map(check_section, items)):
         res["claims"] += len(claims)
         for i, c in enumerate(claims, 1):
             if verdicts[i]["verdict"] == "unsupported":

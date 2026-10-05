@@ -18,6 +18,7 @@ from .contracts import Category
 from .errors import EvaluationError
 from .gateway import GatewayError, Model
 from .rewrite import Segment
+from .textutil import parallel_map
 
 VERDICTS = ("entailed", "changed", "missing")
 JUDGE_BATCH = 10  # max claims per judge call (part of the gate cache key, authz._cache_extra); larger sections are chunked
@@ -164,21 +165,29 @@ def judge_claims(segments: list[Segment], judge: Model, strict: bool = False, co
     flagged: list[dict] = []
     overturned: list[dict] = []
     calls = prefiltered = 0
-    for seg in segments:
-        if seg.frozen or not seg.propositions:
-            continue
+    todo = [seg for seg in segments if not (seg.frozen or not seg.propositions)]
+
+    def first_pass(seg: Segment):
+        """(first, n_calls, error) for a segment that needs the judge; (None, 0, None) for an identity-prefiltered one."""
+        if isinstance(seg.output, str) and isinstance(seg.text, str) and identical(seg.output, seg.text):
+            return None, 0, None
+        try:
+            first, n_calls = _call(judge, [p["claim"] for p in seg.propositions], seg.output)
+            return first, n_calls, None
+        except (GatewayError, ValueError) as e:
+            return None, 0, e
+
+    # first-pass calls run on a bounded pool; results are consumed in segment order, so the output is deterministic
+    firsts = parallel_map(first_pass, todo)
+    for seg, (first, n_calls, err) in zip(todo, firsts):
         claims = [p["claim"] for p in seg.propositions]
         if isinstance(seg.output, str) and isinstance(seg.text, str) and identical(seg.output, seg.text):
             prefiltered += 1
             counts["entailed"] += len(claims)
             continue
-        try:
-            first, n_calls = _call(judge, claims, seg.output)
-            calls += n_calls
-        except (GatewayError, ValueError) as e:
-            if strict:
-                raise _judge_error(seg.section, e) from e
-            first = None
+        calls += n_calls
+        if err is not None and strict:
+            raise _judge_error(seg.section, err) from err
         votes: dict[int, list[str]] = {i: [first[i]["verdict"]] for i in first} if first else {}
         flag_ids = [i for i in sorted(votes) if votes[i][0] != "entailed"]
         details = {i: first[i] for i in first} if first else {}

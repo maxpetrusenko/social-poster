@@ -21,7 +21,7 @@ from .guards import semantic_similarity, structure_preservation
 from .judge import judge_claims
 from .report import top_diffs, write_report
 from .rewrite import EXTRACTOR, Segment, assert_different_family, assert_same_family, rewrite_article, segment_article
-from .textutil import core_markdown, load_author_corpus, load_pipeline_corpus
+from .textutil import core_markdown, load_author_corpus, load_pipeline_corpus, resolve_pipeline_corpus
 
 WATERMARK = {"signal_family": "watermark", "research_only": True, "run": False, "reason": "no vendor keys; GPT/Claude text watermark not verifiable"}
 
@@ -118,7 +118,7 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--article", required=True, type=Path)
     ap.add_argument("--author-corpus", required=True, type=Path)
-    ap.add_argument("--pipeline-corpus", required=True, type=Path)
+    ap.add_argument("--pipeline-corpus", type=Path, help="pipeline corpus dir (required outside --gate); gate: default env FINGERPRINT_PIPELINE_CORPUS or <repo>/.cache/fingerprint-eval/pipeline, else the advisory pipeline comparison is skipped")
     ap.add_argument("--out", required=True, type=Path)
     ap.add_argument("--writer", help="writer model name (default: inferred from version.json beside the article)")
     ap.add_argument("--rewriters", default="qwen3:8b,claude:sonnet")
@@ -138,7 +138,9 @@ def main(argv=None) -> int:
             return 2
         from .gate import run_gate
         load_gateway_key()
-        return run_gate(a.article, a.draft, a.author_corpus, a.pipeline_corpus, a.out, a.judge, a.gate_threshold, a.extractor, a.refresh_extraction)
+        return run_gate(a.article, a.draft, a.author_corpus, a.pipeline_corpus or resolve_pipeline_corpus(), a.out, a.judge, a.gate_threshold, a.extractor, a.refresh_extraction)
+    if a.pipeline_corpus is None:
+        ap.error("--pipeline-corpus is required outside --gate")
     a.out.mkdir(parents=True, exist_ok=True)
     if a.tier == "research":
         stub = {"tier": "research", "run": False, "reason": "stub: detectors and watermark checks are scheduled nightly later, not part of the per-article fast tier",

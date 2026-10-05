@@ -19,6 +19,7 @@ from pathlib import Path
 
 from . import ledger, record as R
 from .gateway import child_env
+from .textutil import resolve_pipeline_corpus
 from .contracts import (AUTHOR_CORPUS_DIR, AUTHOR_CORPUS_MANIFEST, GATE_DIR, Binding, Category, EvalRecord, EvaluatorVersion, LedgerState, PackageCtx, Result)
 
 REPO = Path(__file__).resolve().parents[2]
@@ -191,8 +192,13 @@ def corpus_sha256() -> str:
     return _sha(json.dumps(man, sort_keys=True, separators=(",", ":")).encode())
 
 
-def pipeline_corpus_sha256(articles_dir: Path) -> str:
-    """Advisory: latest article-vN.md of the 30 most recent packages."""
+def pipeline_corpus_sha256(articles_dir: Path | None = None) -> str:
+    """Advisory: latest article-vN.md of the 30 most recent packages of the CONFIGURED pipeline corpus (env
+    FINGERPRINT_PIPELINE_CORPUS, else <repo>/.cache/fingerprint-eval/pipeline). Never a package's parent directory. "unavailable"
+    when none is configured."""
+    articles_dir = articles_dir or resolve_pipeline_corpus(repo=REPO)
+    if articles_dir is None:
+        return "unavailable"
     try:
         pkgs = sorted((d for d in articles_dir.iterdir() if d.is_dir() and not d.name.startswith("_blocked")), key=lambda d: d.stat().st_mtime)[-30:]
         h = hashlib.sha256()
@@ -330,12 +336,12 @@ def _build_record(ctx: PackageCtx, binding: Binding, tree_sha: str, ref_sha: str
     advisory = {"author_distance": aa.get("after"), "sentence_jsd": ss.get("sentence_length_jsd_draft_vs_final"),
                 "paragraph_jsd": ss.get("paragraph_length_jsd_draft_vs_final"), "repeated_ngram_rate": ss.get("repeated_ngram_rate"),
                 "rule_of_three": None, "templates": ss.get("structural_templates"), "pipeline_outlier_z": ss.get("pipeline_outlier"),
-                "advisory_errors": [adv["advisory_error"]] if adv.get("advisory_error") else [], "sections_below_threshold": adv.get("sections_below_threshold", {})}
+                "advisory_errors": list(adv.get("advisory_errors") or ([adv["advisory_error"]] if adv.get("advisory_error") else [])), "sections_below_threshold": adv.get("sections_below_threshold", {})}
     return EvalRecord(
         schema_version=R.SCHEMA_VERSION, slug=ctx.slug, binding=binding, final_path=str(ctx.final_path), final_rule=ctx.final_rule,
         reference_path=str(ctx.reference_path) if ctx.reference_path else None, reference_sha256=ref_sha,
         reference_identical=bool(gate.get("reference_identical", inputs.get("reference_identical", False))), timestamp_utc=ts,
-        evaluator_tree_sha256=tree_sha, pipeline_corpus_sha256=pipeline_corpus_sha256(ctx.package.parent), models=models,
+        evaluator_tree_sha256=tree_sha, pipeline_corpus_sha256=pipeline_corpus_sha256(), models=models,
         claims={"total": cl.get("total", 0), "preserved": cl.get("claims_entailed", 0), "changed": cl.get("claims_changed", 0),
                 "missing": cl.get("claims_missing", 0), "added_unsupported": cl.get("added_unsupported", 0),
                 "judged_by": "identity" if cl.get("judge") == "identity" else cl.get("judge"),
@@ -441,7 +447,7 @@ def _run_gate(ctx: PackageCtx, candidate: Path, ref: Path, ts: str, content: str
             draft = work / "reference-copy.md"
             shutil.copyfile(ref, draft)
         run_mod.load_gateway_key()
-        G.run_gate(candidate, draft, None, ctx.package.parent, work, MODELS["judge"], THRESHOLD, MODELS["extractor"], False, identity_shortcut=True,
+        G.run_gate(candidate, draft, None, resolve_pipeline_corpus(repo=REPO), work, MODELS["judge"], THRESHOLD, MODELS["extractor"], False, identity_shortcut=True,
                    source_notes=ctx.source_notes, reference_bound_by=reference_binding(ctx.package, ref))
         gate = json.loads((work / "gate.json").read_text())
     except Exception as e:  # noqa: BLE001  fail closed
