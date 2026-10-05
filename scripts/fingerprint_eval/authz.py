@@ -18,6 +18,7 @@ import time
 from pathlib import Path
 
 from . import ledger, record as R
+from .gateway import child_env
 from .contracts import (AUTHOR_CORPUS_DIR, AUTHOR_CORPUS_MANIFEST, GATE_DIR, Binding, Category, EvalRecord, EvaluatorVersion, LedgerState, PackageCtx, Result)
 
 REPO = Path(__file__).resolve().parents[2]
@@ -25,6 +26,7 @@ TREE_DIR = Path("scripts/fingerprint_eval")
 EXCLUDED_DIRS = ("tests", "calibration")
 THRESHOLD = 0.90
 MODELS = {"judge": os.environ.get("FG_JUDGE", "claude:sonnet"), "extractor": os.environ.get("FG_EXTRACTOR", "claude:sonnet")}
+CHILD_ENV_KEYS = ("PATH", "HOME", "USER", "LOGNAME", "LANG", "LC_ALL", "TMPDIR")  # no API keys or tokens reach a child process
 EMBED_MODEL = "nomic-embed-text:latest"
 
 
@@ -101,6 +103,27 @@ def _reference(package: Path, vj: dict) -> Path | None:
         return None
 
 
+def reference_binding(package: Path, reference: Path) -> str | None:
+    """Package-relative path of the rating (latest evals/prepublish-vN.json) that names `reference` as its articleFile AND
+    records a sha256 equal to the reference's bytes; else None. Only such a reference is the rated, hash-bound version;
+    a version.json fallback or a rating without a recorded hash proves nothing, so the identity shortcut stays off."""
+    evals = sorted((p for p in (package / "evals").glob("prepublish-v*.json") if re.fullmatch(r"prepublish-v\d+\.json", p.name)),
+                   key=lambda p: int(re.sub(r"\D", "", p.name)))
+    if not evals:
+        return None
+    try:
+        d = json.loads(evals[-1].read_text())
+        if not isinstance(d, dict) or not isinstance(d.get("articleFile"), str):
+            return None
+        bound = next((d[k] for k in ("articleSha256", "contentSha256", "sha256") if isinstance(d.get(k), str)), None)
+        named = _inside(package, d["articleFile"], "reference")
+        if bound is None or named.resolve() != Path(reference).resolve() or sha256_file(named) != bound:
+            return None
+    except (OSError, ValueError, PackageError):
+        return None
+    return str(evals[-1].relative_to(package))
+
+
 def resolve_package(package: Path | str) -> PackageCtx:
     package = Path(package)
     if not package.is_dir():
@@ -122,7 +145,7 @@ def resolve_package(package: Path | str) -> PackageCtx:
 # ---- versions and hashes ---------------------------------------------------------------------------------------
 def _git(*args: str) -> str:
     try:
-        p = subprocess.run(["git", "-C", str(REPO), *args], capture_output=True, text=True, timeout=30)
+        p = subprocess.run(["git", "-C", str(REPO), *args], capture_output=True, text=True, timeout=30, env=child_env(CHILD_ENV_KEYS))
     except (OSError, subprocess.SubprocessError) as e:
         raise EnvError(f"git unavailable: {e}") from None
     if p.returncode != 0:
@@ -204,6 +227,9 @@ def _cached(package: Path, binding: Binding, ref_sha: str | None, extra: dict) -
 
 def _build_record(ctx: PackageCtx, binding: Binding, tree_sha: str, ref_sha: str | None, gate: dict, ts: str, runtime: float, raw: str) -> EvalRecord:
     result = Result(gate.get("result") or Result.ERROR.value)
+    partial = gate.get("evaluated") == "partial"
+    if partial and result is Result.PASS:  # a partial evaluation never authorizes: it cannot even be recorded as a pass
+        result, gate = Result.ERROR, {**gate, "error_category": Category.UNKNOWN_ERROR.value, "reasons": ["partial evaluation reported PASS"]}
     inputs = gate.get("inputs") or {}
     blk = gate.get("blocking") or {}
     cl = blk.get("claims") or {}
@@ -233,6 +259,8 @@ def _build_record(ctx: PackageCtx, binding: Binding, tree_sha: str, ref_sha: str
     structure = {"images": part("images"), "headings": part("headings"), "code": part("codes"),
                  "frozen": {"expected": None, "preserved": bool(blk.get("frozen_blocks_identical", result is Result.PASS)), "diffs": frozen_reasons},
                  "failure_categories": gate.get("failure_categories", []), "cache_key_extra": _cache_extra(ctx)}
+    if partial:
+        structure.update({"evaluated": "partial", "checks_skipped": list(gate.get("checks_skipped") or ["claims", "semantic"])})
     models = {"extractor": _model_info(MODELS["extractor"]), "judge": _model_info(MODELS["judge"]),
               "embedding": {"name": EMBED_MODEL, "family": "nomic", "backend": "gateway", "version": EMBED_MODEL}}
     advisory = {"author_distance": aa.get("after"), "sentence_jsd": ss.get("sentence_length_jsd_draft_vs_final"),
@@ -246,7 +274,8 @@ def _build_record(ctx: PackageCtx, binding: Binding, tree_sha: str, ref_sha: str
         evaluator_tree_sha256=tree_sha, pipeline_corpus_sha256=pipeline_corpus_sha256(ctx.package.parent), models=models,
         claims={"total": cl.get("total", 0), "preserved": cl.get("claims_entailed", 0), "changed": cl.get("claims_changed", 0),
                 "missing": cl.get("claims_missing", 0), "added_unsupported": cl.get("added_unsupported", 0),
-                "judged_by": "identity" if cl.get("judge") == "identity" else cl.get("judge")},
+                "judged_by": "identity" if cl.get("judge") == "identity" else cl.get("judge"),
+                **({"reference_bound_by": cl["reference_bound_by"]} if cl.get("judge") == "identity" and cl.get("reference_bound_by") else {})},
         links={"expected": link_exp, "preserved": max(link_exp - len(miss), 0), "missing": miss}, structure=structure,
         semantic={"whole": blk.get("semantic_similarity_whole"), "section_min": blk.get("semantic_section_min"), "threshold": gate.get("threshold", THRESHOLD)},
         advisory=advisory, result=result, category=cat, reasons=[str(r) for r in gate.get("reasons", [])], runtime_s=runtime, raw_report_path=raw)
@@ -339,7 +368,8 @@ def _run_gate(ctx: PackageCtx, candidate: Path, ref: Path, ts: str, content: str
             draft = work / "reference-copy.md"
             shutil.copyfile(ref, draft)
         run_mod.load_gateway_key()
-        G.run_gate(candidate, draft, None, ctx.package.parent, work, MODELS["judge"], THRESHOLD, MODELS["extractor"], False, identity_shortcut=True, source_notes=ctx.source_notes)
+        G.run_gate(candidate, draft, None, ctx.package.parent, work, MODELS["judge"], THRESHOLD, MODELS["extractor"], False, identity_shortcut=True,
+                   source_notes=ctx.source_notes, reference_bound_by=reference_binding(ctx.package, ref))
         gate = json.loads((work / "gate.json").read_text())
     except Exception as e:  # noqa: BLE001  fail closed
         return _error_gate(Category.UNKNOWN_ERROR, f"gate did not produce a verdict: {type(e).__name__}: {e}"), ""

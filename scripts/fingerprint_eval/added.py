@@ -17,7 +17,7 @@ from .rewrite import EXTRACT_PROMPT, Segment, is_meta_claim, segment_article
 from .textutil import Block, split_sentences, strip_inline, words
 
 JACCARD = 0.8
-MIN_WORDS = 4
+MIN_WORDS = 5  # fragments are not claims (same cut as the extractor); shorter sentences are skipped unless they carry a number, a proper noun or a negation
 MAX_NOTES_CHARS = 60000
 SUPPORT_VERDICTS = ("supported", "unsupported")
 
@@ -46,7 +46,33 @@ def _jacc(a: set, b: set) -> float:
     return len(a & b) / len(a | b) if a | b else 1.0
 
 
-def _ref_sentences(md: str) -> list[set]:
+NUM_RE = re.compile(r"\d[\d,.]*\d|\d")
+NUMBER_WORDS = frozenset("""zero one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen
+nineteen twenty thirty forty fifty sixty seventy eighty ninety hundred thousand million billion trillion half double triple twice
+once first second third fourth fifth tenth""".split())
+TOKEN_RE = re.compile(r"[A-Za-z][A-Za-z'\u2019\-]*")
+NEGATIONS = frozenset({"not", "no", "never", "none", "neither", "nor", "cannot", "without", "nothing", "nobody", "nowhere", "hardly", "barely"})
+PRONOUN_I = re.compile(r"^I(?:['\u2019](?:m|ll|ve|d))?$")
+
+
+def _signature(sentence: str) -> tuple[frozenset, frozenset, frozenset]:
+    """(numbers, negations, named entities): what a fuzzy word match cannot see. Entities = capitalised tokens that are
+    not sentence-initial (and not the pronoun I); negations include n't contractions."""
+    toks = TOKEN_RE.findall(sentence)
+    nums = frozenset([m.group(0).strip(",.") for m in NUM_RE.finditer(sentence)] + [t.lower() for t in toks if t.lower() in NUMBER_WORDS])
+    negs = frozenset(t.lower().replace("\u2019", "'") for t in toks if t.lower().replace("\u2019", "'") in NEGATIONS or t.lower().replace("\u2019", "'").endswith("n't"))
+    ents = frozenset(t.lower() for t in toks[1:] if t[0].isupper() and not PRONOUN_I.match(t))
+    return nums, negs, ents
+
+
+def _is_factual(sentence: str) -> bool:
+    """Long enough to carry a claim, or short but carrying a number, a proper noun or a negation."""
+    if len(words(sentence)) >= MIN_WORDS:
+        return True
+    return any(_signature(sentence))
+
+
+def _ref_sentences(md: str) -> list[tuple[set, tuple]]:
     out = []
     for seg in segment_article(md):
         for b in seg.blocks:
@@ -54,22 +80,23 @@ def _ref_sentences(md: str) -> list[set]:
                 continue
             for ln in (b.text.split("\n") if b.kind == "list" else [b.text]):
                 for s in split_sentences(strip_inline(ln)):
-                    out.append(set(words(s)))
+                    out.append((set(words(s)), _signature(s)))
     return out
 
 
 def new_sentences(draft_md: str, final_md: str) -> dict[str, list[str]]:
-    """{section: [sentence, ...]} for final prose sentences with no fuzzy counterpart anywhere in the reference."""
+    """{section: [sentence, ...]} for final prose sentences with no fuzzy counterpart anywhere in the reference.
+    A counterpart needs word overlap >= JACCARD AND identical numbers, negations and named entities."""
     ref = _ref_sentences(draft_md)
     out: dict[str, list[str]] = {}
     for seg in segment_article(final_md):
         if seg.frozen:
             continue  # frozen blocks are compared byte-exact elsewhere
         for s in split_sentences(strip_inline(seg.text).replace("\n", " ")):
-            ws = set(words(s))
-            if len(words(s)) < MIN_WORDS:
+            if not _is_factual(s):
                 continue
-            if not any(_jacc(ws, r) >= JACCARD for r in ref):
+            ws, sig = set(words(s)), _signature(s)
+            if not any(_jacc(ws, r) >= JACCARD and sig == rsig for r, rsig in ref):
                 out.setdefault(seg.section, []).append(s)
     return out
 
@@ -122,6 +149,8 @@ def _extract_claims(sentences: list[str], section: str, extractor_spec: str) -> 
             props = data.get("propositions", [])
             if not isinstance(props, list):
                 raise ValueError("propositions is not a list")
+            if not props:  # new factual sentences exist: an empty extraction is a failed extraction, never a pass
+                raise ValueError("extractor returned no propositions for non-empty new factual sentences")
             return [str(p["claim"]).strip() for p in props if isinstance(p, dict) and p.get("claim") and not is_meta_claim(str(p["claim"]))]
         except GatewayError as e:
             last, cat = e, _gateway_cat(m)
@@ -141,7 +170,7 @@ def check_added(draft_md: str, final_md: str, notes: str | None, extractor_spec:
     for section, sents in new.items():
         claims = _extract_claims(sents, section, extractor_spec)
         if not claims:
-            continue
+            continue  # every proposition was meta (no factual content); the extractor did answer
         ref = _reference_section(draft_md, section)
         parts = [p for p in (ref and f"Reference section:\n{ref}", notes_txt and f"Source notes:\n{notes_txt}") if p]
         material = "\n\n".join(parts) or "(none: there is no reference text and no source notes for this section)"

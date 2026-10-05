@@ -1,4 +1,5 @@
 """Release authorization: real authz/record/ledger/release code paths, only models and the evaluator identity are stubbed."""
+import hashlib
 import json
 import shutil
 import tempfile
@@ -9,7 +10,7 @@ from unittest import mock
 from scripts.fingerprint_eval import authz, added, ledger, record as R, release
 from scripts.fingerprint_eval.contracts import (QUARANTINE, RELEASE_ACTIVE, RELEASE_ARTICLE, RELEASE_AUTH, RUNS_DIR, Category, EvaluatorVersion,
                                                 LedgerState, Result)
-from scripts.fingerprint_eval.tests.fakes import ARTICLE, Fakes
+from scripts.fingerprint_eval.tests.fakes import ARTICLE, ARTICLE_REORDERED, Fakes
 
 LINKED = ARTICLE.replace("Nobody disputed that figure.", "See [the report](http://x.example/r) for details of that figure.")
 
@@ -32,13 +33,17 @@ class Base(unittest.TestCase):
             self.addCleanup(p.stop)
         self.fakes = Fakes().__enter__()
         self.addCleanup(self.fakes.__exit__)
-        self.pkg = self.make_pkg("alpha", ARTICLE + "\n")
+        self.pkg = self.make_pkg("alpha", ARTICLE_REORDERED + "\n")  # not identical to the reference: the judge really runs
 
-    def make_pkg(self, slug, final, ref=ARTICLE):
+    def make_pkg(self, slug, final, ref=ARTICLE, bound=False, bound_sha=None):
+        """bound: also write the prepublish rating record naming article-v1.md with its recorded sha256 (bound_sha overrides it)."""
         d = self.root / "articles" / slug
         d.mkdir(parents=True)
         (d / "version.json").write_text(json.dumps({"slug": slug, "articleFile": "article-v1.md"}))
         (d / "article-v1.md").write_text(ref)
+        if bound:
+            (d / "evals").mkdir()
+            (d / "evals/prepublish-v1.json").write_text(json.dumps({"articleFile": "article-v1.md", "articleSha256": bound_sha or hashlib.sha256(ref.encode()).hexdigest()}))
         (d / "article-medium.md").write_text(final)
         return d
 
@@ -66,7 +71,7 @@ class Authorization(Base):
     def test_one_byte_change_fails_verify_and_authorize_reevaluates(self):
         self.authorize()
         before = self.calls()
-        (self.pkg / "article-medium.md").write_text(ARTICLE + "\n\n")
+        (self.pkg / "article-medium.md").write_text(ARTICLE_REORDERED + "\n\n")
         self.assertFalse(self.verify())
         self.assertEqual(self.authorize(), 0)
         self.assertGreater(self.calls(), before)  # cache miss: new bytes, full gate run
@@ -122,13 +127,52 @@ class Authorization(Base):
 
 class CostControl(Base):
     def test_identical_reference_makes_zero_model_calls(self):
-        pkg = self.make_pkg("same", ARTICLE)
+        pkg = self.make_pkg("same", ARTICLE, bound=True)
         ctx = authz.resolve_package(pkg)
         rec = authz.evaluate_package(ctx, ctx.final_path)
         self.assertEqual(self.calls(), 0)
         self.assertEqual(rec.result, Result.PASS)
         self.assertTrue(rec.reference_identical)
         self.assertEqual(rec.claims["judged_by"], "identity")
+        self.assertEqual(rec.claims["reference_bound_by"], "evals/prepublish-v1.json")
+
+    def test_identity_shortcut_needs_a_hash_bound_rating(self):
+        """Regression: byte-identical to a reference that is NOT the rated, hash-bound version runs every check."""
+        for name, kw in (("norating", {}), ("stalehash", {"bound": True, "bound_sha": "0" * 64})):
+            pkg = self.make_pkg(name, ARTICLE, **kw)
+            ctx = authz.resolve_package(pkg)
+            before = self.calls()
+            if name == "stalehash":
+                self.assertIsNone(ctx.reference_path)  # the rating no longer applies: no reference at all
+                continue
+            self.assertIsNone(authz.reference_binding(pkg, ctx.reference_path))
+            rec = authz.evaluate_package(ctx, ctx.final_path)
+            self.assertGreater(self.calls(), before, name)
+            self.assertNotEqual(rec.claims["judged_by"], "identity")
+            self.assertNotIn("reference_bound_by", rec.claims)
+
+    def test_identity_pass_without_binding_is_rejected_by_the_record_schema(self):
+        pkg = self.make_pkg("same", ARTICLE, bound=True)
+        ctx = authz.resolve_package(pkg)
+        d = R.to_dict(authz.evaluate_package(ctx, ctx.final_path))
+        d["claims"].pop("reference_bound_by")
+        with self.assertRaises(R.RecordError):
+            R.from_dict(d)
+
+    def test_partial_evaluation_is_labelled_and_can_never_authorize(self):
+        pkg = self.make_pkg("nolink", ARTICLE, ref=LINKED)
+        self.assertEqual(self.authorize(pkg), 3)
+        path, rec = R.list_records(pkg)[-1]
+        self.assertEqual(rec.result, Result.FAIL)
+        self.assertEqual(rec.structure["evaluated"], "partial")
+        self.assertEqual(rec.structure["checks_skipped"], ["claims", "semantic"])
+        raw = json.loads((pkg / rec.raw_report_path).read_text())
+        self.assertEqual((raw["evaluated"], raw["checks_skipped"], raw["exit_code"]), ("partial", ["claims", "semantic"], 1))
+        d = R.to_dict(rec)
+        d["result"], d["category"] = "PASS", "PASS"
+        with self.assertRaises(R.RecordError):  # a forged PASS over a partial evaluation does not load, so verify cannot accept it
+            R.from_dict(d)
+        self.assertFalse(self.verify(pkg))
 
     def test_deterministic_fail_makes_zero_model_calls(self):
         pkg = self.make_pkg("nolink", ARTICLE, ref=LINKED)
@@ -138,7 +182,7 @@ class CostControl(Base):
         self.assertEqual((rec.result, rec.category), (Result.FAIL, Category.MISSING_LINK))
         self.assertFalse((pkg / RELEASE_ARTICLE).exists())
         q = json.loads((pkg / QUARANTINE).read_text())
-        self.assertEqual(set(q), {"category", "kind", "retryable", "created_at_utc", "content_sha256", "evaluator_id", "cycles", "artifacts"})
+        self.assertEqual(set(q), {"status", "category", "kind", "retryable", "created_at_utc", "content_sha256", "evaluator_id", "cycles", "artifacts"})
         self.assertEqual((q["category"], q["kind"], q["retryable"]), ("MISSING_LINK", "content", False))
 
     def test_cache_hit_makes_zero_model_calls(self):
@@ -238,10 +282,10 @@ class Status(Base):
         self.ev["v"] = EvaluatorVersion("a" * 40, "t" * 64, False)
         self.authorize()
         self.assertTrue(all(self.states().values()))
-        (self.pkg / "article-medium.md").write_text(ARTICLE + "\n\n\n")
+        (self.pkg / "article-medium.md").write_text(ARTICLE_REORDERED + "\n\n\n")
         s = self.states()
         self.assertFalse(any(s.values()))  # nothing was requested/executed for the new bytes
-        (self.pkg / "article-medium.md").write_text(ARTICLE + "\n")
+        (self.pkg / "article-medium.md").write_text(ARTICLE_REORDERED + "\n")
         (self.pkg / RELEASE_AUTH).unlink()
         s = self.states()
         self.assertTrue(s["requested"] and s["executed"] and s["valid"] and s["matches_content"])
