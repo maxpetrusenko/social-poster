@@ -110,7 +110,8 @@ def _strings(obj: Any) -> list[str]:
 
 
 def state_path(env: dict[str, str]) -> Path:
-    return Path(env.get("MEDIUM_GUARD_STATE") or Path.home() / ".hermes" / "cache" / "medium-guard-state.json")
+    home = Path(env.get("HERMES_HOME") or Path.home() / ".hermes")
+    return Path(env.get("MEDIUM_GUARD_STATE") or home / "cache" / "medium-guard-state.json")
 
 
 def _load_state(env: dict[str, str]) -> dict[str, str]:
@@ -217,7 +218,8 @@ def _classify_command(text: str, env: dict[str, str], session: str) -> tuple[boo
 
 # ---- release verify -------------------------------------------------------------------------------
 def workspace(env: dict[str, str]) -> Path:
-    return Path(env.get("MEDIUM_GUARD_WORKSPACE") or REPO_ROOT / "data" / "article-workspace")
+    return Path(env.get("MEDIUM_GUARD_WORKSPACE") or env.get("FINGERPRINT_EVAL_WORKSPACE")
+                or REPO_ROOT / "data" / "article-workspace")
 
 
 def repo_root(env: dict[str, str]) -> Path:
@@ -274,55 +276,231 @@ def authorize_mutation(env: dict[str, str], verifier: Callable[[Path, dict[str, 
     return False, f"release verify failed for {pkg.name} (exit {rc}): {out or 'no output'}", None
 
 
-TYPE_FREE_CHARS = 40  # short typed strings (dates, times, topics) need no containment
+FRAGMENT_MIN_CHARS = 40  # typed/pasted fragments at least this long must be substrings of the release text
+RECEIPTS = Path("release") / "paste-receipts.jsonl"
+URL_ONLY_RE = re.compile(r"^\s*(https?://\S+|[\w.-]+\.[a-z]{2,}/\S*)\s*$", re.I)
+PASTE_MODS = {"cmd", "command", "ctrl", "control", "meta", "super", "win", "windows"}
+ENTER_KEYS = {"return", "enter", "space", "kp_enter", "numpad_enter"}
 
 
 def _norm(s: str) -> str:
     return re.sub(r"\s+", " ", s).strip()
 
 
-def content_check(payload: dict[str, Any], pkg: Path) -> str:
-    """Extra byte-level checks once the release is valid. Returns a reason when the call must be blocked.
+def _loose(s: str) -> str:
+    return re.sub(r"\W+", "", s).lower()
 
-    * computer_use type: long text must be a substring of release/medium-final.md (whitespace-normalised).
-    * terminal pbcopy / clipboard writes: the command must read from the package release/ file.
-    """
+
+def _sha(b: bytes | str) -> str:
+    import hashlib
+    return hashlib.sha256(b if isinstance(b, bytes) else b.encode("utf-8")).hexdigest()
+
+
+def is_paste_keys(keys: str) -> bool:
+    """cmd+v, ctrl+v, cmd+shift+v, ctrl+shift+v, shift+insert, super+v ..."""
+    parts = {t.strip().lower() for t in re.split(r"[+\s-]+", keys or "") if t.strip()}
+    if not parts:
+        return False
+    return ("v" in parts and bool(parts & PASTE_MODS)) or ("insert" in parts and "shift" in parts)
+
+
+def kind_of(payload: dict[str, Any]) -> str:
+    """Sub-kind of a call already classified as a mutation: paste|type|enter|key|nav|click|clipboard|deny."""
     tool = str(payload.get("tool_name") or "")
     args = payload.get("tool_input") if isinstance(payload.get("tool_input"), dict) else {}
+    if tool == "computer_use":
+        action = str(args.get("action") or "").lower()
+        if action == "type":
+            return "type"
+        if action == "right_click":
+            return "deny"  # context-menu Paste cannot be inspected
+        if action == "key":
+            keys = str(args.get("keys") or "")
+            if is_paste_keys(keys):
+                return "paste"
+            if {t.lower() for t in re.split(r"[+\s]+", keys) if t} & ENTER_KEYS:
+                return "enter"
+            return "key"
+        return "click"
+    if tool == "browser_navigate":
+        return "nav"
+    if tool == "browser_press":
+        key = str(args.get("key") or "")
+        return "paste" if is_paste_keys(key) else ("enter" if key.lower() in ENTER_KEYS else "key")
+    if tool == "browser_type":
+        return "type"
+    text = "\n".join(_strings(args))
+    if tool in {"terminal", "execute_code", "process", "bash", "shell"}:
+        if re.search(r"\b(pbcopy|set the clipboard|NSPasteboard|xclip|wl-copy)\b", text):
+            return "clipboard"
+        m = re.search(BROWSE_BIN + r"\s+(?:press|key)\s+['\"]?(\S+)", text)
+        if m and is_paste_keys(m.group(1)):
+            return "paste"
+        if re.search(BROWSE_BIN + r"\s+paste\b", text):
+            return "paste"
+        if BROWSE_GOTO_RE.search(text) and not BROWSE_INPUT_RE.search(text):
+            return "nav"
+    return "click"
+
+
+# ---- clipboard ------------------------------------------------------------------------------------
+def read_clipboard(env: dict[str, str]) -> tuple[str | None, str | None, str]:
+    """(plain_text, html_text_or_None, error). Rich flavor is best effort; plain failure => error."""
+    try:
+        p = subprocess.run(["pbpaste"], capture_output=True, timeout=5)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return None, None, f"pbpaste failed: {exc}"
+    if p.returncode != 0:
+        return None, None, f"pbpaste exited {p.returncode}"
+    plain = p.stdout.decode("utf-8", errors="replace")
+    html = None
+    try:
+        o = subprocess.run(["osascript", "-e", "the clipboard as «class HTML»"], capture_output=True,
+                           timeout=5, text=True)
+        m = re.search(r"«data HTML([0-9A-Fa-f]+)»", o.stdout or "")
+        if o.returncode == 0 and m:
+            raw = bytes.fromhex(m.group(1)).decode("utf-8", errors="replace")
+            html = re.sub(r"<[^>]+>", " ", raw)
+    except (OSError, subprocess.TimeoutExpired, ValueError):
+        html = None
+    return plain, html, ""
+
+
+def check_clipboard(clip: tuple[str | None, str | None, str], release_text: str) -> tuple[str, str]:
+    """Return (kind, reason). kind is 'full', 'fragment' or '' (block, reason set)."""
+    plain, html, err = clip
+    if plain is None:
+        return "", f"cannot read the clipboard ({err}); failing closed"
+    if not plain.strip():
+        return "", "clipboard is empty"
+    if html is not None and _loose(html) and _loose(html) not in _loose(plain) and _loose(plain) not in _loose(html):
+        return "", "clipboard rich (HTML) flavor differs from its plain-text flavor"
+    if plain.rstrip() == release_text.rstrip():
+        return "full", ""
+    n = _norm(plain)
+    if len(n) >= FRAGMENT_MIN_CHARS and n in _norm(release_text):
+        return "fragment", ""
+    return "", ("clipboard is neither the exact release text nor a >=40 char substring of it "
+                f"(clipboard sha256 {_sha(plain)[:12]})")
+
+
+# ---- receipts -------------------------------------------------------------------------------------
+def write_receipt(pkg: Path, session: str, clip_text: str, release_sha: str, kind: str) -> None:
+    import datetime
+    rec = {"ts": datetime.datetime.now(datetime.timezone.utc).isoformat().replace("+00:00", "Z"),
+           "session_id": session, "clipboard_sha256": _sha(clip_text), "release_sha256": release_sha, "kind": kind}
+    path = pkg / RECEIPTS
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "a", encoding="utf-8") as fh:
+        fh.write(json.dumps(rec, sort_keys=True) + "\n")
+        fh.flush()
+        os.fsync(fh.fileno())
+
+
+def has_full_receipt(pkg: Path, session: str, release_sha: str) -> bool:
+    try:
+        lines = (pkg / RECEIPTS).read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return False
+    for ln in lines:
+        try:
+            r = json.loads(ln)
+        except ValueError:
+            continue
+        if r.get("session_id") == session and r.get("release_sha256") == release_sha and r.get("kind") == "full":
+            return True
+    return False
+
+
+def _remember_typed(env: dict[str, str], session: str, text: str) -> None:
+    _remember_url(env, (session or "_") + "#typed", text[:300])
+
+
+def _last_typed(env: dict[str, str], session: str) -> str:
+    return _load_state(env).get((session or "_") + "#typed", "")
+
+
+# ---- policy once the release is valid -------------------------------------------------------------
+def content_policy(payload: dict[str, Any], pkg: Path, env: dict[str, str],
+                   clipboard: Callable[[dict[str, str]], tuple[str | None, str | None, str]]) -> str:
+    """Return a block reason or ''. Runs only after `release verify` passed."""
+    args = payload.get("tool_input") if isinstance(payload.get("tool_input"), dict) else {}
+    session = str(payload.get("session_id") or "")
     rel = pkg / "release" / "medium-final.md"
-    if tool == "computer_use" and str(args.get("action") or "").lower() == "type":
-        text = _norm(str(args.get("text") or ""))
-        if len(text) > TYPE_FREE_CHARS:
-            try:
-                body = _norm(rel.read_text(encoding="utf-8"))
-            except OSError as exc:
-                return f"cannot read {rel}: {exc}"
-            if text not in body:
-                return "typed text is not a substring of release/medium-final.md (only release bytes may be typed)"
+    try:
+        release_bytes = rel.read_bytes()
+        release_text = release_bytes.decode("utf-8")
+    except (OSError, UnicodeDecodeError) as exc:
+        return f"cannot read {rel}: {exc}"
+    release_sha = _sha(release_bytes)
+    kind = kind_of(payload)
+
+    if kind == "deny":
+        return "right-click is blocked: a context-menu Paste cannot be checked against the release bytes"
+    if kind == "paste":
+        clip = clipboard(env)
+        found, why = check_clipboard(clip, release_text)
+        if not found:
+            return f"paste blocked: {why}"
+        write_receipt(pkg, session, clip[0] or "", release_sha, found)
         return ""
-    if tool in {"terminal", "execute_code"}:
+    if kind == "type":
+        text = _norm(str(args.get("text") or ""))
+        if len(text) >= FRAGMENT_MIN_CHARS and text not in _norm(release_text):
+            return "typed text is not a substring of release/medium-final.md (only release bytes may be typed)"
+        _remember_typed(env, session, str(args.get("text") or ""))
+        return ""
+    if kind == "clipboard":
         cmd = "\n".join(_strings(args))
-        if re.search(r"\b(pbcopy|set the clipboard|NSPasteboard|xclip|wl-copy)\b", cmd) and "release/medium-final" not in cmd:
-            return "clipboard write must source release/medium-final.* of the active package"
-    return ""
+        return "" if "release/medium-final" in cmd else "clipboard write must source release/medium-final.* of the active package"
+    if kind in {"nav", "key"}:
+        return ""
+    if kind == "enter":
+        if has_full_receipt(pkg, session, release_sha) or URL_ONLY_RE.match(_last_typed(env, session)):
+            return ""
+        return "Enter/Space before a verified paste in this session (only allowed to submit a typed URL)"
+    # click, set_value, drag, browser_click/console/exec/cdp, browse CLI input ...
+    if has_full_receipt(pkg, session, release_sha):
+        return ""
+    return ("no verified paste receipt for the active release in this session: paste release/medium-final.md "
+            "(clipboard must equal it) before any click")
 
 
 # ---- entry ----------------------------------------------------------------------------------------
 def decide(payload: dict[str, Any], env: dict[str, str] | None = None,
-           verifier: Callable[[Path, dict[str, str]], tuple[int, str]] | None = None) -> Decision:
+           verifier: Callable[[Path, dict[str, str]], tuple[int, str]] | None = None,
+           clipboard: Callable[[dict[str, str]], tuple[str | None, str | None, str]] | None = None) -> Decision:
     env = dict(os.environ) if env is None else env
     verifier = verifier or run_verify
+    clipboard = clipboard or read_clipboard
     mutation, why = classify(payload, env)
     if not mutation:
         return Decision(True)
     ok, reason, pkg = authorize_mutation(env, verifier)
     if ok and pkg is not None:
-        extra = content_check(payload, pkg)
+        extra = content_policy(payload, pkg, env, clipboard)
         if not extra:
             return Decision(True, mutation=True)
         ok, reason = False, extra
     return Decision(False, f"Medium mutation blocked ({why}): {reason}. Run `python -m scripts.fingerprint_eval.release "
                             f"authorize --package <dir>` and paste only release/medium-final.md.", True)
+
+
+def log_decision(env: dict[str, str], payload: dict[str, Any], allow: bool, reason: str, note: str = "") -> None:
+    """Append-only JSONL decision log (observability; never affects the decision)."""
+    try:
+        import datetime
+        home = Path(env.get("HERMES_HOME") or Path.home() / ".hermes")
+        path = Path(env.get("MEDIUM_GUARD_LOG") or home / "logs" / "medium-guard-decisions.jsonl")
+        path.parent.mkdir(parents=True, exist_ok=True)
+        args = payload.get("tool_input") if isinstance(payload.get("tool_input"), dict) else {}
+        rec = {"ts": datetime.datetime.now(datetime.timezone.utc).isoformat().replace("+00:00", "Z"),
+               "session_id": payload.get("session_id"), "tool": payload.get("tool_name"), "allow": allow,
+               "reason": reason[:300], "note": note, "args_preview": json.dumps(args)[:160]}
+        with open(path, "a", encoding="utf-8") as fh:
+            fh.write(json.dumps(rec) + "\n")
+    except Exception:  # noqa: BLE001
+        pass
 
 
 def _block(reason: str) -> int:
@@ -332,7 +510,8 @@ def _block(reason: str) -> int:
 
 
 def main(stdin: Any = None, env: dict[str, str] | None = None,
-         verifier: Callable[[Path, dict[str, str]], tuple[int, str]] | None = None) -> int:
+         verifier: Callable[[Path, dict[str, str]], tuple[int, str]] | None = None,
+         clipboard: Callable[[dict[str, str]], tuple[str | None, str | None, str]] | None = None) -> int:
     raw = (stdin or sys.stdin).read()
     try:
         payload = json.loads(raw)
@@ -341,13 +520,16 @@ def main(stdin: Any = None, env: dict[str, str] | None = None,
     except ValueError as exc:
         return _block(f"medium_publish_guard: unparseable hook payload ({exc}); failing closed")
     try:
-        d = decide(payload, env, verifier)
+        d = decide(payload, env, verifier, clipboard)
     except Exception as exc:  # noqa: BLE001 - guard must never crash open
         crude = (str(payload.get("tool_name")) == "computer_use" or "medium.com" in raw.lower()
                  or str(payload.get("tool_name", "")).startswith("browser_"))
         if crude:
             return _block(f"medium_publish_guard crashed on a mutation-like call ({type(exc).__name__}: {exc}); failing closed")
         return 0
+    eff = os.environ if env is None else env
+    if (d.mutation or not d.allow) and (env is None or "MEDIUM_GUARD_LOG" in eff or "HERMES_HOME" in eff):
+        log_decision(eff, payload, d.allow, d.reason, "mutation")
     return 0 if d.allow else _block(d.reason)
 
 
