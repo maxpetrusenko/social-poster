@@ -1,0 +1,1229 @@
+{
+ "light": {
+  "cases": 41,
+  "errors": [],
+  "first_pass_only": {
+   "TP": 24,
+   "FP": 0,
+   "TN": 17,
+   "FN": 0,
+   "precision": 1.0,
+   "recall": 1.0
+  },
+  "policy_2of3": {
+   "TP": 24,
+   "FP": 0,
+   "TN": 17,
+   "FN": 0,
+   "precision": 1.0,
+   "recall": 1.0
+  },
+  "judge_calls_per_case_policy": 2.15,
+  "judge_calls_total_policy": 88,
+  "real_calls_this_run": 49,
+  "claims_confirmed": 35,
+  "confirmation_non_unanimous": 0,
+  "flags_overturned_by_vote": 0,
+  "misses_policy": []
+ },
+ "heavy": {
+  "cases": 10,
+  "errors": [],
+  "first_pass_only": {
+   "TP": 5,
+   "FP": 0,
+   "TN": 5,
+   "FN": 0,
+   "precision": 1.0,
+   "recall": 1.0
+  },
+  "policy_2of3": {
+   "TP": 5,
+   "FP": 0,
+   "TN": 5,
+   "FN": 0,
+   "precision": 1.0,
+   "recall": 1.0
+  },
+  "judge_calls_per_case_policy": 2.0,
+  "judge_calls_total_policy": 20,
+  "real_calls_this_run": 20,
+  "claims_confirmed": 6,
+  "confirmation_non_unanimous": 1,
+  "flags_overturned_by_vote": 1,
+  "misses_policy": []
+ },
+ "all": {
+  "cases": 51,
+  "errors": [],
+  "first_pass_only": {
+   "TP": 29,
+   "FP": 0,
+   "TN": 22,
+   "FN": 0,
+   "precision": 1.0,
+   "recall": 1.0
+  },
+  "policy_2of3": {
+   "TP": 29,
+   "FP": 0,
+   "TN": 22,
+   "FN": 0,
+   "precision": 1.0,
+   "recall": 1.0
+  },
+  "judge_calls_per_case_policy": 2.12,
+  "judge_calls_total_policy": 108,
+  "real_calls_this_run": 69,
+  "claims_confirmed": 41,
+  "confirmation_non_unanimous": 1,
+  "flags_overturned_by_vote": 1,
+  "misses_policy": []
+ },
+ "rows": [
+  {
+   "case": "n01",
+   "label": "PASS",
+   "category": "spelling",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "real_calls": 0,
+   "replayed": 1,
+   "flagged": [],
+   "overturned": 0,
+   "non_unanimous": 0,
+   "confirmed_claims": 0
+  },
+  {
+   "case": "n02",
+   "label": "PASS",
+   "category": "punctuation",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "real_calls": 0,
+   "replayed": 1,
+   "flagged": [],
+   "overturned": 0,
+   "non_unanimous": 0,
+   "confirmed_claims": 0
+  },
+  {
+   "case": "n03",
+   "label": "PASS",
+   "category": "punctuation",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "real_calls": 0,
+   "replayed": 1,
+   "flagged": [],
+   "overturned": 0,
+   "non_unanimous": 0,
+   "confirmed_claims": 0
+  },
+  {
+   "case": "n04",
+   "label": "PASS",
+   "category": "punctuation",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "real_calls": 0,
+   "replayed": 1,
+   "flagged": [],
+   "overturned": 0,
+   "non_unanimous": 0,
+   "confirmed_claims": 0
+  },
+  {
+   "case": "n05",
+   "label": "PASS",
+   "category": "synonym",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "real_calls": 0,
+   "replayed": 1,
+   "flagged": [],
+   "overturned": 0,
+   "non_unanimous": 0,
+   "confirmed_claims": 0
+  },
+  {
+   "case": "n06",
+   "label": "PASS",
+   "category": "synonym",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "real_calls": 0,
+   "replayed": 1,
+   "flagged": [],
+   "overturned": 0,
+   "non_unanimous": 0,
+   "confirmed_claims": 0
+  },
+  {
+   "case": "n07",
+   "label": "PASS",
+   "category": "synonym",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "real_calls": 0,
+   "replayed": 1,
+   "flagged": [],
+   "overturned": 0,
+   "non_unanimous": 0,
+   "confirmed_claims": 0
+  },
+  {
+   "case": "n08",
+   "label": "PASS",
+   "category": "split",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "real_calls": 0,
+   "replayed": 1,
+   "flagged": [],
+   "overturned": 0,
+   "non_unanimous": 0,
+   "confirmed_claims": 0
+  },
+  {
+   "case": "n09",
+   "label": "PASS",
+   "category": "split",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "real_calls": 0,
+   "replayed": 1,
+   "flagged": [],
+   "overturned": 0,
+   "non_unanimous": 0,
+   "confirmed_claims": 0
+  },
+  {
+   "case": "n10",
+   "label": "PASS",
+   "category": "merge",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "real_calls": 0,
+   "replayed": 1,
+   "flagged": [],
+   "overturned": 0,
+   "non_unanimous": 0,
+   "confirmed_claims": 0
+  },
+  {
+   "case": "n11",
+   "label": "PASS",
+   "category": "reorder",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "real_calls": 0,
+   "replayed": 1,
+   "flagged": [],
+   "overturned": 0,
+   "non_unanimous": 0,
+   "confirmed_claims": 0
+  },
+  {
+   "case": "n12",
+   "label": "PASS",
+   "category": "reorder",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "real_calls": 0,
+   "replayed": 1,
+   "flagged": [],
+   "overturned": 0,
+   "non_unanimous": 0,
+   "confirmed_claims": 0
+  },
+  {
+   "case": "n13",
+   "label": "PASS",
+   "category": "image",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 0,
+   "real_calls": 0,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": 0,
+   "non_unanimous": 0,
+   "confirmed_claims": 0
+  },
+  {
+   "case": "n14",
+   "label": "PASS",
+   "category": "reword",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "real_calls": 0,
+   "replayed": 1,
+   "flagged": [],
+   "overturned": 0,
+   "non_unanimous": 0,
+   "confirmed_claims": 0
+  },
+  {
+   "case": "n15",
+   "label": "PASS",
+   "category": "reword",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "real_calls": 0,
+   "replayed": 1,
+   "flagged": [],
+   "overturned": 0,
+   "non_unanimous": 0,
+   "confirmed_claims": 0
+  },
+  {
+   "case": "n16",
+   "label": "PASS",
+   "category": "formatting",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "real_calls": 0,
+   "replayed": 1,
+   "flagged": [],
+   "overturned": 0,
+   "non_unanimous": 0,
+   "confirmed_claims": 0
+  },
+  {
+   "case": "n17",
+   "label": "PASS",
+   "category": "reword",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "real_calls": 0,
+   "replayed": 1,
+   "flagged": [],
+   "overturned": 0,
+   "non_unanimous": 0,
+   "confirmed_claims": 0
+  },
+  {
+   "case": "p01",
+   "label": "FAIL",
+   "category": "number",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "real_calls": 2,
+   "replayed": 1,
+   "flagged": [
+    {
+     "claim": "In the Phase 3 RASolute 302 trial in previously treated metastatic pancreatic ca",
+     "verdict": "changed",
+     "dimension": "",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": 0,
+   "non_unanimous": 0,
+   "confirmed_claims": 1
+  },
+  {
+   "case": "p02",
+   "label": "FAIL",
+   "category": "number",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "real_calls": 2,
+   "replayed": 1,
+   "flagged": [
+    {
+     "claim": "In the same trial, median overall survival was about 6.7 months with standard ch",
+     "verdict": "changed",
+     "dimension": "",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": 0,
+   "non_unanimous": 0,
+   "confirmed_claims": 1
+  },
+  {
+   "case": "p03",
+   "label": "FAIL",
+   "category": "number",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "real_calls": 2,
+   "replayed": 1,
+   "flagged": [
+    {
+     "claim": "Seven epilepsy patients received propofol anesthesia during surgery.",
+     "verdict": "changed",
+     "dimension": "",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": 0,
+   "non_unanimous": 0,
+   "confirmed_claims": 1
+  },
+  {
+   "case": "p04",
+   "label": "FAIL",
+   "category": "unit",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "real_calls": 2,
+   "replayed": 1,
+   "flagged": [
+    {
+     "claim": "The recording window was about ten to twenty minutes per patient.",
+     "verdict": "changed",
+     "dimension": "",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": 0,
+   "non_unanimous": 0,
+   "confirmed_claims": 1
+  },
+  {
+   "case": "p05",
+   "label": "FAIL",
+   "category": "number",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "real_calls": 2,
+   "replayed": 1,
+   "flagged": [
+    {
+     "claim": "In the experiment, researchers paired infrasound near 18 Hz with either calm mus",
+     "verdict": "changed",
+     "dimension": "",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": 0,
+   "non_unanimous": 0,
+   "confirmed_claims": 1
+  },
+  {
+   "case": "p06",
+   "label": "FAIL",
+   "category": "name",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "real_calls": 2,
+   "replayed": 1,
+   "flagged": [
+    {
+     "claim": "Vic Tandy worked around medical equipment.",
+     "verdict": "changed",
+     "dimension": "",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    },
+    {
+     "claim": "Vic Tandy had little patience for ghost stories.",
+     "verdict": "changed",
+     "dimension": "",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    },
+    {
+     "claim": "Tandy's colleagues said the lab felt wrong.",
+     "verdict": "changed",
+     "dimension": "",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    },
+    {
+     "claim": "Tandy's colleagues felt that they were being watched in the lab.",
+     "verdict": "changed",
+     "dimension": "",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    },
+    {
+     "claim": "Some of Tandy's colleagues saw a grey figure at the edge of their vision.",
+     "verdict": "changed",
+     "dimension": "",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    },
+    {
+     "claim": "Tandy laughed at these reports until he stayed late at the lab.",
+     "verdict": "changed",
+     "dimension": "",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    },
+    {
+     "claim": "While staying late, Tandy felt dread flood his body.",
+     "verdict": "changed",
+     "dimension": "",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    },
+    {
+     "claim": "While staying late, Tandy saw the same figure at the edge of his vision.",
+     "verdict": "changed",
+     "dimension": "",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    },
+    {
+     "claim": "While staying late, Tandy began sweating in a cold room.",
+     "verdict": "changed",
+     "dimension": "",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": 0,
+   "non_unanimous": 0,
+   "confirmed_claims": 9
+  },
+  {
+   "case": "p07",
+   "label": "FAIL",
+   "category": "entity",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "real_calls": 2,
+   "replayed": 1,
+   "flagged": [
+    {
+     "claim": "Daraxonrasib is an oral, multi-selective RAS(ON) inhibitor.",
+     "verdict": "changed",
+     "dimension": "",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": 0,
+   "non_unanimous": 0,
+   "confirmed_claims": 1
+  },
+  {
+   "case": "p08",
+   "label": "FAIL",
+   "category": "negation",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "real_calls": 2,
+   "replayed": 1,
+   "flagged": [
+    {
+     "claim": "The anesthetized patients remembered nothing from the speech stream.",
+     "verdict": "changed",
+     "dimension": "",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": 0,
+   "non_unanimous": 0,
+   "confirmed_claims": 1
+  },
+  {
+   "case": "p09",
+   "label": "FAIL",
+   "category": "negation",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "real_calls": 2,
+   "replayed": 1,
+   "flagged": [
+    {
+     "claim": "Senescent cells stop dividing but remain active.",
+     "verdict": "changed",
+     "dimension": "",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": 0,
+   "non_unanimous": 0,
+   "confirmed_claims": 1
+  },
+  {
+   "case": "p10",
+   "label": "FAIL",
+   "category": "negation",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "real_calls": 3,
+   "replayed": 1,
+   "flagged": [
+    {
+     "claim": "The lynestrenol result comes from a dish model, which is far from an injured hum",
+     "verdict": "changed",
+     "dimension": "",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": 0,
+   "non_unanimous": 0,
+   "confirmed_claims": 1
+  },
+  {
+   "case": "p11",
+   "label": "FAIL",
+   "category": "causal",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "real_calls": 2,
+   "replayed": 1,
+   "flagged": [
+    {
+     "claim": "Excess prolactin can suppress ovulation.",
+     "verdict": "changed",
+     "dimension": "",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": 0,
+   "non_unanimous": 0,
+   "confirmed_claims": 1
+  },
+  {
+   "case": "p12",
+   "label": "FAIL",
+   "category": "causal",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "real_calls": 2,
+   "replayed": 1,
+   "flagged": [
+    {
+     "claim": "Senescent-like tumor cells broadcast signals that push neighboring healthy cells",
+     "verdict": "changed",
+     "dimension": "",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": 0,
+   "non_unanimous": 0,
+   "confirmed_claims": 1
+  },
+  {
+   "case": "p13",
+   "label": "FAIL",
+   "category": "qualifier",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "real_calls": 2,
+   "replayed": 1,
+   "flagged": [
+    {
+     "claim": "Adult neurons may carry a brake on repair.",
+     "verdict": "changed",
+     "dimension": "",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": 0,
+   "non_unanimous": 0,
+   "confirmed_claims": 1
+  },
+  {
+   "case": "p14",
+   "label": "FAIL",
+   "category": "scope",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "real_calls": 2,
+   "replayed": 1,
+   "flagged": [
+    {
+     "claim": "Some dreams function more like a second job than like rest.",
+     "verdict": "changed",
+     "dimension": "",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": 0,
+   "non_unanimous": 0,
+   "confirmed_claims": 1
+  },
+  {
+   "case": "p15",
+   "label": "FAIL",
+   "category": "removed",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "real_calls": 2,
+   "replayed": 1,
+   "flagged": [
+    {
+     "claim": "Tandy's colleagues said the lab felt wrong.",
+     "verdict": "missing",
+     "dimension": "",
+     "votes": [
+      "missing",
+      "missing",
+      "missing"
+     ]
+    },
+    {
+     "claim": "Tandy's colleagues felt that they were being watched in the lab.",
+     "verdict": "missing",
+     "dimension": "",
+     "votes": [
+      "missing",
+      "missing",
+      "missing"
+     ]
+    }
+   ],
+   "overturned": 0,
+   "non_unanimous": 0,
+   "confirmed_claims": 2
+  },
+  {
+   "case": "p16",
+   "label": "FAIL",
+   "category": "removed",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "real_calls": 2,
+   "replayed": 1,
+   "flagged": [
+    {
+     "claim": "Pancreatic ductal adenocarcinoma is often detected late.",
+     "verdict": "missing",
+     "dimension": "",
+     "votes": [
+      "missing",
+      "missing",
+      "missing"
+     ]
+    },
+    {
+     "claim": "Pancreatic ductal adenocarcinoma spreads fast.",
+     "verdict": "missing",
+     "dimension": "",
+     "votes": [
+      "missing",
+      "missing",
+      "missing"
+     ]
+    },
+    {
+     "claim": "Pancreatic ductal adenocarcinoma has resisted many therapies that changed other ",
+     "verdict": "missing",
+     "dimension": "",
+     "votes": [
+      "missing",
+      "missing",
+      "missing"
+     ]
+    }
+   ],
+   "overturned": 0,
+   "non_unanimous": 0,
+   "confirmed_claims": 3
+  },
+  {
+   "case": "p17",
+   "label": "FAIL",
+   "category": "removed",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "real_calls": 2,
+   "replayed": 1,
+   "flagged": [
+    {
+     "claim": "Words with similar meanings produced related patterns of neural activity.",
+     "verdict": "missing",
+     "dimension": "",
+     "votes": [
+      "missing",
+      "missing",
+      "missing"
+     ]
+    }
+   ],
+   "overturned": 0,
+   "non_unanimous": 0,
+   "confirmed_claims": 1
+  },
+  {
+   "case": "p18",
+   "label": "FAIL",
+   "category": "attribution",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "real_calls": 2,
+   "replayed": 1,
+   "flagged": [
+    {
+     "claim": "A Nature paper reports the study.",
+     "verdict": "changed",
+     "dimension": "",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": 0,
+   "non_unanimous": 0,
+   "confirmed_claims": 1
+  },
+  {
+   "case": "p19",
+   "label": "FAIL",
+   "category": "attribution",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "real_calls": 2,
+   "replayed": 1,
+   "flagged": [
+    {
+     "claim": "A Scientific American summary described the result as overheard words being proc",
+     "verdict": "changed",
+     "dimension": "",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": 0,
+   "non_unanimous": 0,
+   "confirmed_claims": 1
+  },
+  {
+   "case": "p20",
+   "label": "FAIL",
+   "category": "magnitude",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "real_calls": 2,
+   "replayed": 1,
+   "flagged": [
+    {
+     "claim": "In this disease context, a near doubling of survival is a very large effect.",
+     "verdict": "changed",
+     "dimension": "",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": 0,
+   "non_unanimous": 0,
+   "confirmed_claims": 1
+  },
+  {
+   "case": "p21",
+   "label": "FAIL",
+   "category": "entity",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "real_calls": 2,
+   "replayed": 1,
+   "flagged": [
+    {
+     "claim": "IRB Barcelona's study summary describes the work as a fruit-fly model in which t",
+     "verdict": "changed",
+     "dimension": "",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": 0,
+   "non_unanimous": 0,
+   "confirmed_claims": 1
+  },
+  {
+   "case": "p22",
+   "label": "FAIL",
+   "category": "polarity",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "real_calls": 2,
+   "replayed": 1,
+   "flagged": [
+    {
+     "claim": "The exhaustion occurs even when standard sleep measures appear normal.",
+     "verdict": "changed",
+     "dimension": "",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": 0,
+   "non_unanimous": 0,
+   "confirmed_claims": 1
+  },
+  {
+   "case": "p23",
+   "label": "FAIL",
+   "category": "negation",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "real_calls": 2,
+   "replayed": 1,
+   "flagged": [
+    {
+     "claim": "When the tumor is removed, prolactin returns to normal levels and pregnancy beco",
+     "verdict": "changed",
+     "dimension": "",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": 0,
+   "non_unanimous": 0,
+   "confirmed_claims": 1
+  },
+  {
+   "case": "p24",
+   "label": "FAIL",
+   "category": "polarity",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "real_calls": 2,
+   "replayed": 1,
+   "flagged": [
+    {
+     "claim": "In the organoid model, lynestrenol improved axon growth.",
+     "verdict": "changed",
+     "dimension": "",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": 0,
+   "non_unanimous": 0,
+   "confirmed_claims": 1
+  },
+  {
+   "case": "hp_a",
+   "label": "PASS",
+   "category": "heavy-paraphrase",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "real_calls": 1,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": 0,
+   "non_unanimous": 0,
+   "confirmed_claims": 0
+  },
+  {
+   "case": "hf_a",
+   "label": "FAIL",
+   "category": "heavy-paraphrase+number",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [
+    {
+     "claim": "In the Phase 3 RASolute 302 trial in previously treated metastatic pancreatic ca",
+     "verdict": "changed",
+     "dimension": "number",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": 0,
+   "non_unanimous": 0,
+   "confirmed_claims": 1
+  },
+  {
+   "case": "hp_b",
+   "label": "PASS",
+   "category": "heavy-paraphrase",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "real_calls": 1,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": 0,
+   "non_unanimous": 0,
+   "confirmed_claims": 0
+  },
+  {
+   "case": "hf_b",
+   "label": "FAIL",
+   "category": "heavy-paraphrase+number",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [
+    {
+     "claim": "In the same trial, median overall survival was about 6.7 months with standard ch",
+     "verdict": "changed",
+     "dimension": "number",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": 1,
+   "non_unanimous": 1,
+   "confirmed_claims": 2
+  },
+  {
+   "case": "hp_c",
+   "label": "PASS",
+   "category": "heavy-paraphrase",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "real_calls": 1,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": 0,
+   "non_unanimous": 0,
+   "confirmed_claims": 0
+  },
+  {
+   "case": "hf_c",
+   "label": "FAIL",
+   "category": "heavy-paraphrase+number",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [
+    {
+     "claim": "Seven epilepsy patients received propofol anesthesia during surgery.",
+     "verdict": "changed",
+     "dimension": "number",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": 0,
+   "non_unanimous": 0,
+   "confirmed_claims": 1
+  },
+  {
+   "case": "hp_d",
+   "label": "PASS",
+   "category": "heavy-paraphrase",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "real_calls": 1,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": 0,
+   "non_unanimous": 0,
+   "confirmed_claims": 0
+  },
+  {
+   "case": "hf_d",
+   "label": "FAIL",
+   "category": "heavy-paraphrase+number",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [
+    {
+     "claim": "The recording window was about ten to twenty minutes per patient.",
+     "verdict": "changed",
+     "dimension": "number",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": 0,
+   "non_unanimous": 0,
+   "confirmed_claims": 1
+  },
+  {
+   "case": "hp_e",
+   "label": "PASS",
+   "category": "heavy-paraphrase",
+   "policy_fail": false,
+   "first_pass_fail": false,
+   "judge_calls": 1,
+   "real_calls": 1,
+   "replayed": 0,
+   "flagged": [],
+   "overturned": 0,
+   "non_unanimous": 0,
+   "confirmed_claims": 0
+  },
+  {
+   "case": "hf_e",
+   "label": "FAIL",
+   "category": "heavy-paraphrase+number",
+   "policy_fail": true,
+   "first_pass_fail": true,
+   "judge_calls": 3,
+   "real_calls": 3,
+   "replayed": 0,
+   "flagged": [
+    {
+     "claim": "In the experiment, researchers paired infrasound near 18 Hz with either calm mus",
+     "verdict": "changed",
+     "dimension": "number",
+     "votes": [
+      "changed",
+      "changed",
+      "changed"
+     ]
+    }
+   ],
+   "overturned": 0,
+   "non_unanimous": 0,
+   "confirmed_claims": 1
+  }
+ ],
+ "budget_left": 81
+}
