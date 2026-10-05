@@ -22,7 +22,7 @@ from .errors import EvaluationError
 from .extract_cache import ensure_extraction, extractor_id, sha256
 from .gateway import resolve_model
 from .guards import frozen_diff, semantic_similarity, structure_preservation
-from .judge import judge_claims
+from .judge import identical, judge_claims
 from .rewrite import segment_article
 from .textutil import core_markdown, load_author_corpus, load_pipeline_corpus
 
@@ -184,7 +184,10 @@ def evaluate(article: Path, draft: Path | None, author_dir: Path | None, pipelin
             by_sec.setdefault(fs.section_idx, []).append(fs.text)
     jsegs = copy.deepcopy(segs)
     for s in jsegs:
-        s.output = "\n\n".join(by_sec.get(s.section_idx, []))
+        texts = by_sec.get(s.section_idx, [])
+        # a reference segment that survives verbatim in its section is identical: the judge's pre-filter then costs zero calls
+        # (comparing the WHOLE section text instead made every segment of a multi-segment section look edited)
+        s.output = s.text if any(identical(t, s.text) for t in texts) else "\n\n".join(texts)
     claims = judge_claims(jsegs, judge, strict=True, confirm_telemetry=JUDGE_CONFIRM_TELEMETRY)
     if claims["claims_unjudged"] or claims["total"] == 0:
         raise EvaluationError(f"{claims['claims_unjudged']} unjudged claims, total {claims['total']}")

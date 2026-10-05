@@ -1,0 +1,323 @@
+{
+ "overall": {
+  "TP": 17,
+  "FP": 1,
+  "TN": 12,
+  "FN": 0,
+  "precision": 0.944,
+  "recall": 1.0
+ },
+ "per_category": {
+  "paraphrase": {
+   "label": "PASS",
+   "TP": 0,
+   "FP": 0,
+   "TN": 4,
+   "FN": 0,
+   "precision": null,
+   "recall": null,
+   "caught_by": {
+    "none": 4
+   },
+   "misses": []
+  },
+  "merge": {
+   "label": "PASS",
+   "TP": 0,
+   "FP": 1,
+   "TN": 3,
+   "FN": 0,
+   "precision": 0.0,
+   "recall": null,
+   "caught_by": {
+    "added": 1,
+    "none": 3
+   },
+   "misses": [
+    "pm1"
+   ]
+  },
+  "split": {
+   "label": "PASS",
+   "TP": 0,
+   "FP": 0,
+   "TN": 3,
+   "FN": 0,
+   "precision": null,
+   "recall": null,
+   "caught_by": {
+    "none": 3,
+    "error": 1
+   },
+   "misses": []
+  },
+  "reorder": {
+   "label": "PASS",
+   "TP": 0,
+   "FP": 0,
+   "TN": 2,
+   "FN": 0,
+   "precision": null,
+   "recall": null,
+   "caught_by": {
+    "none": 2,
+    "error": 2
+   },
+   "misses": []
+  },
+  "number": {
+   "label": "FAIL",
+   "TP": 4,
+   "FP": 0,
+   "TN": 0,
+   "FN": 0,
+   "precision": 1.0,
+   "recall": 1.0,
+   "caught_by": {
+    "claim-det": 4
+   },
+   "misses": []
+  },
+  "entity": {
+   "label": "FAIL",
+   "TP": 0,
+   "FP": 0,
+   "TN": 0,
+   "FN": 0,
+   "precision": null,
+   "recall": null,
+   "caught_by": {
+    "error": 4
+   },
+   "misses": []
+  },
+  "causality": {
+   "label": "FAIL",
+   "TP": 0,
+   "FP": 0,
+   "TN": 0,
+   "FN": 0,
+   "precision": null,
+   "recall": null,
+   "caught_by": {
+    "error": 4
+   },
+   "misses": []
+  },
+  "qualifier": {
+   "label": "FAIL",
+   "TP": 4,
+   "FP": 0,
+   "TN": 0,
+   "FN": 0,
+   "precision": 1.0,
+   "recall": 1.0,
+   "caught_by": {
+    "claim-det": 4
+   },
+   "misses": []
+  },
+  "certainty": {
+   "label": "FAIL",
+   "TP": 4,
+   "FP": 0,
+   "TN": 0,
+   "FN": 0,
+   "precision": 1.0,
+   "recall": 1.0,
+   "caught_by": {
+    "claim-det": 4
+   },
+   "misses": []
+  },
+  "added-claim": {
+   "label": "FAIL",
+   "TP": 0,
+   "FP": 0,
+   "TN": 0,
+   "FN": 0,
+   "precision": null,
+   "recall": null,
+   "caught_by": {
+    "error": 4
+   },
+   "misses": []
+  },
+  "removed-claim": {
+   "label": "FAIL",
+   "TP": 4,
+   "FP": 0,
+   "TN": 0,
+   "FN": 0,
+   "precision": 1.0,
+   "recall": 1.0,
+   "caught_by": {
+    "claim-det": 4
+   },
+   "misses": []
+  },
+  "short-claim": {
+   "label": "FAIL",
+   "TP": 1,
+   "FP": 0,
+   "TN": 0,
+   "FN": 0,
+   "precision": 1.0,
+   "recall": 1.0,
+   "caught_by": {
+    "error": 3,
+    "claim-det": 1
+   },
+   "misses": []
+  },
+  "identity": {
+   "label": "PASS",
+   "TP": 0,
+   "FP": 0,
+   "TN": 0,
+   "FN": 0,
+   "precision": null,
+   "recall": null,
+   "caught_by": {
+    "error": 1
+   },
+   "misses": []
+  }
+ },
+ "errors": [
+  {
+   "case": "ps3",
+   "error_category": "MALFORMED_MODEL_OUTPUT",
+   "reasons": [
+    "could not evaluate: added-claim extraction returned no factual claims for 1 new sentence(s) in section 'What the second number measures'"
+   ]
+  },
+  {
+   "case": "pr2",
+   "error_category": "MALFORMED_MODEL_OUTPUT",
+   "reasons": [
+    "could not evaluate: added-claim extraction failed for section 'What the second number measures': extraction failed: call budget exhausted"
+   ]
+  },
+  {
+   "case": "pr4",
+   "error_category": "MALFORMED_MODEL_OUTPUT",
+   "reasons": [
+    "could not evaluate: judge failed for section 'The machine that already passed' after retry: call budget exhausted"
+   ]
+  },
+  {
+   "case": "fe1",
+   "error_category": "MALFORMED_MODEL_OUTPUT",
+   "reasons": [
+    "could not evaluate: judge failed for section 'What the second number measures' after retry: call budget exhausted"
+   ]
+  },
+  {
+   "case": "fe2",
+   "error_category": "MALFORMED_MODEL_OUTPUT",
+   "reasons": [
+    "could not evaluate: judge failed for section 'What selection keeps' after retry: call budget exhausted"
+   ]
+  },
+  {
+   "case": "fe3",
+   "error_category": "MALFORMED_MODEL_OUTPUT",
+   "reasons": [
+    "could not evaluate: judge failed for section 'What the second number measures' after retry: call budget exhausted"
+   ]
+  },
+  {
+   "case": "fe4",
+   "error_category": "MALFORMED_MODEL_OUTPUT",
+   "reasons": [
+    "could not evaluate: judge failed for section 'What the second number measures' after retry: call budget exhausted"
+   ]
+  },
+  {
+   "case": "fc1",
+   "error_category": "MALFORMED_MODEL_OUTPUT",
+   "reasons": [
+    "could not evaluate: judge failed for section 'What the second number measures' after retry: call budget exhausted"
+   ]
+  },
+  {
+   "case": "fc2",
+   "error_category": "MALFORMED_MODEL_OUTPUT",
+   "reasons": [
+    "could not evaluate: judge failed for section 'What the second number measures' after retry: call budget exhausted"
+   ]
+  },
+  {
+   "case": "fc3",
+   "error_category": "MALFORMED_MODEL_OUTPUT",
+   "reasons": [
+    "could not evaluate: judge failed for section 'What the second number measures' after retry: call budget exhausted"
+   ]
+  },
+  {
+   "case": "fc4",
+   "error_category": "MALFORMED_MODEL_OUTPUT",
+   "reasons": [
+    "could not evaluate: judge failed for section 'What the second number measures' after retry: call budget exhausted"
+   ]
+  },
+  {
+   "case": "fa1",
+   "error_category": "MALFORMED_MODEL_OUTPUT",
+   "reasons": [
+    "could not evaluate: judge failed for section '55.1% when the model believed the scenario was real. 6.5% when it suspected a test. The gap between those numbers should govern how you read every AI claim.' after retry: call budget exhausted"
+   ]
+  },
+  {
+   "case": "fa2",
+   "error_category": "MALFORMED_MODEL_OUTPUT",
+   "reasons": [
+    "could not evaluate: judge failed for section 'What the second number measures' after retry: call budget exhausted"
+   ]
+  },
+  {
+   "case": "fa3",
+   "error_category": "MALFORMED_MODEL_OUTPUT",
+   "reasons": [
+    "could not evaluate: judge failed for section 'What the second number measures' after retry: call budget exhausted"
+   ]
+  },
+  {
+   "case": "fa4",
+   "error_category": "MALFORMED_MODEL_OUTPUT",
+   "reasons": [
+    "could not evaluate: judge failed for section 'What the second number measures' after retry: call budget exhausted"
+   ]
+  },
+  {
+   "case": "fs1",
+   "error_category": "MALFORMED_MODEL_OUTPUT",
+   "reasons": [
+    "could not evaluate: judge failed for section 'What the second number measures' after retry: call budget exhausted"
+   ]
+  },
+  {
+   "case": "fs2",
+   "error_category": "MALFORMED_MODEL_OUTPUT",
+   "reasons": [
+    "could not evaluate: judge failed for section 'What the second number measures' after retry: call budget exhausted"
+   ]
+  },
+  {
+   "case": "fs3",
+   "error_category": "MALFORMED_MODEL_OUTPUT",
+   "reasons": [
+    "could not evaluate: judge failed for section 'What the second number measures' after retry: call budget exhausted"
+   ]
+  },
+  {
+   "case": "i01",
+   "error_category": "MALFORMED_MODEL_OUTPUT",
+   "reasons": [
+    "could not evaluate: judge failed for section 'What the second number measures' after retry: call budget exhausted"
+   ]
+  }
+ ],
+ "claude_calls": 157
+}
