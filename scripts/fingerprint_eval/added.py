@@ -72,7 +72,8 @@ def _is_factual(sentence: str) -> bool:
     return any(_signature(sentence))
 
 
-def _ref_sentences(md: str) -> list[tuple[set, tuple]]:
+def _ref_sentences(md: str) -> list[tuple[set, tuple, set[str]]]:
+    """(word set, signature, content tokens) per reference prose sentence, in document order."""
     out = []
     for seg in segment_article(md):
         for b in seg.blocks:
@@ -80,8 +81,31 @@ def _ref_sentences(md: str) -> list[tuple[set, tuple]]:
                 continue
             for ln in (b.text.split("\n") if b.kind == "list" else [b.text]):
                 for s in split_sentences(strip_inline(ln)):
-                    out.append((set(words(s)), _signature(s)))
+                    out.append((set(words(s)), _signature(s), _content_tokens(s)))
     return out
+
+
+MERGE_MIN_TOKENS = 6   # a merged sentence is long; shorter ones recombining two reference sentences are treated as new
+MERGE_COVER = 0.85
+
+
+def _within(sig: tuple, *refs: tuple) -> bool:
+    """Every number, negation and named entity of `sig` occurs in one of the reference signatures."""
+    return all(sig[k] <= frozenset().union(*(r[k] for r in refs)) for k in range(3))
+
+
+def _recombined(ct: set[str], sig: tuple, ref: list[tuple[set, tuple, set[str]]], retained: set[int]) -> bool:
+    """A final sentence that only re-cuts reference sentences is not new: a fragment of ONE reference sentence (split: all its
+    content tokens occur there) or a merge of two ADJACENT ones (>= MERGE_COVER of its tokens occur in their union), in both cases
+    adding no number, negation or entity, and only over reference sentences that no final sentence retains (a sentence that is
+    still there whole was not split or merged, so a new sentence reusing its words is an addition). Changed numbers, negations and
+    hedges are claimcheck's job; this only stops a benign split or merge from being sent to the extractor as an unsupported addition."""
+    if len(ct) < 2:
+        return False
+    if any(i not in retained and ct <= rct and _within(sig, rsig) for i, (_, rsig, rct) in enumerate(ref)):
+        return True
+    return len(ct) >= MERGE_MIN_TOKENS and any(i not in retained and i + 1 not in retained and len(ct & (a[2] | b[2])) / len(ct) >= MERGE_COVER and _within(sig, a[1], b[1])
+                                                for i, (a, b) in enumerate(zip(ref, ref[1:])))
 
 
 def _stylistic_echo(sentence: str, ref_tokens: set[str]) -> bool:
@@ -99,19 +123,21 @@ def new_sentences(draft_md: str, final_md: str) -> dict[str, list[str]]:
     ref = _ref_sentences(draft_md)
     out: dict[str, list[str]] = {}
     sec_tokens: dict[str, set[str]] = {}
-    for seg in segment_article(final_md):
-        if seg.frozen:
-            continue  # frozen blocks are compared byte-exact elsewhere
-        for s in split_sentences(strip_inline(seg.text).replace("\n", " ")):
-            ws, sig = set(words(s)), _signature(s)
-            if any(_jacc(ws, r) >= JACCARD and sig == rsig for r, rsig in ref):
+    finals = [(seg.section, s) for seg in segment_article(final_md) if not seg.frozen  # frozen blocks are compared byte-exact elsewhere
+              for s in split_sentences(strip_inline(seg.text).replace("\n", " "))]
+    retained = {i for i, (r, rsig, _) in enumerate(ref) if any(_jacc(set(words(s)), r) >= JACCARD and _signature(s) == rsig for _, s in finals)}
+    for section, s in finals:
+        ws, sig = set(words(s)), _signature(s)
+        if any(_jacc(ws, r) >= JACCARD and sig == rsig for r, rsig, _ in ref):
+            continue
+        if _recombined(_content_tokens(s), sig, ref, retained):
+            continue
+        if not _is_factual(s):
+            if section not in sec_tokens:
+                sec_tokens[section] = _content_tokens(strip_inline(_reference_section(draft_md, section)))
+            if _stylistic_echo(s, sec_tokens[section]):
                 continue
-            if not _is_factual(s):
-                if seg.section not in sec_tokens:
-                    sec_tokens[seg.section] = _content_tokens(strip_inline(_reference_section(draft_md, seg.section)))
-                if _stylistic_echo(s, sec_tokens[seg.section]):
-                    continue
-            out.setdefault(seg.section, []).append(s)
+        out.setdefault(section, []).append(s)
     return out
 
 

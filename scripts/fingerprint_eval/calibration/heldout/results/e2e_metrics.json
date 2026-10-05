@@ -1,10 +1,10 @@
 {
  "overall": {
-  "TP": 17,
+  "TP": 31,
   "FP": 1,
-  "TN": 12,
+  "TN": 15,
   "FN": 0,
-  "precision": 0.944,
+  "precision": 0.969,
   "recall": 1.0
  },
  "per_category": {
@@ -55,13 +55,12 @@
    "label": "PASS",
    "TP": 0,
    "FP": 0,
-   "TN": 2,
+   "TN": 4,
    "FN": 0,
    "precision": null,
    "recall": null,
    "caught_by": {
-    "none": 2,
-    "error": 2
+    "none": 4
    },
    "misses": []
   },
@@ -80,27 +79,30 @@
   },
   "entity": {
    "label": "FAIL",
-   "TP": 0,
+   "TP": 3,
    "FP": 0,
    "TN": 0,
    "FN": 0,
-   "precision": null,
-   "recall": null,
+   "precision": 1.0,
+   "recall": 1.0,
    "caught_by": {
-    "error": 4
+    "judge": 1,
+    "error": 1,
+    "judge+added": 2
    },
    "misses": []
   },
   "causality": {
    "label": "FAIL",
-   "TP": 0,
+   "TP": 4,
    "FP": 0,
    "TN": 0,
    "FN": 0,
-   "precision": null,
-   "recall": null,
+   "precision": 1.0,
+   "recall": 1.0,
    "caught_by": {
-    "error": 4
+    "judge": 3,
+    "judge+added": 1
    },
    "misses": []
   },
@@ -132,14 +134,14 @@
   },
   "added-claim": {
    "label": "FAIL",
-   "TP": 0,
+   "TP": 4,
    "FP": 0,
    "TN": 0,
    "FN": 0,
-   "precision": null,
-   "recall": null,
+   "precision": 1.0,
+   "recall": 1.0,
    "caught_by": {
-    "error": 4
+    "added": 4
    },
    "misses": []
   },
@@ -158,14 +160,15 @@
   },
   "short-claim": {
    "label": "FAIL",
-   "TP": 1,
+   "TP": 4,
    "FP": 0,
    "TN": 0,
    "FN": 0,
    "precision": 1.0,
    "recall": 1.0,
    "caught_by": {
-    "error": 3,
+    "judge+added": 1,
+    "judge": 2,
     "claim-det": 1
    },
    "misses": []
@@ -174,12 +177,12 @@
    "label": "PASS",
    "TP": 0,
    "FP": 0,
-   "TN": 0,
+   "TN": 1,
    "FN": 0,
    "precision": null,
    "recall": null,
    "caught_by": {
-    "error": 1
+    "none": 1
    },
    "misses": []
   }
@@ -193,131 +196,12 @@
    ]
   },
   {
-   "case": "pr2",
-   "error_category": "MALFORMED_MODEL_OUTPUT",
-   "reasons": [
-    "could not evaluate: added-claim extraction failed for section 'What the second number measures': extraction failed: call budget exhausted"
-   ]
-  },
-  {
-   "case": "pr4",
-   "error_category": "MALFORMED_MODEL_OUTPUT",
-   "reasons": [
-    "could not evaluate: judge failed for section 'The machine that already passed' after retry: call budget exhausted"
-   ]
-  },
-  {
-   "case": "fe1",
-   "error_category": "MALFORMED_MODEL_OUTPUT",
-   "reasons": [
-    "could not evaluate: judge failed for section 'What the second number measures' after retry: call budget exhausted"
-   ]
-  },
-  {
    "case": "fe2",
    "error_category": "MALFORMED_MODEL_OUTPUT",
    "reasons": [
-    "could not evaluate: judge failed for section 'What selection keeps' after retry: call budget exhausted"
-   ]
-  },
-  {
-   "case": "fe3",
-   "error_category": "MALFORMED_MODEL_OUTPUT",
-   "reasons": [
-    "could not evaluate: judge failed for section 'What the second number measures' after retry: call budget exhausted"
-   ]
-  },
-  {
-   "case": "fe4",
-   "error_category": "MALFORMED_MODEL_OUTPUT",
-   "reasons": [
-    "could not evaluate: judge failed for section 'What the second number measures' after retry: call budget exhausted"
-   ]
-  },
-  {
-   "case": "fc1",
-   "error_category": "MALFORMED_MODEL_OUTPUT",
-   "reasons": [
-    "could not evaluate: judge failed for section 'What the second number measures' after retry: call budget exhausted"
-   ]
-  },
-  {
-   "case": "fc2",
-   "error_category": "MALFORMED_MODEL_OUTPUT",
-   "reasons": [
-    "could not evaluate: judge failed for section 'What the second number measures' after retry: call budget exhausted"
-   ]
-  },
-  {
-   "case": "fc3",
-   "error_category": "MALFORMED_MODEL_OUTPUT",
-   "reasons": [
-    "could not evaluate: judge failed for section 'What the second number measures' after retry: call budget exhausted"
-   ]
-  },
-  {
-   "case": "fc4",
-   "error_category": "MALFORMED_MODEL_OUTPUT",
-   "reasons": [
-    "could not evaluate: judge failed for section 'What the second number measures' after retry: call budget exhausted"
-   ]
-  },
-  {
-   "case": "fa1",
-   "error_category": "MALFORMED_MODEL_OUTPUT",
-   "reasons": [
-    "could not evaluate: judge failed for section '55.1% when the model believed the scenario was real. 6.5% when it suspected a test. The gap between those numbers should govern how you read every AI claim.' after retry: call budget exhausted"
-   ]
-  },
-  {
-   "case": "fa2",
-   "error_category": "MALFORMED_MODEL_OUTPUT",
-   "reasons": [
-    "could not evaluate: judge failed for section 'What the second number measures' after retry: call budget exhausted"
-   ]
-  },
-  {
-   "case": "fa3",
-   "error_category": "MALFORMED_MODEL_OUTPUT",
-   "reasons": [
-    "could not evaluate: judge failed for section 'What the second number measures' after retry: call budget exhausted"
-   ]
-  },
-  {
-   "case": "fa4",
-   "error_category": "MALFORMED_MODEL_OUTPUT",
-   "reasons": [
-    "could not evaluate: judge failed for section 'What the second number measures' after retry: call budget exhausted"
-   ]
-  },
-  {
-   "case": "fs1",
-   "error_category": "MALFORMED_MODEL_OUTPUT",
-   "reasons": [
-    "could not evaluate: judge failed for section 'What the second number measures' after retry: call budget exhausted"
-   ]
-  },
-  {
-   "case": "fs2",
-   "error_category": "MALFORMED_MODEL_OUTPUT",
-   "reasons": [
-    "could not evaluate: judge failed for section 'What the second number measures' after retry: call budget exhausted"
-   ]
-  },
-  {
-   "case": "fs3",
-   "error_category": "MALFORMED_MODEL_OUTPUT",
-   "reasons": [
-    "could not evaluate: judge failed for section 'What the second number measures' after retry: call budget exhausted"
-   ]
-  },
-  {
-   "case": "i01",
-   "error_category": "MALFORMED_MODEL_OUTPUT",
-   "reasons": [
-    "could not evaluate: judge failed for section 'What the second number measures' after retry: call budget exhausted"
+    "could not evaluate: added-claim judge failed for section 'What the second number measures' after retry: Extra data: line 3 column 1 (char 356)"
    ]
   }
  ],
- "claude_calls": 157
+ "claude_calls": 177
 }
