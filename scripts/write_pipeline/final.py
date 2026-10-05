@@ -14,7 +14,7 @@ from scripts.publish_route.orchestrate import integrity_record_id
 from . import editguard as G
 from . import frame as FR
 from . import mdlib as M
-from .core import BLOCKED, DONE, FAILED, FINAL_NAME, NOT_READY, QUARANTINED, STALE, Pipeline, atomic_write, now, sha_bytes, sha_json
+from .core import BLOCKED, DONE, FAILED, FINAL_NAME, NOT_READY, QUARANTINED, Pipeline, atomic_write, now, sha_bytes
 from .runs import candidate_text, reference_frame
 from .submit import _finish, deps_ctx
 

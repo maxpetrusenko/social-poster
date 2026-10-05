@@ -12,7 +12,6 @@ import os
 import sys
 from pathlib import Path
 
-from scripts.fingerprint_eval.gateway import GatewayError
 from scripts.medium_review.llm import run_claude
 
 from . import antifp as AF
@@ -20,8 +19,7 @@ from . import editguard as G
 from . import final as FN
 from . import runs as RN
 from . import submit as SB
-from .core import (BLOCKED, DEPS, DONE, FAILED, KIND, NAMES, NOT_READY, NUM, PENDING, QUARANTINED, STALE, Pipeline, PipelineError, atomic_write, sha_bytes,
-                   sha_json)
+from .core import (BLOCKED, DEPS, DONE, FAILED, KIND, NAMES, NOT_READY, NUM, PENDING, STALE, Pipeline, PipelineError, sha_bytes)
 
 EXIT = {"OK": 0, "INVALID": 1, "USAGE": 2, "WAITING": 2, "NOT_READY": 3, "BLOCKED": 4, "BLOCKED_INPUT": 4, "QUARANTINED": 5}
 DEFAULT_FRAMEWORK = Path.home() / "Desktop/Projects/medium-automation/FRAMEWORK.md"

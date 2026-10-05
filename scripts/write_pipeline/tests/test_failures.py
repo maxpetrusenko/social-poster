@@ -3,9 +3,8 @@ import json
 
 import pytest
 
-from scripts.write_pipeline import core
 
-from .fakes import DRAFT, EDITORIAL, GENERIC, UNSLOP, VOICE, Driver, URL, sha, unavailable
+from .fakes import DRAFT, EDITORIAL, GENERIC, UNSLOP, VOICE, URL, sha, unavailable
 
 ONE_HIT = DRAFT.replace("The report covers one workload on one fleet.", "This isn't a benchmark. It's a single test on one fleet.")
 FIX = "The test covers one workload on one fleet."

@@ -5,7 +5,7 @@ from pathlib import Path
 
 from scripts.write_pipeline import core
 
-from .fakes import DRAFT, VOICE, sha, unavailable
+from .fakes import sha
 
 
 def final_run(d):

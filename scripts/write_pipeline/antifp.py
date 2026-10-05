@@ -15,7 +15,7 @@ from scripts.fingerprint_eval.textutil import core_markdown
 
 from . import editguard as G
 from . import mdlib as M
-from .core import NUM, Pipeline, atomic_write, sha_bytes, sha_json
+from .core import Pipeline, atomic_write, sha_bytes
 
 MAX_ATTEMPTS = 12
 MAX_CHANGED_BLOCKS = 3

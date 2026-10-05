@@ -4,7 +4,7 @@ from __future__ import annotations
 import json
 
 from . import mdlib as M
-from .core import NAMES, Pipeline, sha_file
+from .core import NAMES, Pipeline
 
 
 def _kv(d: dict, keys: tuple[str, ...]) -> list[str]:
