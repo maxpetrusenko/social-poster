@@ -383,3 +383,14 @@ def test_resolve_package_rejects_symlink_escapes(tmp_path):
     (pkg / "sources" / "source-notes.md").symlink_to(outside)
     with pytest.raises(authz.PackageError, match="escapes"):
         authz.resolve_package(pkg)
+
+
+def test_gate_cli_judge_default_matches_authz(monkeypatch):
+    """The write pipeline calls run --gate without --judge: its default must be the same judge authz uses, not the slow gateway model."""
+    import subprocess, sys
+    out = subprocess.run([sys.executable, "-m", "scripts.fingerprint_eval.run", "--help"], capture_output=True, text=True, env={"PATH": "/usr/bin:/bin"})
+    from scripts.fingerprint_eval import authz
+    assert authz.MODELS["judge"] == "claude:sonnet"
+    import inspect
+    from scripts.fingerprint_eval import run
+    assert 'os.environ.get("FG_JUDGE", "claude:sonnet")' in inspect.getsource(run)

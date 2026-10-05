@@ -126,9 +126,9 @@ def main(argv=None) -> int:
     ap.add_argument("--gate", action="store_true", help="fast-tier final review gate: exit 1 on blocking failure, writes gate.json; no rewriting")
     ap.add_argument("--draft", type=Path, help="gate: REQUIRED approved reference draft to compare the final against; must be a different path from --article")
     ap.add_argument("--gate-threshold", type=float, default=0.90, help="gate: min whole-document semantic similarity")
-    ap.add_argument("--extractor", default=EXTRACTOR, help="proposition extractor (gateway model or claude:<alias>)")
+    ap.add_argument("--extractor", default=os.environ.get("FG_EXTRACTOR", EXTRACTOR), help="proposition extractor (gateway model or claude:<alias>)")
     ap.add_argument("--tier", choices=["fast", "research"], default="fast")
-    ap.add_argument("--judge", default="qwen3:8b", help="claim judge model (gateway name, or claude:<alias>)")
+    ap.add_argument("--judge", default=os.environ.get("FG_JUDGE", "claude:sonnet"), help="claim judge model (gateway name, or claude:<alias>); same default as authz.MODELS")
     ap.add_argument("--refresh-extraction", action="store_true")
     a = ap.parse_args(argv)
 
