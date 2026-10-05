@@ -89,6 +89,10 @@ class GuardRig:
         uv_cache = os.environ.get("UV_CACHE_DIR") or _cmd("uv", "cache", "dir")
         uv_py = os.environ.get("UV_PYTHON_INSTALL_DIR") or _cmd("uv", "python", "dir")
         e = {"PATH": os.environ.get("PATH", "/usr/bin:/bin"), "HOME": str(self.home), "MEDIUM_GUARD_LOG": str(self.log)}
+        for k in ("LANG", "USER", "TMPDIR"):  # pbpaste decodes by locale: without LANG a UTF-8 clipboard comes back mangled
+            if k in os.environ:
+                e[k] = os.environ[k]
+        e.setdefault("LANG", "en_US.UTF-8")
         if uv_cache:
             e["UV_CACHE_DIR"] = uv_cache
         if uv_py:
