@@ -42,6 +42,7 @@ def load_bio() -> str:
         raw = p.read_text()
     except (OSError, UnicodeDecodeError) as e:
         raise FurnitureError(f"cannot read the author bio at {p} (set {BIO_ENV}): {e}") from e
+    raw = re.sub(r"\A(?:\s*-{2,}\s*\n)+", "", raw)  # the real bio.md opens with a stray "--" line; leading rules are not part of the bio
     bio = re.split(r"^\s*---\s*$", raw, maxsplit=1, flags=re.M)[0].strip()
     if not bio:
         raise FurnitureError(f"the author bio file {p} is empty")

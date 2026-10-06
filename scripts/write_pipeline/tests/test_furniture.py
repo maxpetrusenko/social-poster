@@ -262,3 +262,10 @@ def test_split_footer_and_status():
     assert st["hero"] == st["TLDR"] == st["Read next"] == st["bio"] == st["pass-it-on"] == "present"
     miss = FU.status("# T\n\n### S\n\nBody.\n", None, BIO_TEXT)
     assert miss["hero"] == miss["TLDR"] == miss["Read next"] == miss["bio"] == miss["pass-it-on"] == "missing"
+
+
+def test_a_stray_leading_rule_in_bio_md_is_not_part_of_the_bio(monkeypatch, tmp_path):
+    p = tmp_path / "bio.md"
+    p.write_text("--\n\n" + BIO_TEXT + "\n\n---\n\n**Read next ->** [x](https://medium.com/x/y)\n")
+    monkeypatch.setenv("WRITE_PIPELINE_BIO", str(p))
+    assert FU.load_bio() == BIO_TEXT
