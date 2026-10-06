@@ -161,11 +161,23 @@ def list_items(md: str) -> list[str]:
     return out
 
 
+# A citation that closes a sentence after its terminator: ". (Baron, 1988) Next" or ". [Source](url) Next". The terminator
+# precedes the citation, so SENT_SPLIT_RE (which needs the terminator right before the gap) misses the boundary behind it.
+CITE_END_RE = re.compile(r"([.!?][\"']?\s+(?:\(\[[^\]]+\]\([^)\s]*\)\)|\([^()]*\)|\[[^\]]+\]\([^)\s]*\)))\s+(?=[\"'(\[]?[A-Z0-9])")
+_BREAK, _GLUE = "\x00", "\x01"
+
+
 def split_sentences(text: str) -> list[str]:
+    """Sentences of ONE block. Callers must split per block: joining blocks first glues a paragraph's trailing citation or
+    closing parenthesis to the next paragraph's first sentence and invents a phantom sentence."""
     text = re.sub(r"\s+", " ", text).strip()
     if not text:
         return []
-    return [s for s in SENT_SPLIT_RE.split(text) if s.strip()]
+    text = CITE_END_RE.sub(lambda m: re.sub(r"\s+", _GLUE, m.group(1), count=1) + _BREAK, text)  # the citation stays on its sentence
+    out: list[str] = []
+    for chunk in text.split(_BREAK):
+        out.extend(s.replace(_GLUE, " ") for s in SENT_SPLIT_RE.split(chunk) if s.strip())
+    return out
 
 
 def words(text: str) -> list[str]:
