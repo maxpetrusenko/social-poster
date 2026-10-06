@@ -316,14 +316,18 @@ def main(argv: list[str] | None = None, runner=None, critic=None) -> int:
         _out({"ok": False, "code": "USAGE", "reasons": ["package is not initialized: run 'init' first"]})
         return 2
     if pipe.state.get("invalid"):  # a rejected or malformed state stays NOT_READY until a human removes it
+        rc = 3
         if a.cmd == "status":
-            return cmd_status(pipe, a)
-        _out({"ok": False, "code": "NOT_READY", "state": "NOT_READY", "reasons": [pipe.state["invalid"].get("reason", "pipeline state is invalid")]})
-        return 3
+            rc = cmd_status(pipe, a)
+        else:
+            _out({"ok": False, "code": "NOT_READY", "state": "NOT_READY", "reasons": [pipe.state["invalid"].get("reason", "pipeline state is invalid")]})
+        _not_ready_outputs(pipe, a, rc, force=True)  # every NOT_READY return owns FINAL.md, FINAL.html and PACKAGE.md, built from the best candidate on disk
+        return rc
     fw, err = load_framework(pipe)
     if fw is None:
         if pipe.state.get("invalid"):  # persisted: malformed framework data is NOT_READY, not an exception
             _out({"ok": False, "code": "NOT_READY", "state": "NOT_READY", "reasons": [err]})
+            _not_ready_outputs(pipe, a, 3, force=True)
             return 3
         _out({"ok": False, "code": "BLOCKED", "state": "BLOCKED_FRAMEWORK", "reasons": [err]})
         return 4
@@ -343,13 +347,13 @@ def main(argv: list[str] | None = None, runner=None, critic=None) -> int:
     return rc
 
 
-def _not_ready_outputs(pipe: Pipeline, a, rc: int) -> None:
+def _not_ready_outputs(pipe: Pipeline, a, rc: int, force: bool = False) -> None:
     """A run that ends NOT_READY gets its PACKAGE.md, FINAL.md and FINAL.html from the CLI itself, with the open findings and a banner."""
-    if a.cmd in ("init", "next", "begin"):
+    if a.cmd == "init" or (a.cmd in ("next", "begin") and not force):
         return
     try:
         missing = any(not (pipe.pkg / n).exists() for n in ("FINAL.md", "FINAL.html", "PACKAGE.md"))
-        if rc == 0 and not (a.cmd == "status" and missing):  # a NOT_READY run reached through any command still owns its three files
+        if rc == 0 and not force and not (a.cmd == "status" and missing):  # a NOT_READY run reached through any command still owns its three files
             return
         if pipe.overall() == "NOT_READY":
             FN.write_not_ready_package(pipe)
@@ -358,6 +362,7 @@ def _not_ready_outputs(pipe: Pipeline, a, rc: int) -> None:
 
 
 def _dispatch(a, pipe: Pipeline, runner, critic) -> int:
+    FN.CT.prune(pipe)  # cuts, signed removals and rebases bound to a reference or candidate that no longer exists are dropped before any stage reads them
     um = FN.sync_user_edit(pipe)
     if um and a.cmd not in ("status", "revalidate", "rebase"):
         _out({"ok": False, "code": "USER_MODIFIED", "reasons": ["FINAL.md changed after PASS; run 'revalidate' (reruns the affected analysis and the final gate)"], "user_modified": um})

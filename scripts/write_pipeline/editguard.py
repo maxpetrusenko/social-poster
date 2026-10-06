@@ -14,7 +14,7 @@ from typing import Callable
 
 from scripts.fingerprint_eval.contracts import AUTHOR_CORPUS_DIR
 from scripts.fingerprint_eval.guards import frozen_diff, structure_preservation
-from scripts.fingerprint_eval.gateway import child_env, claude_env
+from scripts.fingerprint_eval.gateway import child_env, claude_env, plain_env
 from scripts.fingerprint_eval.textutil import resolve_pipeline_corpus
 
 from . import cuts as CT
@@ -27,20 +27,31 @@ CONTENT_CATS = {"CONTENT_CLAIM_FAILURE", "ADDED_UNSUPPORTED_CLAIM", "MISSING_LIN
 CLAIM_CATS = {"CONTENT_CLAIM_FAILURE", "ADDED_UNSUPPORTED_CLAIM"}
 
 
-# Non-secret configuration only for every child. The Doppler tokens and every other API key are never passed, and claude -p
-# children get subscription auth through claude_env(). Only the evaluator/gate children (fingerprint_eval run and release) also
-# receive LLM_GATEWAY_API_KEY: non-identity claims gates call the gateway judge and would block without it.
+# Credential policy for the generic runner (every module child it launches):
+#   * CLAUDE_CODE_OAUTH_TOKEN only reaches a child that itself runs `claude -p` (CLAUDE_MODULES), through gateway.claude_env().
+#   * LLM_GATEWAY_API_KEY only reaches the fingerprint_eval gate/release children (GATE_MODULES), whose judge calls the gateway.
+#   * Every other child (publish_route, anything unknown) gets a non-secret env: runtime basics plus RUNNER_CONFIG_KEYS.
+# The Doppler tokens and every other API key are never passed to anything.
 RUNNER_CONFIG_KEYS = ("FINGERPRINT_PIPELINE_CORPUS", "FG_MAX_PARALLEL", "LLM_GATEWAY_URL", "SSL_CERT_FILE", "FINGERPRINT_EVAL_KEY_FILE", "FG_JUDGE", "FG_EXTRACTOR")
 GATE_ENV_KEYS = ("LLM_GATEWAY_API_KEY", "LLM_GATEWAY_URL")
 GATE_MODULES = ("scripts.fingerprint_eval.run", "scripts.fingerprint_eval.release", "scripts.write_pipeline.gaterun")
+CLAUDE_MODULES = (*GATE_MODULES, "scripts.medium_review")
+
+
+def _module(argv: list[str] | None) -> str | None:
+    return argv[2] if argv and len(argv) > 2 and argv[1] == "-m" else None
 
 
 def is_gate_child(argv: list[str] | None) -> bool:
-    return bool(argv) and len(argv) > 2 and argv[1] == "-m" and argv[2] in GATE_MODULES
+    return _module(argv) in GATE_MODULES
+
+
+def is_claude_child(argv: list[str] | None) -> bool:
+    return _module(argv) in CLAUDE_MODULES
 
 
 def runner_env(environ=None, argv: list[str] | None = None) -> dict[str, str]:
-    env = {**claude_env(environ), **child_env(RUNNER_CONFIG_KEYS, environ)}
+    env = {**(claude_env(environ) if is_claude_child(argv) else plain_env(environ)), **child_env(RUNNER_CONFIG_KEYS, environ)}
     if is_gate_child(argv):
         env.update(child_env(GATE_ENV_KEYS, environ))
     return env

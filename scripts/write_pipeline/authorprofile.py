@@ -17,6 +17,8 @@ from scripts.fingerprint_eval import metrics as FM
 from scripts.fingerprint_eval.contracts import AUTHOR_CORPUS_DIR
 from scripts.fingerprint_eval.textutil import body_text, core_markdown, split_sentences, words
 
+from . import fpcontract as CT
+
 REPO = Path(__file__).resolve().parents[2]
 CORPUS_ENV = "WRITE_PIPELINE_AUTHOR_CORPUS"  # test and ops override; default is the frozen corpus shipped in the repo
 
@@ -94,7 +96,7 @@ SIGNALS: dict[str, dict] = {
     "template_hits": {"bad": "abs", "label": "template hits (this-isnt-x-its-y, not-x-but-y, here-is-the-thing, AI vocabulary ...)"},
     "em_dash": {"bad": "abs", "label": "em dashes per 1k words (V6 forbids them in prose)"},
 }
-ABSOLUTE = {"template_hits": 2.0, "em_dash": 0.01}  # an absolute floor: at or above this the signal is significant
+ABSOLUTE = {"template_hits": CT.caps()["template_hits"], "em_dash": CT.EM_DASH_REPORT_FLOOR}  # from the one contract (fpcontract)  # an absolute floor: at or above this the signal is significant
 
 
 def measure(md: str, centroid: dict | None = None, fw: tuple[list[float], list[float]] | None = None) -> dict:

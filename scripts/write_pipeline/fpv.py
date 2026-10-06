@@ -15,9 +15,10 @@ from pathlib import Path
 from . import addcheck as AC
 from . import antifp as AF
 from . import brief as BR
+from . import fpcontract as CT
 from . import editguard as G
 from . import authorprofile as PF
-from .core import BLOCKED, Pipeline, PipelineError, atomic_write, sha_bytes
+from .core import BLOCKED, NOT_READY, Pipeline, PipelineError, atomic_write, sha_bytes
 from .runs import candidate_text, ensure_source_notes, gate_reference_frame, reference_frame
 from .submit import _finish, deps_ctx
 from .validators import asserted_unresolved
@@ -91,7 +92,9 @@ def report(pipe: Pipeline, cur: str, loop: dict) -> dict:
     deltas = [{"signal": k, "label": PF.SIGNALS[k]["label"], "baseline": bs[k]["value"], "final": fs[k]["value"], "delta": round(fs[k]["value"] - bs[k]["value"], 4),
                "baseline_severity": bs[k]["severity"], "final_severity": fs[k]["severity"], "band": fs[k]["band"]} for k in PF.SIGNALS if k in bs and k in fs]
     remaining = [r for r in f["signals"] if r["significant"]]
+    verdict = CT.assess(cur)
     return {
+        "contract": {"heavy": verdict["heavy"], "cap_violations": verdict["violations"], "composite": verdict["sig"]["composite"]},
         "policy": "own style-fingerprint metrics only (scripts.fingerprint_eval.metrics); no third-party AI detector was used or targeted",
         "author_corpus": {"docs": prof["n_docs"], "words": prof["n_words"]},
         "baseline": {"sha256": sha_bytes(baseline_text(pipe).encode()), "n_words": b["n_words"], "values": b["values"], "distance": b["distance"],
@@ -125,11 +128,22 @@ def run_fpverify(pipe: Pipeline) -> dict:
     if bad:
         return {"ok": False, "code": "WAITING", "stage": "fpverify", "reasons": bad}
     v = view(pipe)
-    if v["remaining_significant"] and v["rounds_left"] > 0:
+    if (v["remaining_significant"] or _contract_bad(v["report"])) and v["rounds_left"] > 0:
         return {**{k: v[k] for k in ("ok", "rounds_used", "rounds_left", "remaining_significant", "strongest_remaining", "author_distance", "current_file")},
                 "stage": "fpverify", "done": False,
                 "then": f"fpverify try --file F --signal <one of {sorted(PF.SIGNALS)}> (max {MAX_ROUNDS} rounds), or fpverify done to accept the remaining signals into PACKAGE.md"}
     return finish(pipe)
+
+
+def _contract_bad(rep: dict) -> list[str]:
+    """What the generation caps and antifp's heavy rule (fpcontract) still reject in the measured text. Remaining author-band signals are
+    reported; these are never accepted."""
+    c = rep["contract"]
+    out = []
+    if c["heavy"]:
+        out.append(f"the text is heavy by the anti-fingerprint contract (composite {c['composite']}; heavy at template hits >= {CT.HEAVY_TEMPLATE_HITS} or composite >= {CT.HEAVY_COMPOSITE})")
+    out += [f"{x['signal']} {x['value']} exceeds the generation cap {x['cap']}" for x in c["cap_violations"]]
+    return out
 
 
 def finish(pipe: Pipeline) -> dict:
@@ -141,6 +155,12 @@ def finish(pipe: Pipeline) -> dict:
         return {"ok": False, "code": "WAITING", "stage": "fpverify", "reasons": bad}
     cur, loop = _current(pipe)
     rep = report(pipe, cur, loop)
+    bad = _contract_bad(rep)
+    if bad:  # one contract: fpverify cannot accept what the generation caps or antifp call heavy
+        msg = ["fingerprint contract not met, fpverify cannot accept the remaining signals: " + "; ".join(bad)[:400]]
+        pipe.set("fpverify", NOT_READY, reasons=msg, extra={"candidate_sha256": sha_bytes(candidate_text(pipe).encode())})
+        pipe.save()
+        return {"ok": False, "code": "NOT_READY", "stage": "fpverify", "reasons": msg, "done": True}
     raw = (json.dumps(rep, indent=1, sort_keys=True) + "\n").encode()
     out = _finish(pipe, "fpverify", cur.encode(), "md", report=raw, extra={"candidate_sha256": sha_bytes(candidate_text(pipe).encode())})
     return {**out, "done": True, "remaining_significant": rep["remaining_significant"], "strongest_remaining": rep["strongest_remaining"],

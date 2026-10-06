@@ -173,6 +173,14 @@ CLAUDE_ENV_KEYS = ("PATH", "HOME", "USER", "LOGNAME", "LANG", "LC_ALL", "TERM", 
 CODEX_ENV_KEYS = ("PATH", "HOME", "USER", "LOGNAME", "LANG", "LC_ALL", "TERM", "TMPDIR", "CODEX_HOME")
 
 
+PLAIN_ENV_KEYS = tuple(k for k in CLAUDE_ENV_KEYS if k != "CLAUDE_CODE_OAUTH_TOKEN")  # runtime basics, never a credential
+
+
+def plain_env(environ=None) -> dict[str, str]:
+    """Non-secret env for a child that makes no model call."""
+    return child_env(PLAIN_ENV_KEYS, environ)
+
+
 def child_env(keys: tuple[str, ...], environ=None) -> dict[str, str]:
     """Allowlisted child env: nothing outside `keys` reaches a subprocess (no API keys, gateway key, Doppler tokens)."""
     environ = os.environ if environ is None else environ
