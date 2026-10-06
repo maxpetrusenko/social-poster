@@ -1,9 +1,11 @@
 """Article furniture: the parts of a Medium package that are not the argument. Hero image, TLDR blockquote, and the footer
 (Read next, author bio, first-person pass-it-on line, optional disclosure).
 
-FINAL.md = title, subtitle, hero, TLDR, body, footer. The footer is frozen boilerplate: it is rendered from its sources (bio.md read
+FINAL.md = title, subtitle, hero, TLDR, body, footer. Only the footer is frozen boilerplate: it is rendered from its sources (bio.md read
 verbatim, the submitted Read next and sharing line, the disclosure), the evaluator gate extracts no claims from it, and any edit to it
-is a failure here (compared verbatim against the sources). The TLDR text comes from the title stage and is claims-checked against the body.
+is a failure here (compared verbatim against the sources). The TLDR is prose: it starts from the title stage's text and may be edited by
+any later pass, but it is claims-checked against the body (no new claims; `furniture_edit_reasons`) and measured for fingerprint like the
+body. The hero caption is editable too; the hero image (path, ALT, so its provenance) is not.
 """
 from __future__ import annotations
 
@@ -12,7 +14,7 @@ import re
 from pathlib import Path
 from urllib.parse import urlparse
 
-from scripts.fingerprint_eval.rewrite import footer_start
+from scripts.fingerprint_eval.rewrite import footer_start, hero_furniture, unquote
 from scripts.fingerprint_eval.textutil import parse_blocks
 
 from . import mdlib as M
@@ -199,10 +201,10 @@ def status(text: str, furn: dict | None, bio: str | None) -> dict[str, str]:
     return out
 
 
-def verify(text: str, furn: dict, bio: str, exact_tldr: bool = True) -> list[str]:
+def verify(text: str, furn: dict, bio: str, exact_tldr: bool = False) -> list[str]:
     """Verbatim comparison of the furniture in FINAL.md against its sources. Empty list = intact. The footer is always compared verbatim.
-    The TLDR must match the submitted one unless the author edited FINAL.md (exact_tldr False): then it must still be a blockquote
-    right after the hero that is not labelled 'Direct answer'; the evaluator's frozen-block comparison and the author rebase govern the edit."""
+    The TLDR is editable prose (the edit guard and the claims gate judge an edit): it must be a blockquote right after the hero that is not
+    labelled 'Direct answer'. exact_tldr=True additionally requires the submitted text byte for byte (a pristine-frame check)."""
     out = []
     core, foot = split_footer(text)
     want = footer_md(furn, bio)
@@ -249,3 +251,49 @@ def report_lines(pipe: Pipeline, text: str) -> list[str]:
         lines.append(f"- {opp}")
     lines.append(f"- bio source: {bio_path()}")
     return lines
+
+
+CAPTION_MAX_WORDS = 40
+
+
+def head_parts(text: str):
+    """(blocks, caption index, TLDR index, footer index): the same head detection the evaluator gate uses to keep the TLDR editable prose."""
+    blocks = parse_blocks(text)
+    foot = footer_start(blocks)
+    cap, tl = hero_furniture(blocks, foot)
+    return blocks, cap, tl, foot
+
+
+def tldr_text(text: str) -> str | None:
+    """The TLDR as one plain paragraph (no '> ' markers), or None."""
+    blocks, _, tl, _ = head_parts(text)
+    return " ".join(unquote(blocks[tl].text).split()) if tl is not None else None
+
+
+def caption_text(text: str) -> str | None:
+    blocks, cap, _, _ = head_parts(text)
+    return blocks[cap].text.strip() if cap is not None else None
+
+
+def furniture_edit_reasons(ref: str, cand: str, ev: dict | None = None) -> list[str]:
+    """Why an edit of the TLDR or the hero caption is refused. An unchanged TLDR and caption pass. A changed TLDR must still be a TLDR
+    (one blockquote paragraph right after the hero, 15 to 90 words, no label, no link, no number or unresolved claim the body lacks;
+    `check_tldr`), and the claims gate then judges it against the body like any prose. A changed caption must stay one short italic line."""
+    out: list[str] = []
+    rt, ct = tldr_text(ref), tldr_text(cand)
+    if rt is not None and ct is None:
+        out.append("the TLDR blockquote was removed or moved: it must stay right after the hero")
+    elif rt is not None and ct != rt:
+        blocks, _, tl, foot = head_parts(cand)
+        body = "\n\n".join(b.text for b in blocks[tl + 1:foot if foot is not None else len(blocks)])
+        out += [r.replace("titles: ", "TLDR edit: ", 1) for r in check_tldr(ct, body, ev)]
+    rc, cc = caption_text(ref), caption_text(cand)
+    if rc is not None and cc is None:
+        out.append("the hero caption was removed: it must stay one italic line under the hero image")
+    elif rc is not None and cc != rc:
+        plain = cc.strip("*").strip()
+        if len(plain.split()) > CAPTION_MAX_WORDS:
+            out.append(f"hero caption edit: {len(plain.split())} words, the limit is {CAPTION_MAX_WORDS}")
+        if M.URL_RE.search(plain) or re.search(r"\]\(", plain):
+            out.append("hero caption edit: a caption carries no link")
+    return out

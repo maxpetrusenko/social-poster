@@ -242,7 +242,9 @@ ART = "# T\n\n### S\n\n![alt text here](assets/hero.jpg)\n\n*cap*\n\n> A summary
 def test_the_evaluator_gate_freezes_the_footer_and_extracts_no_claims_from_it():
     segs = segment_article(ART + FOOT)
     prose = [s.text for s in segs if not s.frozen]
-    assert prose == ["The lab ran a latency test on 40 nodes in 2025 and published the numbers in its report."]
+    assert prose == ["> A summary of the whole article in one paragraph of plain prose that is long enough to count.",  # the TLDR is prose, not furniture
+                     "The lab ran a latency test on 40 nodes in 2025 and published the numbers in its report."]
+    assert [s.tldr for s in segs if not s.frozen] == [True, False]
     fr = frozen_blocks(ART + FOOT)
     assert BIO_TEXT in fr and any(x.startswith("Read next:") for x in fr)
     assert frozen_diff(ART + FOOT, ART + FOOT) == []

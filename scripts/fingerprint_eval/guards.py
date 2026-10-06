@@ -127,9 +127,9 @@ def structure_preservation(original: str, rewrite: str, allowed_link_removals=No
 
 
 def frozen_blocks(md: str) -> list[str]:
-    """Blocks no check reads as claims: lists, quotes, code, tables, images, rules, short or boilerplate paragraphs."""
+    """Blocks no check reads as claims: lists, quotes, code, tables, images, rules, short or boilerplate paragraphs. The TLDR is prose, and the hero caption is editable (its image is not)."""
     from .rewrite import segment_article
-    return [b.text for seg in segment_article(md) if seg.frozen for b in seg.blocks if b.kind != "heading"]
+    return [b.text for seg in segment_article(md) if seg.frozen and not seg.caption for b in seg.blocks if b.kind != "heading"]
 
 
 def frozen_diff(original: str, rewrite: str, limit: int = 12) -> list[str]:

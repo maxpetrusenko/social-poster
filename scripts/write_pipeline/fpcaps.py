@@ -9,6 +9,7 @@ from __future__ import annotations
 from collections import Counter
 
 from scripts.fingerprint_eval import metrics as FM
+from scripts.fingerprint_eval.rewrite import footer_start, hero_furniture, unquote
 from scripts.fingerprint_eval.textutil import core_markdown, parse_blocks, split_sentences, words
 
 from . import fpcontract as C
@@ -18,8 +19,15 @@ TOP = 3
 caps, violations = C.caps, C.violations  # the one contract (fpcontract): never redefined here
 
 
+def _measured_blocks(text: str):
+    """Paragraph blocks plus the TLDR blockquote (it is prose, so it is measured like the body)."""
+    blocks = parse_blocks(core_markdown(text))
+    _, tl = hero_furniture(blocks, footer_start(blocks))
+    return [b for i, b in enumerate(blocks) if b.kind == "paragraph" or i == tl]
+
+
 def _prose(text: str) -> tuple[list[str], list[str]]:
-    paras = [b.text for b in parse_blocks(core_markdown(text)) if b.kind == "paragraph"]
+    paras = [unquote(b.text) if b.kind == "quote" else b.text for b in _measured_blocks(text)]
     return paras, [s for p in paras for s in split_sentences(p)]
 
 

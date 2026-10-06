@@ -57,6 +57,8 @@ class Segment:
     output: str = ""
     role: str = ""
     nonfactual: list[int] = field(default_factory=list)  # 1-based sentence ids the extractor confirmed carry no factual claim
+    tldr: bool = False      # the TLDR blockquote under the hero: editable prose, claims-checked like any paragraph (never frozen)
+    caption: bool = False   # the hero caption: not a claim carrier, excluded from the frozen-block comparison (the image ref itself stays frozen)
 
     @property
     def text(self) -> str:
@@ -78,6 +80,30 @@ def footer_start(blocks: list[Block]) -> int | None:
     return None
 
 
+CAPTION_RE = re.compile(r"^\*[^*\n]+\*$")
+
+
+def hero_furniture(blocks: list[Block], limit: int | None = None) -> tuple[int | None, int | None]:
+    """(hero caption index, TLDR blockquote index) of the article head, else None for each. The head is: only headings that are not H2
+    (title, subtitle), the first image (the hero), an optional one-line italic caption, then the TLDR blockquote. A quote anywhere else is
+    an ordinary frozen quote. `limit` is the footer start: nothing at or after it is head furniture."""
+    end = len(blocks) if limit is None else limit
+    for i, b in enumerate(blocks[:end]):
+        if b.kind == "image":
+            break
+        if b.kind != "heading" or re.match(r"^#{2}(?!#)", b.text):
+            return None, None
+    else:
+        return None, None
+    cap = tl = None
+    j = i + 1
+    if j < end and blocks[j].kind == "paragraph" and CAPTION_RE.match(blocks[j].text.strip()):
+        cap, j = j, j + 1
+    if j < end and blocks[j].kind == "quote":
+        tl = j
+    return cap, tl
+
+
 def segment_article(md: str) -> list[Segment]:
     """Ordered segments; frozen ones are emitted verbatim."""
     segs: list[Segment] = []
@@ -85,6 +111,7 @@ def segment_article(md: str) -> list[Segment]:
     run: list[Block] = []
     all_blocks = parse_blocks(md)
     foot = footer_start(all_blocks)
+    cap_i, tldr_i = hero_furniture(all_blocks, foot)
 
     def flush_run():
         if run:
@@ -98,7 +125,13 @@ def segment_article(md: str) -> list[Segment]:
         if n == foot:
             flush_run()
             boiler = True  # footer boilerplate: no claims extracted, compared byte-exact
-        if b.kind == "heading":
+        if n == tldr_i:
+            flush_run()
+            segs.append(Segment(len(segs), section, sec_idx, [b], tldr=True))  # prose, whatever its length: its claims are judged against the body
+        elif n == cap_i:
+            flush_run()
+            segs.append(Segment(len(segs), section, sec_idx, [b], frozen=True, caption=True))
+        elif b.kind == "heading":
             flush_run()
             m = HEADING_RE.match(b.text)
             if len(m.group(1)) >= 2:
@@ -145,9 +178,14 @@ def is_meta_claim(claim: str) -> bool:
     return bool(META_CLAIM_RE.match(claim))
 
 
+def unquote(text: str) -> str:
+    """A blockquote's text without its '> ' markers (the TLDR is prose; its sentences carry no quote prefix)."""
+    return re.sub(r"(?m)^ {0,3}>[ \t]?", "", text) if text.lstrip().startswith(">") else text
+
+
 def segment_sentences(seg: Segment) -> list[str]:
     """The numbered sentences of a prose segment (raw markdown, so links survive); ids in sentence_ids are 1-based into this list."""
-    return [s for b in seg.blocks for s in split_sentences(b.text.replace("\n", " "))]
+    return [s for b in seg.blocks for s in split_sentences(unquote(b.text).replace("\n", " "))]
 
 
 def numbered(sentences: list[str]) -> str:
