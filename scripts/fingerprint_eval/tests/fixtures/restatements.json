@@ -7,10 +7,7 @@
   "Prospective hindsight, the instruction to imagine that an event has already occurred, increased the ability to correctly identify reasons for future outcomes by 30%, the 1989 finding by Deborah Mitchell, Jay Russo and Nancy Pennington.",
   "Treating the time average and the expectation value as the same quantity is an assumption whose conditions for validity are restrictive, and expected utility theory makes it indiscriminately.",
   "Duke's 2022 book Quit covers knowing when to walk away.",
-  "She had played poker professionally for years, winning more than $4 million in tournaments, before finishing a doctorate in cognitive psychology at the University of Pennsylvania.",
-  "The video borrows the book's sharper test as well: when you feel certain about something, imagine betting $100 or $1,000 on that belief.",
   "The video, about 18 minutes long, adds a framework it calls EVA, for expected value analysis, to the book's ideas.",
-  "Buying ran the other way: nearly 30% of the shoppers who saw six jams bought one, against 3% of those who saw 24.",
   "Probability training, team collaboration and tracking improved both calibration and resolution in a two-year forecasting tournament."
  ],
  "new_facts": [
@@ -19,5 +16,10 @@
   "The 1989 finding was replicated in 14 countries and the effect grew with training.",
   "Annie Duke now runs a hedge fund that applies the method to venture capital.",
   "Nearly 30% of the shoppers who saw six jams bought one, against 13% of those who saw 24 jams in the Boston store."
+ ],
+ "inferences": [
+  "She had played poker professionally for years, winning more than $4 million in tournaments, before finishing a doctorate in cognitive psychology at the University of Pennsylvania.",
+  "The video borrows the book's sharper test as well: when you feel certain about something, imagine betting $100 or $1,000 on that belief.",
+  "Buying ran the other way: nearly 30% of the shoppers who saw six jams bought one, against 3% of those who saw 24."
  ]
 }
