@@ -66,7 +66,8 @@ def author_opportunities(pipe: Pipeline, review: dict | None, text: str) -> list
             out.append(f"- Unresolved claim left out of the article, needs evidence or the author's own account: {c.get('claim')}")
     for f in pipe.read_json("critic").get("findings", []) or []:
         if f.get("severity") == "minor" and f.get("verified"):
-            out.append(f"- Critic minor note, not auto-applied: {f.get('reason')} (passage: {str(f.get('passage'))[:100]!r})")
+            why = f" [{f['downgrade_reason']}]" if f.get("downgrade_reason") else ""
+            out.append(f"- Editor note (critic minor, does not block READY, not auto-applied): {f.get('reason')}{why} (passage: {str(f.get('passage'))[:100]!r})")
     if dropped:
         out.append(f"- {dropped} generic or off-topic author-input suggestion(s) omitted (too little overlap with the article's key terms)")
     return out or ["- None recorded."]

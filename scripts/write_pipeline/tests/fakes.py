@@ -5,6 +5,7 @@ import contextlib
 import hashlib
 import io
 import json
+import re
 import struct
 import zlib
 from pathlib import Path
@@ -207,6 +208,9 @@ class Critic:
         r = self.replies.pop(0) if self.replies else {"verdict": "pass", "findings": []}
         if isinstance(r, Exception):
             raise r
+        if isinstance(r, dict) and r.get("verdict") == "pass" and "resolutions" not in r and "=== PRIOR OPEN FINDINGS" in prompt:  # a scripted reply that predates scoped rounds closes every prior finding
+            ids = re.findall(r"^- (\S+?): passage ", prompt.split("=== PRIOR OPEN FINDINGS")[1].split("=== REPAIR REPORT")[0], re.M)
+            r = {**r, "resolutions": [{"id": i, "status": "resolved", "evidence": "fixed in the revision"} for i in ids]}
         return r if isinstance(r, str) else json.dumps(r)
 
 
