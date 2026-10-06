@@ -113,6 +113,10 @@ def edit_guard(ref: str, cand: str, *, known_urls: set[str], blob_numbers: Count
         if ff:
             reasons.append(ff)
             cats.append("STRUCTURAL_DAMAGE")
+        fr = FU.furniture_edit_reasons(ref, cand, ev)  # TLDR and hero caption may change, within limits; the claims gate judges the TLDR
+        if fr:
+            reasons += fr
+            cats.append("CONTENT_CLAIM_FAILURE")
         fd = frozen_diff(ref, cand)
         if fd:
             reasons.append("frozen block (list, quote, code, short paragraph) changed:\n" + "\n".join(fd[:6]))

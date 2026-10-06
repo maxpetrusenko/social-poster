@@ -95,7 +95,7 @@ def final_failures(pipe: Pipeline, runner, before_stop: bool = False) -> list[st
         bad.append("package record is bound to different final bytes")
     try:
         furn, bio = FU.pipeline_inputs(pipe)
-        bad += FU.verify(raw.decode("utf-8"), furn, bio, exact_tldr=(pipe.state.get("candidate") or {}).get("origin") != "user-edit")
+        bad += FU.verify(raw.decode("utf-8"), furn, bio, exact_tldr=False)  # the TLDR is editable prose: the edit guard and the claims gate judge it
     except (FU.FurnitureError, UnicodeDecodeError) as e:
         bad.append(f"furniture could not be verified: {str(e)[:160]}")
     try:

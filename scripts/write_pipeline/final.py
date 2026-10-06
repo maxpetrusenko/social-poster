@@ -134,7 +134,7 @@ def _run_integrity(pipe: Pipeline, runner: G.Runner) -> dict:
     pre = G.edit_guard(ref, _read_final(pipe).decode("utf-8"), known_urls=c["known_urls"], blob_numbers=c["blob_numbers"], strict=True, author_material=c["author_material"], ev=c["ev"])
     try:  # hero, TLDR and the frozen footer, verbatim against their sources; merged with the guard so the claim categories are never hidden
         furn, bio = FU.pipeline_inputs(pipe)
-        fbad = FU.verify(_read_final(pipe).decode("utf-8"), furn, bio, exact_tldr=(pipe.state.get("candidate") or {}).get("origin") != "user-edit")
+        fbad = FU.verify(_read_final(pipe).decode("utf-8"), furn, bio, exact_tldr=False)  # the TLDR is editable prose: the edit guard and the claims gate judge it
     except FU.FurnitureError as e:
         fbad = [str(e)]
     if fbad:
