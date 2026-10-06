@@ -16,6 +16,7 @@ from . import editguard as G
 from . import furniture as FU
 from . import mdlib as M
 from . import rewrite as RW
+from . import scoped as SC
 from .core import BLOCKED, DONE, FAILED, NOT_READY, Pipeline, PipelineError, atomic_write, safe_path, sha_bytes, sha_json
 from .submit import _finish, deps_ctx
 
@@ -171,6 +172,36 @@ Use "pass" only when there is no major finding.
 {article}
 """
 
+SCOPED_PROMPT = """You are the same independent editorial critic, now doing a SCOPED re-review, like an editor checking a revision. Apply the framework and the
+severity rules of the first round. Required furniture (hero image and caption, TLDR, Read next, bio, pass-it-on) is never to be flagged for removal.
+Do two things only.
+(1) For each PRIOR OPEN FINDING below, say whether the revision resolved it: "resolved", "unresolved" or "not_applicable", with the evidence (what the
+article now says, or why the finding no longer applies). A finding you do not answer counts as unresolved.
+(2) Review ONLY the CHANGED BLOCKS below for problems the revision introduced. Do not raise findings about any other text: a new major whose passage
+is not inside a changed block is downgraded to a minor suggestion automatically. Verify factual claims against the evidence ledger before calling them unsupported.
+
+Reply with JSON only: {{"verdict": "pass" | "revise", "resolutions": [{{"id": "F1", "status": "resolved" | "unresolved" | "not_applicable", "evidence": "..."}}], "findings": [{{"id": "N1", "severity": "major" | "minor", "kind": "unsupported" | "other", "passage": "<exact text from a changed block>", "claim_span": "<for kind unsupported: the exact words>", "reason": "...", "fix": "..."}}]}}
+"findings" lists NEW problems only. Use "pass" only when no prior finding is unresolved and no new major exists.
+
+=== FRAMEWORK ===
+{framework}
+
+=== EVIDENCE LEDGER (claims, their evidence passages and source excerpts) ===
+{ledger}
+
+=== PRIOR OPEN FINDINGS (round {prior_round}) ===
+{prior}
+
+=== REPAIR REPORT (what changed since the last critic round) ===
+{repair}
+
+=== CHANGED BLOCKS (the only text you may raise new findings on) ===
+{changed}
+
+=== ARTICLE (for context) ===
+{article}
+"""
+
 
 def captured_sources(pipe: Pipeline) -> list[CE.Source]:
     """(file, text) of every captured source, each re-hashed by deps_ctx's source_blob before it is ever shown to the critic."""
@@ -209,7 +240,16 @@ def run_critic(pipe: Pipeline, critic: Critic, framework_text: str) -> dict:
         return _critic_exhausted(pipe, st, "the critic budget is used and the prose changed after the last clean round; no further critic round is allowed", csha)
     ctx = deps_ctx(pipe)  # also re-hashes every captured source
     sources = captured_sources(pipe)
-    prompt = CRITIC_PROMPT.format(framework=framework_text, ledger=_ledger(ctx["ev"], sources), article=cand)
+    scoped = bool(last and "block_hashes" in last)  # round 2+: prior open findings plus the changed blocks only
+    changed = SC.changed_blocks(last["block_hashes"], cand) if scoped else []
+    prior = [SC.open_record(f) for f in (last.get("open") or [])] if scoped else []
+    if scoped:
+        pt, ct = SC.scoped_input(prior, changed)
+        cuts = [f"- removed: {c.get('text')!r} ({c.get('reason')})" + (f" -> rewritten as {c['replacement']!r}" if c.get("replacement") else "") for c in repair_cuts(pipe)]
+        prompt = SCOPED_PROMPT.format(framework=framework_text, ledger=_ledger(ctx["ev"], sources), prior_round=last["round"], prior=pt,
+                                      repair="\n".join(cuts) or "(no declared removals or rewrites)", changed=ct, article=cand)
+    else:
+        prompt = CRITIC_PROMPT.format(framework=framework_text, ledger=_ledger(ctx["ev"], sources), article=cand)
     try:
         raw = critic(prompt)
     except GatewayError as e:
@@ -225,7 +265,10 @@ def run_critic(pipe: Pipeline, critic: Critic, framework_text: str) -> dict:
         return {"ok": False, "code": "BLOCKED", "stage": "critic", "reasons": msg}
     try:
         data = extract_json(raw)
-        findings = CE.furniture_filter(CE.rebut(_check_critic(data, cand), ctx["ev"], sources), cand)  # an "unsupported" major the evidence contains verbatim is rebutted; removal of required furniture is not_applicable
+        findings = CE.furniture_filter(CE.rebut(_check_critic(data, cand, scoped=scoped), ctx["ev"], sources), cand)  # an "unsupported" major the evidence contains verbatim is rebutted; removal of required furniture is not_applicable
+        if scoped:
+            prior_f = SC.resolve(data, prior)
+            findings = [*prior_f, *SC.scope_new(findings, changed, {f["id"] for f in prior_f})]
     except Exception as e:  # noqa: BLE001  malformed nested JSON of any shape is a rejected critic reply, not a crash
         pipe.set("critic", FAILED, reasons=[f"critic output is malformed: {str(e)[:200]}"])
         pipe.save()
@@ -233,10 +276,12 @@ def run_critic(pipe: Pipeline, critic: Critic, framework_text: str) -> dict:
     majors = [f for f in findings if f["severity"] == "major" and f["verified"]]
     st["rounds"] += 1
     st["repair_rejected"] = 0
-    st["history"].append({"round": st["rounds"], "candidate_sha256": csha, "prose_sha256": prose_sha(cand), "majors": len(majors)})
-    art = {"round": st["rounds"], "candidate_sha256": csha, "reviewer": "claude -p (separate process, article and evidence only)", "verdict": "revise" if majors else "pass",
+    st["history"].append({"round": st["rounds"], "candidate_sha256": csha, "prose_sha256": prose_sha(cand), "majors": len(majors),
+                          "block_hashes": SC.block_hashes(cand), "open": [SC.open_record(f) for f in majors]})
+    art = {"round": st["rounds"], "scoped": scoped, "changed_blocks": len(changed), "candidate_sha256": csha, "reviewer": "claude -p (separate process, article and evidence only)", "verdict": "revise" if majors else "pass",
            "findings": findings, "majors": len(majors), "rebutted": sum(1 for f in findings if f["severity"] == "rebutted"),
-           "not_applicable": sum(1 for f in findings if f["severity"] == "not_applicable")}
+           "not_applicable": sum(1 for f in findings if f["severity"] == "not_applicable"),
+           "resolved": sum(1 for f in findings if f["severity"] == "resolved"), "suggestions": sum(1 for f in findings if f.get("suggestion"))}
     main = (json.dumps(art, indent=1, sort_keys=True) + "\n").encode()
     out = _finish(pipe, "critic", main, "json", extra_bundle=csha.encode(), extra={"candidate_sha256": csha, "majors": len(majors)})
     if majors and st["rounds"] >= MAX_CRITIC_ROUNDS:
@@ -275,7 +320,7 @@ def _critic_exhausted(pipe: Pipeline, st: dict, why: str | None = None, csha: st
     return {"ok": False, "code": "NOT_READY", "stage": "critic", "reasons": msg}
 
 
-def _check_critic(data, cand: str) -> list[dict]:
+def _check_critic(data, cand: str, scoped: bool = False) -> list[dict]:
     if not isinstance(data, dict) or data.get("verdict") not in ("pass", "revise") or not isinstance(data.get("findings"), list):
         raise ValueError("expected {verdict, findings[]}")
     n, out = M.norm(cand), []
@@ -285,7 +330,7 @@ def _check_critic(data, cand: str) -> list[dict]:
         out.append({"id": str(f.get("id") or f"F{i + 1}"), "severity": f["severity"], "kind": str(f.get("kind") or ""), "claim_span": str(f.get("claim_span") or ""),
                     "passage": f["passage"], "reason": f["reason"], "fix": f.get("fix", ""),
                     "verified": M.norm(str(f["passage"])) in n})  # a finding whose quoted passage is not in the article cannot be acted on
-    if data["verdict"] == "revise" and not out:
+    if data["verdict"] == "revise" and not out and not scoped:
         raise ValueError("verdict 'revise' without findings")
     return out
 
