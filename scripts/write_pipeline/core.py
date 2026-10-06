@@ -130,7 +130,7 @@ def _check_shape(d: dict) -> None:
         raise PipelineError("terminal malformed")
     if not isinstance(d.get("overrides", []), list):
         raise PipelineError("overrides malformed")
-    for k in ("critic", "fpverify", "rework", "rework_seen", "repair_cuts"):
+    for k in ("critic", "fpverify", "rework", "rework_seen", "repair_cuts", "fingerprint_rejections"):
         if d.get(k) is not None and not isinstance(d[k], (dict, list)):
             raise PipelineError(f"{k} malformed")
     for k in ("framework", "final", "candidate"):
