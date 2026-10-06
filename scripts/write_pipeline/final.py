@@ -13,12 +13,13 @@ from scripts.publish_route.orchestrate import ROUTE_REL, integrity_record_id
 
 from . import editguard as G
 from . import frame as FR
+from . import linkpolicy as LP
 from . import mdlib as M
 from .core import (NAMES, BLOCKED, DONE, FAILED, FINAL_NAME, NOT_READY, QUARANTINED, READY_ROUTES, Pipeline, PipelineError, atomic_write, fail_exc, now,
                    safe_path, sha_bytes)
 from . import fpv as FPV
 from . import report as RP
-from .runs import candidate_text, ensure_source_notes, final_text, gate_reference_frame, reference_frame
+from .runs import candidate_text, ensure_source_notes, final_text, gate_reference_frame, raw_gate_reference, reference_frame
 from .submit import _finish, deps_ctx
 
 REF_REL = Path("write-pipeline") / "frame" / "reference-frame.md"
@@ -90,7 +91,22 @@ def _run_integrity(pipe: Pipeline, runner: G.Runner) -> dict:
     atomic_write(_final_path(pipe), cbytes)
     final_sha = sha_bytes(_read_final(pipe))  # re-read: the gate sees these bytes and no others
     c = deps_ctx(pipe)
-    pre = G.edit_guard(ref, _read_final(pipe).decode("utf-8"), known_urls=c["known_urls"], blob_numbers=c["blob_numbers"], strict=True, author_material=c["author_material"])
+    pre = G.edit_guard(ref, _read_final(pipe).decode("utf-8"), known_urls=c["known_urls"], blob_numbers=c["blob_numbers"], strict=True, author_material=c["author_material"], ev=c["ev"])
+    # same link policy as the stage gates, against the pre-cut reference: the allowlist of declared removals comes only from the SIGNED removals
+    # ledger (a forged, unsigned or state-mismatched list is rejected and never widens what may disappear)
+    removals, led_err = LP.signed_removals(pipe.pkg, pipe.state.get("removals_ledger"))
+    raw = raw_gate_reference(pipe)
+    lp = LP.check_links(raw, _read_final(pipe).decode("utf-8"), removals, c["ev"]) if raw and not (pipe.state.get("rebase") or {}).get("accepted") else {"ok": True, "reasons": [], "categories": [], "removed_urls": []}
+    if led_err or not lp["ok"]:
+        pre = {"ok": False, "reasons": [*led_err, *lp["reasons"], *pre["reasons"]], "categories": sorted({*pre["categories"], "MISSING_LINK"})}
+    elif pre["ok"] and lp["removed_urls"]:
+        more, blocked = G.confirm_link_removals(lp, runner, pipe.pkg, _read_final(pipe).decode("utf-8"), pipe.pkg / "write-pipeline" / "work" / "integrity-removed")
+        if blocked:
+            pipe.set("integrity", BLOCKED, reasons=more, extra={"category": "MODEL_UNAVAILABLE", "final_sha256": final_sha})
+            pipe.save()
+            return {"ok": False, "code": "BLOCKED", "stage": "integrity", "reasons": more}
+        if more:
+            pre = {"ok": False, "reasons": more, "categories": ["MISSING_LINK"]}
     if not pre["ok"]:
         msg = ["final bytes differ from the pre-anti-fingerprint reference in a way the gate forbids: " + "; ".join(pre["reasons"])[:400]]
         pipe.set("integrity", NOT_READY, reasons=msg, extra={"categories": pre["categories"], "final_sha256": final_sha})

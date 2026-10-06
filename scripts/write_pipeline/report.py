@@ -12,6 +12,22 @@ from . import relevance as RV
 from .core import NAMES, Pipeline, PipelineError
 from .validators import asserted_unresolved
 
+
+def _direct_author_voice(pipe: Pipeline, text: str) -> dict | None:
+    """Author-corpus distance of the draft (before) and the current text (after) straight from the metrics module, for runs where fpverify never ran."""
+    try:
+        from . import authorprofile as PF
+        draft = pipe.read_art("draft") or ""
+        if not draft.strip() or not text.strip():
+            return None
+        prof = PF.get_profile()
+        b, f = PF.measure(draft, prof["centroid"], prof["fw"]), PF.measure(text, prof["centroid"], prof["fw"])
+        keys = ("sentence_length_jsd", "paragraph_length_jsd", "punctuation_jsd", "function_word_cosine")
+        return {"baseline_distance": b["distance"].get("composite"), "final_distance": f["distance"].get("composite"),
+                "components": {k: [b["distance"].get(k), f["distance"].get(k)] for k in keys}}
+    except Exception:  # noqa: BLE001  report formatting must never fail the package
+        return None
+
 SECTIONS = ["TITLE", "SUBTITLE", "ARTICLE", "SOURCES", "IMAGES", "EDITORIAL SCORECARD", "AUTHOR-VOICE RESULT", "FINGERPRINT BASELINE", "FINGERPRINT FINAL",
             "FINGERPRINT CHANGES", "REMAINING FINGERPRINT SIGNALS", "CLAIM CHECK", "LINK CHECK", "SOURCE CHECK", "STRUCTURE CHECK", "SEMANTIC PRESERVATION",
             "MEDIUM REVIEW", "EXACT FINAL HASH", "READY/NOT_READY"]
@@ -167,10 +183,12 @@ def build_package_md(pipe: Pipeline, review: dict | None, route: dict | None, fi
     for f in crit.get("findings", []) or []:
         if f.get("severity") == "major" and f.get("verified") and verdict != "READY":
             S["EDITORIAL SCORECARD"].append(f"  - OPEN major {f.get('id')}: {f.get('reason')} (passage: {str(f.get('passage'))[:140]!r}; fix: {f.get('fix')})")
-    av = fpv.get("author_voice") or {}
+    av = fpv.get("author_voice") or _direct_author_voice(pipe, text)
     S["AUTHOR-VOICE RESULT"] = ([f"- distance to the author corpus centroid (composite, lower is closer): baseline {av.get('baseline_distance')}, final {av.get('final_distance')}"]
                                 + [f"  - {k}: baseline {v[0]}, final {v[1]}" for k, v in (av.get("components") or {}).items()]
-                                if av else ["- not reached: fingerprint verification did not run"])
+                                if av else ["- author-corpus distance unavailable: the baseline draft or the author corpus could not be read"])
+    if av and not fpv.get("author_voice"):
+        S["AUTHOR-VOICE RESULT"].insert(0, "- fingerprint verification did not run; distance computed directly with the metrics module (before = draft, after = current text)")
     S["AUTHOR-VOICE RESULT"].append(f"- voice-stage composite (antifp): before {af.get('baseline', {}).get('composite')}, after {af.get('after', {}).get('composite')}")
     if fpv:
         S["FINGERPRINT BASELINE"] = [f"- the first draft ({fpv['baseline']['sha256'][:12]}, {fpv['baseline']['n_words']} words); author corpus {fpv['author_corpus']['docs']} documents", *_signal_lines(fpv["baseline"]["signals"])]

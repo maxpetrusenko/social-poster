@@ -83,3 +83,38 @@ def find_refs(md: str) -> dict[str, list[str]]:
 def lost(original: list[str], rewrite: list[str]) -> list[str]:
     """Items in `original` (multiset) that `rewrite` no longer has."""
     return list((Counter(original) - Counter(rewrite)).elements())
+
+
+_LINK_TARGET = re.compile(r"\[.*\]\((.*)\)$|<a href=\"(.*)\">$|<(.*)>$", re.S)
+
+
+def link_url(item: str) -> str:
+    """Normalized URL of a canonical link item. Link identity is the URL: the anchor text is not part of it."""
+    m = _LINK_TARGET.match(item)
+    u = next((g for g in (m.groups() if m else (item,)) if g is not None), item).strip()
+    from urllib.parse import urlsplit, urlunsplit
+    try:
+        p = urlsplit(u if "://" in u or not u.lower().startswith("www.") else "https://" + u)
+        if p.scheme and p.netloc:
+            return urlunsplit((p.scheme.lower(), p.netloc.lower(), p.path.rstrip("/"), p.query, "")).rstrip("/")
+    except ValueError:
+        pass
+    return u.rstrip("/")
+
+
+def _ident(item: str) -> tuple[str, str]:
+    """(kind, URL). A bare URL in running text is not a substitute for a real link: dropping the markup around a link is a lost link."""
+    return ("bare" if not item.startswith(("[", "<")) else "link", link_url(item))
+
+
+def lost_urls(original: list[str], rewrite: list[str], allowed: "set[str] | None" = None) -> list[str]:
+    """Canonical items of `original` whose identity (kind, normalized URL; multiset) `rewrite` no longer has, minus URLs in `allowed` (declared removals)."""
+    gone = Counter(map(_ident, original)) - Counter(map(_ident, rewrite))
+    out = []
+    for it in original:
+        k = _ident(it)
+        if gone.get(k, 0) > 0:
+            gone[k] -= 1
+            if not (allowed and k[1] in allowed):
+                out.append(it)
+    return out

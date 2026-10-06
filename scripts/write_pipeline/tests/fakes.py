@@ -99,6 +99,8 @@ class Runner:
         self.required: list[str] = []   # phrases whose deletion makes the gate see a missing claim
         self.unsupported: list[str] = []  # phrases the added-claim support check (gate with source notes) finds unsupported
         self.paraphrases: list[str] = []  # phrases that make the unresolved-claims reference look entailed by the text (a paraphrase survived)
+        self.removed_paraphrases: list[str] = []  # phrases that make the removed-claims check see a claim still asserted (paraphrased elsewhere)
+        self.removed_runs = 0
         self.unresolved_runs = 0
         self.unresolved_error = False
         self.unresolved_cats = ["CONTENT_CLAIM_FAILURE"]  # categories of the FAIL the unresolved-claims check sees when the text is clean
@@ -125,7 +127,10 @@ class Runner:
                 self.unresolved_runs += 1
                 if self.unresolved_error:
                     state = "ERROR"
-            if any(p in art for p in self.forbidden):
+            if "removed/" in arg("--draft"):  # removed-claims reference (link policy rule b): a clean text has every removed claim MISSING (FAIL)
+                state, cats = ("PASS", []) if any(p in art for p in self.removed_paraphrases) else ("FAIL", ["CONTENT_CLAIM_FAILURE"])
+                self.removed_runs += 1
+            elif any(p in art for p in self.forbidden):
                 state, cats = "FAIL", ["CONTENT_CLAIM_FAILURE"]
             if any(p in ref and p not in art for p in self.required):
                 state, cats = "FAIL", ["CONTENT_CLAIM_FAILURE"]

@@ -272,8 +272,6 @@ def _removals(report) -> tuple[list[dict], list[str]]:
     for i, r in enumerate(rem if isinstance(rem, list) else []):
         if not isinstance(r, dict) or not str(r.get("text", "")).strip() or not str(r.get("reason", "")).strip():
             bad.append(f"removals[{i}] needs {{\"text\": \"<exact sentence>\", \"reason\": \"...\"}}")
-        elif M.link_urls(str(r["text"])):
-            bad.append(f"removals[{i}] carries a link: a lost link is rejected, so a link-bearing sentence cannot be cut")
         else:
             out.append({"text": str(r["text"]), "reason": str(r["reason"])[:200]})
     return out, bad
@@ -298,8 +296,15 @@ def repair_try(pipe: Pipeline, cand: str, runner: G.Runner, report: dict | None 
     gate_ref, cuts = CT.apply_cuts(raw_gate, cand, all_rem)
     guard_ref = reference_frame(pipe, cand)
     undone = [r["text"][:80] for r in new_rem if CT._key(r["text"]) not in {x["sentence"] for x in cuts} and CT._key(r["text"]) not in {CT._key(p["text"]) for p in prior}]
-    g = G.edit_guard(guard_ref, cand, known_urls=c["known_urls"], blob_numbers=c["blob_numbers"], strict=True, removals=all_rem, author_material=c["author_material"])
+    g = G.edit_guard(guard_ref, cand, known_urls=c["known_urls"], blob_numbers=c["blob_numbers"], strict=True, removals=all_rem, author_material=c["author_material"], ev=c["ev"])
     reasons = [*rem_bad, *g["reasons"]]
+    if not reasons:  # policy rule (b): the claims of a removed link-bearing sentence must really be gone
+        more, blocked = G.confirm_link_removals(g, runner, pipe.pkg, cand, pipe.pkg / "write-pipeline" / "work" / "repair-removed")
+        if blocked:
+            pipe.set("repair", BLOCKED, reasons=more, extra={"category": "MODEL_UNAVAILABLE"})
+            pipe.save()
+            return {"ok": False, "code": "BLOCKED", "stage": "repair", "reasons": more}
+        reasons += more
     if undone:
         reasons.append(f"declared removals that do not match a reference sentence exactly, or are still in the text: {undone[:2]}")
     bad_added = AC.check_added(gate_ref, cand, ev=c["ev"], blob=c["blob"], known_urls=c["known_urls"], blob_numbers=c["blob_numbers"], author_material=c["author_material"])

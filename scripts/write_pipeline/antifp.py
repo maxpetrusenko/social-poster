@@ -136,7 +136,7 @@ def try_edit(pipe: Pipeline, cand: str, target: str, runner: G.Runner, ctx: dict
     elif n_changed > MAX_CHANGED_BLOCKS:
         rec["reasons"].append(f"edit is not local: {n_changed} blocks changed, the antifp limit is {MAX_CHANGED_BLOCKS} blocks per try (MAX_CHANGED_BLOCKS={MAX_CHANGED_BLOCKS}); send one local edit per try")
     if not rec["reasons"]:
-        g = G.edit_guard(ref, cand, known_urls=ctx["known_urls"], blob_numbers=ctx["blob_numbers"], strict=True, author_material=ctx["author_material"])
+        g = G.edit_guard(ref, cand, known_urls=ctx["known_urls"], blob_numbers=ctx["blob_numbers"], strict=True, author_material=ctx["author_material"], ev=ctx.get("ev"))
         if not g["ok"]:
             rec["reasons"] += ["guard: " + r for r in g["reasons"]]
             rec["guard_categories"] = g["categories"]
