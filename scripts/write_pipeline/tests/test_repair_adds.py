@@ -105,3 +105,17 @@ def test_removal_declarations_are_validated(d):
 def cut_text(cand: str) -> str:
     para = next(p for p in cand.split("\n\n") if "[test report]" in p)
     return para.split(". ")[0] + "."
+
+
+def test_an_added_sentence_naming_a_new_entity_is_rejected_before_any_model_call(d):
+    major_open(d)
+    before = d.runner.n("scripts.write_pipeline.gaterun")
+    rc, out = try_repair(d, candidate(d).replace(TAIL, TAIL + " Researchers at Stanford reached the same conclusion."))
+    assert rc == 1 and any("name ['stanford']" in r for r in out["reasons"]), out
+    assert d.runner.n("scripts.write_pipeline.gaterun") == before
+
+
+def test_a_restatement_of_a_ledger_claim_with_new_wording_reaches_the_support_check(d):
+    major_open(d)
+    rc, out = try_repair(d, candidate(d).replace(TAIL, TAIL + " The lab put the test on 40 nodes during 2025."))
+    assert rc == 0 and out["added_sentences"] == 1, out  # same facts, other words: no deterministic objection, and the judge sees the ledger passage

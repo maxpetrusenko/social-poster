@@ -45,8 +45,18 @@ def _matches(sentence: str, support: list[str]) -> list[str]:
     return [x for sc, x in scored[:MAX_MATCHES] if sc >= MATCH_MIN]
 
 
-def check_sentence(sentence: str, *, ev: dict, support: list[str], known_urls: set[str], blob_numbers, author_material: bool) -> list[str]:
+def vocabulary(support: list[str], ref: str = "") -> frozenset[str]:
+    """Every lowercase word of the evidence, the sources and the reference article: a name outside it is new."""
+    return frozenset(w for t in (*support, ref) for w in AD.words(t))
+
+
+def check_sentence(sentence: str, *, ev: dict, support: list[str], known_urls: set[str], blob_numbers, author_material: bool, vocab: frozenset[str] | None = None) -> list[str]:
     reasons: list[str] = []
+    if vocab is not None:  # named entities stay deterministic: a restatement may reword, it may not introduce a person, place or organisation
+        ents = {e.replace("\u2019", "'") for e in AD._signature(sentence)[2]}
+        new_ents = sorted(e for e in ents if len(e) >= 4 and e not in vocab and e.removesuffix("'s") not in vocab)
+        if new_ents:
+            reasons.append(f"name {new_ents[:3]} is not in the sources, the evidence or the article")
     bad_n = [k for k in M.significant_numbers(sentence) if k not in blob_numbers]
     if bad_n:
         reasons.append(f"number {sorted(bad_n)[:3]} is not in the sources or the evidence")
@@ -72,9 +82,10 @@ def check_sentence(sentence: str, *, ev: dict, support: list[str], known_urls: s
 def check_added(ref: str, cand: str, *, ev: dict, blob: str, known_urls: set[str], blob_numbers, author_material: bool) -> list[dict]:
     """[{section, sentence, reasons}] for each added sentence that fails a deterministic check. Empty = none failed here."""
     support = support_sentences(ev, blob)
+    vocab = vocabulary(support, ref)
     bad = []
     for sec, s in added_sentences(ref, cand):
-        r = check_sentence(s, ev=ev, support=support, known_urls=known_urls, blob_numbers=blob_numbers, author_material=author_material)
+        r = check_sentence(s, ev=ev, support=support, known_urls=known_urls, blob_numbers=blob_numbers, author_material=author_material, vocab=vocab)
         if r:
             bad.append({"section": sec, "sentence": s, "reasons": r})
     return bad

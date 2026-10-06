@@ -13,18 +13,26 @@ from .contracts import Category
 from .errors import EvaluationError
 from .gateway import GatewayError, extract_json, resolve_model
 from .judge import ask_chunked, normalize, parse_entries
-from .rewrite import Segment, is_meta_claim, request_extraction, segment_article
+from .rewrite import Segment, is_meta_claim, request_extraction, segment_article, unquote
 from .textutil import Block, parallel_map, split_sentences, strip_inline, words
 
+TLDR_SECTION = "TLDR"  # section label of the TLDR blockquote's sentences
 JACCARD = 0.8
 MIN_WORDS = 5  # `is_factual` cut for reference coverage; new sentences are all checked (short ones through `_stylistic_echo` first)
 MAX_NOTES_CHARS = 60000
 SUPPORT_VERDICTS = ("supported", "unsupported")
 
 SUPPORT_PROMPT = """/no_think
-You check whether each numbered claim is supported by the reference material below. For each claim give a verdict:
-- "supported": the material states it or clearly implies it, with the same names, numbers, and causal direction
-- "unsupported": the material does not state or imply it, or contradicts it
+You check whether each numbered claim is supported by the reference material below. The material has up to three parts: evidence passages
+(evidence-ledger rows with the passages their claims were drawn from, and source excerpts), the reference section of the article, and the
+full source notes. Check each claim against the evidence passages first, then the rest.
+- "supported": the material states it or clearly implies it, with the same names, numbers, causal direction and hedges. A restatement counts:
+  a reworded, shortened or reordered version of something the evidence passages or the reference section state is supported even when the
+  wording differs.
+- "unsupported": the claim adds a fact the material does not contain (a number, name, date, place, cause, quantity, certainty or negation),
+  or states it more strongly or differently than the material does, or the material contradicts it.
+Do not mark a claim unsupported only because its wording differs from the material, or because the reference section lacks it while an evidence
+passage states it.
 Return ONLY JSON: [{{"i": 1, "verdict": "supported", "reason": "<=15 words"}}, ...]
 Include exactly one entry per claim id, no others.
 
@@ -34,6 +42,57 @@ Claims:
 Reference material:
 {material}
 """
+
+EVIDENCE_PER_CLAIM = 4        # evidence chunks kept per claim
+EVIDENCE_MIN_SCORE = 0.2      # share of the claim's content tokens a chunk must contain to be kept
+EVIDENCE_CHUNK_CHARS = 1500   # a chunk is cut here, so one huge passage cannot crowd out the rest
+MAX_EVIDENCE_CHARS = 14000    # the evidence block per judge call
+LEDGER_BONUS = 0.05           # a ledger row (its claim plus its passages) outranks a bare source excerpt of equal overlap
+
+
+def notes_chunks(notes: str) -> list[tuple[str, bool]]:
+    """(chunk, is_ledger_row) pieces of the source notes: one chunk per evidence-ledger row (the claim with its passages), the rest split
+    into paragraphs, long paragraphs into windows of about EVIDENCE_CHUNK_CHARS at sentence boundaries."""
+    out: list[tuple[str, bool]] = []
+    for para in re.split(r"\n\s*\n|(?m:^(?=- \[))", notes or ""):
+        para = para.strip()
+        if not para or para.startswith("<!--"):
+            continue
+        ledger = para.startswith("- [")
+        if len(para) <= EVIDENCE_CHUNK_CHARS or ledger:
+            out.append((para[:EVIDENCE_CHUNK_CHARS * 2 if ledger else EVIDENCE_CHUNK_CHARS], ledger))
+            continue
+        cur = ""
+        for sent in split_sentences(para.replace("\n", " ")):
+            if cur and len(cur) + len(sent) > EVIDENCE_CHUNK_CHARS:
+                out.append((cur, False))
+                cur = ""
+            cur = f"{cur} {sent}".strip()
+        if cur:
+            out.append((cur, False))
+    return out
+
+
+def relevant_evidence(claims: list[str], notes: str) -> str:
+    """The notes chunks that bear on `claims`, best first: ledger rows with their passages and source excerpts, ranked by the share of each
+    claim's content tokens they contain. Bounded per claim and in total. Empty string when nothing bears on them."""
+    chunks = notes_chunks(notes)
+    toks = [_content_tokens(c) for c, _ in chunks]
+    picked: list[int] = []
+    for claim in claims:
+        ct = _content_tokens(claim)
+        if not ct:
+            continue
+        scored = sorted(((len(ct & toks[i]) / len(ct) + (LEDGER_BONUS if chunks[i][1] else 0.0), i) for i in range(len(chunks))), key=lambda t: (-t[0], t[1]))
+        picked += [i for sc, i in scored[:EVIDENCE_PER_CLAIM] if sc - (LEDGER_BONUS if chunks[i][1] else 0.0) >= EVIDENCE_MIN_SCORE and i not in picked]
+    out, used = [], 0
+    for i in picked:
+        text = chunks[i][0]
+        if used + len(text) > MAX_EVIDENCE_CHARS:
+            break
+        out.append(f"- {text}")
+        used += len(text)
+    return "\n".join(out)
 
 
 def _fail(msg: str, cat: Category) -> EvaluationError:
@@ -80,7 +139,7 @@ def _ref_sentences(md: str) -> list[tuple[set, tuple, set[str]]]:
             if b.kind == "heading":
                 continue
             for ln in (b.text.split("\n") if b.kind == "list" else [b.text]):
-                for s in split_sentences(strip_inline(ln)):
+                for s in split_sentences(strip_inline(unquote(ln))):
                     out.append((set(words(s)), _signature(s), _content_tokens(s)))
     return out
 
@@ -88,7 +147,7 @@ def _ref_sentences(md: str) -> list[tuple[set, tuple, set[str]]]:
 def _ref_texts(md: str) -> list[str]:
     """The sentences behind `_ref_sentences`, same order."""
     return [s for seg in segment_article(md) for b in seg.blocks if b.kind != "heading"
-            for ln in (b.text.split("\n") if b.kind == "list" else [b.text]) for s in split_sentences(strip_inline(ln))]
+            for ln in (b.text.split("\n") if b.kind == "list" else [b.text]) for s in split_sentences(strip_inline(unquote(ln)))]
 
 
 MERGE_MIN_TOKENS = 6   # a merged sentence is long; shorter ones recombining two reference sentences are treated as new
@@ -130,9 +189,9 @@ def new_sentences(draft_md: str, final_md: str) -> dict[str, list[str]]:
     ref_text = _ref_texts(draft_md)
     out: dict[str, list[str]] = {}
     sec_tokens: dict[str, set[str]] = {}
-    finals = [(seg.section, s) for seg in segment_article(final_md) if not seg.frozen  # frozen blocks are compared byte-exact elsewhere
+    finals = [(TLDR_SECTION if seg.tldr else seg.section, s) for seg in segment_article(final_md) if not seg.frozen  # frozen blocks are compared byte-exact elsewhere
               for b in seg.blocks for ln in (b.text.split("\n") if b.kind == "list" else [b.text])
-              for s in split_sentences(strip_inline(ln).replace("\n", " "))]
+              for s in split_sentences(strip_inline(unquote(ln)).replace("\n", " "))]
     final_norm = {normalize(s) for _, s in finals}
     retained = {i for i, text in enumerate(ref_text) if normalize(text) in final_norm}  # whole and verbatim: not a split or a merge
     for section, s in finals:
@@ -151,7 +210,9 @@ def new_sentences(draft_md: str, final_md: str) -> dict[str, list[str]]:
 
 
 def _reference_section(draft_md: str, section: str) -> str:
-    return "\n\n".join(seg.text for seg in segment_article(draft_md) if seg.section == section)
+    if section == TLDR_SECTION:  # the TLDR adds no claims: it is judged against the whole body it summarises
+        return "\n\n".join(seg.text for seg in segment_article(draft_md) if not seg.frozen and not seg.tldr)
+    return "\n\n".join(seg.text for seg in segment_article(draft_md) if seg.section == section and not seg.tldr)
 
 
 def parse_support(raw: str, n: int) -> dict[int, dict]:
@@ -219,7 +280,9 @@ def check_added(draft_md: str, final_md: str, notes: str | None, extractor_spec:
         if gaps:  # sentence-to-claim coverage: every new sentence maps to >= 1 claim
             raise _fail(f"added-claim extraction left {len(gaps)} new sentence(s) without a claim in section {section!r}: {gaps[0][:100]!r}", Category.MALFORMED_MODEL_OUTPUT)
         ref = _reference_section(draft_md, section)
-        parts = [p for p in (ref and f"Reference section:\n{ref}", notes_txt and f"Source notes:\n{notes_txt}") if p]
+        evidence = relevant_evidence(claims, notes_txt)
+        parts = [p for p in (evidence and f"Evidence passages most relevant to these claims (ledger rows with their passages, source excerpts):\n{evidence}",
+                             ref and f"Reference section:\n{ref}", notes_txt and f"Source notes:\n{notes_txt}") if p]
         material = "\n\n".join(parts) or "(none: there is no reference text and no source notes for this section)"
 
         def ask(sub):
