@@ -23,6 +23,8 @@ MAX_CHANGED_BLOCKS = 3
 EPS = 0.05
 HEAVY_TEMPLATE_HITS = 4
 HEAVY_COMPOSITE = 18.0
+TRANSITION_FLOOR = 12.0  # transition_excess = transitions per 1k words minus this
+ONE_SENTENCE_PARA_FLOOR = 0.45
 WEIGHTS = {"template_hits": 3.0, "em_dash_per_1k": 1.0, "repeated_ngram": 50.0, "one_sentence_para_excess": 10.0, "transition_excess": 0.05}
 DIR_REL = Path("write-pipeline") / "antifp"
 
@@ -34,8 +36,8 @@ def signals(text: str) -> dict:
         "template_hits": float(sum(t["count"] for t in tmpl.values())),
         "em_dash_per_1k": float(fp["em_dash_per_1k"]),
         "repeated_ngram": float(fp["repeated_ngram_rate"]["mean"]),
-        "one_sentence_para_excess": max(0.0, fp["one_sentence_para_rate"] - 0.45),
-        "transition_excess": max(0.0, fp["transition_total_per_1k"] - 12.0),
+        "one_sentence_para_excess": max(0.0, fp["one_sentence_para_rate"] - ONE_SENTENCE_PARA_FLOOR),
+        "transition_excess": max(0.0, fp["transition_total_per_1k"] - TRANSITION_FLOOR),
     }
     return {"values": v, "composite": round(sum(WEIGHTS[k] * x for k, x in v.items()), 4),
             "templates": {k: {"count": t["count"], "examples": t["examples"]} for k, t in tmpl.items()}, "n_words": fp["n_words"]}
@@ -178,11 +180,17 @@ def finish(pipe: Pipeline) -> dict:
         return {"ok": False, "reasons": [str(e)]}
     sig = signals(cur)
     heavy = sig["values"]["template_hits"] >= HEAVY_TEMPLATE_HITS or sig["composite"] >= HEAVY_COMPOSITE
+    debts = {st: pipe.rec(st)["fingerprint_debt"] for st in ("draft", "editorial", "voice") if (pipe.rec(st) or {}).get("fingerprint_debt")}
+    from . import fpcaps as FC  # late: fpcaps imports this module
+    owed = FC.violations(sig, FC.caps()) if debts else []
+    if owed:  # a stage accepted with fingerprint_debt must be clear of the caps by the end of this loop
+        heavy = True
     report = {"policy": "own style-fingerprint metrics only; no third-party AI detector was used or targeted",
               "reference_sha256": loop["reference_sha"], "final_sha256": sha_bytes(cur.encode()),
               "baseline": {"composite": loop["baseline"]["composite"], "values": loop["baseline"]["values"]},
               "after": {"composite": sig["composite"], "values": sig["values"]},
               "attempts": loop["attempts"], "kept": loop["kept"], "rejected": len(loop["attempts"]) - loop["kept"],
               "remaining_signals": ranking(sig), "fingerprint_heavy": heavy,
-              "thresholds": {"template_hits": HEAVY_TEMPLATE_HITS, "composite": HEAVY_COMPOSITE}}
+              "thresholds": {"template_hits": HEAVY_TEMPLATE_HITS, "composite": HEAVY_COMPOSITE},
+              "fingerprint_debt": {"stages": debts, "uncleared": owed}}
     return {"ok": True, "text": cur, "report": report, "heavy": heavy}

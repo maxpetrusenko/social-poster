@@ -14,7 +14,7 @@ from scripts.publish_route.orchestrate import ROUTE_REL, integrity_record_id
 from . import editguard as G
 from . import frame as FR
 from . import mdlib as M
-from .core import (BLOCKED, DONE, FAILED, FINAL_NAME, NOT_READY, QUARANTINED, READY_ROUTES, Pipeline, PipelineError, atomic_write, fail_exc, now,
+from .core import (NAMES, BLOCKED, DONE, FAILED, FINAL_NAME, NOT_READY, QUARANTINED, READY_ROUTES, Pipeline, PipelineError, atomic_write, fail_exc, now,
                    safe_path, sha_bytes)
 from . import fpv as FPV
 from . import report as RP
@@ -386,13 +386,21 @@ def rebase(pipe: Pipeline, reason: str, runner: G.Runner) -> dict:
 
 # ---- NOT_READY output ---------------------------------------------------------------------------------------------
 def best_text(pipe: Pipeline) -> str:
-    """The most advanced article text the run has: the final candidate when it exists, else the latest stage artifact. May be stale."""
+    """The most advanced article text the run has: the final candidate when it exists, else the antifp loop's best kept candidate, else the
+    latest stage artifact. May be stale."""
     try:
         t = final_text(pipe)
         if t.strip():
             return t
     except (PipelineError, OSError, ValueError):
         pass
+    if pipe.status("antifp") != DONE:  # the loop's current.md is the best accepted candidate so far (baseline or a gated, kept edit)
+        try:
+            from . import antifp as AF
+            loop = AF._loop(pipe)
+            return AF._current(pipe, loop) if loop else ""
+        except Exception:  # noqa: BLE001  fall through to the stage artifacts
+            pass
     for n in ("fpverify", "antifp", "voice", "editorial", "validate", "draft"):
         try:
             t = pipe.read_art(n)
@@ -403,20 +411,53 @@ def best_text(pipe: Pipeline) -> str:
     return ""
 
 
+def _safe(fn, default):
+    try:
+        return fn()
+    except Exception as e:  # noqa: BLE001  every NOT_READY output is independent: one failing writer never costs the others
+        return default(e) if callable(default) else default
+
+
+def _fallback_package(pipe: Pipeline, text: str, reasons: list[str], final_sha: str, err: Exception) -> str:
+    """Minimal PACKAGE.md with every required section, used only if the full builder raised."""
+    body = [f"# Review package: {pipe.state.get('slug')}", "", "NOT READY. This run ended without a verified article. Nothing was published, scheduled or changed on Medium.", ""]
+    for k in RP.SECTIONS:
+        lines = ["- not reached or not available (the full report could not be built: " + f"{type(err).__name__}: {str(err)[:120]})"]
+        if k == "ARTICLE":
+            lines = ["- file: FINAL.md (rendered copy: FINAL.html); both carry a NOT READY banner", f"- words: {len(text.split())}"]
+        elif k == "EXACT FINAL HASH":
+            lines = [f"- FINAL.md sha256: {final_sha}", *[f"- stage {n}: {(pipe.rec(n) or {}).get('status')}" for n in NAMES if pipe.rec(n)]]
+        elif k == "READY/NOT_READY":
+            lines = ["- NOT_READY. Do not publish. FINAL.md and FINAL.html carry a NOT READY banner.", *[f"- reason: {r}" for r in reasons]]
+        body += [f"## {RP.HEADINGS.get(k, k)}", "", *lines, ""]
+    return "\n".join(body) + "\n"
+
+
 def write_not_ready_package(pipe: Pipeline) -> dict | None:
-    """Written by the CLI itself when a run ends NOT_READY before any final PASS: PACKAGE.md (reasons and the open findings), FINAL.md and
-    FINAL.html, both carrying a NOT READY banner. A run that already passed the final gate keeps its bytes; nothing is rewritten here."""
-    if pipe.state.get("invalid") or pipe.state.get("final"):
+    """Written by the CLI itself whenever a run ends NOT_READY, at any stage: PACKAGE.md (reasons, the open findings, every required section with
+    'not reached' where a stage did not run), FINAL.md and FINAL.html carrying a NOT READY banner. The text is the best accepted candidate so far.
+    A run that already passed the final gate keeps its FINAL.md bytes; only a missing PACKAGE.md is written for it."""
+    if pipe.state.get("invalid"):
         return None
-    text = best_text(pipe)
     t = pipe.terminal() or {}
     reasons = [f"{t.get('stage', 'pipeline')}: {t.get('reason')}"] if t else ["the run is NOT_READY"]
     banner = f"Do not publish. This article did not pass the pipeline ({reasons[0][:200]})."
-    body = f"> NOT READY. {banner}\n\n{text}"
-    atomic_write(pipe.pkg / FINAL_NAME, body.encode())
-    title, _, _ = M.title_subtitle(text)
-    atomic_write(pipe.pkg / "FINAL.html", FR.to_html(text, title or pipe.state["slug"], banner=banner).encode())
-    pmd = RP.build_package_md(pipe, None, None, sha_bytes(body.encode()), verdict="NOT_READY", reasons=reasons, text=text)
-    atomic_write(pipe.pkg / "PACKAGE.md", pmd.encode())
+    kept_final = bool(pipe.state.get("final")) and (pipe.pkg / FINAL_NAME).exists()
+    if kept_final:
+        text = _safe(lambda: (pipe.pkg / FINAL_NAME).read_text(), "")
+        body = text
+    else:
+        text = _safe(lambda: best_text(pipe), "")
+        body = f"> NOT READY. {banner}\n\n{text}"
+    written = {}
+    if not kept_final:
+        written["final"] = _safe(lambda: (atomic_write(pipe.pkg / FINAL_NAME, body.encode()), FINAL_NAME)[1], None)
+        title = _safe(lambda: M.title_subtitle(text)[0], None)
+        written["html"] = _safe(lambda: (atomic_write(pipe.pkg / "FINAL.html", FR.to_html(text, title or pipe.state["slug"], banner=banner).encode()), "FINAL.html")[1], None)
+    if kept_final and (pipe.pkg / "PACKAGE.md").exists():
+        return written  # nothing bound to the passed bytes is ever rewritten
+    final_sha = sha_bytes(body.encode())
+    pmd = _safe(lambda: RP.build_package_md(pipe, None, None, final_sha, verdict="NOT_READY", reasons=reasons, text=text), lambda e: _fallback_package(pipe, text, reasons, final_sha, e))
+    written["package"] = _safe(lambda: (atomic_write(pipe.pkg / "PACKAGE.md", pmd.encode()), "PACKAGE.md")[1], None)
     pipe.log("not_ready_package", reasons=reasons)
-    return {"package": "PACKAGE.md", "final": FINAL_NAME, "html": "FINAL.html"}
+    return written

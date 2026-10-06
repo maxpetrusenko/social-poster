@@ -49,6 +49,38 @@ def author_opportunities(pipe: Pipeline, review: dict | None, text: str) -> list
     return out or ["- None recorded."]
 
 
+def _antifp_sections(pipe: Pipeline, S: dict, text: str, af: dict) -> None:
+    """Without fpverify, the fingerprint sections come from what exists: the antifp loop baseline and the text of this package, measured now."""
+    from . import antifp as AF
+    from . import fpcaps as FC
+    try:
+        loop = json.loads((pipe.pkg / AF.DIR_REL / "loop.json").read_text())
+    except (OSError, ValueError):
+        loop = {}
+    base = loop.get("baseline") or af.get("baseline")
+    if not text.strip():
+        return
+    sig = AF.signals(text)
+    viol = FC.violations(sig, FC.caps())
+    if base:
+        S["FINGERPRINT BASELINE"] = [f"- antifp baseline (the voice-stage text): composite {base.get('composite')}, " + ", ".join(f"{k} {round(v, 3)}" for k, v in (base.get("values") or {}).items())]
+    S["FINGERPRINT FINAL"] = [f"- the text of this package, measured now: composite {sig['composite']}, " + ", ".join(f"{k} {round(v, 3)}" for k, v in sig["values"].items()),
+                              f"- heavy at template hits >= {AF.HEAVY_TEMPLATE_HITS} or composite >= {AF.HEAVY_COMPOSITE}"]
+    atts = loop.get("attempts") or af.get("attempts") or []
+    S["FINGERPRINT CHANGES"] = [f"- antifp attempts {len(atts)}, kept {sum(1 for a in atts if a.get('kept'))}"] + [
+        f"  - attempt {a['n']} target {a['target']}: {'kept' if a['kept'] else 'rejected'}" + ("" if a["kept"] else f" ({'; '.join(a.get('reasons') or [])[:160]})") for a in atts]
+    rem = AF.ranking(sig)
+    S["REMAINING FINGERPRINT SIGNALS"] = [f"- {r['signal']} {r['value']} (contribution {r['contribution']})" for r in rem] or ["- none"]
+    for r in rem:
+        for w in r.get("where", []):
+            S["REMAINING FINGERPRINT SIGNALS"] += [f"  - template {w['template']}: {e!r}" for e in w["examples"]]
+    S["REMAINING FINGERPRINT SIGNALS"] += [f"- over the generation cap: {v['signal']} {v['value']} > {v['cap']}" for v in viol]
+    for st in ("draft", "editorial", "voice"):
+        d = (pipe.rec(st) or {}).get("fingerprint_debt")
+        if d:
+            S["REMAINING FINGERPRINT SIGNALS"].append(f"- fingerprint debt accepted at {st}: " + ", ".join(f"{v['signal']} {v['value']} > {v['cap']}" for v in d.get("violations", [])))
+
+
 def checks(pipe: Pipeline, text: str) -> dict:
     """Deterministic claim, link, source, structure and semantic checks of `text` against the recorded reference. Never raises."""
     from . import runs as RN
@@ -98,7 +130,7 @@ def checks(pipe: Pipeline, text: str) -> dict:
     cuts = pipe.state.get("removals_ledger") or []
     out["semantic"].append(f"- declared removals (signed ledger): {len(cuts)}" + "".join(f"\n  - [{e.get('stage')}] {str(e.get('sentence'))[:100]!r} ({e.get('reason')})" for e in cuts[:6]))
     integ = pipe.read_json("integrity")
-    out["semantic"].append(f"- final gate: {integ.get('gate', 'not run')}; integrity record {integ.get('integrity_record_id', 'n/a')}")
+    out["semantic"].append(f"- final gate: {integ.get('gate', 'not reached')}; integrity record {integ.get('integrity_record_id', 'n/a')}")
     return out
 
 
@@ -121,7 +153,7 @@ def build_package_md(pipe: Pipeline, review: dict | None, route: dict | None, fi
         urls = ", ".join(str(e.get("url") or e.get("source_id")) for e in c.get("evidence", []) or [])
         S["SOURCES"].append(f"- claim {c.get('id')} [{c.get('status')}]: {c.get('supported_wording') or c.get('claim')} ({urls})")
     if not imgs.get("images"):
-        S["IMAGES"] = [f"- none: {imgs.get('waived_reason') or 'images stage not run'}"]
+        S["IMAGES"] = [f"- none: {imgs.get('waived_reason') or 'images stage not reached'}"]
     for im in imgs.get("images", []):
         S["IMAGES"] += [f"- {im['id']} at {im['path']} ({im.get('width')}x{im.get('height')}, sha256 {im.get('sha256', '')[:12]})", f"  - purpose: {im['purpose']}",
                         f"  - placement: {im['placement']}", f"  - method: {im['method']}", f"  - provenance: {im['provenance']}", f"  - license: {im['license']}",
@@ -129,8 +161,8 @@ def build_package_md(pipe: Pipeline, review: dict | None, route: dict | None, fi
     sc = (review or {}).get("scorecard") or {}
     rounds = (pipe.state.get("critic") or {}).get("rounds")
     S["EDITORIAL SCORECARD"] = [f"- Medium review (bound to the final bytes): boost candidate {sc.get('boost_candidate')}, distribution risk {sc.get('general_distribution_risk')}, weakest dimension {sc.get('weakest_dimension')}"
-                                if review else "- Medium review: not run",
-                                f"- independent critic: verdict {crit.get('verdict', 'not run')} after {rounds} round(s) of {3} per run, {crit.get('majors', 'n/a')} major finding(s) open",
+                                if review else "- Medium review: not reached",
+                                f"- independent critic: verdict {crit.get('verdict', 'not reached')} after {rounds} round(s) of {3} per run, {crit.get('majors', 'n/a')} major finding(s) open",
                                 f"- {(review or {}).get('disclaimer', '')}"]
     for f in crit.get("findings", []) or []:
         if f.get("severity") == "major" and f.get("verified") and verdict != "READY":
@@ -138,7 +170,7 @@ def build_package_md(pipe: Pipeline, review: dict | None, route: dict | None, fi
     av = fpv.get("author_voice") or {}
     S["AUTHOR-VOICE RESULT"] = ([f"- distance to the author corpus centroid (composite, lower is closer): baseline {av.get('baseline_distance')}, final {av.get('final_distance')}"]
                                 + [f"  - {k}: baseline {v[0]}, final {v[1]}" for k, v in (av.get("components") or {}).items()]
-                                if av else ["- fingerprint verification not run"])
+                                if av else ["- not reached: fingerprint verification did not run"])
     S["AUTHOR-VOICE RESULT"].append(f"- voice-stage composite (antifp): before {af.get('baseline', {}).get('composite')}, after {af.get('after', {}).get('composite')}")
     if fpv:
         S["FINGERPRINT BASELINE"] = [f"- the first draft ({fpv['baseline']['sha256'][:12]}, {fpv['baseline']['n_words']} words); author corpus {fpv['author_corpus']['docs']} documents", *_signal_lines(fpv["baseline"]["signals"])]
@@ -155,9 +187,10 @@ def build_package_md(pipe: Pipeline, review: dict | None, route: dict | None, fi
                                               + [f"  - {r['signal']} {r['value']} (band {r['band']['p10']} to {r['band']['p90']}, severity {r['severity']})" for r in fpv["strongest_remaining"]])
     else:
         for k in ("FINGERPRINT BASELINE", "FINGERPRINT FINAL", "FINGERPRINT CHANGES", "REMAINING FINGERPRINT SIGNALS"):
-            S[k] = ["- fingerprint verification (stage fpverify) did not run"]
+            S[k] = ["- not reached: fingerprint verification (stage fpverify) did not run"]
+        _antifp_sections(pipe, S, text, af)
     S["CLAIM CHECK"], S["LINK CHECK"], S["SOURCE CHECK"], S["STRUCTURE CHECK"], S["SEMANTIC PRESERVATION"] = ck["claim"], ck["link"], ck["source"], ck["structure"], ck["semantic"]
-    S["MEDIUM REVIEW"] = ([f"- status {review.get('status')}; hard policy risks {review.get('hard_policy_risks')}; warnings {review.get('warnings')}"] if review else ["- not run"])
+    S["MEDIUM REVIEW"] = ([f"- status {review.get('status')}; hard policy risks {review.get('hard_policy_risks')}; warnings {review.get('warnings')}"] if review else ["- not reached"])
     if route:
         S["MEDIUM REVIEW"] += [f"- route recommendation: {route.get('route_code')} {route.get('route')} ({route.get('detail')}). Recommendation only, nothing was executed."]
         S["MEDIUM REVIEW"] += [f"  - {r}" for r in route.get("reasons", [])]

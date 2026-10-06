@@ -247,6 +247,14 @@ class Driver:
             args += ["--report", str(self.write(f"{stage}.report.json", report))]
         return self.cli(*args)
 
+    def submit_through(self, stage: str, content, report=None):
+        """Submit; a fingerprint rejection is resubmitted unchanged until the per-stage limit accepts it as fingerprint debt."""
+        for _ in range(4):
+            rc, out = self.submit(stage, content, report=report)
+            if not (isinstance(out, dict) and out.get("code") == "FINGERPRINT"):
+                break
+        return rc, out
+
     # ---- good artifacts ----------------------------------------------------------------------------------------
     def sources(self):
         (self.pkg / "sources").mkdir(parents=True, exist_ok=True)
@@ -288,10 +296,10 @@ class Driver:
             "angle": lambda: self.submit("angle", self.ANGLE),
             "outline": lambda: self.submit("outline", self.OUTLINE),
             "brief": lambda: self.cli("run", "brief"),
-            "draft": lambda: self.submit("draft", self.texts["draft"]),
+            "draft": lambda: self.submit_through("draft", self.texts["draft"]),
             "validate": lambda: self.submit("validate", self.texts["validate"], report=self.FACTUAL),
-            "editorial": lambda: self.submit("editorial", self.texts["editorial"], report=UNSLOP),
-            "voice": lambda: self.submit("voice", self.texts["voice"], report=UNSLOP),
+            "editorial": lambda: self.submit_through("editorial", self.texts["editorial"], report=UNSLOP),
+            "voice": lambda: self.submit_through("voice", self.texts["voice"], report=UNSLOP),
             "antifp": lambda: (self.cli("antifp", "baseline"), self.cli("antifp", "finish"))[-1],
             "review": lambda: self.cli("run", "review"),
             "title": lambda: self.submit("title", self.TITLES),

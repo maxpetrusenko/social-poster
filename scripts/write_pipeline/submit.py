@@ -7,6 +7,7 @@ from pathlib import Path
 from . import brief as BR
 from . import cuts as CT
 from . import editguard as G
+from . import fpcaps as FC
 from . import frame as FR
 from . import mdlib as M
 from . import relevance as RV
@@ -243,4 +244,35 @@ def _text_stage(pipe: Pipeline, stage: str, text: str, rep: dict | None, rep_raw
         if gate["state"] == "FAIL" and set(gate["categories"]) & G.CLAIM_CATS:
             return _fail(pipe, stage, [f"{stage} pass changed meaning: " + "; ".join(gate["reasons"])[:300]])
         CT.record_cuts(pipe, stage, cuts)
-    return _finish(pipe, stage, text.encode(), "md", report=rep_raw)
+    extra: dict = {}
+    if stage in BRIEF_STAGES:
+        rej = _fingerprint_gate(pipe, stage, text)
+        if rej and rej.get("code"):
+            return rej
+        extra = rej or {}
+    return _finish(pipe, stage, text.encode(), "md", report=rep_raw, extra=extra)
+
+
+def _fingerprint_gate(pipe: Pipeline, stage: str, text: str) -> dict | None:
+    """Generation-time enforcement of the brief's fingerprint caps (after the claims gate, which stays first). Up to FC.MAX_REJECTIONS rejections per
+    stage with the exact offending passages; the next failure is accepted with a recorded fingerprint_debt that antifp must clear, so a run never deadlocks.
+    Returns a rejection dict, {"fingerprint_debt": ...} to attach to the stage, or None."""
+    prev = pipe.rec(stage)
+    if prev and pipe.status(stage) == DONE and (pipe.read_art(stage) or "") == text:
+        return {"fingerprint_debt": prev["fingerprint_debt"]} if prev.get("fingerprint_debt") else None  # an idempotent resubmit is not measured again
+    cap = (pipe.read_json("brief").get("targets") or {}).get("fingerprint_caps") or FC.caps()
+    res = FC.check(text, cap)
+    rej = pipe.state.setdefault("fingerprint_rejections", {})
+    if res["ok"]:
+        rej.pop(stage, None)
+        return None
+    n = rej.get(stage, 0)
+    if n >= FC.MAX_REJECTIONS:
+        return {"fingerprint_debt": {"stage": stage, "violations": res["violations"], "composite": res["composite"], "rejections_used": n,
+                                     "note": "accepted after the per-stage rejection limit; the antifp stage must clear it"}}
+    rej[stage] = n + 1
+    reasons = FC.reasons(res, stage, n + 1)
+    pipe.set(stage, FAILED, reasons=reasons)
+    pipe.save()
+    return {"ok": False, "code": "FINGERPRINT", "stage": stage, "reasons": reasons, "violations": res["violations"], "offenders": res["offenders"],
+            "rejections": f"{n + 1} of {FC.MAX_REJECTIONS}", "brief": pipe.read_json("brief").get("text", "")}

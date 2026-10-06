@@ -345,9 +345,12 @@ def main(argv: list[str] | None = None, runner=None, critic=None) -> int:
 
 def _not_ready_outputs(pipe: Pipeline, a, rc: int) -> None:
     """A run that ends NOT_READY gets its PACKAGE.md, FINAL.md and FINAL.html from the CLI itself, with the open findings and a banner."""
-    if rc == 0 or a.cmd in ("init", "status", "next", "begin"):
+    if a.cmd in ("init", "next", "begin"):
         return
     try:
+        missing = any(not (pipe.pkg / n).exists() for n in ("FINAL.md", "FINAL.html", "PACKAGE.md"))
+        if rc == 0 and not (a.cmd == "status" and missing):  # a NOT_READY run reached through any command still owns its three files
+            return
         if pipe.overall() == "NOT_READY":
             FN.write_not_ready_package(pipe)
     except Exception as e:  # noqa: BLE001  best effort: the verdict is already persisted in state
