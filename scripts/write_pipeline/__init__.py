@@ -5,4 +5,4 @@ never writes prose. It validates each artifact, binds it by hash to its inputs, 
 fingerprint metrics, and calls the existing evaluator modules (fingerprint_eval, medium_review, publish_route).
 Nothing here publishes, schedules or mutates Medium.
 """
-PIPELINE_VERSION = "1"
+PIPELINE_VERSION = "2"

@@ -35,12 +35,15 @@ def assemble(body_text: str, title: str, subtitle: str, images: list[dict]) -> s
     return "\n\n".join(out).rstrip("\n") + "\n"
 
 
-def to_html(text: str, title: str) -> str:
+def to_html(text: str, title: str, banner: str | None = None) -> str:
     """Markdown to HTML with fenced blocks rendered as <pre><code>, the subtitle as <h3> right under the title. No tables."""
     body = md_parser().render(text)
+    if banner:
+        body = f'<div class="notready"><strong>NOT READY.</strong> {html.escape(banner)}</div>\n' + body
     return ("<!doctype html>\n<html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
             f"<meta name=\"robots\" content=\"noindex\"><title>{html.escape(title)}</title>\n"
             "<style>body{max-width:42rem;margin:2rem auto;padding:0 1rem;background:#faf7f2;color:#1f1b16;font:18px/1.6 Georgia,serif}"
             "pre{background:#f0eadf;padding:1rem;overflow-wrap:anywhere;white-space:pre-wrap;font:16px/1.5 ui-monospace,Menlo,monospace}"
             "code{background:#f0eadf;font-family:ui-monospace,Menlo,monospace}pre code{background:none}img{max-width:100%;height:auto}"
+            ".notready{border:2px solid #b3261e;background:#fdecea;color:#7a1a14;padding:.8rem 1rem;margin:0 0 1.5rem;font:600 16px/1.4 ui-sans-serif,sans-serif}"
             "@media(max-width:480px){pre{font-size:15px}}</style></head>\n<body>\n" + body + "</body></html>\n")

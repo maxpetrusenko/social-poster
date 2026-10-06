@@ -44,7 +44,8 @@ def test_fingerprint_heavy_generic_draft_ends_not_ready(d):
     assert rc == 3 and out["code"] == "NOT_READY" and out["report"]["fingerprint_heavy"] is True
     assert overall(d) == "NOT_READY" and stages(d)["antifp"] == "NOT_READY"
     assert d.cli("run", "review")[0] == 2 and d.cli("finalize")[0] == 2
-    assert not (d.pkg / "FINAL.md").exists() and d.runner.n("scripts.fingerprint_eval.release") == 0
+    assert d.runner.n("scripts.fingerprint_eval.release") == 0  # the evaluator was never reached
+    assert "NOT READY" in (d.pkg / "FINAL.md").read_text() and "NOT READY" in (d.pkg / "FINAL.html").read_text() and "NOT_READY" in (d.pkg / "PACKAGE.md").read_text()
     no_publish(d)
 
 
@@ -168,7 +169,7 @@ def test_kept_edit_flows_to_the_final_bytes_and_the_reference_stays_pre_antifp(d
     ref = (d.pkg / "write-pipeline/frame/reference-frame.md").read_text()
     assert FIX in final and "This isn't a benchmark" in ref and "This isn't a benchmark" not in final
     assert d.runner.authorize_seen[-1] == sha(final)
-    rep = json.loads((d.pkg / "write-pipeline/artifacts/09-antifp.report.json").read_text())
+    rep = json.loads((d.pkg / "write-pipeline/artifacts/10-antifp.report.json").read_text())
     assert rep["kept"] == 1 and "no third-party AI detector" in rep["policy"]
 
 
@@ -259,6 +260,7 @@ def test_personal_experience_is_allowed_only_with_author_supplied_material(d):
     d.submit("research", d.EVIDENCE)
     d.submit("angle", d.ANGLE)
     d.submit("outline", d.OUTLINE)
+    d.cli("run", "brief")
     assert d.submit("draft", DRAFT + "\nWhen I tested this on my own fleet, the numbers matched.\n")[0] == 0
 
 

@@ -1,82 +1,186 @@
-"""PACKAGE.md: the review report Max reads. Pure formatting of artifacts already in the package; invents nothing."""
+"""PACKAGE.md: the review report Max reads, for READY and for NOT_READY runs. Formatting of artifacts already in the package plus
+deterministic checks recomputed from the files; it invents nothing. Section order is fixed (SECTIONS)."""
 from __future__ import annotations
 
 import json
+from collections import Counter
+
+from scripts.fingerprint_eval.guards import structure_preservation
 
 from . import mdlib as M
-from .core import NAMES, Pipeline
+from . import relevance as RV
+from .core import NAMES, Pipeline, PipelineError
+from .validators import asserted_unresolved
+
+SECTIONS = ["TITLE", "SUBTITLE", "ARTICLE", "SOURCES", "IMAGES", "EDITORIAL SCORECARD", "AUTHOR-VOICE RESULT", "FINGERPRINT BASELINE", "FINGERPRINT FINAL",
+            "FINGERPRINT CHANGES", "REMAINING FINGERPRINT SIGNALS", "CLAIM CHECK", "LINK CHECK", "SOURCE CHECK", "STRUCTURE CHECK", "SEMANTIC PRESERVATION",
+            "MEDIUM REVIEW", "EXACT FINAL HASH", "READY/NOT_READY"]
+HEADINGS = {"IMAGES": "IMAGES (provenance, captions, ALT)", "AUTHOR-VOICE RESULT": "AUTHOR-VOICE RESULT (metric)"}
 
 
-def _kv(d: dict, keys: tuple[str, ...]) -> list[str]:
-    return [f"- {k}: {d.get(k)}" for k in keys if d.get(k) not in (None, "")]
+def _signal_lines(sig: list[dict]) -> list[str]:
+    return [f"- {r['signal']}: {r['value']}" + (f" (outside the author band {r['band']['p10']} to {r['band']['p90']}, severity {r['severity']})" if r["significant"] else " (within the author band)")
+            for r in sig]
 
 
-def author_opportunities(pipe: Pipeline, review: dict | None) -> list[str]:
-    out = []
-    for o in pipe.read_json("angle").get("author_opportunities", []) or []:
-        out.append(f"- {o.get('prompt')} (why: {o.get('why')})")
+def key_terms(pipe: Pipeline, text: str) -> set[str]:
+    title, sub, _ = M.title_subtitle(text)
+    return RV.key_terms(title or pipe.read_json("title").get("pick"), sub or pipe.read_json("title").get("subtitle"), text, pipe.read_json("research").get("claims") or [])
+
+
+def author_opportunities(pipe: Pipeline, review: dict | None, text: str) -> list[str]:
+    """Author-input suggestions, each kept only if topically relevant to the article's key entities."""
+    key = key_terms(pipe, text)
+    raw: list[str] = [f"{o.get('prompt')} (why: {o.get('why')})" for o in pipe.read_json("angle").get("author_opportunities", []) or [] if isinstance(o, dict)]
     air = (review or {}).get("author_input_required") or {}
-    if air.get("required"):
-        out.append(f"- Medium review asks for author input: {air.get('reason')}")
-        for m in air.get("candidate_trusted_material") or []:
-            out.append(f"  - material already supplied that could be used: {m}")
+    if air.get("required") and air.get("reason"):
+        raw.append(f"Medium review asks for author input: {air.get('reason')}")
+    raw += [f"material already supplied that could be used: {m}" for m in (air.get("candidate_trusted_material") or []) if air.get("required")]
+    kept, dropped = RV.filter_suggestions(raw, key)
+    out = [f"- {x}" for x in kept]
     for c in pipe.read_json("research").get("claims", []) or []:
         if c.get("status") == "unresolved":
             out.append(f"- Unresolved claim left out of the article, needs evidence or the author's own account: {c.get('claim')}")
     for f in pipe.read_json("critic").get("findings", []) or []:
         if f.get("severity") == "minor" and f.get("verified"):
             out.append(f"- Critic minor note, not auto-applied: {f.get('reason')} (passage: {str(f.get('passage'))[:100]!r})")
-    return out or ["- None recorded. Real gaps would appear here; none were found, and nothing was invented to fill them."]
+    if dropped:
+        out.append(f"- {dropped} generic or off-topic author-input suggestion(s) omitted (too little overlap with the article's key terms)")
+    return out or ["- None recorded."]
 
 
-def build_package_md(pipe: Pipeline, review: dict, route: dict, final_sha: str) -> str:
-    text = (pipe.pkg / "FINAL.md").read_text()
-    t = pipe.read_json("title")
-    imgs = pipe.read_json("images")
-    src = pipe.read_json("source")
-    ev = pipe.read_json("research")
-    af = pipe.read_json("antifp", "report")
+def checks(pipe: Pipeline, text: str) -> dict:
+    """Deterministic claim, link, source, structure and semantic checks of `text` against the recorded reference. Never raises."""
+    from . import runs as RN
+    from .submit import deps_ctx
+    out: dict = {"claim": [], "link": [], "source": [], "structure": [], "semantic": []}
+    try:
+        c = deps_ctx(pipe)
+    except (PipelineError, OSError, ValueError) as e:
+        out["source"].append(f"- FAIL: source files could not be re-read: {str(e)[:160]}")
+        return out
+    try:
+        ref = RN.reference_frame(pipe, text)
+    except (PipelineError, OSError, ValueError):
+        ref = ""
+    claims = [x for x in (c["ev"].get("claims") or []) if isinstance(x, dict)]
+    by = Counter(x.get("status") for x in claims)
+    out["claim"].append(f"- research claims: {dict(by)}; unresolved claims asserted in the final text: {len(asserted_unresolved(text, c['ev']))}")
+    if ref:
+        nr, nf = M.significant_numbers(ref), M.significant_numbers(text)
+        lost, new = sorted((nr - nf)), sorted(k for k in (nf - nr) if k not in c["blob_numbers"])
+        out["claim"].append(f"- numbers in the reference {sum(nr.values())}, in the final {sum(nf.values())}; lost or changed {lost[:5] or 'none'}; invented (not in sources or evidence) {new[:5] or 'none'}")
+        lf = sorted((Counter(M.link_urls(ref)) - Counter(M.link_urls(text))))
+        nl = sorted(u for u in set(M.link_urls(text)) if u not in set(M.link_urls(ref)) and u not in c["known_urls"])
+        out["link"].append(f"- links in the reference {len(M.link_urls(ref))}, in the final {len(M.link_urls(text))}; lost {lf[:3] or 'none'}; not backed by a source {nl[:3] or 'none'}")
+        st = structure_preservation(ref, text)
+        out["structure"] += [f"- {k}: {'preserved' if st[k]['preserved'] else 'CHANGED'} ({st[k]['original']} in the reference, {st[k]['rewrite']} in the final)" for k in ("headings", "codes", "images")]
+        if not st["links"]["preserved"]:
+            out["link"].append(f"- FAIL: links missing {st['links']['missing'][:3]}")
+    else:
+        out["claim"].append("- reference frame not available yet (images stage not DONE): number and link comparison not run")
+        out["link"].append(f"- links in the text {len(M.link_urls(text))}; reference comparison not run")
+    out["link"].append("- every URL: " + (", ".join(sorted(set(M.link_urls(text)))) or "none"))
+    lint = M.lint_v6(text)
+    out["structure"].append(f"- V6 structural lint: {'clean' if not lint else lint}")
+    caps = [s for s in c["src"].get("sources", []) if s.get("status") == "captured"]
+    out["source"].append(f"- captured sources {len(caps)} (every file re-hashed from disk now), blocked sources {sum(1 for s in c['src'].get('sources', []) if s.get('status') == 'blocked')}")
+    out["source"].append(f"- known source and evidence URLs {len(c['known_urls'])}; author-supplied material {'yes' if c['author_material'] else 'no'} (first-person experience is allowed only with it)")
+    for n in ("integrity", "antifp", "editorial", "voice"):
+        r = pipe.rec(n)
+        if r:
+            out["semantic"].append(f"- {n}: {r.get('status')}")
+    for a in (pipe.read_json("antifp", "report").get("attempts") or []):
+        if a.get("claims_gate"):
+            out["semantic"].append(f"- antifp attempt {a['n']} ({a['target']}): claims gate {a['claims_gate']}")
+    for a in (pipe.read_json("fpverify", "report").get("changes", {}).get("attempts") or []):
+        out["semantic"].append(f"- fingerprint repair round {a['round']} ({a['signal']}): {'kept' if a['kept'] else 'rejected'}, claims gate {a.get('claims_gate', 'not reached')}")
+    cuts = pipe.state.get("removals_ledger") or []
+    out["semantic"].append(f"- declared removals (signed ledger): {len(cuts)}" + "".join(f"\n  - [{e.get('stage')}] {str(e.get('sentence'))[:100]!r} ({e.get('reason')})" for e in cuts[:6]))
     integ = pipe.read_json("integrity")
-    crit = pipe.read_json("critic")
+    out["semantic"].append(f"- final gate: {integ.get('gate', 'not run')}; integrity record {integ.get('integrity_record_id', 'n/a')}")
+    return out
+
+
+def build_package_md(pipe: Pipeline, review: dict | None, route: dict | None, final_sha: str | None, *, verdict: str = "READY", reasons: list[str] | None = None,
+                     text: str | None = None) -> str:
+    text = text if text is not None else (pipe.pkg / "FINAL.md").read_text()
+    t, imgs, src, ev = pipe.read_json("title"), pipe.read_json("images"), pipe.read_json("source"), pipe.read_json("research")
+    af, crit, fpv = pipe.read_json("antifp", "report"), pipe.read_json("critic"), pipe.read_json("fpverify", "report")
     title, sub, _ = M.title_subtitle(text)
-    L: list[str] = [f"# Review package: {title}", "", "Stopped for review. Nothing was published, scheduled or changed on Medium.", ""]
-    L += ["## Final article", "", "- file: FINAL.md (rendered copy: FINAL.html)", f"- content sha256: {final_sha}", f"- words: {len(M.strip_code(text).split())}",
-          "- state: ready for review (stage 18 STOP)", ""]
-    L += ["## Title", "", f"- {title}", f"- rationale: {t.get('rationale')}", f"- candidates considered: {len(t.get('candidates', []))}"]
-    L += [f"  - {c}" for c in t.get("candidates", [])] + [""]
-    L += ["## Subtitle", "", f"- {sub} ({len(sub or '')} characters, limit 140)", ""]
-    L += ["## Images", ""]
-    if not imgs.get("images"):
-        L += [f"- none: {imgs.get('waived_reason')}"]
-    for im in imgs.get("images", []):
-        L += [f"- {im['id']} at {im['path']} ({im.get('width')}x{im.get('height')}, sha256 {im.get('sha256', '')[:12]})"]
-        L += [f"  - purpose: {im['purpose']}", f"  - placement: {im['placement']}", f"  - method: {im['method']}", f"  - provenance: {im['provenance']}",
-              f"  - license: {im['license']}", f"  - caption: {im['caption']}", f"  - alt: {im['alt']}"]
-    L += ["", "## Sources", ""]
-    for s in src.get("sources", []):
-        L += [f"- {s.get('id')} ({s.get('kind')}, {s.get('status')}): {s.get('url') or s.get('file') or s.get('blocker')}"]
+    title, sub = title or t.get("pick") or pipe.state["slug"], sub or t.get("subtitle")
+    ck = checks(pipe, text)
+    S: dict[str, list[str]] = {k: [] for k in SECTIONS}
+    S["TITLE"] = [f"- {title}", f"- rationale: {t.get('rationale', 'n/a')}", f"- candidates considered: {len(t.get('candidates', []))}"] + [f"  - {c}" for c in t.get("candidates", [])]
+    S["SUBTITLE"] = [f"- {sub} ({len(sub or '')} characters, limit 140)"]
+    heads = [b.text.lstrip("# ").strip() for b in M.blocks(text) if b.kind == "heading" and not b.text.startswith("# ")]
+    S["ARTICLE"] = ["- file: FINAL.md (rendered copy: FINAL.html)" + ("" if verdict == "READY" else "; both carry a NOT READY banner"), f"- words: {len(M.strip_code(text).split())}",
+                    f"- paragraphs: {sum(1 for b in M.blocks(text) if b.kind == 'paragraph')}; sections: {heads or 'none'}"]
+    S["SOURCES"] = [f"- {s.get('id')} ({s.get('kind')}, {s.get('status')}): {s.get('url') or s.get('file') or s.get('blocker')}" for s in src.get("sources", [])]
     for c in ev.get("claims", []):
         urls = ", ".join(str(e.get("url") or e.get("source_id")) for e in c.get("evidence", []) or [])
-        L += [f"- claim {c.get('id')} [{c.get('status')}]: {c.get('supported_wording') or c.get('claim')} ({urls})"]
-    L += ["", "## Editorial scorecard", ""]
+        S["SOURCES"].append(f"- claim {c.get('id')} [{c.get('status')}]: {c.get('supported_wording') or c.get('claim')} ({urls})")
+    if not imgs.get("images"):
+        S["IMAGES"] = [f"- none: {imgs.get('waived_reason') or 'images stage not run'}"]
+    for im in imgs.get("images", []):
+        S["IMAGES"] += [f"- {im['id']} at {im['path']} ({im.get('width')}x{im.get('height')}, sha256 {im.get('sha256', '')[:12]})", f"  - purpose: {im['purpose']}",
+                        f"  - placement: {im['placement']}", f"  - method: {im['method']}", f"  - provenance: {im['provenance']}", f"  - license: {im['license']}",
+                        f"  - caption: {im['caption']}", f"  - ALT: {im['alt']}"]
     sc = (review or {}).get("scorecard") or {}
-    L += [f"- Medium review (bound to the final bytes): boost candidate {sc.get('boost_candidate')}, distribution risk {sc.get('general_distribution_risk')}, weakest dimension {sc.get('weakest_dimension')}",
-          f"- independent critic: verdict {crit.get('verdict')} after {pipe.state.get('critic', {}).get('rounds')} round(s), {crit.get('majors')} major finding(s) open",
-          f"- {(review or {}).get('disclaimer', '')}", ""]
-    L += ["## Integrity", ""] + _kv(integ, ("final_sha256", "reference_sha256", "gate", "verified_content_sha256", "integrity_record_id"))
-    L += ["- reference = the text after the author-voice pass, before any anti-fingerprint edit, with the same title, subtitle and images", ""]
-    L += ["## Anti-fingerprint report", ""]
-    L += [f"- policy: {af.get('policy')}", f"- composite before {af.get('baseline', {}).get('composite')}, after {af.get('after', {}).get('composite')}",
-          f"- edits kept {af.get('kept')}, rejected {af.get('rejected')}"]
-    for a in af.get("attempts", []):
-        L += [f"  - attempt {a['n']} target {a['target']}: {'kept' if a['kept'] else 'rejected'}" + ("" if a["kept"] else f" ({'; '.join(a['reasons'])[:140]})")]
-    L += [f"- remaining strongest signals: {[r['signal'] for r in af.get('remaining_signals', [])]}", ""]
-    L += ["## Medium route", "", f"- recommendation: {route.get('route_code')} {route.get('route')} ({route.get('detail')}). Recommendation only, nothing was executed."]
-    L += [f"  - {r}" for r in route.get("reasons", [])]
-    for c in route.get("publication_candidates", []) or []:
-        L += [f"  - candidate publication: {c.get('name')} {c.get('submission_url', '')}"]
-    L += ["", "## Author opportunities", ""] + author_opportunities(pipe, review) + [""]
-    L += ["## Provenance", "", f"- framework: {(pipe.state.get('framework') or {}).get('path')} sha256 {(pipe.state.get('framework') or {}).get('sha256')}"]
-    L += [f"- {n}: {(pipe.rec(n) or {}).get('bundle_sha256')}" for n in NAMES if pipe.rec(n)]
-    L += [f"- overrides: {json.dumps(pipe.state.get('overrides', []))}"]
-    return "\n".join(L) + "\n"
+    rounds = (pipe.state.get("critic") or {}).get("rounds")
+    S["EDITORIAL SCORECARD"] = [f"- Medium review (bound to the final bytes): boost candidate {sc.get('boost_candidate')}, distribution risk {sc.get('general_distribution_risk')}, weakest dimension {sc.get('weakest_dimension')}"
+                                if review else "- Medium review: not run",
+                                f"- independent critic: verdict {crit.get('verdict', 'not run')} after {rounds} round(s) of {3} per run, {crit.get('majors', 'n/a')} major finding(s) open",
+                                f"- {(review or {}).get('disclaimer', '')}"]
+    for f in crit.get("findings", []) or []:
+        if f.get("severity") == "major" and f.get("verified") and verdict != "READY":
+            S["EDITORIAL SCORECARD"].append(f"  - OPEN major {f.get('id')}: {f.get('reason')} (passage: {str(f.get('passage'))[:140]!r}; fix: {f.get('fix')})")
+    av = fpv.get("author_voice") or {}
+    S["AUTHOR-VOICE RESULT"] = ([f"- distance to the author corpus centroid (composite, lower is closer): baseline {av.get('baseline_distance')}, final {av.get('final_distance')}"]
+                                + [f"  - {k}: baseline {v[0]}, final {v[1]}" for k, v in (av.get("components") or {}).items()]
+                                if av else ["- fingerprint verification not run"])
+    S["AUTHOR-VOICE RESULT"].append(f"- voice-stage composite (antifp): before {af.get('baseline', {}).get('composite')}, after {af.get('after', {}).get('composite')}")
+    if fpv:
+        S["FINGERPRINT BASELINE"] = [f"- the first draft ({fpv['baseline']['sha256'][:12]}, {fpv['baseline']['n_words']} words); author corpus {fpv['author_corpus']['docs']} documents", *_signal_lines(fpv["baseline"]["signals"])]
+        S["FINGERPRINT FINAL"] = [f"- the final candidate ({fpv['final']['sha256'][:12]}, {fpv['final']['n_words']} words)", *_signal_lines(fpv["final"]["signals"]), f"- total severity {fpv['baseline']['total_severity']} -> {fpv['final']['total_severity']}"]
+        ch = fpv["changes"]
+        S["FINGERPRINT CHANGES"] = [f"- {d['signal']}: {d['baseline']} -> {d['final']} (severity {d['baseline_severity']} -> {d['final_severity']})" for d in ch["signals"]]
+        S["FINGERPRINT CHANGES"].append(f"- targeted repair rounds used {ch['rounds_used']} of {ch['rounds_max']}, kept {ch['kept']}")
+        for a in ch["attempts"]:
+            S["FINGERPRINT CHANGES"].append(f"  - round {a['round']} target {a['signal']}: {'kept' if a['kept'] else 'rejected'}" + ("" if a["kept"] else f" ({'; '.join(a['reasons'])[:160]})"))
+        for a in af.get("attempts", []):
+            S["FINGERPRINT CHANGES"].append(f"  - antifp attempt {a['n']} target {a['target']}: {'kept' if a['kept'] else 'rejected'}")
+        S["REMAINING FINGERPRINT SIGNALS"] = ([f"- strongest in the baseline: {[r['signal'] for r in fpv['strongest_baseline']] or 'none'}",
+                                               f"- strongest remaining in the final: {[r['signal'] for r in fpv['strongest_remaining']] or 'none'}"]
+                                              + [f"  - {r['signal']} {r['value']} (band {r['band']['p10']} to {r['band']['p90']}, severity {r['severity']})" for r in fpv["strongest_remaining"]])
+    else:
+        for k in ("FINGERPRINT BASELINE", "FINGERPRINT FINAL", "FINGERPRINT CHANGES", "REMAINING FINGERPRINT SIGNALS"):
+            S[k] = ["- fingerprint verification (stage fpverify) did not run"]
+    S["CLAIM CHECK"], S["LINK CHECK"], S["SOURCE CHECK"], S["STRUCTURE CHECK"], S["SEMANTIC PRESERVATION"] = ck["claim"], ck["link"], ck["source"], ck["structure"], ck["semantic"]
+    S["MEDIUM REVIEW"] = ([f"- status {review.get('status')}; hard policy risks {review.get('hard_policy_risks')}; warnings {review.get('warnings')}"] if review else ["- not run"])
+    if route:
+        S["MEDIUM REVIEW"] += [f"- route recommendation: {route.get('route_code')} {route.get('route')} ({route.get('detail')}). Recommendation only, nothing was executed."]
+        S["MEDIUM REVIEW"] += [f"  - {r}" for r in route.get("reasons", [])]
+        S["MEDIUM REVIEW"] += [f"  - candidate publication: {c.get('name')} {c.get('submission_url', '')}" for c in route.get("publication_candidates", []) or []]
+    S["MEDIUM REVIEW"] += ["- author input suggestions (topically relevant only):", *["  " + x for x in author_opportunities(pipe, review, text)]]
+    fw = pipe.state.get("framework") or {}
+    S["EXACT FINAL HASH"] = [f"- FINAL.md sha256: {final_sha or sha_text(text)}", f"- framework: {fw.get('path')} sha256 {fw.get('sha256')}", *[f"- stage {n}: {(pipe.rec(n) or {}).get('bundle_sha256')}" for n in NAMES if pipe.rec(n)],
+                             f"- overrides: {json.dumps(pipe.state.get('overrides', []))}"]
+    if verdict == "READY":
+        S["READY/NOT_READY"] = ["- READY: stopped for review. Nothing was published, scheduled or changed on Medium."]
+    else:
+        S["READY/NOT_READY"] = ["- NOT_READY. Do not publish. FINAL.md and FINAL.html carry a NOT READY banner.", *[f"- reason: {r}" for r in (reasons or [])]]
+        for f in crit.get("findings", []) or []:
+            if f.get("severity") == "major" and f.get("verified"):
+                S["READY/NOT_READY"].append(f"- open critic finding {f.get('id')}: {f.get('reason')} (passage: {str(f.get('passage'))[:140]!r})")
+    head = [f"# Review package: {title}", "", ("Stopped for review. Nothing was published, scheduled or changed on Medium." if verdict == "READY"
+                                              else "NOT READY. This run ended without a verified article. Nothing was published, scheduled or changed on Medium."), ""]
+    body = []
+    for k in SECTIONS:
+        body += [f"## {HEADINGS.get(k, k)}", "", *(S[k] or ["- none"]), ""]
+    return "\n".join(head + body) + "\n"
+
+
+def sha_text(t: str) -> str:
+    import hashlib
+    return hashlib.sha256(t.encode()).hexdigest()

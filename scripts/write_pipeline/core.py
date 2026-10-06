@@ -19,7 +19,8 @@ STAGES: list[tuple[str, str, tuple[str, ...]]] = [
     ("research", "agent", ("source",)),
     ("angle", "agent", ("research",)),
     ("outline", "agent", ("angle",)),
-    ("draft", "agent", ("outline", "research")),
+    ("brief", "cli", ("outline", "research")),
+    ("draft", "agent", ("outline", "research", "brief")),
     ("validate", "agent", ("draft", "research", "source")),
     ("editorial", "agent", ("validate",)),
     ("voice", "agent", ("editorial",)),
@@ -29,7 +30,8 @@ STAGES: list[tuple[str, str, tuple[str, ...]]] = [
     ("images", "agent", ("title", "antifp", "voice")),
     ("critic", "cli", ("images",)),
     ("repair", "agent", ("critic", "images")),
-    ("integrity", "cli", ("repair", "images")),
+    ("fpverify", "cli", ("repair", "draft", "brief")),
+    ("integrity", "cli", ("fpverify", "images")),
     ("hash", "cli", ("integrity",)),
     ("package", "cli", ("hash", "review")),
     ("stop", "cli", ("package",)),
@@ -128,6 +130,9 @@ def _check_shape(d: dict) -> None:
         raise PipelineError("terminal malformed")
     if not isinstance(d.get("overrides", []), list):
         raise PipelineError("overrides malformed")
+    for k in ("critic", "fpverify", "rework", "rework_seen", "repair_cuts"):
+        if d.get(k) is not None and not isinstance(d[k], (dict, list)):
+            raise PipelineError(f"{k} malformed")
     for k in ("framework", "final", "candidate"):
         if d.get(k) is not None and not isinstance(d[k], dict):
             raise PipelineError(f"{k} malformed")
@@ -389,7 +394,7 @@ def fail_exc(pipe: Pipeline, stage: str, e: BaseException) -> dict:
     if infra:
         pipe.set(stage, BLOCKED, reasons=msg, extra={"category": "DEPENDENCY_FAILURE"})
         code = "BLOCKED"
-    elif NUM[stage] >= NUM["integrity"]:
+    elif NUM[stage] >= NUM["fpverify"]:
         pipe.set(stage, NOT_READY, reasons=msg)
         code = "NOT_READY"
     else:
