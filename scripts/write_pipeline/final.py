@@ -11,6 +11,7 @@ from pathlib import Path
 
 from scripts.publish_route.orchestrate import ROUTE_REL, integrity_record_id
 
+from . import cuts as CT
 from . import editguard as G
 from . import frame as FR
 from . import linkpolicy as LP
@@ -69,6 +70,39 @@ def _read_final(pipe: Pipeline) -> bytes:
     return _final_path(pipe).read_bytes()
 
 
+def write_final(pipe: Pipeline, data: bytes) -> None:
+    """The only writer of FINAL.md. It records the hash of what it wrote, so a later write can tell the pipeline's bytes from the user's."""
+    atomic_write(_final_path(pipe), data)
+    pipe.state["final_written"] = sha_bytes(data)
+    pipe.save()
+
+
+def _owned_sha(pipe: Pipeline) -> str | None:
+    fin = pipe.state.get("final") or {}
+    return fin.get("sha256") or pipe.state.get("final_written")
+
+
+def guard_user_bytes(pipe: Pipeline) -> dict | None:
+    """Hash the existing FINAL.md before any write. If it is not the bytes the pipeline last wrote or passed, it is a user edit: invalidate what was
+    bound to the old bytes, record it, keep the file exactly as it is, and require an explicit 'revalidate'. Returns the user_modified record or None."""
+    p = _final_path(pipe)
+    owned = _owned_sha(pipe)
+    if owned is None or not p.exists():
+        return None
+    cur = sha_bytes(p.read_bytes())
+    if cur == owned or cur == (pipe.state.get("final") or {}).get("sha256"):
+        return None
+    um = pipe.state.get("user_modified")
+    if um and um.get("new_sha256") == cur:
+        return um
+    um = {"detected_at": now(), "old_sha256": owned, "new_sha256": cur}
+    pipe.state["user_modified"] = um
+    pipe.state["awaiting_review"] = False
+    um["invalidated"] = pipe.invalidate(["integrity", "hash", "package", "stop"], "user_modified")
+    pipe.save()
+    return um
+
+
 def run_integrity(pipe: Pipeline, runner: G.Runner) -> dict:
     try:
         return _run_integrity(pipe, runner)
@@ -78,9 +112,14 @@ def run_integrity(pipe: Pipeline, runner: G.Runner) -> dict:
 
 def _run_integrity(pipe: Pipeline, runner: G.Runner) -> dict:
     """Runs on every call, on the exact bytes in FINAL.md at this moment. A previous PASS is never reused."""
+    um = guard_user_bytes(pipe)  # BEFORE any write: bytes the pipeline did not write are the user's and are never overwritten
+    if um:
+        return {"ok": False, "code": "USER_MODIFIED", "stage": "integrity", "user_modified": um,
+                "reasons": ["FINAL.md holds edits the pipeline did not write; they are kept untouched. Run 'revalidate' to prove them, or restore the file yourself"]}
     ok, why = pipe.can_run("integrity")
     if not ok:
         return {"ok": False, "code": "WAITING", "stage": "integrity", "reasons": [why]}
+    CT.prune(pipe)  # cuts, signed removals and a rebase from before an upstream rework are dropped: removals must be validated again
     cand = final_text(pipe)  # the fingerprint-verified text (fpverify DONE is a dependency of integrity)
     cbytes = cand.encode()
     ref = reference_frame(pipe, cand)  # deterministic guard reference (author-rebased when approved)
@@ -88,7 +127,7 @@ def _run_integrity(pipe: Pipeline, runner: G.Runner) -> dict:
     rec = pipe.rec("integrity")
     if rec and rec["status"] == QUARANTINED and pipe.status("integrity") == QUARANTINED:
         return {"ok": False, "code": "QUARANTINED", "stage": "integrity", "reasons": rec["reasons"]}
-    atomic_write(_final_path(pipe), cbytes)
+    write_final(pipe, cbytes)
     final_sha = sha_bytes(_read_final(pipe))  # re-read: the gate sees these bytes and no others
     c = deps_ctx(pipe)
     pre = G.edit_guard(ref, _read_final(pipe).decode("utf-8"), known_urls=c["known_urls"], blob_numbers=c["blob_numbers"], strict=True, author_material=c["author_material"], ev=c["ev"])
@@ -96,7 +135,7 @@ def _run_integrity(pipe: Pipeline, runner: G.Runner) -> dict:
     # ledger (a forged, unsigned or state-mismatched list is rejected and never widens what may disappear)
     removals, led_err = LP.signed_removals(pipe.pkg, pipe.state.get("removals_ledger"))
     raw = raw_gate_reference(pipe)
-    lp = LP.check_links(raw, _read_final(pipe).decode("utf-8"), removals, c["ev"]) if raw and not (pipe.state.get("rebase") or {}).get("accepted") else {"ok": True, "reasons": [], "categories": [], "removed_urls": []}
+    lp = LP.check_links(raw, _read_final(pipe).decode("utf-8"), removals, c["ev"]) if raw else {"ok": True, "reasons": [], "categories": [], "removed_urls": []}
     if led_err or not lp["ok"]:
         pre = {"ok": False, "reasons": [*led_err, *lp["reasons"], *pre["reasons"]], "categories": sorted({*pre["categories"], "MISSING_LINK"})}
     elif pre["ok"] and lp["removed_urls"]:
@@ -336,6 +375,7 @@ def revalidate(pipe: Pipeline, runner: G.Runner, critic, framework_text: str) ->
         atomic_write(q, text.encode())
         pipe.state["candidate"] = {"path": str(q.relative_to(pipe.pkg)), "sha256": new, "origin": "user-edit",
                                    "history": [*(pipe.state.get("candidate") or {}).get("history", []), (pipe.state.get("candidate") or {}).get("sha256")]}
+        pipe.state["final_written"] = new  # the adopted bytes are now the ones the pipeline stands behind
         pipe.state["final"] = None  # the old PASS no longer describes any bytes on disk; the critic round budget is NOT reset (it belongs to the run)
         pipe.state["user_modified"] = {**um, "adopted_sha256": new}
         pipe.save()
@@ -390,7 +430,8 @@ def rebase(pipe: Pipeline, reason: str, runner: G.Runner) -> dict:
         rp = pipe.pkg / "write-pipeline" / "frame" / f"rebased-reference-{new[:8]}.md"
         atomic_write(rp, cand.encode())
         pipe.state["rebase"] = {"accepted": True, "path": str(rp.relative_to(pipe.pkg)), "new_reference_sha256": new, "previous_reference_sha256": old,
-                                "candidate_sha256": new, "claims_gate": gate["state"], "at": entry["at"]}
+                                "candidate_sha256": new, "claims_gate": gate["state"], "at": entry["at"],
+                                "raw_reference_sha256": CT.images_reference_sha(pipe)}  # bound to the reference frame and candidate it was accepted on
         pipe.invalidate(["integrity", "hash", "package", "stop"], "reference_rebased")
         pipe.log("rebase", old=old, new=new, reason=reason, claims_gate=gate["state"])
         pipe.save()
@@ -449,28 +490,64 @@ def _fallback_package(pipe: Pipeline, text: str, reasons: list[str], final_sha: 
     return "\n".join(body) + "\n"
 
 
+def disk_candidate(pipe: Pipeline) -> tuple[str, str]:
+    """(text, file) of the best article text found on disk without trusting the state: the newest candidate under write-pipeline/frame, else the
+    highest numbered markdown stage artifact. ("", "") when the package holds none."""
+    wp = pipe.pkg / "write-pipeline"
+    files = sorted((wp / "frame").glob("candidate*.md"), key=lambda f: (f.stat().st_mtime, f.name), reverse=True)
+    files += sorted((wp / "artifacts").glob("[0-9][0-9]-*.md"), key=lambda f: f.name, reverse=True)
+    files += sorted(wp.glob("antifp/current.md")) + sorted(wp.glob("fpverify/current.md"))
+    for f in files:
+        try:
+            t = f.read_text()
+        except (OSError, UnicodeDecodeError):
+            continue
+        if t.strip():
+            return t, str(f.relative_to(pipe.pkg))
+    return "", ""
+
+
 def write_not_ready_package(pipe: Pipeline) -> dict | None:
-    """Written by the CLI itself whenever a run ends NOT_READY, at any stage: PACKAGE.md (reasons, the open findings, every required section with
-    'not reached' where a stage did not run), FINAL.md and FINAL.html carrying a NOT READY banner. The text is the best accepted candidate so far.
-    A run that already passed the final gate keeps its FINAL.md bytes; only a missing PACKAGE.md is written for it."""
-    if pipe.state.get("invalid"):
-        return None
+    """Written by the CLI itself on EVERY NOT_READY return, at any stage and for an invalid state too: PACKAGE.md (reasons, the open findings, every
+    required section with 'not reached' where a stage did not run), FINAL.md and FINAL.html carrying a NOT READY banner. The text is the best accepted
+    candidate so far (the best on-disk candidate when the state is invalid). FINAL.md bytes that passed the gate, or that the user edited, are never
+    overwritten."""
+    invalid = pipe.state.get("invalid")
     t = pipe.terminal() or {}
-    reasons = [f"{t.get('stage', 'pipeline')}: {t.get('reason')}"] if t else ["the run is NOT_READY"]
+    if invalid:
+        reasons = [f"pipeline state invalid: {invalid.get('reason', 'unknown')}"]
+    else:
+        reasons = [f"{t.get('stage', 'pipeline')}: {t.get('reason')}"] if t else ["the run is NOT_READY"]
     banner = f"Do not publish. This article did not pass the pipeline ({reasons[0][:200]})."
-    kept_final = bool(pipe.state.get("final")) and (pipe.pkg / FINAL_NAME).exists()
-    if kept_final:
-        text = _safe(lambda: (pipe.pkg / FINAL_NAME).read_text(), "")
-        body = text
+    fp = pipe.pkg / FINAL_NAME
+    existing = _safe(lambda: fp.read_text(), None) if fp.exists() else None
+    owned = _owned_sha(pipe)
+    kept_final = existing is not None and (invalid is not None or bool(pipe.state.get("final")) or (owned is not None and sha_bytes(fp.read_bytes()) != owned))
+    cand_file = ""
+    if invalid:
+        text, cand_file = disk_candidate(pipe)
+        if existing is not None and not text.strip():
+            text = existing
     else:
         text = _safe(lambda: best_text(pipe), "")
+    if kept_final:
+        text = existing if existing is not None else text
+        body = text
+    else:
         body = f"> NOT READY. {banner}\n\n{text}"
+    if invalid:
+        reasons.append("the state was invalid, so the text below was recovered from the best candidate on disk" + (f" ({cand_file})" if cand_file else "") if text.strip()
+                       else "the state was invalid and no candidate article exists on disk: there is no article text in this package")
     written = {}
     if not kept_final:
-        written["final"] = _safe(lambda: (atomic_write(pipe.pkg / FINAL_NAME, body.encode()), FINAL_NAME)[1], None)
-        title = _safe(lambda: M.title_subtitle(text)[0], None)
+        def _w():
+            write_final(pipe, body.encode()) if not invalid else atomic_write(fp, body.encode())
+            return FINAL_NAME
+        written["final"] = _safe(_w, None)
+    title = _safe(lambda: M.title_subtitle(text)[0], None)
+    if not kept_final or not (pipe.pkg / "FINAL.html").exists() or invalid:
         written["html"] = _safe(lambda: (atomic_write(pipe.pkg / "FINAL.html", FR.to_html(text, title or pipe.state["slug"], banner=banner).encode()), "FINAL.html")[1], None)
-    if kept_final and (pipe.pkg / "PACKAGE.md").exists():
+    if kept_final and not invalid and (pipe.pkg / "PACKAGE.md").exists():
         return written  # nothing bound to the passed bytes is ever rewritten
     final_sha = sha_bytes(body.encode())
     pmd = _safe(lambda: RP.build_package_md(pipe, None, None, final_sha, verdict="NOT_READY", reasons=reasons, text=text), lambda e: _fallback_package(pipe, text, reasons, final_sha, e))

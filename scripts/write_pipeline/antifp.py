@@ -10,37 +10,17 @@ import difflib
 import json
 from pathlib import Path
 
-from scripts.fingerprint_eval import metrics as FM
-from scripts.fingerprint_eval.textutil import core_markdown
-
 from . import editguard as G
 from . import mdlib as M
+from .fpcontract import (EM_DASH_CAP, HEAVY_COMPOSITE, HEAVY_TEMPLATE_HITS, ONE_SENTENCE_PARA_FLOOR, TRANSITION_FLOOR, WEIGHTS,  # noqa: F401  re-exported: ONE contract
+                         is_blocking, signals)
 from .core import Pipeline, PipelineError, atomic_write, sha_bytes
 from .validators import asserted_unresolved
 
 MAX_ATTEMPTS = 12
 MAX_CHANGED_BLOCKS = 3
 EPS = 0.05
-HEAVY_TEMPLATE_HITS = 4
-HEAVY_COMPOSITE = 18.0
-TRANSITION_FLOOR = 12.0  # transition_excess = transitions per 1k words minus this
-ONE_SENTENCE_PARA_FLOOR = 0.45
-WEIGHTS = {"template_hits": 3.0, "em_dash_per_1k": 1.0, "repeated_ngram": 50.0, "one_sentence_para_excess": 10.0, "transition_excess": 0.05}
 DIR_REL = Path("write-pipeline") / "antifp"
-
-
-def signals(text: str) -> dict:
-    fp = FM.fingerprint(core_markdown(text))
-    tmpl = fp["templates"]
-    v = {
-        "template_hits": float(sum(t["count"] for t in tmpl.values())),
-        "em_dash_per_1k": float(fp["em_dash_per_1k"]),
-        "repeated_ngram": float(fp["repeated_ngram_rate"]["mean"]),
-        "one_sentence_para_excess": max(0.0, fp["one_sentence_para_rate"] - ONE_SENTENCE_PARA_FLOOR),
-        "transition_excess": max(0.0, fp["transition_total_per_1k"] - TRANSITION_FLOOR),
-    }
-    return {"values": v, "composite": round(sum(WEIGHTS[k] * x for k, x in v.items()), 4),
-            "templates": {k: {"count": t["count"], "examples": t["examples"]} for k, t in tmpl.items()}, "n_words": fp["n_words"]}
 
 
 def ranking(sig: dict, top: int = 5) -> list[dict]:
@@ -179,12 +159,8 @@ def finish(pipe: Pipeline) -> dict:
     except (OSError, ValueError, PipelineError) as e:
         return {"ok": False, "reasons": [str(e)]}
     sig = signals(cur)
-    heavy = sig["values"]["template_hits"] >= HEAVY_TEMPLATE_HITS or sig["composite"] >= HEAVY_COMPOSITE
     debts = {st: pipe.rec(st)["fingerprint_debt"] for st in ("draft", "editorial", "voice") if (pipe.rec(st) or {}).get("fingerprint_debt")}
-    from . import fpcaps as FC  # late: fpcaps imports this module
-    owed = FC.violations(sig, FC.caps()) if debts else []
-    if owed:  # a stage accepted with fingerprint_debt must be clear of the caps by the end of this loop
-        heavy = True
+    heavy, owed = is_blocking(sig, bool(debts))  # a stage accepted with fingerprint_debt must be clear of the caps by the end of this loop
     report = {"policy": "own style-fingerprint metrics only; no third-party AI detector was used or targeted",
               "reference_sha256": loop["reference_sha"], "final_sha256": sha_bytes(cur.encode()),
               "baseline": {"composite": loop["baseline"]["composite"], "values": loop["baseline"]["values"]},

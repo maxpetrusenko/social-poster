@@ -2,6 +2,7 @@
 unresolved claims, path escapes, terminal final-gate states, stage-boundary exceptions, quarantine route D."""
 import json
 import os
+import sys
 import subprocess
 from pathlib import Path
 
@@ -34,7 +35,7 @@ def test_runner_subprocess_env_is_allowlisted(monkeypatch, tmp_path):
         seen["env"] = kw["env"]
         return subprocess.CompletedProcess(argv, 0, "", "")
     monkeypatch.setattr(subprocess, "run", fake_run)
-    G.make_runner(tmp_path / "ws")(["true"])
+    G.make_runner(tmp_path / "ws")([sys.executable, "-m", "scripts.medium_review", "review"])  # a claude -p child
     env = seen["env"]
     for k in ("LLM_GATEWAY_API_KEY", "DOPPLER_TOKEN", "ANTHROPIC_API_KEY", "OPENAI_API_KEY", "AWS_SECRET_ACCESS_KEY", "GITHUB_TOKEN"):
         assert k not in env, k

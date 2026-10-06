@@ -76,7 +76,7 @@ def raw_gate_reference(pipe: Pipeline) -> str:
 
 def repair_cuts(pipe: Pipeline) -> list[dict]:
     """Declared removals the repair stage accepted so far (signed state). Each is a sentence key plus its reason."""
-    v = pipe.state.get("repair_cuts")
+    v = pipe.state.get("repair_cuts") if CT.repair_binding_ok(pipe) else None  # bound to the current reference and candidate lineage
     return [x for x in v if isinstance(x, dict) and isinstance(x.get("text"), str)] if isinstance(v, list) else []
 
 
@@ -105,8 +105,7 @@ def gate_reference_frame(pipe: Pipeline, cand: str | None = None) -> str:
 def reference_frame(pipe: Pipeline, cand: str | None = None) -> str:
     """The reference the deterministic edit guard uses: the gate reference, or the author-approved rebase of it for the current candidate."""
     rb = pipe.state.get("rebase")
-    cur = (pipe.state.get("candidate") or {}).get("sha256")
-    if rb and rb.get("accepted") and rb.get("candidate_sha256") == cur:
+    if rb and CT.rebase_valid(pipe):
         raw = safe_path(pipe.pkg, rb["path"]).read_bytes()
         if sha_bytes(raw) != rb["new_reference_sha256"]:
             raise PipelineError("the rebased reference changed on disk after it was approved")
@@ -285,6 +284,7 @@ def repair_try(pipe: Pipeline, cand: str, runner: G.Runner, report: dict | None 
     ok, why = pipe.can_run("repair")
     if not ok:
         return {"ok": False, "code": "WAITING", "stage": "repair", "reasons": [why]}
+    CT.prune(pipe)  # cuts from before an upstream rework never carry into this repair
     crit = pipe.read_json("critic")
     if pipe.status("critic") != DONE or not crit.get("majors"):
         return {"ok": False, "code": "USAGE", "stage": "repair", "reasons": ["no open major finding on the current candidate: run the critic, or 'repair done'"]}
@@ -342,8 +342,10 @@ def repair_try(pipe: Pipeline, cand: str, runner: G.Runner, report: dict | None 
     p = pipe.pkg / "write-pipeline" / "frame" / f"candidate-repair-{n}.md"
     atomic_write(p, cand.encode())
     pipe.state["candidate"] = {"path": str(p.relative_to(pipe.pkg)), "sha256": sha_bytes(cand.encode()), "origin": f"repair-{n}", "history": [*pipe.state["candidate"].get("history", []), pipe.state["candidate"]["sha256"]]}
+    images_ref = CT.images_reference_sha(pipe) or ""
     pipe.state["repair_cuts"] = [{"text": x["sentence"], "reason": x["reason"]} for x in cuts]
-    CT.record_cuts(pipe, "repair", cuts)
+    pipe.state["repair_cuts_binding"] = {"reference_sha256": images_ref, "candidate_sha256": pipe.state["candidate"]["sha256"]}
+    CT.record_cuts(pipe, "repair", cuts, images_ref, pipe.state["candidate"]["sha256"])
     pipe.log("repair_accepted", sha256=pipe.state["candidate"]["sha256"], added=added_n, cuts=len(cuts))
     pipe.save()
     return {"ok": True, "code": "ACCEPTED", "stage": "repair", "candidate_sha256": pipe.state["candidate"]["sha256"], "reasons": [], "added_sentences": added_n,

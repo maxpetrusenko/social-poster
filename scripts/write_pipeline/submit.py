@@ -250,7 +250,7 @@ def _text_stage(pipe: Pipeline, stage: str, text: str, rep: dict | None, rep_raw
             return {"ok": False, "code": "BLOCKED", "stage": stage, "reasons": msg}
         if gate["state"] == "FAIL" and set(gate["categories"]) & G.CLAIM_CATS:
             return _fail(pipe, stage, [f"{stage} pass changed meaning: " + "; ".join(gate["reasons"])[:300]])
-        CT.record_cuts(pipe, stage, cuts)
+        CT.record_cuts(pipe, stage, cuts, sha_bytes(prev.encode()), sha_bytes(text.encode()))
     extra: dict = {}
     if stage in BRIEF_STAGES:
         rej = _fingerprint_gate(pipe, stage, text)

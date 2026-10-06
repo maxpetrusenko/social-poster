@@ -1,7 +1,6 @@
 """One source of truth for the generation-time fingerprint caps, and the check that enforces them on submitted text.
 
-The numbers come from antifp (the stage that finally rejects heavy text): WEIGHTS, HEAVY_TEMPLATE_HITS and HEAVY_COMPOSITE are imported, never
-copied. Caps are expressed in antifp's own metrics and units (template_hits total, transition_excess, repeated_ngram,
+The numbers come from fpcontract, the single threshold and signal contract shared with antifp and fpverify: imported, never copied. Caps are expressed in antifp's own metrics and units (template_hits total, transition_excess, repeated_ngram,
 one_sentence_para_excess, em_dash_per_1k, composite) and sit below the pass thresholds with a margin, so text that meets the brief also
 passes the final gate. Author-corpus targets are voice targets only and can tighten a cap, never loosen it.
 """
@@ -12,34 +11,11 @@ from collections import Counter
 from scripts.fingerprint_eval import metrics as FM
 from scripts.fingerprint_eval.textutil import core_markdown, parse_blocks, split_sentences, words
 
-from . import antifp as AF
+from . import fpcontract as C
 
 MAX_REJECTIONS = 2  # per stage; the next fingerprint failure is accepted with a recorded fingerprint_debt that antifp must clear
-COMPOSITE_MARGIN = 0.7  # the composite cap is this share of the heavy threshold
-TEMPLATE_MARGIN = 2  # template hits allowed = heavy threshold minus this
-SHARES = {"transition_excess": 0.25, "repeated_ngram": 0.15, "one_sentence_para_excess": 0.12}  # share of the composite budget each soft signal may use
 TOP = 3
-
-
-def caps(author_bands: dict | None = None) -> dict:
-    """The fingerprint caps in antifp units. `author_bands` (author p90 values, same units) may only lower a cap."""
-    composite = round(AF.HEAVY_COMPOSITE * COMPOSITE_MARGIN, 2)
-    c = {"template_hits": float(max(AF.HEAVY_TEMPLATE_HITS - TEMPLATE_MARGIN, 0)), "em_dash_per_1k": 0.0, "composite": composite}
-    for k, share in SHARES.items():
-        c[k] = round(composite * share / AF.WEIGHTS[k], 3)
-    for k, v in (author_bands or {}).items():
-        if k in c and k not in ("composite", "em_dash_per_1k") and v is not None:
-            c[k] = round(min(c[k], v), 3)
-    return c
-
-
-def violations(sig: dict, cap: dict) -> list[dict]:
-    out = []
-    for k, limit in cap.items():
-        val = sig["composite"] if k == "composite" else sig["values"][k]
-        if val > limit + 1e-9:
-            out.append({"signal": k, "value": round(val, 3), "cap": limit})
-    return out
+caps, violations = C.caps, C.violations  # the one contract (fpcontract): never redefined here
 
 
 def _prose(text: str) -> tuple[list[str], list[str]]:
@@ -119,7 +95,7 @@ def offenders(text: str, viol: list[dict]) -> dict:
 
 def check(text: str, cap: dict | None = None) -> dict:
     cap = cap or caps()
-    sig = AF.signals(text)
+    sig = C.signals(text)
     viol = violations(sig, cap)
     return {"ok": not viol, "caps": cap, "values": sig["values"], "composite": sig["composite"], "violations": viol,
             "offenders": offenders(text, viol) if viol else {}}
