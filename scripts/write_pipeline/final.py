@@ -14,6 +14,7 @@ from scripts.publish_route.orchestrate import ROUTE_REL, integrity_record_id
 from . import cuts as CT
 from . import editguard as G
 from . import frame as FR
+from . import furniture as FU
 from . import linkpolicy as LP
 from . import mdlib as M
 from .core import (NAMES, BLOCKED, DONE, FAILED, FINAL_NAME, NOT_READY, QUARANTINED, READY_ROUTES, Pipeline, PipelineError, atomic_write, fail_exc, now,
@@ -131,6 +132,13 @@ def _run_integrity(pipe: Pipeline, runner: G.Runner) -> dict:
     final_sha = sha_bytes(_read_final(pipe))  # re-read: the gate sees these bytes and no others
     c = deps_ctx(pipe)
     pre = G.edit_guard(ref, _read_final(pipe).decode("utf-8"), known_urls=c["known_urls"], blob_numbers=c["blob_numbers"], strict=True, author_material=c["author_material"], ev=c["ev"])
+    try:  # hero, TLDR and the frozen footer, verbatim against their sources; merged with the guard so the claim categories are never hidden
+        furn, bio = FU.pipeline_inputs(pipe)
+        fbad = FU.verify(_read_final(pipe).decode("utf-8"), furn, bio, exact_tldr=(pipe.state.get("candidate") or {}).get("origin") != "user-edit")
+    except FU.FurnitureError as e:
+        fbad = [str(e)]
+    if fbad:
+        pre = {"ok": False, "reasons": [*pre["reasons"], *fbad], "categories": sorted({*pre["categories"], "STRUCTURAL_DAMAGE"})}
     # same link policy as the stage gates, against the pre-cut reference: the allowlist of declared removals comes only from the SIGNED removals
     # ledger (a forged, unsigned or state-mismatched list is rejected and never widens what may disappear)
     removals, led_err = LP.signed_removals(pipe.pkg, pipe.state.get("removals_ledger"))

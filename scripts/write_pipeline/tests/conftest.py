@@ -19,3 +19,11 @@ def _roots(tmp_path, monkeypatch):
 @pytest.fixture
 def d(tmp_path):
     return Driver(tmp_path)
+
+
+@pytest.fixture(autouse=True)
+def _bio(tmp_path_factory, monkeypatch):
+    from .fakes import BIO_TEXT
+    p = tmp_path_factory.mktemp("bio") / "bio.md"
+    p.write_text(BIO_TEXT + "\n\n---\n\n**Read next ->** [An old pick](https://medium.com/x/old-1)\n")
+    monkeypatch.setenv("WRITE_PIPELINE_BIO", str(p))

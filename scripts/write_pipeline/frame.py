@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import html
 
+from . import furniture as FU
 from . import mdlib as M
 from scripts.fingerprint_eval.textutil import md_parser
 
@@ -15,12 +16,15 @@ def _image_block(im: dict) -> str:
     return f"![{im['alt']}]({im['path']})\n\n*{im['caption']}*\n"
 
 
-def assemble(body_text: str, title: str, subtitle: str, images: list[dict]) -> str:
+def assemble(body_text: str, title: str, subtitle: str, images: list[dict], furn: dict | None = None, bio: str | None = None) -> str:
+    """title, subtitle, hero, TLDR (furn), body with its other images, footer (furn and bio: Read next, author bio, sharing line, disclosure)."""
     body = M.body_without_frame(body_text)
     heroes = [i for i in images if i["placement"] == "hero"]
     after_head = {M.norm(i["placement"][6:]): i for i in images if i["placement"].startswith("after:")}
     after_par = {int(i["placement"][16:]): i for i in images if i["placement"].startswith("after-paragraph:")}
     out = [f"# {title}", f"### {subtitle}"] + [_image_block(i).rstrip("\n") for i in heroes]
+    if furn:
+        out.append(FU.tldr_md(furn))
     n_par = 0
     for b in M.blocks(body):
         out.append(b.text.rstrip("\n"))
@@ -32,7 +36,8 @@ def assemble(body_text: str, title: str, subtitle: str, images: list[dict]) -> s
             n_par += 1
             if n_par in after_par:
                 out.append(_image_block(after_par[n_par]).rstrip("\n"))
-    return "\n\n".join(out).rstrip("\n") + "\n"
+    text = "\n\n".join(out).rstrip("\n") + "\n"
+    return text + "\n" + FU.footer_md(furn, bio) if furn and bio is not None else text
 
 
 def to_html(text: str, title: str, banner: str | None = None) -> str:

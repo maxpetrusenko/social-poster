@@ -7,6 +7,7 @@ from collections import Counter
 
 from scripts.fingerprint_eval.guards import structure_preservation
 
+from . import furniture as FU
 from . import mdlib as M
 from . import relevance as RV
 from .core import NAMES, Pipeline, PipelineError
@@ -28,7 +29,7 @@ def _direct_author_voice(pipe: Pipeline, text: str) -> dict | None:
     except Exception:  # noqa: BLE001  report formatting must never fail the package
         return None
 
-SECTIONS = ["TITLE", "SUBTITLE", "ARTICLE", "SOURCES", "IMAGES", "EDITORIAL SCORECARD", "AUTHOR-VOICE RESULT", "FINGERPRINT BASELINE", "FINGERPRINT FINAL",
+SECTIONS = ["TITLE", "SUBTITLE", "ARTICLE", "SOURCES", "IMAGES", "FURNITURE", "EDITORIAL SCORECARD", "AUTHOR-VOICE RESULT", "FINGERPRINT BASELINE", "FINGERPRINT FINAL",
             "FINGERPRINT CHANGES", "REMAINING FINGERPRINT SIGNALS", "CLAIM CHECK", "LINK CHECK", "SOURCE CHECK", "STRUCTURE CHECK", "SEMANTIC PRESERVATION",
             "MEDIUM REVIEW", "EXACT FINAL HASH", "READY/NOT_READY"]
 HEADINGS = {"IMAGES": "IMAGES (provenance, captions, ALT)", "AUTHOR-VOICE RESULT": "AUTHOR-VOICE RESULT (metric)"}
@@ -54,6 +55,12 @@ def author_opportunities(pipe: Pipeline, review: dict | None, text: str) -> list
     raw += [f"material already supplied that could be used: {m}" for m in (air.get("candidate_trusted_material") or []) if air.get("required")]
     kept, dropped = RV.filter_suggestions(raw, key)
     out = [f"- {x}" for x in kept]
+    try:
+        opp = FU.author_opportunity(FU.from_title(pipe.read_json("title"))) if pipe.read_json("title") else None
+    except Exception:  # noqa: BLE001
+        opp = None
+    if opp:
+        out.append(f"- {opp}")
     for c in pipe.read_json("research").get("claims", []) or []:
         if c.get("status") == "unresolved":
             out.append(f"- Unresolved claim left out of the article, needs evidence or the author's own account: {c.get('claim')}")
@@ -171,9 +178,13 @@ def build_package_md(pipe: Pipeline, review: dict | None, route: dict | None, fi
     if not imgs.get("images"):
         S["IMAGES"] = [f"- none: {imgs.get('waived_reason') or 'images stage not reached'}"]
     for im in imgs.get("images", []):
+        if im.get("placement") == "hero":
+            S["IMAGES"].append(f"- HERO: method {im.get('method')}, provenance: {im.get('provenance')}, caption: {im.get('caption')}, ALT: {im.get('alt')}"
+                               + (f", source {im.get('source_url')} at {im.get('timestamp')}" if im.get("method") == "frame" else ""))
         S["IMAGES"] += [f"- {im['id']} at {im['path']} ({im.get('width')}x{im.get('height')}, sha256 {im.get('sha256', '')[:12]})", f"  - purpose: {im['purpose']}",
                         f"  - placement: {im['placement']}", f"  - method: {im['method']}", f"  - provenance: {im['provenance']}", f"  - license: {im['license']}",
                         f"  - caption: {im['caption']}", f"  - ALT: {im['alt']}"]
+    S["FURNITURE"] = FU.report_lines(pipe, text)
     sc = (review or {}).get("scorecard") or {}
     rounds = (pipe.state.get("critic") or {}).get("rounds")
     S["EDITORIAL SCORECARD"] = [f"- Medium review (bound to the final bytes): boost candidate {sc.get('boost_candidate')}, distribution risk {sc.get('general_distribution_risk')}, weakest dimension {sc.get('weakest_dimension')}"

@@ -6,6 +6,7 @@ import struct
 from collections import Counter
 from pathlib import Path
 
+from . import furniture as FU
 from . import mdlib as M
 from .core import PipelineError, safe_path, sha_bytes, sha_file
 
@@ -13,9 +14,12 @@ SOURCE_KINDS = {"url", "text", "transcript", "draft", "note", "author"}
 CLAIM_STATUS = {"supported", "attributed", "inference", "unresolved"}
 CONTRIB_KINDS = {"analysis", "comparison", "evidence", "synthesis", "author_experience"}
 IMG_METHODS = {"generated", "sourced", "diagram", "screenshot", "own_photo"}
+HERO_METHODS = {"frame", "generated", "licensed"}  # frame = a documentary frame extracted from the source video; generated needs a recorded provenance; licensed needs source_url and a license
+HERO_PATH = "assets/hero.jpg"
+HERO_FRAME_BAD = re.compile(r"thumbnails?|posters?|presenters?|talking head|speakers?", re.I)
 BAD_LICENSE = {"", "unknown", "n/a", "na", "tbd", "none", "unlicensed"}
 MIN_TITLES, SUBTITLE_MAX = 10, 140
-HERO_MIN_W, HERO_MIN_H, MAX_BYTES = 1200, 600, 8_000_000
+HERO_MIN_W, HERO_MIN_H, MAX_BYTES = 1280, 720, 8_000_000
 CONTRAST = re.compile(r"\bnot\b[^.?!]{0,60}\b(?:but|it'?s|it is)\b|\b(?:isn't|aren't|wasn't|doesn't|don't)\b[^.?!]{0,60}[;,.]\s*(?:it|they)|\bless about\b|^forget\b|\bnever the (?:issue|problem)\b", re.I)
 CLICKBAIT = re.compile(r"you won'?t believe|one (?:weird )?trick|shocking|game.?changer|ultimate guide|everything you need to know|the truth about|secret|will blow your mind|\bhere'?s (?:why|the)", re.I)
 VIDEO_FRAME = re.compile(r"video frames?|thumbnails?|presenters?|talking head|speakers?|screenshot of (?:the )?video|youtube frames?|still from", re.I)
@@ -317,7 +321,7 @@ def unresolved_reference(ev: dict, text: str | None = None) -> str:
     return "\n\n".join(out) + "\n"
 
 
-def titles(data: dict, body: str) -> dict:
+def titles(data: dict, body: str, ev: dict | None = None) -> dict:
     reasons: list[str] = []
     cands = data.get("candidates")
     if not isinstance(cands, list) or any(not isinstance(c, str) for c in cands):
@@ -352,6 +356,8 @@ def titles(data: dict, body: str) -> dict:
         bad = [n for n in M.significant_numbers(t) if n not in M.significant_numbers(body)]
         if bad:
             reasons.append(f"weak {label}: number {bad[:2]} is not supported by the body")
+    reasons += FU.check_tldr(data.get("tldr"), body, ev)
+    reasons += FU.check_footer_inputs(data)
     if pick and not (8 <= len(pick) <= 100):
         reasons.append("weak title: length must be 8 to 100 characters")
     if pick and sub:
@@ -382,28 +388,61 @@ def image_size(b: bytes) -> tuple[int, int] | None:
     return None
 
 
+def _hero_reasons(im: dict, w: str) -> list[str]:
+    """The hero contract: method frame|generated|licensed, a recorded provenance, saved at assets/hero.jpg, no presenter face."""
+    out = []
+    m = im.get("method")
+    if m not in HERO_METHODS:
+        out.append(f"{w}: the hero method must be one of {sorted(HERO_METHODS)} (frame = a real non-presenter documentary frame from the source video, generated = a generated image with provenance, licensed = a licensed image)")
+    if im.get("path") != HERO_PATH:
+        out.append(f"{w}: the hero must be saved at {HERO_PATH}")
+    if len(str(im.get("provenance", "")).strip()) < 20:
+        out.append(f"{w}: the hero needs a recorded provenance entry (how it was made or where it came from, at least 20 characters)")
+    if im.get("contains_presenter") or im.get("presenter_face") is True:
+        out.append(f"{w}: the hero must not show a presenter face")
+    if m == "frame":
+        if not str(im.get("source_url", "")).startswith(("http://", "https://")):
+            out.append(f"{w}: a frame hero needs source_url (the video it was extracted from)")
+        if not str(im.get("timestamp", "")).strip():
+            out.append(f"{w}: a frame hero needs timestamp (where in the video it was extracted)")
+        if im.get("presenter_face") is not False:
+            out.append(f"{w}: a frame hero needs presenter_face: false, set after screening the extracted frame (never the video's default thumbnail)")
+        for k in ("purpose", "provenance"):
+            t = str(im.get(k, ""))
+            for mm in HERO_FRAME_BAD.finditer(t):
+                if not NEGATED.search(t[max(0, mm.start() - 40):mm.start()]):
+                    out.append(f"{w}: a frame hero must not be a thumbnail or presenter shot ({k} says {mm.group(0)!r}); a negated statement such as 'no presenter' is fine")
+                    break
+    if m == "licensed" and not str(im.get("source_url", "")).startswith(("http://", "https://")):
+        out.append(f"{w}: a licensed hero needs source_url")
+    return out
+
+
 def images(data: dict, pkg: Path, body: str) -> dict:
     reasons: list[str] = []
     imgs = data.get("images")
     if not isinstance(imgs, list):
         return {"ok": False, "reasons": ["images: 'images' must be a list"]}
     if not imgs:
-        if not str(data.get("waived_reason", "")).strip():
-            return {"ok": False, "reasons": ["images: no images and no waived_reason; add a hero image or state why none fits"]}
-        return {"ok": True, "reasons": [], "data": data}
+        return {"ok": False, "reasons": [f"images: a hero image is required (placement hero, saved at {HERO_PATH}, method frame, generated or licensed, with provenance); there is no waiver"]}
     heads = {M.norm(b.text.lstrip("# ").strip()) for b in M.blocks(body) if b.kind == "heading"}
     n_par = sum(1 for b in M.blocks(body) if b.kind == "paragraph")
     heroes, hashes = 0, set()
     for i, im in enumerate(_dict_items(imgs, "images", reasons)):
         w = f"images[{i}]"
         _req(im, ("id", "path", "purpose", "placement", "method", "provenance", "license", "caption", "alt"), w, reasons)
-        if im.get("method") not in IMG_METHODS:
+        hero = im.get("placement") == "hero"
+        if hero:
+            reasons += _hero_reasons(im, w)
+        elif im.get("method") not in IMG_METHODS:
             reasons.append(f"{w}: method must be one of {sorted(IMG_METHODS)}")
         if str(im.get("license", "")).strip().lower() in BAD_LICENSE:
             reasons.append(f"{w}: license is missing or unknown (missing image provenance)")
         if im.get("method") == "sourced" and not str(im.get("source_url", "")).startswith(("http://", "https://")):
             reasons.append(f"{w}: a sourced image needs source_url")
-        if im.get("is_video_frame") or im.get("contains_presenter") or video_frame_claim(" ".join(str(im.get(k, "")) for k in ("purpose", "provenance", "path", "method"))):
+        if hero and im.get("method") == "frame":
+            pass  # a documentary frame from the source video is the one allowed video frame; _hero_reasons screens it for presenters and thumbnails
+        elif im.get("is_video_frame") or im.get("contains_presenter") or video_frame_claim(" ".join(str(im.get(k, "")) for k in ("purpose", "provenance", "path", "method"))):
             reasons.append(f"{w}: presenter and video frames are not allowed (a negated statement such as 'no video frames' is fine; images need method one of {sorted(IMG_METHODS)} and a provenance that says how it was made)")
         alt = str(im.get("alt", ""))
         if alt and not (10 <= len(alt) <= 220):
@@ -437,6 +476,8 @@ def images(data: dict, pkg: Path, body: str) -> dict:
         im["width"], im["height"] = dims
         if len(b) > MAX_BYTES:
             reasons.append(f"{w}: file over {MAX_BYTES // 1_000_000} MB")
+        if pl == "hero" and b[:2] != b"\xff\xd8":
+            reasons.append(f"{w}: the hero must be a JPEG saved at {HERO_PATH}")
         if pl == "hero" and (dims[0] < HERO_MIN_W or dims[1] < HERO_MIN_H or not 1.2 <= dims[0] / dims[1] <= 2.4):
             reasons.append(f"{w}: hero image {dims[0]}x{dims[1]} is below the quality bar (>= {HERO_MIN_W}x{HERO_MIN_H}, aspect 1.2 to 2.4)")
         elif pl != "hero" and dims[0] < 800:

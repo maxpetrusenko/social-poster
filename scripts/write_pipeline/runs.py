@@ -12,6 +12,7 @@ from scripts.fingerprint_eval.gateway import GatewayError, extract_json
 from . import addcheck as AC
 from . import cuts as CT
 from . import editguard as G
+from . import furniture as FU
 from . import mdlib as M
 from .core import BLOCKED, DONE, FAILED, NOT_READY, Pipeline, PipelineError, atomic_write, safe_path, sha_bytes, sha_json
 from .submit import _finish, deps_ctx
@@ -223,7 +224,7 @@ def run_critic(pipe: Pipeline, critic: Critic, framework_text: str) -> dict:
 def prose_sha(text: str) -> str:
     """Hash of the article prose only: title, subtitle, image blocks and their captions are frame, not prose."""
     keep = []
-    for b in M.blocks(M.body_without_frame(text)):
+    for b in M.blocks(M.body_without_frame(FU.split_footer(text)[0])):  # the frozen footer is boilerplate, not prose
         t = b.text.strip()
         if b.kind == "paragraph" and (t.startswith("![") or re.fullmatch(r"\*[^*\n]+\*", t)):
             continue

@@ -22,7 +22,7 @@ def overall(d):
 def no_publish(d):
     s = json.loads((d.pkg / "write-pipeline/state.json").read_text())
     assert s["published"] is False and not s.get("awaiting_review")
-    assert {m for m, _ in d.runner.calls} <= {"scripts.fingerprint_eval.run", "scripts.fingerprint_eval.release", "scripts.medium_review", "scripts.publish_route"}
+    assert {m for m, _ in d.runner.calls} <= {"scripts.fingerprint_eval.run", "scripts.write_pipeline.gaterun", "scripts.fingerprint_eval.release", "scripts.medium_review", "scripts.publish_route"}
     assert all(argv[3] in ("decide", "verify") for m, argv in d.runner.calls if m == "scripts.publish_route")
 
 
@@ -352,10 +352,11 @@ def test_low_resolution_hero_fails_the_quality_bar(d):
     assert rc == 1 and any("quality bar" in r for r in out["reasons"])
 
 
-def test_images_need_a_hero_or_a_reason_for_none(d):
+def test_images_need_a_hero_and_there_is_no_waiver(d):
     d.to_stage("images")
     assert d.submit("images", {"images": []})[0] == 1
-    assert d.submit("images", {"images": [], "waived_reason": "A data-only note; any picture would be decoration."})[0] == 0
+    rc, out = d.submit("images", {"images": [], "waived_reason": "A data-only note; any picture would be decoration."})
+    assert rc == 1 and "no waiver" in " ".join(out["reasons"])
 
 
 # ---- model unavailable --------------------------------------------------------------------------------------------

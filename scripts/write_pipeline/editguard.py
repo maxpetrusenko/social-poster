@@ -18,6 +18,7 @@ from scripts.fingerprint_eval.gateway import child_env, claude_env, plain_env
 from scripts.fingerprint_eval.textutil import resolve_pipeline_corpus
 
 from . import cuts as CT
+from . import furniture as FU
 from . import linkpolicy as LP
 from . import mdlib as M
 
@@ -108,6 +109,10 @@ def edit_guard(ref: str, cand: str, *, known_urls: set[str], blob_numbers: Count
             if not st[k]["preserved"]:
                 reasons.append(f"{k} changed: missing={st[k]['missing'][:2]}")
                 cats.append("STRUCTURAL_DAMAGE")
+        ff = FU.footer_changed(ref, cand)  # the footer (Read next, bio, sharing line, disclosure) is frozen boilerplate: any edit fails
+        if ff:
+            reasons.append(ff)
+            cats.append("STRUCTURAL_DAMAGE")
         fd = frozen_diff(ref, cand)
         if fd:
             reasons.append("frozen block (list, quote, code, short paragraph) changed:\n" + "\n".join(fd[:6]))

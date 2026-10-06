@@ -40,8 +40,8 @@ SPEC = {
     "validate": "Markdown plus --report JSON {checked:[{claim_id, verdict}, ...one entry per research claim id, unresolved ones verdict omitted], removals:[{text, reason}]}. An unresolved claim must not be asserted in any wording, verbatim or paraphrased.",
     "editorial": "Markdown plus --report {brief_sha256, unslop:{applied:true, prose_checker:ran|unavailable}, removals:[{text, reason}]}. No link or number may be lost or invented.",
     "voice": "Markdown plus --report {brief_sha256, unslop:{...}, removals:[...]}. Meaning must survive (claims gate).",
-    "title": "JSON {candidates:[10+ strings], pick, rationale, subtitle (140 chars max)}",
-    "images": "JSON {images:[{id, path, purpose, placement hero|after:<heading>|after-paragraph:<n>, method, provenance, license, caption, alt, source_url}], waived_reason}. No presenter or video frames.",
+    "title": "JSON {candidates:[10+ strings], pick, rationale, subtitle (140 chars max), tldr (15-90 words, one paragraph, claims-checked against the body, never 'Direct answer'), read_next:{title, url (https medium.com)} optional (omitted = AUTHOR OPPORTUNITY), pass_it_on (first person, optional), disclosure (optional)}. The author bio is read verbatim from bio.md (env WRITE_PIPELINE_BIO).",
+    "images": "JSON {images:[{id, path, purpose, placement hero|after:<heading>|after-paragraph:<n>, method, provenance, license, caption, alt, source_url, timestamp, presenter_face}]}. A hero is required: placement hero, path assets/hero.jpg (JPEG, 1280x720 or larger), method frame (documentary frame of the source video: source_url, timestamp, presenter_face false) | generated | licensed (source_url). Never a presenter or thumbnail.",
 }
 
 
