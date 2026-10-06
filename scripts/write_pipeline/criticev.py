@@ -115,3 +115,70 @@ def rebut(findings: list[dict], ev: dict, sources: list[Source]) -> list[dict]:
                     break
         out.append(f)
     return out
+
+
+# ---- required skill furniture -----------------------------------------------------------------------------------
+REMOVE_FIX = re.compile(r"\b(?:remov\w*|delet\w*|drop\w*|cut|cutting|strik\w*|omit\w*|eliminat\w*|get rid of|take out|scrap\w*)\b", re.I)
+PART_WORDS = {
+    "TLDR": re.compile(r"\btl;?\s?dr\b|\bblockquote\b|\bsummary (?:block|box|quote)\b", re.I),
+    "hero": re.compile(r"\bhero\b", re.I),
+    "Read next": re.compile(r"\bread next\b", re.I),
+    "bio": re.compile(r"\b(?:author )?bio\b", re.I),
+    "pass-it-on": re.compile(r"\bpass[- ]it[- ]on\b|\bpassed it on\b|\bsharing line\b|\bshare line\b", re.I),
+}
+SUB_SPAN = re.compile(r"\b(?:sentence|clause|phrase|word|claim|number|figure|statistic|adjective|adverb|hedge)s?\b", re.I)
+FURNITURE_REASON = ("{part} is required furniture of the medium-article-generator skill; removing it is not a valid fix. "
+                    "Its content (claims, repetition) may still be fixed in place")
+
+
+def _verb_then(part_rx: re.Pattern, fix: str) -> bool:
+    """A remove verb followed within a few words by the furniture name: "remove the TLDR", "delete this entire bio block"."""
+    return any(part_rx.search(" ".join(fix[m.end():].split()[:5])) for m in REMOVE_FIX.finditer(fix))
+
+
+def furniture_elements(cand: str) -> dict[str, list[str]]:
+    """Normalised text of each required furniture element present in `cand`: hero image and caption, TLDR, and the footer's Read next / bio / pass-it-on."""
+    from . import furniture as FU
+    out: dict[str, list[str]] = {k: [] for k in PART_WORDS}
+    hero = FU.hero_line(cand)
+    if hero:
+        out["hero"].append(_norm(hero))
+    cap = FU.caption_text(cand)
+    if cap:
+        out["hero"].append(_norm(cap))
+    tl = FU.tldr_text(cand)
+    if tl:
+        out["TLDR"].append(_norm(tl))
+    _, foot = FU.split_footer(cand)
+    for para in re.split(r"\n\s*\n", foot or ""):
+        t = para.strip()
+        if not t or set(t) <= {"-"}:
+            continue
+        key = "Read next" if re.match(r"read next\b", t, re.I) else "pass-it-on" if PART_WORDS["pass-it-on"].search(t) else "bio"
+        out[key].append(_norm(t))
+    return out
+
+
+def _covers(passage: str, element: str) -> bool:
+    """The quoted passage is the whole element (or most of it), or is the whole element's text restated inside a larger quote."""
+    p = _norm(passage)
+    return bool(p and element and (p == element or (element in p) or (p in element and len(p) >= 0.8 * len(element))))
+
+
+def furniture_filter(findings: list[dict], cand: str) -> list[dict]:
+    """Deterministic backstop for a critic that flags required furniture (hero, TLDR, Read next, bio, pass-it-on) for removal.
+    A finding whose fix is "remove/delete" of one whole furniture element becomes `not_applicable` (original severity kept, reason recorded)
+    and never counts toward READY. A fix that only edits the element's content (a claim, a repeated phrase) is left untouched."""
+    els = furniture_elements(cand)
+    out = []
+    for f in findings:
+        fix = str(f.get("fix") or "")
+        part = None
+        if f.get("severity") in ("major", "minor") and REMOVE_FIX.search(fix):
+            part = next((k for k, rx in PART_WORDS.items() if _verb_then(rx, fix)), None)
+            if part is None and not SUB_SPAN.search(fix):  # "remove it" on a passage that is a whole furniture element
+                part = next((k for k, ts in els.items() if any(_covers(str(f.get("passage") or ""), t) for t in ts)), None)
+        if part:
+            f = {**f, "original_severity": f["severity"], "severity": "not_applicable", "not_applicable": FURNITURE_REASON.format(part=part)}
+        out.append(f)
+    return out
