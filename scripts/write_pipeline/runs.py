@@ -15,6 +15,7 @@ from . import cuts as CT
 from . import editguard as G
 from . import furniture as FU
 from . import mdlib as M
+from . import rewrite as RW
 from .core import BLOCKED, DONE, FAILED, NOT_READY, Pipeline, PipelineError, atomic_write, safe_path, sha_bytes, sha_json
 from .submit import _finish, deps_ctx
 
@@ -144,6 +145,10 @@ def ensure_source_notes(pipe: Pipeline) -> Path:
 CRITIC_PROMPT = """You are an independent editorial critic. You have no knowledge of how this article was produced. Judge only the text below.
 Apply the editorial contract (V6 framework) that follows. Report findings only; do not rewrite the article.
 
+Required furniture: the hero image and caption, the TLDR blockquote, the Read next line, the author bio and the pass-it-on line are REQUIRED by the
+medium-article-generator skill. Never flag any of them for removal and never propose deleting one as a fix. You may still flag the CONTENT of the
+TLDR (an unsupported claim, a number, a repeated thesis) and propose rewording it in place.
+
 Severity: "major" = a factual claim the evidence does not support, an unsupported or invented personal experience, corrective-contrast or
 other prohibited prose devices, a repeated thesis, a summary that adds nothing beyond its source, or a title that overclaims.
 "minor" = anything else worth fixing. Quote the exact passage you refer to.
@@ -220,7 +225,7 @@ def run_critic(pipe: Pipeline, critic: Critic, framework_text: str) -> dict:
         return {"ok": False, "code": "BLOCKED", "stage": "critic", "reasons": msg}
     try:
         data = extract_json(raw)
-        findings = CE.rebut(_check_critic(data, cand), ctx["ev"], sources)  # an "unsupported" major the evidence contains verbatim is rebutted
+        findings = CE.furniture_filter(CE.rebut(_check_critic(data, cand), ctx["ev"], sources), cand)  # an "unsupported" major the evidence contains verbatim is rebutted; removal of required furniture is not_applicable
     except Exception as e:  # noqa: BLE001  malformed nested JSON of any shape is a rejected critic reply, not a crash
         pipe.set("critic", FAILED, reasons=[f"critic output is malformed: {str(e)[:200]}"])
         pipe.save()
@@ -230,7 +235,8 @@ def run_critic(pipe: Pipeline, critic: Critic, framework_text: str) -> dict:
     st["repair_rejected"] = 0
     st["history"].append({"round": st["rounds"], "candidate_sha256": csha, "prose_sha256": prose_sha(cand), "majors": len(majors)})
     art = {"round": st["rounds"], "candidate_sha256": csha, "reviewer": "claude -p (separate process, article and evidence only)", "verdict": "revise" if majors else "pass",
-           "findings": findings, "majors": len(majors), "rebutted": sum(1 for f in findings if f["severity"] == "rebutted")}
+           "findings": findings, "majors": len(majors), "rebutted": sum(1 for f in findings if f["severity"] == "rebutted"),
+           "not_applicable": sum(1 for f in findings if f["severity"] == "not_applicable")}
     main = (json.dumps(art, indent=1, sort_keys=True) + "\n").encode()
     out = _finish(pipe, "critic", main, "json", extra_bundle=csha.encode(), extra={"candidate_sha256": csha, "majors": len(majors)})
     if majors and st["rounds"] >= MAX_CRITIC_ROUNDS:
@@ -292,7 +298,13 @@ def _removals(report) -> tuple[list[dict], list[str]]:
         if not isinstance(r, dict) or not str(r.get("text", "")).strip() or not str(r.get("reason", "")).strip():
             bad.append(f"removals[{i}] needs {{\"text\": \"<exact sentence>\", \"reason\": \"...\"}}")
         else:
-            out.append({"text": str(r["text"]), "reason": str(r["reason"])[:200]})
+            item = {"text": str(r["text"]), "reason": str(r["reason"])[:200]}
+            if "replacement" in r:
+                if not isinstance(r["replacement"], str) or not r["replacement"].strip():
+                    bad.append(f"removals[{i}].replacement must be the new sentence text")
+                    continue
+                item["replacement"] = r["replacement"].strip()
+            out.append(item)
     return out, bad
 
 
@@ -318,6 +330,8 @@ def repair_try(pipe: Pipeline, cand: str, runner: G.Runner, report: dict | None 
     undone = [r["text"][:80] for r in new_rem if CT._key(r["text"]) not in {x["sentence"] for x in cuts} and CT._key(r["text"]) not in {CT._key(p["text"]) for p in prior}]
     g = G.edit_guard(guard_ref, cand, known_urls=c["known_urls"], blob_numbers=c["blob_numbers"], strict=True, removals=all_rem, author_material=c["author_material"], ev=c["ev"])
     reasons = [*rem_bad, *g["reasons"]]
+    if not reasons:  # a link-bearing sentence may be rewritten only as a declared rewrite that keeps its URLs and is support-checked
+        reasons += RW.check_rewrites(guard_ref, cand, all_rem, new_rem, ev=c["ev"], blob=c["blob"], known_urls=c["known_urls"], blob_numbers=c["blob_numbers"], author_material=c["author_material"])
     if not reasons:  # policy rule (b): the claims of a removed link-bearing sentence must really be gone
         more, blocked = G.confirm_link_removals(g, runner, pipe.pkg, cand, pipe.pkg / "write-pipeline" / "work" / "repair-removed")
         if blocked:
@@ -327,7 +341,8 @@ def repair_try(pipe: Pipeline, cand: str, runner: G.Runner, report: dict | None 
         reasons += more
     if undone:
         reasons.append(f"declared removals that do not match a reference sentence exactly, or are still in the text: {undone[:2]}")
-    bad_added = AC.check_added(gate_ref, cand, ev=c["ev"], blob=c["blob"], known_urls=c["known_urls"], blob_numbers=c["blob_numbers"], author_material=c["author_material"])
+    bad_added = AC.check_added(gate_ref, cand, ev=c["ev"], blob=c["blob"], known_urls=c["known_urls"], blob_numbers=c["blob_numbers"], author_material=c["author_material"],
+                             rewrite_keys=RW.rewrite_keys(new_rem))
     for b in bad_added[:4]:
         reasons.append(f"added sentence rejected [{b['section'] or 'intro'}] {b['sentence'][:100]!r}: " + "; ".join(b["reasons"]))
     added_n = len(AC.added_sentences(gate_ref, cand))
@@ -363,7 +378,9 @@ def repair_try(pipe: Pipeline, cand: str, runner: G.Runner, report: dict | None 
     atomic_write(p, cand.encode())
     pipe.state["candidate"] = {"path": str(p.relative_to(pipe.pkg)), "sha256": sha_bytes(cand.encode()), "origin": f"repair-{n}", "history": [*pipe.state["candidate"].get("history", []), pipe.state["candidate"]["sha256"]]}
     images_ref = CT.images_reference_sha(pipe) or ""
-    pipe.state["repair_cuts"] = [{"text": x["sentence"], "reason": x["reason"]} for x in cuts]
+    reps = RW.replacements(all_rem)
+    cuts = [{**x, "replacement": reps[x["sentence"]]} if x["sentence"] in reps else x for x in cuts]
+    pipe.state["repair_cuts"] = [{"text": x["sentence"], "reason": x["reason"], **({"replacement": x["replacement"]} if x.get("replacement") else {})} for x in cuts]
     pipe.state["repair_cuts_binding"] = {"reference_sha256": images_ref, "candidate_sha256": pipe.state["candidate"]["sha256"]}
     CT.record_cuts(pipe, "repair", cuts, images_ref, pipe.state["candidate"]["sha256"])
     pipe.log("repair_accepted", sha256=pipe.state["candidate"]["sha256"], added=added_n, cuts=len(cuts))

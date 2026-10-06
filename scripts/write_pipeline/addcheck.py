@@ -16,6 +16,9 @@ from . import mdlib as M
 
 MATCH_MIN = 0.3   # content-token overlap that makes a ledger or source sentence "about the same thing"
 MAX_MATCHES = 3
+WEAKENING = frozenset({"only", "may", "might", "could", "possibly", "perhaps", "partly", "partially", "some", "few", "roughly", "approximately", "nearly", "almost",
+                       "sometimes", "rarely", "seldom", "unlikely", "potentially", "largely", "mostly", "mainly"})  # narrowing or softening words a declared rewrite may add
+_LINK_TARGET = re.compile(r"\]\([^)]*\)")
 
 
 def added_sentences(ref: str, cand: str) -> list[tuple[str, str]]:
@@ -38,7 +41,7 @@ def support_sentences(ev: dict, blob: str) -> list[str]:
 
 
 def _matches(sentence: str, support: list[str]) -> list[str]:
-    st = AD._content_tokens(sentence)
+    st = AD._content_tokens(_LINK_TARGET.sub("]", sentence))  # a link's URL is not content: its pieces must not dilute the overlap
     if not st:
         return []
     scored = sorted(((len(st & AD._content_tokens(x)) / len(st), x) for x in support), key=lambda t: -t[0])
@@ -50,7 +53,8 @@ def vocabulary(support: list[str], ref: str = "") -> frozenset[str]:
     return frozenset(w for t in (*support, ref) for w in AD.words(t))
 
 
-def check_sentence(sentence: str, *, ev: dict, support: list[str], known_urls: set[str], blob_numbers, author_material: bool, vocab: frozenset[str] | None = None) -> list[str]:
+def check_sentence(sentence: str, *, ev: dict, support: list[str], known_urls: set[str], blob_numbers, author_material: bool, vocab: frozenset[str] | None = None,
+                   weak_ok: frozenset[str] = frozenset()) -> list[str]:
     reasons: list[str] = []
     if vocab is not None:  # named entities stay deterministic: a restatement may reword, it may not introduce a person, place or organisation
         ents = {e.replace("\u2019", "'") for e in AD._signature(sentence)[2]}
@@ -71,7 +75,7 @@ def check_sentence(sentence: str, *, ev: dict, support: list[str], known_urls: s
         known = set().union(*(AD._signature(x)[1] for x in near)) if near else set()
         if not negs <= known:
             reasons.append(f"negation {sorted(negs - known)[:3]} is not in any supporting sentence")
-    hedges = modality(sentence)
+    hedges = modality(sentence) - weak_ok  # weak_ok: terms that only lower commitment, allowed in a declared rewrite (the claims gate still judges it)
     if hedges and near:
         known_m = set().union(*(modality(x) for x in near))
         if not hedges <= known_m:
@@ -79,13 +83,15 @@ def check_sentence(sentence: str, *, ev: dict, support: list[str], known_urls: s
     return reasons
 
 
-def check_added(ref: str, cand: str, *, ev: dict, blob: str, known_urls: set[str], blob_numbers, author_material: bool) -> list[dict]:
+def check_added(ref: str, cand: str, *, ev: dict, blob: str, known_urls: set[str], blob_numbers, author_material: bool, rewrite_keys: frozenset[str] = frozenset()) -> list[dict]:
     """[{section, sentence, reasons}] for each added sentence that fails a deterministic check. Empty = none failed here."""
     support = support_sentences(ev, blob)
     vocab = vocabulary(support, ref)
     bad = []
     for sec, s in added_sentences(ref, cand):
-        r = check_sentence(s, ev=ev, support=support, known_urls=known_urls, blob_numbers=blob_numbers, author_material=author_material, vocab=vocab)
+        from .cuts import _key
+        r = check_sentence(s, ev=ev, support=support, known_urls=known_urls, blob_numbers=blob_numbers, author_material=author_material, vocab=vocab,
+                           weak_ok=WEAKENING if _key(s) in rewrite_keys else frozenset())
         if r:
             bad.append({"section": sec, "sentence": s, "reasons": r})
     return bad
