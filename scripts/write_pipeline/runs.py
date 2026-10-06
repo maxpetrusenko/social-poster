@@ -10,6 +10,7 @@ from typing import Callable
 from scripts.fingerprint_eval.gateway import GatewayError, extract_json
 
 from . import addcheck as AC
+from . import criticev as CE
 from . import cuts as CT
 from . import editguard as G
 from . import furniture as FU
@@ -147,13 +148,18 @@ Severity: "major" = a factual claim the evidence does not support, an unsupporte
 other prohibited prose devices, a repeated thesis, a summary that adds nothing beyond its source, or a title that overclaims.
 "minor" = anything else worth fixing. Quote the exact passage you refer to.
 
-Reply with JSON only: {{"verdict": "pass" | "revise", "findings": [{{"id": "F1", "severity": "major" | "minor", "passage": "<exact text from the article>", "reason": "...", "fix": "..."}}]}}
+Before you call anything unsupported, verify it against the evidence ledger below. Each claim is listed with its evidence passages and the captured
+source excerpts that bear on it. If a passage or excerpt states the fact (a quoted sentence, a number, a year, a study design, a sample size), it is
+supported: do not report it. Report a claim as unsupported only when neither its evidence passages nor its source excerpts contain it, and say which
+ledger id you checked and what is missing. A claim the ledger marks unresolved must not be asserted as fact.
+
+Reply with JSON only: {{"verdict": "pass" | "revise", "findings": [{{"id": "F1", "severity": "major" | "minor", "kind": "unsupported" | "other", "passage": "<exact text from the article>", "claim_span": "<for kind unsupported: the exact words of the article that state the unsupported fact>", "reason": "...", "fix": "..."}}]}}
 Use "pass" only when there is no major finding.
 
 === FRAMEWORK ===
 {framework}
 
-=== EVIDENCE LEDGER (claims and inspected sources) ===
+=== EVIDENCE LEDGER (claims, their evidence passages and source excerpts) ===
 {ledger}
 
 === ARTICLE ===
@@ -161,12 +167,22 @@ Use "pass" only when there is no major finding.
 """
 
 
-def _ledger(ev: dict) -> str:
-    rows = []
-    for c in ev.get("claims", []):
-        urls = ", ".join(str(e.get("url") or e.get("source_id")) for e in c.get("evidence", []) or [])
-        rows.append(f"- [{c.get('status')}] {c.get('claim')} ({urls})")
-    return "\n".join(rows) or "(none)"
+def captured_sources(pipe: Pipeline) -> list[CE.Source]:
+    """(file, text) of every captured source, each re-hashed by deps_ctx's source_blob before it is ever shown to the critic."""
+    src = pipe.read_json("source")
+    out = []
+    for x in (src.get("sources") or []) if isinstance(src, dict) else []:
+        if x.get("status") == "captured" and x.get("file"):
+            try:
+                out.append((str(x["file"]), safe_path(pipe.pkg, x["file"]).read_bytes().decode("utf-8", "replace")))
+            except (OSError, PipelineError):
+                continue
+    return out
+
+
+def _ledger(ev: dict, sources: list[CE.Source] | None = None) -> str:
+    """The ledger the critic sees: claims WITH their evidence passages and the relevant captured-source excerpts (criticev.ledger_view)."""
+    return CE.ledger_view(ev, sources or [])
 
 
 def run_critic(pipe: Pipeline, critic: Critic, framework_text: str) -> dict:
@@ -186,7 +202,9 @@ def run_critic(pipe: Pipeline, critic: Critic, framework_text: str) -> dict:
         if last and last.get("prose_sha256") == prose_sha(cand):  # same prose, only the frame changed: the last clean verdict still holds
             return _critic_carry(pipe, st, csha)
         return _critic_exhausted(pipe, st, "the critic budget is used and the prose changed after the last clean round; no further critic round is allowed", csha)
-    prompt = CRITIC_PROMPT.format(framework=framework_text, ledger=_ledger(deps_ctx(pipe)["ev"]), article=cand)
+    ctx = deps_ctx(pipe)  # also re-hashes every captured source
+    sources = captured_sources(pipe)
+    prompt = CRITIC_PROMPT.format(framework=framework_text, ledger=_ledger(ctx["ev"], sources), article=cand)
     try:
         raw = critic(prompt)
     except GatewayError as e:
@@ -202,7 +220,7 @@ def run_critic(pipe: Pipeline, critic: Critic, framework_text: str) -> dict:
         return {"ok": False, "code": "BLOCKED", "stage": "critic", "reasons": msg}
     try:
         data = extract_json(raw)
-        findings = _check_critic(data, cand)
+        findings = CE.rebut(_check_critic(data, cand), ctx["ev"], sources)  # an "unsupported" major the evidence contains verbatim is rebutted
     except Exception as e:  # noqa: BLE001  malformed nested JSON of any shape is a rejected critic reply, not a crash
         pipe.set("critic", FAILED, reasons=[f"critic output is malformed: {str(e)[:200]}"])
         pipe.save()
@@ -212,7 +230,7 @@ def run_critic(pipe: Pipeline, critic: Critic, framework_text: str) -> dict:
     st["repair_rejected"] = 0
     st["history"].append({"round": st["rounds"], "candidate_sha256": csha, "prose_sha256": prose_sha(cand), "majors": len(majors)})
     art = {"round": st["rounds"], "candidate_sha256": csha, "reviewer": "claude -p (separate process, article and evidence only)", "verdict": "revise" if majors else "pass",
-           "findings": findings, "majors": len(majors)}
+           "findings": findings, "majors": len(majors), "rebutted": sum(1 for f in findings if f["severity"] == "rebutted")}
     main = (json.dumps(art, indent=1, sort_keys=True) + "\n").encode()
     out = _finish(pipe, "critic", main, "json", extra_bundle=csha.encode(), extra={"candidate_sha256": csha, "majors": len(majors)})
     if majors and st["rounds"] >= MAX_CRITIC_ROUNDS:
@@ -258,7 +276,8 @@ def _check_critic(data, cand: str) -> list[dict]:
     for i, f in enumerate(data["findings"]):
         if not isinstance(f, dict) or f.get("severity") not in ("major", "minor") or not str(f.get("reason", "")).strip() or not str(f.get("passage", "")).strip():
             raise ValueError(f"finding {i} needs severity, passage and reason")
-        out.append({"id": str(f.get("id") or f"F{i + 1}"), "severity": f["severity"], "passage": f["passage"], "reason": f["reason"], "fix": f.get("fix", ""),
+        out.append({"id": str(f.get("id") or f"F{i + 1}"), "severity": f["severity"], "kind": str(f.get("kind") or ""), "claim_span": str(f.get("claim_span") or ""),
+                    "passage": f["passage"], "reason": f["reason"], "fix": f.get("fix", ""),
                     "verified": M.norm(str(f["passage"])) in n})  # a finding whose quoted passage is not in the article cannot be acted on
     if data["verdict"] == "revise" and not out:
         raise ValueError("verdict 'revise' without findings")
