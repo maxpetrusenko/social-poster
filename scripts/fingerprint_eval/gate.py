@@ -142,7 +142,7 @@ def _verdict(slug: str, threshold: float, reasons: list[str], cats: list[str], i
 
 def evaluate(article: Path, draft: Path | None, author_dir: Path | None, pipeline_dir: Path | None, out: Path, judge_spec: str,
              extractor_spec: str, threshold: float, refresh: bool, identity_shortcut: bool = False, source_notes: Path | None = None,
-             reference_bound_by: str | None = None, timings: dict | None = None) -> dict:
+             reference_bound_by: str | None = None, timings: dict | None = None, allowed_link_removals=None) -> dict:
     """identity_shortcut (release path): a final byte-identical to the reference skips the extractor, judge and embeddings
     (claims judged_by "identity"), but ONLY when reference_bound_by names the rating/prepublish record whose recorded hash
     equals the reference sha256 (the caller, authz, verified that). Otherwise every check runs. Off by default so the
@@ -159,7 +159,7 @@ def evaluate(article: Path, draft: Path | None, author_dir: Path | None, pipelin
               "reference_identical": final_md == draft_md}
 
     # cheap deterministic checks first: no model call is spent on a candidate that is already structurally broken
-    struct = structure_preservation(draft_md, final_md)
+    struct = structure_preservation(draft_md, final_md, allowed_link_removals)
     fdiff = frozen_diff(draft_md, final_md)
     det_reasons, det_cats = _deterministic(struct, fdiff)
     advisory: dict = {}
@@ -257,14 +257,14 @@ def evaluate(article: Path, draft: Path | None, author_dir: Path | None, pipelin
 
 def run_gate(article: Path, draft: Path | None, author_dir: Path | None, pipeline_dir: Path | None, out: Path, judge_spec: str,
              threshold: float, extractor_spec: str, refresh: bool = False, identity_shortcut: bool = False, source_notes: Path | None = None,
-             reference_bound_by: str | None = None) -> int:
+             reference_bound_by: str | None = None, allowed_link_removals=None) -> int:
     """Never raises: every failure to evaluate, including bugs, is exit 2. gate.json carries `timings` (seconds per phase, also on ERROR)."""
     timings: dict = {}
     t0 = time.monotonic()
     try:
         out.mkdir(parents=True, exist_ok=True)
         (out / "gate.json").unlink(missing_ok=True)  # a stale verdict must never outlive a failed run
-        gate = evaluate(article, draft, author_dir, pipeline_dir, out, judge_spec, extractor_spec, threshold, refresh, identity_shortcut, source_notes, reference_bound_by, timings)
+        gate = evaluate(article, draft, author_dir, pipeline_dir, out, judge_spec, extractor_spec, threshold, refresh, identity_shortcut, source_notes, reference_bound_by, timings, allowed_link_removals)
     except Exception as e:  # noqa: BLE001  fail closed
         msg = f"{type(e).__name__}: {e}" if not isinstance(e, EvaluationError) else str(e)
         cat = getattr(e, "category", None)  # errors.EvaluationError carries a Category (older builds: absent)

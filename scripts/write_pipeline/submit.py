@@ -204,8 +204,15 @@ def _text_stage(pipe: Pipeline, stage: str, text: str, rep: dict | None, rep_raw
     removals = (rep or {}).get("removals") if stage in ("validate", "editorial", "voice") else None
     if stage in PREV:
         g = G.edit_guard(pipe.read_art(PREV[stage]) or "", text, known_urls=c["known_urls"], blob_numbers=c["blob_numbers"], strict=False,
-                         removals=removals if isinstance(removals, list) else [], author_material=c["author_material"])
+                         removals=removals if isinstance(removals, list) else [], author_material=c["author_material"], ev=c["ev"])
         reasons += g["reasons"]
+        if not g["reasons"] and stage in ("editorial", "voice"):  # policy rule (b): a removed link's claims must really be gone
+            more, blocked = G.confirm_link_removals(g, runner, pipe.pkg, text, pipe.pkg / "write-pipeline" / "work" / stage / "removed")
+            if blocked:
+                pipe.set(stage, BLOCKED, reasons=more, extra={"category": "MODEL_UNAVAILABLE"})
+                pipe.save()
+                return {"ok": False, "code": "BLOCKED", "stage": stage, "reasons": more}
+            reasons += more
     if reasons:
         return _fail(pipe, stage, reasons)
     if stage == "validate" and any(isinstance(x, dict) and x.get("status") == "unresolved" for x in c["ev"].get("claims", [])):

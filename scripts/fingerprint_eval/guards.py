@@ -99,9 +99,11 @@ def semantic_similarity(original: str, rewrite: str) -> dict:
             "unmatched_rewrite_sections": extra}
 
 
-def structure_preservation(original: str, rewrite: str) -> dict:
+def structure_preservation(original: str, rewrite: str, allowed_link_removals=None) -> dict:
     """Headings and code blocks verbatim and in order; images anywhere (inline, reference) in order;
-    links of every kind (inline, reference + definitions, autolinks, bare URLs) not lost."""
+    links of every kind (inline, reference + definitions, autolinks, bare URLs) not lost. A link is its normalized URL: rewording only the
+    anchor text is not a lost link (the claims check still judges the sentence). allowed_link_removals: URLs the caller declared removed
+    and verified (signed removals ledger); anything else that disappears, or whose URL changed, stays a hard fail."""
     bo, br = parse_blocks(original), parse_blocks(rewrite)
 
     def texts(bs: list[Block], kind: str) -> list[str]:
@@ -115,8 +117,11 @@ def structure_preservation(original: str, rewrite: str) -> dict:
     ro, rr = find_refs(original), find_refs(rewrite)
     io, ir = ro["images"], rr["images"]
     res["images"] = {"original": len(io), "rewrite": len(ir), "preserved": io == ir, "missing": lost(io, ir)[:10], "added": lost(ir, io)[:10]}
-    gone = lost(ro["links"], rr["links"])
-    res["links"] = {"original": len(ro["links"]), "rewrite": len(rr["links"]), "preserved": not gone, "missing": gone[:20]}
+    from .refs import link_url, lost_urls
+    allowed = {link_url(u) for u in (allowed_link_removals or ())}
+    gone = lost_urls(ro["links"], rr["links"], allowed)
+    res["links"] = {"original": len(ro["links"]), "rewrite": len(rr["links"]), "preserved": not gone, "missing": gone[:20],
+                    "allowed_removed": sorted(allowed & {link_url(x) for x in lost_urls(ro["links"], rr["links"])})}
     res["all_preserved"] = all(v["preserved"] for v in res.values() if isinstance(v, dict))
     return res
 

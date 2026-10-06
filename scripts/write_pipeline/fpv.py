@@ -171,7 +171,7 @@ def try_edit(pipe: Pipeline, text: str, signal: str, runner: G.Runner) -> dict:
     c = deps_ctx(pipe)
     gate_ref = gate_reference_frame(pipe, text)
     if not rec["reasons"]:
-        g = G.edit_guard(reference_frame(pipe, text), text, known_urls=c["known_urls"], blob_numbers=c["blob_numbers"], strict=True, author_material=c["author_material"])
+        g = G.edit_guard(reference_frame(pipe, text), text, known_urls=c["known_urls"], blob_numbers=c["blob_numbers"], strict=True, author_material=c["author_material"], ev=c["ev"])
         rec["reasons"] += ["guard: " + r for r in g["reasons"]]
         rec["reasons"] += asserted_unresolved(text, c["ev"])
         for b in AC.check_added(gate_ref, text, ev=c["ev"], blob=c["blob"], known_urls=c["known_urls"], blob_numbers=c["blob_numbers"], author_material=c["author_material"])[:3]:

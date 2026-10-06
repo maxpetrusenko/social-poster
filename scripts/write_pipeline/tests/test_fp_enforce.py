@@ -149,7 +149,7 @@ def test_antifp_not_ready_package_uses_the_best_kept_candidate_and_the_antifp_si
     assert "The report describes the setup." in fm and "robust setup" not in fm  # the kept edit, not the older voice artifact
     assert "antifp baseline" in pm and "the text of this package, measured now" in pm and "fingerprint debt accepted at draft" in pm
     assert "antifp attempts 1, kept 1" in pm and "over the generation cap: template_hits" in pm
-    assert "not reached: fingerprint verification" in pm
+    assert "fingerprint verification did not run; distance computed directly" in pm and "distance to the author corpus centroid" in pm and "baseline " in pm
 
 
 def test_package_is_still_written_if_the_full_report_builder_raises(d, monkeypatch):

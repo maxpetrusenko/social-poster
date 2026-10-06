@@ -18,6 +18,7 @@ from scripts.fingerprint_eval.gateway import child_env, claude_env
 from scripts.fingerprint_eval.textutil import resolve_pipeline_corpus
 
 from . import cuts as CT
+from . import linkpolicy as LP
 from . import mdlib as M
 
 Runner = Callable[[list[str]], tuple[int, str]]
@@ -64,19 +65,17 @@ def has_author_material(sources: dict) -> bool:
 
 
 def edit_guard(ref: str, cand: str, *, known_urls: set[str], blob_numbers: Counter, strict: bool, removals: list[dict] | None = None,
-               author_material: bool = False) -> dict:
+               author_material: bool = False, ev: dict | None = None) -> dict:
     """Returns {"ok", "reasons", "categories"}. strict=True is used after the reference is frozen: no removals, structure and
     frozen blocks must be identical to the reference. strict=False (editorial and voice) allows only declared removals."""
     reasons: list[str] = []
     cats: list[str] = []
     gone_text = "\n".join(str(r.get("text", "")) for r in (removals or []))
-    gone_urls = Counter(M.link_urls(gone_text))
     gone_nums = M.significant_numbers(gone_text)
 
-    lost_links = Counter(M.link_urls(ref)) - Counter(M.link_urls(cand)) - gone_urls
-    if lost_links:
-        reasons.append(f"link removed: {sorted(lost_links)[:3]}")
-        cats.append("MISSING_LINK")
+    lp = LP.check_links(ref, cand, removals, ev)  # URL identity, declared removals, ledger dependents, one source link left (linkpolicy.py)
+    reasons += lp["reasons"]
+    cats += lp["categories"]
     new_links = {u for u in M.link_urls(cand) if u not in set(M.link_urls(ref)) and u not in known_urls}
     if new_links:
         reasons.append(f"link not backed by the source or evidence set: {sorted(new_links)[:3]}")
@@ -123,7 +122,7 @@ def edit_guard(ref: str, cand: str, *, known_urls: set[str], blob_numbers: Count
     if not author_material and M.EXPERIENCE.search(M.strip_code(cand)) and not M.EXPERIENCE.search(M.strip_code(ref)):
         reasons.append("first-person experience claim with no author-supplied material: record an AUTHOR OPPORTUNITY instead")
         cats.append("ADDED_UNSUPPORTED_CLAIM")
-    return {"ok": not reasons, "reasons": reasons, "categories": sorted(set(cats))}
+    return {"ok": not reasons, "reasons": reasons, "categories": sorted(set(cats)), "removed_urls": lp["removed_urls"], "removed_sentences": lp["removed_sentences"]}
 
 
 def gate_argv(article: Path, draft: Path, out: Path, package: Path, environ=None, notes: Path | None = None) -> list[str]:
@@ -157,3 +156,16 @@ def claims_gate(runner: Runner, article: Path, draft: Path, out: Path, package: 
     state = "FAIL" if rc == 1 and g.get("evaluated") else "ERROR"
     return {"state": state, "categories": cats, "reasons": list(g.get("reasons") or [text.strip()[-200:]])[:5], "rc": rc, "evaluated": g.get("evaluated"),
             "added_unsupported": list((g.get("blocking") or {}).get("added_unsupported_claims") or [])}
+
+
+def confirm_link_removals(guard: dict, runner: Runner, pkg: Path, cand: str, work: Path) -> tuple[list[str], bool]:
+    """Policy rule (b), run by a stage after edit_guard passed with declared link removals: the claims gate must find the removed
+    sentences' claims gone, not paraphrased elsewhere. (reasons, blocked): blocked = the gate could not evaluate (retry, never a pass)."""
+    if not guard.get("removed_urls"):
+        return [], False
+    r = LP.removed_claims_gone(runner, pkg, cand, guard["removed_sentences"], claims_gate, work)
+    if r["state"] == "ok":
+        return [], False
+    if r["state"] == "error":
+        return ["claims gate could not check the removed claims (retry later): " + "; ".join(r["reasons"])[:200]], True
+    return [f"link removal rejected: {r['reasons'][0]}"], False
