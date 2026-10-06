@@ -2,7 +2,7 @@
 
 read_when: changing the `/generate-article` skill, `scripts/write_pipeline`, or how an article package reaches the review stop.
 
-One `/generate-article` invocation runs 20 stages and stops for Max's review. The agent (Sonnet through `claude -p`) writes prose and judgement artifacts. `scripts/write_pipeline` is the deterministic half: stage state, hash-bound artifacts, cache, validators, our own fingerprint metrics, and calls to the existing evaluator modules. It has no publish command and never mutates Medium.
+One `/generate-article` invocation (also `write Medium article <topic/source/instructions>`) runs the final article order (20 CLI stages) and stops for Max's review. The agent (Sonnet through `claude -p`) writes prose and judgement artifacts. `scripts/write_pipeline` is the deterministic half: stage state, hash-bound artifacts, cache, validators, our own fingerprint metrics, and calls to the existing evaluator modules. It has no publish command and never mutates Medium.
 
 ## Canonical skill and sync
 
@@ -10,6 +10,10 @@ One `/generate-article` invocation runs 20 stages and stops for Max's review. Th
 - Hermes (mini) loads `~/.hermes/skills/medium-article-generator/SKILL.md`, which defers to `/generate-article` and V6. The `creative/medium-article-generator` copy is byte-identical and shadowed (the list shows one entry with an empty category, the top-level copy). `content-publishing/*` duplicates (`unslop`, `anti-slop-prose-check`, `favorite-writers-voice`, `article-hero-image-pipeline`, `medium-article-pipeline-ops`) are byte-identical too.
 - The cron `youtube-playlist-to-medium-article` (host `mini`, `17 */6 * * *`) loads by name: `gstack`, `medium-article-generator`, the five `source-of-truth-*`, `medium-article-pipeline-ops`, `medium-article-from-source`, `anti-slop-prose-check`, `unslop`, `favorite-writers-voice`. It follows its own prompt and does not call this CLI.
 - No sync mechanism exists. `~/Desktop/Projects/skills/AGENTS.md` and `agent-scripts/scripts` are absent on the main Mac; `maxp-skills` on the mini holds no Medium skill; `hermes skills` manages hub installs only (these are `local`); the codex memory mirror syncs memory, not skills. The mini's `~/.codex/prompts/generate-article.md` is a hand-adapted copy (three paths rewritten) and had already drifted by path only. Apply updates by hand with the patches in `docs/skill-patches/`.
+
+## Final order (skill contract)
+
+research/sources, evidence and claim map, angle, author and fingerprint brief (`brief`, loaded before drafting), draft, fact/source/link check, editorial, author voice, fingerprint measure and repair, recheck, Medium review, title/subtitle, images, independent critic, safe repair, fresh critic if content changed, final fingerprint verification (`fpverify`), integrity gate, exact hash, package, STOP. Hierarchy: factual > source/link > semantic > quality > voice > fingerprint. Critic budget 3 per run (no reset); upstream rework 1 per stage. The skill (`generate-article.md`) holds the schemas and the PACKAGE.md section list; stage names `brief` and `fpverify` are reconciled with the CLI at merge. Run the merged checkout `social-poster-fingerprint-eval`.
 
 ## Commands
 
