@@ -10,7 +10,23 @@ from scripts.fingerprint_eval.textutil import parse_blocks, split_sentences
 H1 = re.compile(r"^# (?!#)(.+?)\s*$")
 H3 = re.compile(r"^### (?!#)(.+?)\s*$")
 NUM_RE = re.compile(r"[$€£]?\d[\d,]*(?:\.\d+)?%?")
-PLACEHOLDER = re.compile(r"\b(?:TODO|TBD|FIXME|lorem ipsum|XXX)\b|\[(?:INSERT|PLACEHOLDER|LINK|CITATION)[^\]]*\]|\{\{[^}]*\}\}", re.I)
+PLACEHOLDER = re.compile(r"\b(?:TODO|TBD|FIXME|lorem ipsum|XXX)\b|\[(?:INSERT|PLACEHOLDER|LINK|URL|CITATION|TODO)[^\]]*\](?!\()|<placeholder[^>]*>|\{\{[^}]*\}\}", re.I)
+_BRACKET = re.compile(r"(?<!!)\[[^\]\n]+\](?!\(|\[|:)")  # bracketed text with no URL after it
+_REAL_LINK = re.compile(r"(?<!!)\[[^\]\n]+\]\(\s*(?:(?:https?://|mailto:)[^\s)]+|[/#][^\s)]*)\s*\)", re.I)
+_EMPTY_LINK = re.compile(r"\[[^\]\n]*\]\(\s*(?:#?\s*|(?:TODO|TBD|URL|link|placeholder)[^)]*)\)", re.I)
+
+
+def find_placeholder(md: str) -> str | None:
+    """The first true placeholder in `md`, or None. A markdown link with a real URL is never one, whatever its label ([LinkedIn], [Link])."""
+    plain = _REAL_LINK.sub(lambda m: " ", md)
+    m = PLACEHOLDER.search(plain) or _EMPTY_LINK.search(plain)
+    if m:
+        return m.group(0)
+    for b in _BRACKET.finditer(plain):
+        inner = b.group(0)[1:-1].strip()
+        if len(inner) >= 3 and not re.fullmatch(r"[\d,\s.\-–]+|sic|\.{2,}|…", inner, re.I) and not inner.startswith("^"):
+            return b.group(0)  # bracketed text that links nowhere
+    return None
 # first person experience claims. Allowed only when the source manifest holds author-supplied material.
 EXPERIENCE = re.compile(
     r"\b(?:I (?:tested|tried|built|shipped|ran|measured|migrated|spent|worked|used|switched|wrote|deployed|saw|watched|interviewed)"
@@ -113,7 +129,7 @@ def lint_v6(md: str) -> list[str]:
         out.append("table present (V6 forbids tables)")
     if "—" in prose:
         out.append("em dash in prose (V6)")
-    m = PLACEHOLDER.search(md)
+    m = find_placeholder(strip_code(md))
     if m:
-        out.append(f"placeholder left in text: {m.group(0)[:40]!r}")
+        out.append(f"placeholder left in text: {m[:40]!r}")
     return out

@@ -108,6 +108,9 @@ def submit(pipe: Pipeline, stage: str, file: Path, report: Path | None, runner: 
         rep, err = _json(report)
         if rep is None:
             return _fail(pipe, stage, [f"report {err}"])
+    hit = _cached_resubmit(pipe, stage, file, raw, rep_raw)
+    if hit:
+        return hit
     try:  # stage boundary: nothing raised below may leave the stage pending
         c = deps_ctx(pipe)
         if stage in JSON_STAGES:
@@ -122,6 +125,33 @@ def submit(pipe: Pipeline, stage: str, file: Path, report: Path | None, runner: 
         return _text_stage(pipe, stage, text, rep, rep_raw, c, runner)
     except Exception as e:  # noqa: BLE001
         return fail_exc(pipe, stage, e)
+
+
+def _cached_resubmit(pipe: Pipeline, stage: str, file: Path, raw: bytes, rep_raw: bytes | None) -> dict | None:
+    """A stage that is DONE and current, resubmitted with the bytes (and report) it already holds, is a no-op: no gate runs and no state changes.
+    status() has already re-hashed the artifact, report and externals from disk and compared the upstream bundles."""
+    prev = pipe.rec(stage)
+    if not prev or pipe.status(stage) != DONE or not prev.get("artifact"):
+        return None
+    try:
+        stored = G_read(pipe, prev["artifact"])
+        if stage in JSON_STAGES:
+            data, _ = _json(file)
+            if data is None or stored != (json.dumps(data, indent=1, sort_keys=True) + "\n").encode():
+                return None
+        elif stored != raw:
+            return None
+        old_rep = G_read(pipe, prev["report"]) if prev.get("report") else None
+    except (OSError, PipelineError):
+        return None
+    if old_rep != rep_raw:
+        return None
+    return {"ok": True, "cached": True, "stage": stage, "bundle_sha256": prev.get("bundle_sha256")}
+
+
+def G_read(pipe: Pipeline, rel: str) -> bytes:
+    from .core import safe_path
+    return safe_path(pipe.pkg, rel).read_bytes()
 
 
 def _json_stage(pipe: Pipeline, stage: str, data: dict, c: dict, runner: G.Runner | None = None) -> dict:

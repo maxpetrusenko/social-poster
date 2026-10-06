@@ -131,7 +131,8 @@ def new_sentences(draft_md: str, final_md: str) -> dict[str, list[str]]:
     out: dict[str, list[str]] = {}
     sec_tokens: dict[str, set[str]] = {}
     finals = [(seg.section, s) for seg in segment_article(final_md) if not seg.frozen  # frozen blocks are compared byte-exact elsewhere
-              for s in split_sentences(strip_inline(seg.text).replace("\n", " "))]
+              for b in seg.blocks for ln in (b.text.split("\n") if b.kind == "list" else [b.text])
+              for s in split_sentences(strip_inline(ln).replace("\n", " "))]
     final_norm = {normalize(s) for _, s in finals}
     retained = {i for i, text in enumerate(ref_text) if normalize(text) in final_norm}  # whole and verbatim: not a split or a merge
     for section, s in finals:

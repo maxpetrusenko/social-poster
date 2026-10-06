@@ -89,3 +89,26 @@ def test_unchanged_review_and_critic_are_cache_hits(d):
     assert d.cli("run", "review")[1]["cached"] is True
     assert d.cli("run", "critic")[1]["cached"] is True
     assert d.runner.n("scripts.medium_review") == r_calls and len(d.critic.prompts) == c_calls
+
+
+def test_resubmitting_done_text_stages_is_a_cached_noop_that_never_runs_the_gate(d):
+    from scripts.write_pipeline import submit as S
+    d.to_stage("antifp")
+    before = d.cli("status", "--json")[1]
+    pipe_state = (d.pkg / "write-pipeline" / "state.json").read_bytes()
+    boom = lambda *a, **k: (_ for _ in ()).throw(AssertionError("gate re-ran on a cached resubmit"))
+    mp = __import__("pytest").MonkeyPatch()
+    try:
+        for name in ("claims_gate", "edit_guard", "confirm_link_removals"):
+            mp.setattr(S.G, name, boom)
+        mp.setattr(S, "_fingerprint_gate", boom)
+        mp.setattr(S.V, "text_basic", boom)
+        for stage, rep in (("draft", None), ("validate", d.FACTUAL), ("editorial", __import__("scripts.write_pipeline.tests.fakes", fromlist=["UNSLOP"]).UNSLOP),
+                           ("voice", __import__("scripts.write_pipeline.tests.fakes", fromlist=["UNSLOP"]).UNSLOP)):
+            rc, out = d.submit(stage, d.texts[stage], report=rep)
+            assert rc == 0 and out["cached"] is True, (stage, out)
+    finally:
+        mp.undo()
+    assert d.cli("status", "--json")[1]["stages"] == before["stages"]
+    assert all(s == "DONE" for n, s in stages(d).items() if n in ("draft", "validate", "editorial", "voice"))
+    assert (d.pkg / "write-pipeline" / "state.json").read_bytes() == pipe_state
