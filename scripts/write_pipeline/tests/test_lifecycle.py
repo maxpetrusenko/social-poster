@@ -22,7 +22,7 @@ def test_final_gate_runs_on_the_exact_final_bytes(d):
     assert rc == 0
     final = (d.pkg / "FINAL.md").read_bytes()
     assert d.runner.authorize_seen == [sha(final)]  # the evaluator saw FINAL.md, byte for byte
-    assert json.loads((d.pkg / "write-pipeline/artifacts/16-hash.json").read_text())["final_sha256"] == sha(final)
+    assert json.loads((d.pkg / "write-pipeline/artifacts/18-hash.json").read_text())["final_sha256"] == sha(final)
     assert (d.pkg / "version.json").exists() and json.loads((d.pkg / "version.json").read_text())["finalFile"] == "FINAL.md"
     ref = json.loads(next((d.pkg / "evals").glob("prepublish-v*.json")).read_text())
     assert sha((d.pkg / ref["articleFile"]).read_bytes()) == ref["articleSha256"]  # the pre-anti-fingerprint reference is hash bound
@@ -109,6 +109,7 @@ def test_critic_major_then_safe_repair_then_pass(d):
     assert {r["stage"]: r["state"] for r in st(d)["stages"]}["critic"] == "STALE"  # the critic must now see the new bytes
     assert d.cli("run", "critic")[1]["round"] == 2
     assert d.cli("repair", "done")[0] == 0
+    assert d.cli("fpverify", "done")[0] == 0
     assert d.cli("finalize")[0] == 0
     assert (d.pkg / "FINAL.md").read_text() == fixed
 
@@ -128,7 +129,8 @@ def test_critic_loop_is_capped_at_three_rounds(d):
         rc, out = d.cli("run", "critic")
     assert rc == 3 and out["code"] == "NOT_READY" and "exhausted" in out["reasons"][0]
     assert st(d)["overall"] == "NOT_READY" and len(d.critic.prompts) == 3
-    assert d.cli("finalize")[0] == 2 and not (d.pkg / "FINAL.md").exists()
+    assert d.cli("finalize")[0] == 2
+    assert "NOT READY" in (d.pkg / "FINAL.md").read_text() and "OPEN major F1" in (d.pkg / "PACKAGE.md").read_text()  # written by the CLI itself
 
 
 def test_repair_that_needs_a_claim_change_is_rejected_then_ends_not_ready(d):
@@ -179,10 +181,11 @@ def test_nothing_ever_publishes(d):
 def test_package_has_every_report_section_and_html_contract(d):
     final_run(d)
     pm = (d.pkg / "PACKAGE.md").read_text()
-    for h in ("## Final article", "## Title", "## Subtitle", "## Images", "## Sources", "## Editorial scorecard", "## Integrity",
-              "## Anti-fingerprint report", "## Medium route", "## Author opportunities"):
-        assert h in pm
-    assert "Add your own measurements" in pm and "Unresolved claim left out" in pm  # real gaps surface as author opportunities
+    from scripts.write_pipeline.report import HEADINGS, SECTIONS
+    heads = re.findall(r"^## (.+)$", pm, re.M)
+    assert heads == [HEADINGS.get(k, k) for k in SECTIONS] and heads[0] == "TITLE" and heads[-1] == "READY/NOT_READY"
+    assert "Add your own latency measurements" in pm and "Unresolved claim left out" in pm  # topical real gaps surface as author suggestions
+    assert "career journey" not in pm and "omitted (too little overlap" in pm  # an off-topic suggestion is dropped, never shown
     html = (d.pkg / "FINAL.html").read_text()
     assert re.search(r"<h1>.*</h1>\s*<h3>.*</h3>", html, re.S) and "<table" not in html
     assert re.search(r"[A-Za-z]:?\s*DIRECT_PUBLISH", pm) or "A DIRECT_PUBLISH" in pm
@@ -192,7 +195,7 @@ def test_status_shows_every_stage_state(d):
     d.to_stage("review")
     rc, out = d.cli("status")
     lines = [ln for ln in out.splitlines() if re.match(r"\s*\d+ ", ln)]
-    assert len(lines) == 18 and sum(" DONE " in ln for ln in lines) == 9
+    assert len(lines) == 20 and sum(" DONE " in ln for ln in lines) == 10
 
 
 def _evaluator_clean() -> bool:

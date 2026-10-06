@@ -174,7 +174,7 @@ def test_unresolved_claim_must_be_declared_omitted(d):
     validated(d)
     rep = {"checked": [{**e, "verdict": "supported"} if e["claim_id"] == "c4" else e for e in d.FACTUAL["checked"]]}
     rc, out = d.submit("validate", DRAFT, report=rep)
-    assert rc == 1 and "must be reported as omitted" in out["reasons"][0]
+    assert rc == 1 and "verdict\": \"omitted\"" in out["reasons"][0]
 
 
 def test_unresolved_claim_by_lexical_paraphrase_is_rejected(d):

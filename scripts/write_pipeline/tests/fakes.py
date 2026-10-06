@@ -97,6 +97,7 @@ class Runner:
         self.gate_cats: list[str] = []
         self.forbidden: list[str] = []  # phrases that make the claims gate see a changed claim
         self.required: list[str] = []   # phrases whose deletion makes the gate see a missing claim
+        self.unsupported: list[str] = []  # phrases the added-claim support check (gate with source notes) finds unsupported
         self.paraphrases: list[str] = []  # phrases that make the unresolved-claims reference look entailed by the text (a paraphrase survived)
         self.unresolved_runs = 0
         self.unresolved_error = False
@@ -114,8 +115,9 @@ class Runner:
         mod = argv[2]
         self.calls.append((mod, argv))
         arg = lambda k: argv[argv.index(k) + 1]  # noqa: E731
-        if mod == "scripts.fingerprint_eval.run":
+        if mod in ("scripts.fingerprint_eval.run", "scripts.write_pipeline.gaterun"):
             out = Path(arg("--out"))
+            self.notes_seen = arg("--source-notes") if "--source-notes" in argv else None
             art, ref = Path(arg("--article")).read_text(), Path(arg("--draft")).read_text()
             state, cats = self.gate, list(self.gate_cats)
             if "/work/unresolved/" in arg("--draft"):  # unresolved-claims reference: a clean text has every claim MISSING (FAIL)
@@ -127,10 +129,14 @@ class Runner:
                 state, cats = "FAIL", ["CONTENT_CLAIM_FAILURE"]
             if any(p in ref and p not in art for p in self.required):
                 state, cats = "FAIL", ["CONTENT_CLAIM_FAILURE"]
+            unsup = [p for p in self.unsupported if p in art and p not in ref]
+            if unsup and "--source-notes" in argv:
+                state, cats = "FAIL", ["ADDED_UNSUPPORTED_CLAIM"]
             if state == "ERROR":
                 return 2, "GATE ERROR"
             g = {"pass": state == "PASS", "evaluated": True, "exit_code": 0 if state == "PASS" else 1, "failure_categories": cats,
-                 "reasons": [] if state == "PASS" else [f"claims changed={len(cats)}"]}
+                 "reasons": [] if state == "PASS" else [f"claims changed={len(cats)}"],
+                 "blocking": {"added_unsupported_claims": [{"section": "", "claim": p, "reason": "no support in the ledger"} for p in unsup]}}
             out.mkdir(parents=True, exist_ok=True)
             (out / "gate.json").write_text(json.dumps(g))
             return g["exit_code"], ""
@@ -226,7 +232,15 @@ class Driver:
         p.write_text(content if isinstance(content, str) else json.dumps(content))
         return p
 
-    def submit(self, stage: str, content, report=None, name=None):
+    def brief_sha(self) -> str:
+        st = json.loads((self.pkg / "write-pipeline" / "state.json").read_text())
+        if "brief" not in st["stages"]:
+            return "0" * 64
+        return sha((self.pkg / st["stages"]["brief"]["artifact"]).read_bytes())
+
+    def submit(self, stage: str, content, report=None, name=None, brief=True):
+        if brief and stage in ("draft", "editorial", "voice"):
+            report = {**(report or {}), "brief_sha256": self.brief_sha()}
         f = self.write(name or f"{stage}.{'json' if not isinstance(content, str) or stage in ('source', 'research', 'angle', 'outline', 'title', 'images') else 'md'}", content)
         args = ["submit", stage, "--file", str(f)]
         if report is not None:
@@ -249,7 +263,8 @@ class Driver:
         {"id": "c4", "claim": "The change will cut hosting costs by 30 percent worldwide", "status": "unresolved", "supported_wording": "", "evidence": []}]}
     ANGLE = {"question": "Does the cache change explain the latency drop?", "reader": "an engineer deciding whether to copy the change", "angle": "what the report supports and where it stops",
              "verdict": "adds", "contributions": [{"id": "k1", "text": "States the scope limit the report leaves implicit", "kind": "analysis", "evidence_ids": ["c1", "c3"]}],
-             "author_opportunities": [{"id": "a1", "prompt": "Add your own measurements if you ran this change", "why": "no first-hand data was supplied"}]}
+             "author_opportunities": [{"id": "a1", "prompt": "Add your own latency measurements from a cache change on your fleet", "why": "no first-hand median latency data was supplied"},
+                                      {"id": "a2", "prompt": "Share a personal story about your career journey and what motivated you", "why": "makes the piece more human"}]}
     OUTLINE = {"sections": [{"heading": "What the test measured", "purpose": "setup", "evidence_ids": ["c1", "c2"]}, {"heading": "What the numbers leave open", "purpose": "limits", "evidence_ids": ["c3"]}]}
     FACTUAL = {"checked": [{"claim_id": "c1", "verdict": "supported"}, {"claim_id": "c2", "verdict": "supported"}, {"claim_id": "c3", "verdict": "supported"}, {"claim_id": "c4", "verdict": "omitted"}]}
     TITLES = {"candidates": [f"How a cache change moved median latency on 40 nodes, variant {i}" for i in range(1, 10)] + ["What a lab's cache test says about latency and what it leaves open"],
@@ -272,6 +287,7 @@ class Driver:
             "research": lambda: self.submit("research", self.EVIDENCE),
             "angle": lambda: self.submit("angle", self.ANGLE),
             "outline": lambda: self.submit("outline", self.OUTLINE),
+            "brief": lambda: self.cli("run", "brief"),
             "draft": lambda: self.submit("draft", self.texts["draft"]),
             "validate": lambda: self.submit("validate", self.texts["validate"], report=self.FACTUAL),
             "editorial": lambda: self.submit("editorial", self.texts["editorial"], report=UNSLOP),
@@ -282,6 +298,7 @@ class Driver:
             "images": lambda: self.submit("images", self.images()),
             "critic": lambda: self.cli("run", "critic"),
             "repair": lambda: self.cli("repair", "done"),
+            "fpverify": lambda: self.cli("fpverify", "done"),
         }
         if not (self.pkg / "write-pipeline" / "state.json").exists():
             rc, _ = self.cli("init")

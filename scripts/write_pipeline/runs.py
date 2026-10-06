@@ -4,10 +4,13 @@ from __future__ import annotations
 import json
 import re
 import sys
+from pathlib import Path
 from typing import Callable
 
 from scripts.fingerprint_eval.gateway import GatewayError, extract_json
 
+from . import addcheck as AC
+from . import cuts as CT
 from . import editguard as G
 from . import mdlib as M
 from .core import BLOCKED, DONE, FAILED, NOT_READY, Pipeline, PipelineError, atomic_write, safe_path, sha_bytes, sha_json
@@ -60,8 +63,8 @@ def candidate_text(pipe: Pipeline) -> str:
     return raw.decode("utf-8")
 
 
-def gate_reference_frame(pipe: Pipeline) -> str:
-    """The pre-anti-fingerprint reference the evaluator gate compares against. Never replaced by a rebase."""
+def raw_gate_reference(pipe: Pipeline) -> str:
+    """The pre-anti-fingerprint reference exactly as the images stage recorded it. Never replaced by a rebase."""
     rec = pipe.rec("images") or {}
     if not rec.get("reference_frame"):
         return ""
@@ -71,16 +74,70 @@ def gate_reference_frame(pipe: Pipeline) -> str:
     return raw.decode("utf-8")
 
 
-def reference_frame(pipe: Pipeline) -> str:
+def repair_cuts(pipe: Pipeline) -> list[dict]:
+    """Declared removals the repair stage accepted so far (signed state). Each is a sentence key plus its reason."""
+    v = pipe.state.get("repair_cuts")
+    return [x for x in v if isinstance(x, dict) and isinstance(x.get("text"), str)] if isinstance(v, list) else []
+
+
+def final_text(pipe: Pipeline) -> str:
+    """The text that becomes FINAL.md: the fingerprint-verified text once fpverify is DONE, else the critic/repair candidate."""
+    cand = candidate_text(pipe)  # also refuses a candidate file that changed on disk after it was accepted
+    if pipe.status("fpverify") == DONE:
+        rec = pipe.rec("fpverify") or {}
+        if rec.get("candidate_sha256") != sha_bytes(cand.encode()):
+            raise PipelineError("the fingerprint-verified text belongs to a different candidate than the current one")
+        return pipe.read_art("fpverify") or cand
+    return cand
+
+
+def gate_reference_frame(pipe: Pipeline, cand: str | None = None) -> str:
+    """The reference the evaluator gate compares against: the recorded pre-anti-fingerprint frame minus the sentences a repair
+    declared as removals (taken out only while they are really gone from `cand`, default the current final text)."""
+    ref = raw_gate_reference(pipe)
+    cuts = repair_cuts(pipe)
+    if not cuts or not ref:
+        return ref
+    out, _ = CT.apply_cuts(ref, cand if cand is not None else final_text(pipe), cuts)
+    return out
+
+
+def reference_frame(pipe: Pipeline, cand: str | None = None) -> str:
     """The reference the deterministic edit guard uses: the gate reference, or the author-approved rebase of it for the current candidate."""
     rb = pipe.state.get("rebase")
-    cand = (pipe.state.get("candidate") or {}).get("sha256")
-    if rb and rb.get("accepted") and rb.get("candidate_sha256") == cand:
+    cur = (pipe.state.get("candidate") or {}).get("sha256")
+    if rb and rb.get("accepted") and rb.get("candidate_sha256") == cur:
         raw = safe_path(pipe.pkg, rb["path"]).read_bytes()
         if sha_bytes(raw) != rb["new_reference_sha256"]:
             raise PipelineError("the rebased reference changed on disk after it was approved")
         return raw.decode("utf-8")
-    return gate_reference_frame(pipe)
+    return gate_reference_frame(pipe, cand)
+
+
+NOTES_MARK = "<!-- write_pipeline source notes: sources plus evidence ledger -->\n"
+
+
+def notes_text(pipe: Pipeline) -> str:
+    c = deps_ctx(pipe)
+    rows = []
+    for cl in c["ev"].get("claims", []):
+        if isinstance(cl, dict) and cl.get("status") != "unresolved":
+            ps = " | ".join(str(e.get("passage")) for e in (cl.get("evidence") or []) if isinstance(e, dict) and e.get("passage"))
+            rows.append(f"- [{cl.get('status')}] {cl.get('supported_wording') or cl.get('claim')}" + (f" (passages: {ps})" if ps else ""))
+    return NOTES_MARK + c["blob"] + ("\n\n## Evidence ledger (claims the article may assert)\n\n" + "\n".join(rows) + "\n" if rows else "")
+
+
+def ensure_source_notes(pipe: Pipeline) -> Path:
+    """sources/source-notes.md for the gate's added-claim support check: the captured sources and the evidence ledger. An author-supplied
+    notes file (no marker) is left exactly as it is."""
+    p = pipe.pkg / "sources" / "source-notes.md"
+    if p.exists() and not p.read_text(errors="ignore").startswith(NOTES_MARK):
+        return p
+    txt = notes_text(pipe)
+    if not txt.strip() or not p.exists() or p.read_text(errors="ignore") != txt:
+        if txt.strip():
+            atomic_write(p, txt.encode())
+    return p
 
 
 CRITIC_PROMPT = """You are an independent editorial critic. You have no knowledge of how this article was produced. Judge only the text below.
@@ -123,8 +180,12 @@ def run_critic(pipe: Pipeline, critic: Critic, framework_text: str) -> dict:
     if rec and pipe.status("critic") == DONE and rec.get("candidate_sha256") == csha:
         return {"ok": True, "cached": True, "stage": "critic", "majors": rec.get("majors", 0), "round": st["rounds"]}
     last = st["history"][-1] if st["history"] else None
-    if st["rounds"] >= MAX_CRITIC_ROUNDS and last and last["majors"] > 0:
-        return _critic_exhausted(pipe, st)
+    if st["rounds"] >= MAX_CRITIC_ROUNDS:  # the budget belongs to the run: a resubmitted title, image, caption or fingerprint repair never refills it
+        if last and last["majors"] > 0:
+            return _critic_exhausted(pipe, st, csha=csha)
+        if last and last.get("prose_sha256") == prose_sha(cand):  # same prose, only the frame changed: the last clean verdict still holds
+            return _critic_carry(pipe, st, csha)
+        return _critic_exhausted(pipe, st, "the critic budget is used and the prose changed after the last clean round; no further critic round is allowed", csha)
     prompt = CRITIC_PROMPT.format(framework=framework_text, ledger=_ledger(deps_ctx(pipe)["ev"]), article=cand)
     try:
         raw = critic(prompt)
@@ -149,21 +210,43 @@ def run_critic(pipe: Pipeline, critic: Critic, framework_text: str) -> dict:
     majors = [f for f in findings if f["severity"] == "major" and f["verified"]]
     st["rounds"] += 1
     st["repair_rejected"] = 0
-    st["history"].append({"round": st["rounds"], "candidate_sha256": csha, "majors": len(majors)})
+    st["history"].append({"round": st["rounds"], "candidate_sha256": csha, "prose_sha256": prose_sha(cand), "majors": len(majors)})
     art = {"round": st["rounds"], "candidate_sha256": csha, "reviewer": "claude -p (separate process, article and evidence only)", "verdict": "revise" if majors else "pass",
            "findings": findings, "majors": len(majors)}
     main = (json.dumps(art, indent=1, sort_keys=True) + "\n").encode()
     out = _finish(pipe, "critic", main, "json", extra_bundle=csha.encode(), extra={"candidate_sha256": csha, "majors": len(majors)})
     if majors and st["rounds"] >= MAX_CRITIC_ROUNDS:
-        return _critic_exhausted(pipe, st)
+        return _critic_exhausted(pipe, st, csha=csha)
     pipe.save()
     return {**out, "majors": len(majors), "round": st["rounds"], "findings": findings}
 
 
-def _critic_exhausted(pipe: Pipeline, st: dict) -> dict:
-    msg = [f"critic loop budget ({MAX_CRITIC_ROUNDS}) exhausted with {st['history'][-1]['majors']} major finding(s) still open"]
+def prose_sha(text: str) -> str:
+    """Hash of the article prose only: title, subtitle, image blocks and their captions are frame, not prose."""
+    keep = []
+    for b in M.blocks(M.body_without_frame(text)):
+        t = b.text.strip()
+        if b.kind == "paragraph" and (t.startswith("![") or re.fullmatch(r"\*[^*\n]+\*", t)):
+            continue
+        keep.append(M.norm(t))
+    return sha_bytes("\n".join(keep).encode())
+
+
+def _critic_carry(pipe: Pipeline, st: dict, csha: str) -> dict:
+    """Frame-only change after the budget was spent with a clean last round: record the same verdict for the new bytes, no model call."""
+    prev = pipe.read_json("critic")
+    art = {**prev, "candidate_sha256": csha, "carried_over": True, "note": "frame-only change (title, subtitle, images, captions); prose unchanged since the last clean critic round"}
+    out = _finish(pipe, "critic", (json.dumps(art, indent=1, sort_keys=True) + "\n").encode(), "json", extra_bundle=csha.encode(), extra={"candidate_sha256": csha, "majors": 0})
+    pipe.save()
+    return {**out, "majors": 0, "round": st["rounds"], "carried_over": True}
+
+
+def _critic_exhausted(pipe: Pipeline, st: dict, why: str | None = None, csha: str | None = None) -> dict:
+    """Terminal NOT_READY, set by the CLI itself. The open findings stay in the critic artifact and are listed in PACKAGE.md."""
+    open_n = st["history"][-1]["majors"] if st["history"] else 0
+    msg = [why or f"critic loop budget ({MAX_CRITIC_ROUNDS} rounds per run) exhausted with {open_n} major finding(s) still open"]
     r = pipe.rec("critic") or {}
-    pipe.set("critic", NOT_READY, bundle=r.get("bundle_sha256"), artifact=r.get("artifact"), reasons=msg, extra={"candidate_sha256": r.get("candidate_sha256"), "majors": r.get("majors")})
+    pipe.set("critic", NOT_READY, bundle=r.get("bundle_sha256"), artifact=r.get("artifact"), reasons=msg, extra={"candidate_sha256": csha or r.get("candidate_sha256"), "majors": r.get("majors")})
     pipe.save()
     return {"ok": False, "code": "NOT_READY", "stage": "critic", "reasons": msg}
 
@@ -183,7 +266,24 @@ def _check_critic(data, cand: str) -> list[dict]:
 
 
 # ---- repair -----------------------------------------------------------------------------------------------------
-def repair_try(pipe: Pipeline, cand: str, runner: G.Runner) -> dict:
+def _removals(report) -> tuple[list[dict], list[str]]:
+    rem = (report or {}).get("removals") if isinstance(report, dict) else None
+    out, bad = [], []
+    for i, r in enumerate(rem if isinstance(rem, list) else []):
+        if not isinstance(r, dict) or not str(r.get("text", "")).strip() or not str(r.get("reason", "")).strip():
+            bad.append(f"removals[{i}] needs {{\"text\": \"<exact sentence>\", \"reason\": \"...\"}}")
+        elif M.link_urls(str(r["text"])):
+            bad.append(f"removals[{i}] carries a link: a lost link is rejected, so a link-bearing sentence cannot be cut")
+        else:
+            out.append({"text": str(r["text"]), "reason": str(r["reason"])[:200]})
+    return out, bad
+
+
+def repair_try(pipe: Pipeline, cand: str, runner: G.Runner, report: dict | None = None) -> dict:
+    """An editorial repair may reword, cut and ADD sentences. Every added sentence is evaluated on its own (addcheck: numbers, links,
+    invented experience, negation, hedges; then the evaluator's added-claim support check against the evidence ledger and source notes,
+    inside the claims gate). Deleted material must be declared in the report's `removals` and is checked like an editorial cut.
+    A lost link, a changed claim or an unsupported addition is rejected."""
     ok, why = pipe.can_run("repair")
     if not ok:
         return {"ok": False, "code": "WAITING", "stage": "repair", "reasons": [why]}
@@ -191,15 +291,29 @@ def repair_try(pipe: Pipeline, cand: str, runner: G.Runner) -> dict:
     if pipe.status("critic") != DONE or not crit.get("majors"):
         return {"ok": False, "code": "USAGE", "stage": "repair", "reasons": ["no open major finding on the current candidate: run the critic, or 'repair done'"]}
     st = pipe.state.setdefault("critic", {"rounds": 0, "history": [], "repair_rejected": 0})
-    ref, c = reference_frame(pipe), deps_ctx(pipe)
-    gate_ref = gate_reference_frame(pipe)
-    g = G.edit_guard(ref, cand, known_urls=c["known_urls"], blob_numbers=c["blob_numbers"], strict=True, author_material=c["author_material"])
-    reasons = list(g["reasons"])
+    new_rem, rem_bad = _removals(report)
+    prior = repair_cuts(pipe)
+    all_rem = [*prior, *[r for r in new_rem if CT._key(r["text"]) not in {CT._key(p["text"]) for p in prior}]]
+    raw_gate, c = raw_gate_reference(pipe), deps_ctx(pipe)
+    gate_ref, cuts = CT.apply_cuts(raw_gate, cand, all_rem)
+    guard_ref = reference_frame(pipe, cand)
+    undone = [r["text"][:80] for r in new_rem if CT._key(r["text"]) not in {x["sentence"] for x in cuts} and CT._key(r["text"]) not in {CT._key(p["text"]) for p in prior}]
+    g = G.edit_guard(guard_ref, cand, known_urls=c["known_urls"], blob_numbers=c["blob_numbers"], strict=True, removals=all_rem, author_material=c["author_material"])
+    reasons = [*rem_bad, *g["reasons"]]
+    if undone:
+        reasons.append(f"declared removals that do not match a reference sentence exactly, or are still in the text: {undone[:2]}")
+    bad_added = AC.check_added(gate_ref, cand, ev=c["ev"], blob=c["blob"], known_urls=c["known_urls"], blob_numbers=c["blob_numbers"], author_material=c["author_material"])
+    for b in bad_added[:4]:
+        reasons.append(f"added sentence rejected [{b['section'] or 'intro'}] {b['sentence'][:100]!r}: " + "; ".join(b["reasons"]))
+    added_n = len(AC.added_sentences(gate_ref, cand))
+    gate_state = None
     if not reasons:
         base = pipe.pkg / "write-pipeline" / "work" / "repair"
         atomic_write(base / "candidate" / "article.md", cand.encode())
         atomic_write(base / "reference" / "reference.md", gate_ref.encode())
-        gate = G.claims_gate(runner, base / "candidate" / "article.md", base / "reference" / "reference.md", base / "gate", pipe.pkg)
+        notes = ensure_source_notes(pipe)
+        gate = G.claims_gate(runner, base / "candidate" / "article.md", base / "reference" / "reference.md", base / "gate", pipe.pkg, notes=notes if notes.exists() else None)
+        gate_state = gate["state"]
         if gate["state"] == "ERROR":
             msg = ["claims gate could not evaluate the repair (retry later): " + "; ".join(gate["reasons"])[:200]]
             pipe.set("repair", BLOCKED, reasons=msg, extra={"category": "MODEL_UNAVAILABLE"})
@@ -207,6 +321,8 @@ def repair_try(pipe: Pipeline, cand: str, runner: G.Runner) -> dict:
             return {"ok": False, "code": "BLOCKED", "stage": "repair", "reasons": msg}
         if gate["state"] != "PASS":
             reasons.append("claims gate failed: " + "; ".join(gate["reasons"])[:300])
+            for u in gate.get("added_unsupported", [])[:3]:
+                reasons.append(f"added claim unsupported by the evidence ledger and source notes: {str(u.get('claim'))[:120]!r}")
     if reasons:
         st["repair_rejected"] += 1
         pipe.log("repair_rejected", reasons=reasons[:3])
@@ -216,14 +332,17 @@ def repair_try(pipe: Pipeline, cand: str, runner: G.Runner) -> dict:
             pipe.save()
             return {"ok": False, "code": "NOT_READY", "stage": "repair", "reasons": msg}
         pipe.save()
-        return {"ok": False, "code": "INVALID", "stage": "repair", "reasons": reasons, "rejected": st["repair_rejected"]}
+        return {"ok": False, "code": "INVALID", "stage": "repair", "reasons": reasons, "rejected": st["repair_rejected"], "added_sentences": added_n}
     n = len(pipe.state["candidate"].get("history", [])) + 1
     p = pipe.pkg / "write-pipeline" / "frame" / f"candidate-repair-{n}.md"
     atomic_write(p, cand.encode())
     pipe.state["candidate"] = {"path": str(p.relative_to(pipe.pkg)), "sha256": sha_bytes(cand.encode()), "origin": f"repair-{n}", "history": [*pipe.state["candidate"].get("history", []), pipe.state["candidate"]["sha256"]]}
-    pipe.log("repair_accepted", sha256=pipe.state["candidate"]["sha256"])
+    pipe.state["repair_cuts"] = [{"text": x["sentence"], "reason": x["reason"]} for x in cuts]
+    CT.record_cuts(pipe, "repair", cuts)
+    pipe.log("repair_accepted", sha256=pipe.state["candidate"]["sha256"], added=added_n, cuts=len(cuts))
     pipe.save()
-    return {"ok": True, "code": "ACCEPTED", "stage": "repair", "candidate_sha256": pipe.state["candidate"]["sha256"], "reasons": [], "next": "run critic on the repaired candidate"}
+    return {"ok": True, "code": "ACCEPTED", "stage": "repair", "candidate_sha256": pipe.state["candidate"]["sha256"], "reasons": [], "added_sentences": added_n,
+            "removed_sentences": len(cuts), "claims_gate": gate_state, "next": "run critic on the repaired candidate"}
 
 
 def repair_done(pipe: Pipeline) -> dict:

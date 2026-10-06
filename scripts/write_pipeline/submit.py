@@ -4,10 +4,12 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from . import brief as BR
 from . import cuts as CT
 from . import editguard as G
 from . import frame as FR
 from . import mdlib as M
+from . import relevance as RV
 from . import validators as V
 from .core import BLOCKED, DONE, FAILED, KIND, NOT_READY, Pipeline, PipelineError, atomic_write, contain_input, fail_exc, sha_bytes, sha_json
 
@@ -29,11 +31,43 @@ def _fail(pipe: Pipeline, stage: str, reasons: list[str], code: str = "INVALID")
     return {"ok": False, "code": code, "stage": stage, "reasons": reasons}
 
 
+REWORK_STAGES = ("source", "research", "angle", "outline", "draft", "validate", "editorial", "voice")
+REWORK_LIMIT = 1  # an already-finished content stage may be redone once; a second rework means the problem is upstream of the writer
+
+
+def _rework_refused(pipe: Pipeline, stage: str, prev: dict | None, bundle: str) -> dict | None:
+    """A DONE content stage resubmitted with different bytes after later stages already ran is a rework. One per stage."""
+    if stage not in REWORK_STAGES or not prev or not prev.get("bundle_sha256") or prev.get("bundle_sha256") == bundle:
+        return None
+    if not any(pipe.rec(n) for n in pipe.downstream(stage)):
+        return None
+    if bundle in (pipe.state.get("rework_seen") or {}).get(stage, []):  # going back to bytes the stage already had is a revert, not a new rework
+        return None
+    used = pipe.state.setdefault("rework", {})
+    if used.get(stage, 0) >= REWORK_LIMIT:
+        msg = [f"upstream rework limit reached: stage '{stage}' was already reworked {used[stage]} time (limit {REWORK_LIMIT} per stage). "
+               "Stop patching: the run ends NOT_READY; start a new run or hand the open problem to the author."]
+        pipe.set(stage, NOT_READY, bundle=prev.get("bundle_sha256"), artifact=prev.get("artifact"), reasons=msg,
+                 extra={"report": prev.get("report"), "external": prev.get("external"), "rework_refused": True})
+        pipe.save()
+        return {"ok": False, "code": "NOT_READY", "stage": stage, "reasons": msg}
+    used[stage] = used.get(stage, 0) + 1
+    return None
+
+
 def _finish(pipe: Pipeline, stage: str, main: bytes, ext: str, extra_bundle: bytes = b"", report: bytes | None = None, extra: dict | None = None) -> dict:
     bundle = sha_bytes(sha_bytes(main).encode() + sha_bytes(report or b"").encode() + extra_bundle)
     prev = pipe.rec(stage)
     if prev and pipe.status(stage) == DONE and prev.get("bundle_sha256") == bundle and prev.get("inputs") == pipe.input_shas(stage):
         return {"ok": True, "cached": True, "stage": stage, "bundle_sha256": bundle}
+    refused = _rework_refused(pipe, stage, prev, bundle)
+    if refused:
+        return refused
+    if stage in REWORK_STAGES:
+        seen = pipe.state.setdefault("rework_seen", {}).setdefault(stage, [])
+        for h in (prev.get("bundle_sha256") if prev else None, bundle):
+            if h and h not in seen:
+                seen.append(h)
     art = pipe.store(stage, ext, main)
     ex = dict(extra or {})
     if report is not None:
@@ -119,7 +153,7 @@ def _json_stage(pipe: Pipeline, stage: str, data: dict, c: dict) -> dict:
                 r = {"ok": False, "reasons": lint}
             else:
                 pipe.state["candidate"] = {"path": str(pipe.store("images", "candidate.md", cand.encode())), "sha256": sha_bytes(cand.encode()), "origin": "frame"}
-                pipe.state["critic"] = {"rounds": 0, "history": [], "repair_rejected": 0}
+                pipe.state.setdefault("critic", {"rounds": 0, "history": [], "repair_rejected": 0})  # the round budget belongs to the run, never to a frame
                 extra = {"external": {i["path"]: i["sha256"] for i in imgs},
                          "candidate_sha256": sha_bytes(cand.encode()), "reference_frame": pipe.store("images", "reference-frame.md", refframe.encode()),
                          "reference_frame_sha256": sha_bytes(refframe.encode())}
@@ -131,18 +165,23 @@ def _json_stage(pipe: Pipeline, stage: str, data: dict, c: dict) -> dict:
     if r.get("terminal") and not out.get("cached"):
         pipe.set(stage, NOT_READY, reasons=[r["terminal"][1]], extra={"artifact": out["artifact"]})
         pipe.save()
-        return {"ok": False, "code": "NOT_READY", "stage": stage, "reasons": [r["terminal"][1]],
-                "author_opportunities": data.get("author_opportunities", [])}
+        key = RV.terms(" ".join(str(data.get(k, "")) for k in ("question", "reader", "angle"))) | RV.key_terms(None, None, "", c["ev"].get("claims") or [])
+        opps = [o for o in data.get("author_opportunities", []) if isinstance(o, dict) and RV.is_relevant(f"{o.get('prompt', '')} {o.get('why', '')}", key)]
+        return {"ok": False, "code": "NOT_READY", "stage": stage, "reasons": [r["terminal"][1]], "author_opportunities": opps,
+                "omitted_generic_suggestions": len(data.get("author_opportunities", [])) - len(opps)}
     if r.get("terminal"):
         return {"ok": False, "code": "NOT_READY", "stage": stage, "reasons": [r["terminal"][1]]}
     return out
 
 
 PREV = {"validate": "draft", "editorial": "validate", "voice": "editorial"}
+BRIEF_STAGES = ("draft", "editorial", "voice")
 
 
 def _text_stage(pipe: Pipeline, stage: str, text: str, rep: dict | None, rep_raw: bytes | None, c: dict, runner: G.Runner) -> dict:
     reasons = V.text_basic(text, src=c["src"], urls=c["known_urls"])
+    if stage in BRIEF_STAGES:
+        reasons += BR.check_reference(pipe, stage, rep)
     reasons += V.unsupported_numbers(text, c["blob_numbers"] + M.significant_numbers(pipe.read_art(PREV.get(stage, "")) or ""))
     if stage == "draft":
         heads = {M.norm(b.text.lstrip("# ").strip()) for b in M.blocks(text) if b.kind == "heading"}
@@ -152,7 +191,7 @@ def _text_stage(pipe: Pipeline, stage: str, text: str, rep: dict | None, rep_raw
             reasons.append(f"draft does not follow the outline: missing headings {miss[:3]}")
     if stage == "validate":
         if rep is None:
-            reasons.append("the validate stage needs --report (factual report JSON with a 'checked' list)")
+            reasons.append("the validate stage needs --report. " + V.FACTUAL_SCHEMA_HINT)
         else:
             reasons += V.factual_report(rep, text, c["ev"])
     if stage in ("editorial", "voice"):  # the unslop gate is attested by the agent; the CLI cannot run it, but it will not proceed without the statement

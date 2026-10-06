@@ -17,6 +17,7 @@ from scripts.fingerprint_eval.guards import frozen_diff, structure_preservation
 from scripts.fingerprint_eval.gateway import child_env, claude_env
 from scripts.fingerprint_eval.textutil import resolve_pipeline_corpus
 
+from . import cuts as CT
 from . import mdlib as M
 
 Runner = Callable[[list[str]], tuple[int, str]]
@@ -30,7 +31,7 @@ CLAIM_CATS = {"CONTENT_CLAIM_FAILURE", "ADDED_UNSUPPORTED_CLAIM"}
 # receive LLM_GATEWAY_API_KEY: non-identity claims gates call the gateway judge and would block without it.
 RUNNER_CONFIG_KEYS = ("FINGERPRINT_PIPELINE_CORPUS", "FG_MAX_PARALLEL", "LLM_GATEWAY_URL", "SSL_CERT_FILE", "FINGERPRINT_EVAL_KEY_FILE", "FG_JUDGE", "FG_EXTRACTOR")
 GATE_ENV_KEYS = ("LLM_GATEWAY_API_KEY", "LLM_GATEWAY_URL")
-GATE_MODULES = ("scripts.fingerprint_eval.run", "scripts.fingerprint_eval.release")
+GATE_MODULES = ("scripts.fingerprint_eval.run", "scripts.fingerprint_eval.release", "scripts.write_pipeline.gaterun")
 
 
 def is_gate_child(argv: list[str] | None) -> bool:
@@ -102,7 +103,10 @@ def edit_guard(ref: str, cand: str, *, known_urls: set[str], blob_numbers: Count
             reasons.append("frozen block (list, quote, code, short paragraph) changed:\n" + "\n".join(fd[:6]))
             cats.append("CONTENT_CLAIM_FAILURE" if any(l.startswith(("-", "+")) and not l.startswith(("---", "+++")) for l in fd) else "STRUCTURAL_DAMAGE")
         cand_s = {M.norm(x) for x in M.sentences(cand)}
+        declared = {CT._key(str(r.get("text", ""))) for r in (removals or []) if isinstance(r, dict)}
         for s in M.sentences(ref):
+            if CT._key(s) in declared:  # a declared cut is checked by the caller (cuts.apply_cuts) and by the claims gate
+                continue
             if (M.significant_numbers(s) or M.link_urls(s)) and M.norm(s) not in cand_s:
                 # a factual sentence may be reworded only if every number and link it carried is still in the same paragraph
                 par = next((b.text for b in M.blocks(cand) if b.kind == "paragraph" and all(k in M.significant_numbers(b.text) for k in M.significant_numbers(s))
@@ -122,21 +126,25 @@ def edit_guard(ref: str, cand: str, *, known_urls: set[str], blob_numbers: Count
     return {"ok": not reasons, "reasons": reasons, "categories": sorted(set(cats))}
 
 
-def gate_argv(article: Path, draft: Path, out: Path, package: Path, environ=None) -> list[str]:
+def gate_argv(article: Path, draft: Path, out: Path, package: Path, environ=None, notes: Path | None = None) -> list[str]:
     """The pipeline corpus is configured (env FINGERPRINT_PIPELINE_CORPUS or <repo>/.cache/fingerprint-eval/pipeline), never the
     package's parent: that can be a whole Desktop and scanning it timed the gate out. No corpus: the flag is omitted and the gate
     skips its advisory pipeline comparison (advisory_errors "pipeline corpus unavailable")."""
-    argv = [sys.executable, "-m", "scripts.fingerprint_eval.run", "--gate", "--article", str(article), "--draft", str(draft),
+    mod = "scripts.write_pipeline.gaterun" if notes is not None else "scripts.fingerprint_eval.run"  # same gate; gaterun also binds the source notes
+    argv = [sys.executable, "-m", mod, "--gate", "--article", str(article), "--draft", str(draft),
             "--author-corpus", str(REPO / AUTHOR_CORPUS_DIR), "--out", str(out)]
+    if notes is not None:
+        argv += ["--source-notes", str(notes)]
     corpus = resolve_pipeline_corpus(environ, REPO)
     return argv + ["--pipeline-corpus", str(corpus)] if corpus else argv
 
 
-def claims_gate(runner: Runner, article: Path, draft: Path, out: Path, package: Path) -> dict:
-    """The existing evaluator gate on (draft -> article). state: PASS | FAIL | ERROR. ERROR never means PASS."""
+def claims_gate(runner: Runner, article: Path, draft: Path, out: Path, package: Path, notes: Path | None = None) -> dict:
+    """The existing evaluator gate on (draft -> article). state: PASS | FAIL | ERROR. ERROR never means PASS.
+    notes: source notes + evidence ledger; with them the gate's added-claim support check can see what supports a new sentence."""
     out.mkdir(parents=True, exist_ok=True)
     (out / "gate.json").unlink(missing_ok=True)
-    rc, text = runner(gate_argv(article, draft, out, package))
+    rc, text = runner(gate_argv(article, draft, out, package, notes=notes))
     try:
         g = json.loads((out / "gate.json").read_text())
     except (OSError, ValueError):
@@ -145,6 +153,7 @@ def claims_gate(runner: Runner, article: Path, draft: Path, out: Path, package: 
     if g.get("error_category"):
         cats.append(g["error_category"])
     if rc == 0 and g.get("pass") is True:
-        return {"state": "PASS", "categories": [], "reasons": [], "rc": rc, "evaluated": g.get("evaluated")}
+        return {"state": "PASS", "categories": [], "reasons": [], "rc": rc, "evaluated": g.get("evaluated"), "added_unsupported": []}
     state = "FAIL" if rc == 1 and g.get("evaluated") else "ERROR"
-    return {"state": state, "categories": cats, "reasons": list(g.get("reasons") or [text.strip()[-200:]])[:5], "rc": rc, "evaluated": g.get("evaluated")}
+    return {"state": state, "categories": cats, "reasons": list(g.get("reasons") or [text.strip()[-200:]])[:5], "rc": rc, "evaluated": g.get("evaluated"),
+            "added_unsupported": list((g.get("blocking") or {}).get("added_unsupported_claims") or [])}

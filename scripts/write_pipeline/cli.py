@@ -1,6 +1,7 @@
 """python -m scripts.write_pipeline <command> --package P
 
-init, status, next, begin, submit, run, antifp (baseline|rank|try|finish), repair (try|done), finalize, revalidate, rebase, block.
+init, status, next, begin, submit, run (brief|review|critic|fpverify|integrity|hash|package|stop), antifp (baseline|rank|try|finish),
+repair (try|done), fpverify (measure|try|done), finalize, revalidate, rebase, block.
 Exit: 0 ok, 1 artifact rejected (fix and resubmit), 2 usage or waiting on an upstream stage, 3 NOT_READY, 4 BLOCKED (retry later),
 5 QUARANTINED, 6 FINAL.md was edited after PASS (run revalidate). The CLI has no publish command and never mutates Medium.
 """
@@ -15,8 +16,10 @@ from pathlib import Path
 from scripts.medium_review.llm import run_claude
 
 from . import antifp as AF
+from . import brief as BR
 from . import editguard as G
 from . import final as FN
+from . import fpv as FPV
 from . import runs as RN
 from . import submit as SB
 from . import verify as VF
@@ -32,10 +35,11 @@ SPEC = {
     "research": "JSON {research_delta, claims:[{id, claim, status supported|attributed|inference|unresolved, supported_wording, evidence:[{url|source_id, passage, date}]}]}",
     "angle": "JSON {question, reader, angle, verdict adds|summary_only, contributions:[{id, text, kind, evidence_ids}], author_opportunities:[{id, prompt, why}]}",
     "outline": "JSON {sections:[{heading, purpose, evidence_ids}]} (2+ sections, unique headings)",
-    "draft": "Markdown starting with '# Title'. Links only from the evidence set; numbers only from sources or evidence; no tables, em dashes or invented experience.",
+    "brief": "run brief (deterministic, no file): the fingerprint and voice brief, 400 words at most. Quote its sha256 as {\"brief_sha256\": ...} in the --report of draft, editorial and voice.",
+    "draft": "Markdown starting with '# Title' plus --report {brief_sha256}. Links only from the evidence set; numbers only from sources or evidence; no tables, em dashes or invented experience. Follow the brief targets.",
     "validate": "Markdown plus --report JSON {checked:[{claim_id, verdict}, ...one entry per research claim id, unresolved ones verdict omitted], removals:[{text, reason}]}. An unresolved claim must not be asserted in any wording, verbatim or paraphrased.",
-    "editorial": "Markdown plus --report {unslop:{applied:true, prose_checker:ran|unavailable}, removals:[{text, reason}]}. No link or number may be lost or invented.",
-    "voice": "Markdown plus --report {unslop:{...}, removals:[...]}. Meaning must survive (claims gate).",
+    "editorial": "Markdown plus --report {brief_sha256, unslop:{applied:true, prose_checker:ran|unavailable}, removals:[{text, reason}]}. No link or number may be lost or invented.",
+    "voice": "Markdown plus --report {brief_sha256, unslop:{...}, removals:[...]}. Meaning must survive (claims gate).",
     "title": "JSON {candidates:[10+ strings], pick, rationale, subtitle (140 chars max)}",
     "images": "JSON {images:[{id, path, purpose, placement hero|after:<heading>|after-paragraph:<n>, method, provenance, license, caption, alt, source_url}], waived_reason}. No presenter or video frames.",
 }
@@ -148,7 +152,8 @@ def cmd_begin(pipe: Pipeline, a) -> int:
         _out({"stage": s, "action": "wait", "reason": why})
         return 2
     ins = {d: (pipe.rec(d) or {}).get("artifact") for d in DEPS[s]}
-    hint = f"submit {s} --file F" if KIND[s] == "agent" and s != "repair" else {"antifp": "antifp baseline / try / finish", "repair": "repair try --file F | repair done"}.get(s, f"run {s}")
+    hint = f"submit {s} --file F" if KIND[s] == "agent" and s != "repair" else {"antifp": "antifp baseline / try / finish", "repair": "repair try --file F [--report R with removals] | repair done",
+                                                                                 "fpverify": "run fpverify | fpverify try --file F --signal S (2 rounds max) | fpverify done"}.get(s, f"run {s}")
     _out({"stage": s, "action": "run", "previous_state": st, "reasons": (pipe.rec(s) or {}).get("reasons", []), "inputs": ins, "artifact_spec": SPEC.get(s), "then": hint})
     return 0
 
@@ -180,7 +185,7 @@ def cmd_antifp(pipe: Pipeline, a, runner) -> int:
         return 0
     if sub == "try":
         if not a.file or not a.signal:
-            _out({"ok": False, "reasons": ["--file and --signal are required"]})
+            _out({"ok": False, "reasons": ["--file and --signal are required (--signal one of " + ", ".join(sorted(AF.WEIGHTS)) + ")"]})
             return 2
         c = SB.deps_ctx(pipe)
         try:
@@ -203,7 +208,7 @@ def cmd_antifp(pipe: Pipeline, a, runner) -> int:
     rep = (json.dumps(res["report"], indent=1, sort_keys=True) + "\n").encode()
     if res["heavy"]:
         msg = [f"fingerprint-heavy after the targeted loop: template hits {res['report']['after']['values']['template_hits']:.0f}, composite {res['report']['after']['composite']}; "
-               "the draft is generic. Rework it upstream with real author material (see AUTHOR OPPORTUNITIES)"]
+               "the draft is generic. Rework it upstream with real author material (see AUTHOR OPPORTUNITIES); one upstream rework per stage is allowed, a second ends the run"]
         art = pipe.store("antifp", "md", res["text"].encode())
         pipe.set("antifp", NOT_READY, artifact=art, reasons=msg, extra={"report": pipe.store("antifp", "report.json", rep)})
         pipe.save()
@@ -216,7 +221,11 @@ def cmd_antifp(pipe: Pipeline, a, runner) -> int:
 
 def cmd_run(pipe: Pipeline, a, runner, critic) -> int:
     s = a.stage
-    if s == "review":
+    if s == "brief":
+        r = BR.run_brief(pipe)
+    elif s == "fpverify":
+        r = FPV.run_fpverify(pipe)
+    elif s == "review":
         r = RN.run_review(pipe, runner)
     elif s == "critic":
         fw, err = load_framework(pipe)
@@ -230,9 +239,29 @@ def cmd_run(pipe: Pipeline, a, runner, critic) -> int:
     elif s == "stop":
         r = FN.run_stop(pipe)
     else:
-        r = {"ok": False, "code": "USAGE", "reasons": [f"'{s}' is not a run stage (review, critic, integrity, hash, package, stop)"]}
+        r = {"ok": False, "code": "USAGE", "reasons": [f"'{s}' is not a run stage (brief, review, critic, fpverify, integrity, hash, package, stop)"]}
     _out(r)
     return _code(r)
+
+
+def cmd_fpverify(pipe: Pipeline, a, runner) -> int:
+    if a.sub == "measure":
+        r = FPV.view(pipe) if FPV.can_measure(pipe) else {"ok": False, "code": "WAITING", "reasons": ["upstream stage of fpverify is not DONE"]}
+        r.pop("report", None)
+    elif a.sub == "done":
+        r = FPV.finish(pipe)
+    else:
+        if not a.file or not a.signal:
+            r = {"ok": False, "code": "USAGE", "reasons": ["--file and --signal are required (--signal one of " + ", ".join(sorted(FPV.PF.SIGNALS)) + ")"]}
+        else:
+            try:
+                text = contain_input(pipe.pkg, a.file).read_text()
+            except (OSError, ValueError, PipelineError) as e:
+                r = {"ok": False, "code": "USAGE", "reasons": [f"cannot read {a.file}: {e}"]}
+            else:
+                r = FPV.try_edit(pipe, text, a.signal, runner)
+    _out(r)
+    return _code(r) if r.get("code") in EXIT else (0 if r.get("ok") else 1)
 
 
 def main(argv: list[str] | None = None, runner=None, critic=None) -> int:
@@ -262,6 +291,11 @@ def main(argv: list[str] | None = None, runner=None, critic=None) -> int:
     rp = pkg(sub.add_parser("repair"))
     rp.add_argument("sub", choices=("try", "done"))
     rp.add_argument("--file", type=Path)
+    rp.add_argument("--report", type=Path, help="repair try: JSON {removals:[{text, reason}]} declaring every deleted sentence")
+    fv = pkg(sub.add_parser("fpverify"))
+    fv.add_argument("sub", choices=("measure", "try", "done"))
+    fv.add_argument("--file", type=Path)
+    fv.add_argument("--signal")
     pkg(sub.add_parser("finalize"))
     pkg(sub.add_parser("revalidate"))
     rb = pkg(sub.add_parser("rebase"))
@@ -296,15 +330,28 @@ def main(argv: list[str] | None = None, runner=None, critic=None) -> int:
     runner = runner or G.make_runner(pipe.pkg / "write-pipeline" / "workspace")
     pipe.final_verifier = VF.make_verifier(runner)
     try:
-        return _dispatch(a, pipe, runner, critic)
+        rc = _dispatch(a, pipe, runner, critic)
     except Exception as e:  # noqa: BLE001  stage boundary: persist a terminal state instead of escaping with pending state
-        stage = getattr(a, "stage", None) or {"antifp": "antifp", "repair": "repair", "finalize": "integrity", "revalidate": "integrity", "rebase": "integrity"}.get(a.cmd)
+        stage = getattr(a, "stage", None) or {"antifp": "antifp", "repair": "repair", "fpverify": "fpverify", "finalize": "integrity", "revalidate": "integrity", "rebase": "integrity"}.get(a.cmd)
         if stage is None:
             _out({"ok": False, "code": "USAGE", "reasons": [f"{type(e).__name__}: {str(e)[:200]}"]})
             return 2
         r = fail_exc(pipe, stage, e)
         _out(r)
-        return _code(r)
+        rc = _code(r)
+    _not_ready_outputs(pipe, a, rc)
+    return rc
+
+
+def _not_ready_outputs(pipe: Pipeline, a, rc: int) -> None:
+    """A run that ends NOT_READY gets its PACKAGE.md, FINAL.md and FINAL.html from the CLI itself, with the open findings and a banner."""
+    if rc == 0 or a.cmd in ("init", "status", "next", "begin"):
+        return
+    try:
+        if pipe.overall() == "NOT_READY":
+            FN.write_not_ready_package(pipe)
+    except Exception as e:  # noqa: BLE001  best effort: the verdict is already persisted in state
+        pipe.log("not_ready_package_failed", error=f"{type(e).__name__}: {str(e)[:200]}")
 
 
 def _dispatch(a, pipe: Pipeline, runner, critic) -> int:
@@ -337,9 +384,17 @@ def _dispatch(a, pipe: Pipeline, runner, critic) -> int:
             except (OSError, ValueError, PipelineError) as e:
                 r = {"ok": False, "code": "USAGE", "reasons": [f"cannot read {a.file}: {e}"]}
             else:
-                r = RN.repair_try(pipe, text, runner)
+                rep, bad = None, None
+                if a.report:
+                    try:
+                        rep = json.loads(contain_input(pipe.pkg, a.report).read_text())
+                    except (OSError, ValueError, PipelineError) as e:
+                        bad = {"ok": False, "code": "USAGE", "reasons": [f"cannot read report {a.report}: {e}"]}
+                r = bad or RN.repair_try(pipe, text, runner, rep)
         _out(r)
         return _code(r)
+    if a.cmd == "fpverify":
+        return cmd_fpverify(pipe, a, runner)
     if a.cmd == "finalize":
         r = FN.finalize(pipe, runner)
         _out(r)

@@ -118,7 +118,7 @@ def try_edit(pipe: Pipeline, cand: str, target: str, runner: G.Runner, ctx: dict
     if len(loop["attempts"]) >= MAX_ATTEMPTS:
         return {"ok": False, "kept": False, "reasons": [f"attempt budget ({MAX_ATTEMPTS}) used; run 'antifp finish'"]}
     if target not in WEIGHTS:
-        return {"ok": False, "kept": False, "reasons": [f"--signal must be one of {sorted(WEIGHTS)}"]}
+        return {"ok": False, "kept": False, "reasons": [f"--signal must be one of {sorted(WEIGHTS)} (got {target!r}); an edit changes at most {MAX_CHANGED_BLOCKS} blocks"]}
     try:
         cur = _current(pipe, loop)
     except (OSError, ValueError, PipelineError) as e:
@@ -130,9 +130,9 @@ def try_edit(pipe: Pipeline, cand: str, target: str, runner: G.Runner, ctx: dict
     rec["target_value"] = [before["values"][target], after["values"][target]]
     n_changed = changed_blocks(cur, cand)
     if n_changed == 0:
-        rec["reasons"].append("candidate is identical to the current text")
+        rec["reasons"].append("candidate is identical to the current text: change at least one sentence of the targeted signal")
     elif n_changed > MAX_CHANGED_BLOCKS:
-        rec["reasons"].append(f"edit is not local: {n_changed} blocks changed, limit {MAX_CHANGED_BLOCKS}")
+        rec["reasons"].append(f"edit is not local: {n_changed} blocks changed, the antifp limit is {MAX_CHANGED_BLOCKS} blocks per try (MAX_CHANGED_BLOCKS={MAX_CHANGED_BLOCKS}); send one local edit per try")
     if not rec["reasons"]:
         g = G.edit_guard(ref, cand, known_urls=ctx["known_urls"], blob_numbers=ctx["blob_numbers"], strict=True, author_material=ctx["author_material"])
         if not g["ok"]:
@@ -142,9 +142,9 @@ def try_edit(pipe: Pipeline, cand: str, target: str, runner: G.Runner, ctx: dict
             rec["reasons"] += asserted_unresolved(cand, ctx["ev"])
     if not rec["reasons"]:
         if not after["values"][target] < before["values"][target] - 1e-9:
-            rec["reasons"].append(f"targeted signal {target} did not improve")
+            rec["reasons"].append(f"targeted signal {target} did not improve ({before['values'][target]:.3f} -> {after['values'][target]:.3f}); an edit is kept only if the signal drops")
         if not after["composite"] < before["composite"] - EPS:
-            rec["reasons"].append("composite did not improve")
+            rec["reasons"].append(f"composite did not improve by more than {EPS} ({before['composite']} -> {after['composite']}); weights {WEIGHTS}; the loop ends heavy at template_hits >= {HEAVY_TEMPLATE_HITS} or composite >= {HEAVY_COMPOSITE}")
     if not rec["reasons"]:  # the model gate runs last and only for an edit that already measures better
         cpath = _dir(pipe) / "work" / "candidate" / "article.md"
         rpath = _dir(pipe) / "work" / "reference" / "reference.md"

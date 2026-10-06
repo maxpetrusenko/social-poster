@@ -18,7 +18,17 @@ MIN_TITLES, SUBTITLE_MAX = 10, 140
 HERO_MIN_W, HERO_MIN_H, MAX_BYTES = 1200, 600, 8_000_000
 CONTRAST = re.compile(r"\bnot\b[^.?!]{0,60}\b(?:but|it'?s|it is)\b|\b(?:isn't|aren't|wasn't|doesn't|don't)\b[^.?!]{0,60}[;,.]\s*(?:it|they)|\bless about\b|^forget\b|\bnever the (?:issue|problem)\b", re.I)
 CLICKBAIT = re.compile(r"you won'?t believe|one (?:weird )?trick|shocking|game.?changer|ultimate guide|everything you need to know|the truth about|secret|will blow your mind|\bhere'?s (?:why|the)", re.I)
-VIDEO_FRAME = re.compile(r"video frame|thumbnail|presenter|talking head|speaker|screenshot of (?:the )?video|youtube frame|still from", re.I)
+VIDEO_FRAME = re.compile(r"video frames?|thumbnails?|presenters?|talking head|speakers?|screenshot of (?:the )?video|youtube frames?|still from", re.I)
+NEGATED = re.compile(r"(?:\bno|\bnot|\bnever|\bwithout|\bnone|\bnor|n't|\bfree of|\bzero|\bexcluding|\bavoids?|\bavoiding|\bnot using|\binstead of)\W+(?:\w+\W+){0,4}$", re.I)
+
+
+def video_frame_claim(text: str) -> str | None:
+    """The matched phrase when the provenance text says an image IS a presenter or video frame. A negated mention ("no video frames",
+    "not a presenter shot", "without any thumbnail") is a statement that it is not one, so it never fires."""
+    for m in VIDEO_FRAME.finditer(text):
+        if not NEGATED.search(text[max(0, m.start() - 40):m.start()]):
+            return m.group(0)
+    return None
 STOP = set("the a an of to in on for and or with from by is are was were be as at it this that these those your you how what why when".split())
 
 
@@ -214,6 +224,7 @@ def unsupported_numbers(text: str, allowed: Counter) -> list[str]:
 
 
 OMITTED = {"omitted", "removed"}
+FACTUAL_SCHEMA_HINT = 'factual report schema: {"checked": [{"claim_id": "<id>", "verdict": "supported|attributed|inference|omitted"}, ...one entry per research claim id; unresolved claims must be verdict "omitted"], "removals": [{"text": "<sentence>", "reason": "..."}]}'
 PARAPHRASE_OVERLAP = 0.6
 
 
@@ -247,13 +258,13 @@ def factual_report(report: dict, text: str, ev: dict) -> list[str]:
     """Exact claim-ID coverage: every research claim is accounted for once, every unresolved one is declared omitted, none survives in the text."""
     checked = report.get("checked")
     if not isinstance(checked, list) or not checked:
-        return ["factual report: a 'checked' list is required"]
+        return [FACTUAL_SCHEMA_HINT + " (a non-empty 'checked' list is required)"]
     reasons: list[str] = []
     seen: Counter = Counter()
     verdict: dict[str, str] = {}
     for i, e in enumerate(checked):
         if not isinstance(e, dict) or not isinstance(e.get("claim_id"), str) or not e["claim_id"].strip():
-            reasons.append(f"factual report: checked[{i}] needs a string claim_id")
+            reasons.append(f"factual report: checked[{i}] needs a string 'claim_id' (schema: {{\"claim_id\": \"<research claim id>\", \"verdict\": \"...\"}})")
             continue
         seen[e["claim_id"]] += 1
         verdict[e["claim_id"]] = str(e.get("verdict", "")).strip().lower()
@@ -261,17 +272,17 @@ def factual_report(report: dict, text: str, ev: dict) -> list[str]:
     ids = [str(c.get("id")) for c in claims]
     missing = [i for i in ids if i not in seen]
     if missing:
-        reasons.append(f"factual report does not cover claim ids {missing[:5]}: every research claim id needs exactly one checked entry")
+        reasons.append(f"factual report does not cover claim ids {missing[:5]}: every research claim id needs exactly one checked entry {{\"claim_id\": \"<id>\", \"verdict\": \"supported|attributed|inference\" or \"omitted\"}}")
     unknown = sorted(k for k in seen if k not in ids)
     if unknown:
-        reasons.append(f"factual report names unknown claim ids {unknown[:5]}")
+        reasons.append(f"factual report names unknown claim ids {unknown[:5]}: 'claim_id' must be one of {ids[:8]}")
     dup = sorted(k for k, v in seen.items() if v > 1)
     if dup:
-        reasons.append(f"factual report lists claim ids more than once: {dup[:5]}")
+        reasons.append(f"factual report lists claim ids more than once: {dup[:5]} (exactly one checked entry per claim_id)")
     for c in claims:
         cid = str(c.get("id"))
         if c.get("status") == "unresolved" and cid in seen and verdict.get(cid) not in OMITTED:
-            reasons.append(f"unresolved claim {cid} must be reported as omitted or removed")
+            reasons.append(f"unresolved claim {cid} must be reported with \"verdict\": \"omitted\" (accepted: omitted, removed), and left out of the text")
     reasons += asserted_unresolved(text, ev)
     return reasons
 
@@ -392,8 +403,8 @@ def images(data: dict, pkg: Path, body: str) -> dict:
             reasons.append(f"{w}: license is missing or unknown (missing image provenance)")
         if im.get("method") == "sourced" and not str(im.get("source_url", "")).startswith(("http://", "https://")):
             reasons.append(f"{w}: a sourced image needs source_url")
-        if im.get("is_video_frame") or im.get("contains_presenter") or VIDEO_FRAME.search(" ".join(str(im.get(k, "")) for k in ("purpose", "provenance", "path", "method"))):
-            reasons.append(f"{w}: presenter and video frames are not allowed")
+        if im.get("is_video_frame") or im.get("contains_presenter") or video_frame_claim(" ".join(str(im.get(k, "")) for k in ("purpose", "provenance", "path", "method"))):
+            reasons.append(f"{w}: presenter and video frames are not allowed (a negated statement such as 'no video frames' is fine; images need method one of {sorted(IMG_METHODS)} and a provenance that says how it was made)")
         alt = str(im.get("alt", ""))
         if alt and not (10 <= len(alt) <= 220):
             reasons.append(f"{w}: alt text must be 10 to 220 characters")

@@ -11,8 +11,8 @@ def stages(d):
 
 
 def test_stage_table_is_the_specified_order():
-    assert NAMES == ["source", "research", "angle", "outline", "draft", "validate", "editorial", "voice", "antifp", "review", "title", "images",
-                     "critic", "repair", "integrity", "hash", "package", "stop"]
+    assert NAMES == ["source", "research", "angle", "outline", "brief", "draft", "validate", "editorial", "voice", "antifp", "review", "title",
+                     "images", "critic", "repair", "fpverify", "integrity", "hash", "package", "stop"]
 
 
 def test_cannot_submit_a_stage_before_its_inputs(d):

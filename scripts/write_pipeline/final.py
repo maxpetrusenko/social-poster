@@ -16,7 +16,9 @@ from . import frame as FR
 from . import mdlib as M
 from .core import (BLOCKED, DONE, FAILED, FINAL_NAME, NOT_READY, QUARANTINED, READY_ROUTES, Pipeline, PipelineError, atomic_write, fail_exc, now,
                    safe_path, sha_bytes)
-from .runs import candidate_text, gate_reference_frame, reference_frame
+from . import fpv as FPV
+from . import report as RP
+from .runs import candidate_text, ensure_source_notes, final_text, gate_reference_frame, reference_frame
 from .submit import _finish, deps_ctx
 
 REF_REL = Path("write-pipeline") / "frame" / "reference-frame.md"
@@ -26,11 +28,11 @@ def _py(*a: str) -> list[str]:
     return [sys.executable, "-m", *a]
 
 
-def _prepare_binding(pipe: Pipeline, ref_sha: str) -> dict:
+def _prepare_binding(pipe: Pipeline, ref_sha: str, cand: str) -> dict:
     """Bind the reference through the evaluator's own mechanism: evals/prepublish-vN.json names it and records its hash."""
     pkg = pipe.pkg
     refp = pkg / REF_REL
-    atomic_write(refp, gate_reference_frame(pipe).encode())  # always the pre-rebase reference: the gate must not compare a text to itself
+    atomic_write(refp, gate_reference_frame(pipe, cand).encode())  # always the pre-rebase reference: the gate must not compare a text to itself
     evals = pkg / "evals"
     nums = sorted(int(p.stem.split("-v")[1]) for p in evals.glob("prepublish-v*.json") if p.stem.split("-v")[-1].isdigit())
     latest = evals / f"prepublish-v{nums[-1]}.json" if nums else None
@@ -54,11 +56,7 @@ def _prepare_binding(pipe: Pipeline, ref_sha: str) -> dict:
     v.setdefault("slug", pkg.name)
     v["finalFile"], v["articleFile"] = FINAL_NAME, str(REF_REL)
     atomic_write(vj, (json.dumps(v, indent=2, ensure_ascii=False) + "\n").encode())
-    notes = pkg / "sources" / "source-notes.md"
-    if not notes.exists():
-        blob = deps_ctx(pipe)["blob"]
-        if blob.strip():
-            atomic_write(notes, blob.encode())
+    ensure_source_notes(pipe)  # captured sources plus the evidence ledger: the gate's added-claim check sees what supports a repair-added sentence
     return {"previous_version_json": prev}
 
 
@@ -82,10 +80,10 @@ def _run_integrity(pipe: Pipeline, runner: G.Runner) -> dict:
     ok, why = pipe.can_run("integrity")
     if not ok:
         return {"ok": False, "code": "WAITING", "stage": "integrity", "reasons": [why]}
-    cand = candidate_text(pipe)
+    cand = final_text(pipe)  # the fingerprint-verified text (fpverify DONE is a dependency of integrity)
     cbytes = cand.encode()
-    ref = reference_frame(pipe)  # deterministic guard reference (author-rebased when approved)
-    ref_sha = sha_bytes(gate_reference_frame(pipe).encode())  # the evaluator gate always sees the pre-rebase reference
+    ref = reference_frame(pipe, cand)  # deterministic guard reference (author-rebased when approved)
+    ref_sha = sha_bytes(gate_reference_frame(pipe, cand).encode())  # the evaluator gate always sees the pre-rebase reference
     rec = pipe.rec("integrity")
     if rec and rec["status"] == QUARANTINED and pipe.status("integrity") == QUARANTINED:
         return {"ok": False, "code": "QUARANTINED", "stage": "integrity", "reasons": rec["reasons"]}
@@ -98,7 +96,7 @@ def _run_integrity(pipe: Pipeline, runner: G.Runner) -> dict:
         pipe.set("integrity", NOT_READY, reasons=msg, extra={"categories": pre["categories"], "final_sha256": final_sha})
         pipe.save()
         return {"ok": False, "code": "NOT_READY", "stage": "integrity", "reasons": msg, "categories": pre["categories"]}
-    extra = _prepare_binding(pipe, ref_sha)
+    extra = _prepare_binding(pipe, ref_sha, cand)
     rc, out = runner(_py("scripts.fingerprint_eval.release", "authorize", "--package", str(pipe.pkg), "--max-repairs", "0"))
     if rc != 0:
         q = _read(pipe.pkg / "QUARANTINE.json")
@@ -224,8 +222,7 @@ def _run_package(pipe: Pipeline, runner: G.Runner) -> dict:
     text = fpath.read_text()
     title, _, _ = M.title_subtitle(text)
     (pipe.pkg / "FINAL.html").write_text(FR.to_html(text, title or pipe.state["slug"]))
-    from .report import build_package_md
-    pmd = build_package_md(pipe, review, route, sha)
+    pmd = RP.build_package_md(pipe, review, route, sha)
     atomic_write(pipe.pkg / "PACKAGE.md", pmd.encode())
     files = {n: sha_bytes(safe_path(pipe.pkg, n).read_bytes()) for n in (FINAL_NAME, "FINAL.html", "PACKAGE.md")}
     rt = str(ROUTE_REL)
@@ -323,8 +320,7 @@ def revalidate(pipe: Pipeline, runner: G.Runner, critic, framework_text: str) ->
         atomic_write(q, text.encode())
         pipe.state["candidate"] = {"path": str(q.relative_to(pipe.pkg)), "sha256": new, "origin": "user-edit",
                                    "history": [*(pipe.state.get("candidate") or {}).get("history", []), (pipe.state.get("candidate") or {}).get("sha256")]}
-        pipe.state["critic"] = {"rounds": 0, "history": [], "repair_rejected": 0}
-        pipe.state["final"] = None  # the old PASS no longer describes any bytes on disk
+        pipe.state["final"] = None  # the old PASS no longer describes any bytes on disk; the critic round budget is NOT reset (it belongs to the run)
         pipe.state["user_modified"] = {**um, "adopted_sha256": new}
         pipe.save()
         c = run_critic(pipe, critic, framework_text)
@@ -335,6 +331,9 @@ def revalidate(pipe: Pipeline, runner: G.Runner, critic, framework_text: str) ->
         r = repair_done(pipe)
         if not r["ok"]:
             return {"ok": False, "stage": "repair", "result": r}
+        fp = FPV.finish(pipe)  # re-measure the adopted text against the baseline draft; remaining signals are reported, not blocking
+        if not fp["ok"]:
+            return {"ok": False, "stage": "fpverify", "result": fp}
         f = finalize(pipe, runner)
         if f["ok"]:
             pipe.state["user_modified"] = None
@@ -357,7 +356,7 @@ def rebase(pipe: Pipeline, reason: str, runner: G.Runner) -> dict:
         rec = pipe.rec("images")
         if not rec:
             return {"ok": False, "reasons": ["no frame to rebase"]}
-        old_ref = gate_reference_frame(pipe)
+        old_ref = gate_reference_frame(pipe, cand)
         old, new = sha_bytes(old_ref.encode()), sha_bytes(cand.encode())
         base = pipe.pkg / "write-pipeline" / "work" / "rebase"
         atomic_write(base / "candidate" / "article.md", cand.encode())
@@ -383,3 +382,41 @@ def rebase(pipe: Pipeline, reason: str, runner: G.Runner) -> dict:
                 "note": "the final gate still runs against the previous reference; run finalize"}
     except Exception as e:  # noqa: BLE001  stage boundary
         return fail_exc(pipe, "integrity", e)
+
+
+# ---- NOT_READY output ---------------------------------------------------------------------------------------------
+def best_text(pipe: Pipeline) -> str:
+    """The most advanced article text the run has: the final candidate when it exists, else the latest stage artifact. May be stale."""
+    try:
+        t = final_text(pipe)
+        if t.strip():
+            return t
+    except (PipelineError, OSError, ValueError):
+        pass
+    for n in ("fpverify", "antifp", "voice", "editorial", "validate", "draft"):
+        try:
+            t = pipe.read_art(n)
+        except (PipelineError, OSError, ValueError):
+            t = None
+        if t and t.strip():
+            return t
+    return ""
+
+
+def write_not_ready_package(pipe: Pipeline) -> dict | None:
+    """Written by the CLI itself when a run ends NOT_READY before any final PASS: PACKAGE.md (reasons and the open findings), FINAL.md and
+    FINAL.html, both carrying a NOT READY banner. A run that already passed the final gate keeps its bytes; nothing is rewritten here."""
+    if pipe.state.get("invalid") or pipe.state.get("final"):
+        return None
+    text = best_text(pipe)
+    t = pipe.terminal() or {}
+    reasons = [f"{t.get('stage', 'pipeline')}: {t.get('reason')}"] if t else ["the run is NOT_READY"]
+    banner = f"Do not publish. This article did not pass the pipeline ({reasons[0][:200]})."
+    body = f"> NOT READY. {banner}\n\n{text}"
+    atomic_write(pipe.pkg / FINAL_NAME, body.encode())
+    title, _, _ = M.title_subtitle(text)
+    atomic_write(pipe.pkg / "FINAL.html", FR.to_html(text, title or pipe.state["slug"], banner=banner).encode())
+    pmd = RP.build_package_md(pipe, None, None, sha_bytes(body.encode()), verdict="NOT_READY", reasons=reasons, text=text)
+    atomic_write(pipe.pkg / "PACKAGE.md", pmd.encode())
+    pipe.log("not_ready_package", reasons=reasons)
+    return {"package": "PACKAGE.md", "final": FINAL_NAME, "html": "FINAL.html"}
