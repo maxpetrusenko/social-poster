@@ -102,15 +102,19 @@ def link_url(item: str) -> str:
     return u.rstrip("/")
 
 
-def lost_urls(original: list[str], rewrite: list[str], allowed: "Counter[str] | set[str] | None" = None) -> list[str]:
-    """Canonical items of `original` whose URL (multiset) `rewrite` no longer has, minus URLs in `allowed` (declared removals)."""
-    gone = Counter(map(link_url, original)) - Counter(map(link_url, rewrite))
-    if allowed:
-        gone -= Counter({u: 1_000_000 for u in allowed}) if not isinstance(allowed, Counter) else allowed
+def _ident(item: str) -> tuple[str, str]:
+    """(kind, URL). A bare URL in running text is not a substitute for a real link: dropping the markup around a link is a lost link."""
+    return ("bare" if not item.startswith(("[", "<")) else "link", link_url(item))
+
+
+def lost_urls(original: list[str], rewrite: list[str], allowed: "set[str] | None" = None) -> list[str]:
+    """Canonical items of `original` whose identity (kind, normalized URL; multiset) `rewrite` no longer has, minus URLs in `allowed` (declared removals)."""
+    gone = Counter(map(_ident, original)) - Counter(map(_ident, rewrite))
     out = []
     for it in original:
-        u = link_url(it)
-        if gone.get(u, 0) > 0:
-            gone[u] -= 1
-            out.append(it)
+        k = _ident(it)
+        if gone.get(k, 0) > 0:
+            gone[k] -= 1
+            if not (allowed and k[1] in allowed):
+                out.append(it)
     return out
