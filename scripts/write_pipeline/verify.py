@@ -10,6 +10,7 @@ from scripts.fingerprint_eval.contracts import RELEASE_ARTICLE, Result
 from scripts.publish_route.orchestrate import ROUTE_REL, _canon, _sha
 
 from . import frame as FR
+from . import furniture as FU
 from . import mdlib as M
 from .core import FINAL_NAME, READY_ROUTES, Pipeline, PipelineError, safe_path, sha_bytes
 
@@ -92,6 +93,11 @@ def final_failures(pipe: Pipeline, runner, before_stop: bool = False) -> list[st
             bad.append(f"package output {n} differs from the hash recorded when it was built")
     if files.get(FINAL_NAME) != sha:
         bad.append("package record is bound to different final bytes")
+    try:
+        furn, bio = FU.pipeline_inputs(pipe)
+        bad += FU.verify(raw.decode("utf-8"), furn, bio, exact_tldr=(pipe.state.get("candidate") or {}).get("origin") != "user-edit")
+    except (FU.FurnitureError, UnicodeDecodeError) as e:
+        bad.append(f"furniture could not be verified: {str(e)[:160]}")
     try:
         text = raw.decode("utf-8")
         title, _, _ = M.title_subtitle(text)

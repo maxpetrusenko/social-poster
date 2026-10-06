@@ -47,9 +47,10 @@ def test_unsupported_added_sentence_is_rejected_by_the_support_check(d):
 
 def test_added_sentence_with_an_invented_number_is_rejected_deterministically(d):
     major_open(d)
+    before = d.runner.n("scripts.write_pipeline.gaterun")  # the title stage's TLDR check already used the gate once
     rc, out = try_repair(d, candidate(d).replace(TAIL, TAIL + " Tail latency improved by 17 percent."))
     assert rc == 1 and any("added sentence rejected" in r or "number" in r for r in out["reasons"])
-    assert d.runner.n("scripts.write_pipeline.gaterun") == 0  # rejected before any model call
+    assert d.runner.n("scripts.write_pipeline.gaterun") == before  # rejected before any model call
 
 
 def test_invented_first_person_experience_is_rejected(d):
@@ -70,7 +71,8 @@ def test_changed_factual_meaning_and_lost_link_are_rejected(d):
     rc, out = try_repair(d, cand.replace("from 120 ms to 85 ms", "from 120 ms to 95 ms"))
     assert rc == 1 and any("number" in r for r in out["reasons"])
     d.runner.forbidden = ["attribute the drop to the network"]
-    rc, out = try_repair(d, cand.replace("attribute the drop to the cache", "attribute the drop to the network"))
+    head, sep, tail = cand.partition("\n\n## ")  # the TLDR (frozen furniture) also says "attribute the drop to the cache": only the body changes here
+    rc, out = try_repair(d, head + sep + tail.replace("attribute the drop to the cache", "attribute the drop to the network"))
     assert rc == 1 and any("claims gate failed" in r for r in out["reasons"])
     rc, out = try_repair(d, cand.replace("[test report](https://example.com/lab-report)", "test report"))
     assert rc == 3 and out["code"] == "NOT_READY" and "link removed" in out["reasons"][0]  # the third rejection ends the run

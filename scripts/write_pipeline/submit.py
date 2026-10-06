@@ -8,6 +8,7 @@ from . import brief as BR
 from . import cuts as CT
 from . import editguard as G
 from . import fpcaps as FC
+from . import furniture as FU
 from . import frame as FR
 from . import mdlib as M
 from . import relevance as RV
@@ -113,7 +114,7 @@ def submit(pipe: Pipeline, stage: str, file: Path, report: Path | None, runner: 
             data, err = _json(file)
             if data is None:
                 return _fail(pipe, stage, [err])
-            return _json_stage(pipe, stage, data, c)
+            return _json_stage(pipe, stage, data, c, runner)
         try:
             text = raw.decode("utf-8")
         except UnicodeDecodeError as e:
@@ -123,7 +124,7 @@ def submit(pipe: Pipeline, stage: str, file: Path, report: Path | None, runner: 
         return fail_exc(pipe, stage, e)
 
 
-def _json_stage(pipe: Pipeline, stage: str, data: dict, c: dict) -> dict:
+def _json_stage(pipe: Pipeline, stage: str, data: dict, c: dict, runner: G.Runner | None = None) -> dict:
     extra: dict = {}
     if stage == "source":
         r = V.sources(data, pipe.pkg)
@@ -140,15 +141,29 @@ def _json_stage(pipe: Pipeline, stage: str, data: dict, c: dict) -> dict:
     elif stage == "outline":
         r = V.outline(data, c["ev"])
     elif stage == "title":
-        r = V.titles(data, M.body_without_frame(pipe.read_art("antifp") or ""))
+        body = M.body_without_frame(pipe.read_art("antifp") or "")
+        r = V.titles(data, body, c["ev"])
+        if r["ok"]:
+            try:
+                FU.load_bio()  # fail here, not at the images stage: the footer cannot be built without the bio
+            except FU.FurnitureError as e:
+                r = {"ok": False, "reasons": [str(e)]}
+        if r["ok"] and runner is not None:
+            r = _tldr_gate(pipe, runner, data, body, r)
+            if r.get("blocked"):
+                return r["blocked"]
     else:  # images
         body = M.body_without_frame(pipe.read_art("antifp") or "")
         r = V.images(data, pipe.pkg, body)
         if r["ok"]:
             t = pipe.read_json("title")
             imgs = data.get("images") or []
-            cand = FR.assemble(pipe.read_art("antifp") or "", t["pick"], t["subtitle"], imgs)
-            refframe = FR.assemble(pipe.read_art("voice") or "", t["pick"], t["subtitle"], imgs)
+            try:
+                furn, bio = FU.from_title(t), FU.load_bio()
+            except FU.FurnitureError as e:
+                return _fail(pipe, stage, [str(e)])
+            cand = FR.assemble(pipe.read_art("antifp") or "", t["pick"], t["subtitle"], imgs, furn, bio)
+            refframe = FR.assemble(pipe.read_art("voice") or "", t["pick"], t["subtitle"], imgs, furn, bio)
             lint = M.lint_v6(cand)
             if lint:
                 r = {"ok": False, "reasons": lint}
@@ -156,13 +171,17 @@ def _json_stage(pipe: Pipeline, stage: str, data: dict, c: dict) -> dict:
                 pipe.state["candidate"] = {"path": str(pipe.store("images", "candidate.md", cand.encode())), "sha256": sha_bytes(cand.encode()), "origin": "frame"}
                 pipe.state.setdefault("critic", {"rounds": 0, "history": [], "repair_rejected": 0})  # the round budget belongs to the run, never to a frame
                 extra = {"external": {i["path"]: i["sha256"] for i in imgs},
-                         "candidate_sha256": sha_bytes(cand.encode()), "reference_frame": pipe.store("images", "reference-frame.md", refframe.encode()),
+                         "candidate_sha256": sha_bytes(cand.encode()), "bio_sha256": sha_bytes(bio.encode()), "reference_frame": pipe.store("images", "reference-frame.md", refframe.encode()),
                          "reference_frame_sha256": sha_bytes(refframe.encode())}
     if not r["ok"]:
         return _fail(pipe, stage, r["reasons"])
     data = r.get("data", data)
     main = (json.dumps(data, indent=1, sort_keys=True) + "\n").encode()
     out = _finish(pipe, stage, main, "json", extra_bundle=sha_json(extra).encode(), extra=extra)
+    if stage == "title" and out.get("ok"):
+        opp = FU.author_opportunity(FU.from_title(data))
+        if opp:
+            out = {**out, "author_opportunities": [opp]}
     if r.get("terminal") and not out.get("cached"):
         pipe.set(stage, NOT_READY, reasons=[r["terminal"][1]], extra={"artifact": out["artifact"]})
         pipe.save()
@@ -173,6 +192,25 @@ def _json_stage(pipe: Pipeline, stage: str, data: dict, c: dict) -> dict:
     if r.get("terminal"):
         return {"ok": False, "code": "NOT_READY", "stage": stage, "reasons": [r["terminal"][1]]}
     return out
+
+
+def _tldr_gate(pipe: Pipeline, runner: G.Runner, data: dict, body: str, r: dict) -> dict:
+    """The TLDR adds no claims: the claims gate runs on (body -> TLDR paragraph + body), the same added-claim check the stages use, with the source notes."""
+    from .runs import ensure_source_notes
+    base = pipe.pkg / "write-pipeline" / "work" / "tldr"
+    tl = str(data["tldr"]).strip()
+    atomic_write(base / "candidate" / "article.md", (tl + "\n\n" + body).encode())
+    atomic_write(base / "reference" / "reference.md", body.encode())
+    notes = ensure_source_notes(pipe)
+    gate = G.claims_gate(runner, base / "candidate" / "article.md", base / "reference" / "reference.md", base / "gate", pipe.pkg, notes=notes if notes.exists() else None)
+    if gate["state"] == "ERROR":
+        msg = ["claims gate could not check the TLDR against the body (retry later): " + "; ".join(gate["reasons"])[:200]]
+        pipe.set("title", BLOCKED, reasons=msg, extra={"category": "MODEL_UNAVAILABLE"})
+        pipe.save()
+        return {"ok": False, "blocked": {"ok": False, "code": "BLOCKED", "stage": "title", "reasons": msg}}
+    if gate["state"] == "FAIL":
+        return {"ok": False, "reasons": ["the TLDR adds a claim the body does not make (claims gate): " + "; ".join(gate["reasons"])[:300] + ". Rewrite it from sentences the body already asserts."]}
+    return r
 
 
 PREV = {"validate": "draft", "editorial": "validate", "voice": "editorial"}

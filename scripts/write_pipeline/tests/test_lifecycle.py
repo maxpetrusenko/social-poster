@@ -163,7 +163,7 @@ def test_critic_is_a_separate_context_that_sees_only_framework_evidence_and_arti
 
 def test_nothing_ever_publishes(d):
     final_run(d)
-    allowed = {"scripts.fingerprint_eval.run", "scripts.fingerprint_eval.release", "scripts.medium_review", "scripts.publish_route"}
+    allowed = {"scripts.fingerprint_eval.run", "scripts.write_pipeline.gaterun", "scripts.fingerprint_eval.release", "scripts.medium_review", "scripts.publish_route"}
     assert {m for m, _ in d.runner.calls} <= allowed
     for m, argv in d.runner.calls:
         if m == "scripts.publish_route":

@@ -18,6 +18,8 @@ from .textutil import HEADING_RE, LINK_RE, Block, parse_blocks, render_blocks, s
 FROZEN_KINDS = {"heading", "image", "code", "rule", "list", "quote", "table"}
 BOILERPLATE_HEAD = re.compile(r"about the author|sources?\b|references|further reading", re.I)
 PROMO_LINE = re.compile(r"^\s*(?:read next|read more|for a useful next read|related reading|further reading|up next)\b", re.I)  # "Read next: [title](url)" carries no claim
+MEDIUM_PROFILE = re.compile(r"medium\.com/@", re.I)  # the author bio links the Medium profile
+FOOTER_MAX_BLOCKS = 8
 MIN_SEGMENT_WORDS = 12
 EXTRACTOR = "claude:sonnet"  # fast; qwen3:8b works but takes ~3.5 min per segment (hidden reasoning)
 
@@ -61,11 +63,28 @@ class Segment:
         return "\n\n".join(b.text for b in self.blocks)
 
 
+def footer_start(blocks: list[Block]) -> int | None:
+    """Index of the rule block that opens the article footer (Read next line, author bio, sharing line, disclosure), or None.
+    The footer is the first horizontal rule followed only by plain paragraphs and rules (at most FOOTER_MAX_BLOCKS), at least one
+    of which is a linked "Read next" line or a paragraph linking the author's Medium profile. Everything from there on is frozen boilerplate."""
+    for i, b in enumerate(blocks):
+        if b.kind != "rule":
+            continue
+        rest = blocks[i + 1:]
+        if not rest or len(rest) > FOOTER_MAX_BLOCKS or any(x.kind not in ("paragraph", "rule") for x in rest):
+            continue
+        if any(x.kind == "paragraph" and ((PROMO_LINE.match(x.text) and links_in(x.text)) or MEDIUM_PROFILE.search(x.text)) for x in rest):
+            return i
+    return None
+
+
 def segment_article(md: str) -> list[Segment]:
     """Ordered segments; frozen ones are emitted verbatim."""
     segs: list[Segment] = []
     section, sec_idx, boiler = "", 0, False
     run: list[Block] = []
+    all_blocks = parse_blocks(md)
+    foot = footer_start(all_blocks)
 
     def flush_run():
         if run:
@@ -75,7 +94,10 @@ def segment_article(md: str) -> list[Segment]:
             segs.append(seg)
             run.clear()
 
-    for b in parse_blocks(md):
+    for n, b in enumerate(all_blocks):
+        if n == foot:
+            flush_run()
+            boiler = True  # footer boilerplate: no claims extracted, compared byte-exact
         if b.kind == "heading":
             flush_run()
             m = HEADING_RE.match(b.text)
