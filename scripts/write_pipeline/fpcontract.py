@@ -62,7 +62,16 @@ def violations(sig: dict, cap: dict) -> list[dict]:
     return out
 
 
-def assess(text: str, cap: dict | None = None) -> dict:
-    """{"heavy", "violations", "sig"}: the verdict every stage must agree with. A text that is heavy, or over a cap, is never acceptable as final."""
+def is_blocking(sig: dict, has_debt: bool, cap: dict | None = None) -> tuple[bool, list[dict]]:
+    """(heavy, owed). Heavy is antifp's rule; a text that is over the generation caps while a stage accepted fingerprint_debt is heavy too: the debt
+    must be cleared. This is the single acceptance rule antifp finish and fpverify both apply."""
+    owed = violations(sig, cap or caps()) if has_debt else []
+    return is_heavy(sig) or bool(owed), owed
+
+
+def assess(text: str, has_debt: bool = False, cap: dict | None = None) -> dict:
+    """{"heavy", "owed", "violations", "sig"}: the verdict every stage must agree with. violations lists every cap the text exceeds (informational
+    unless a stage carries fingerprint_debt); heavy is the blocking verdict."""
     sig = signals(text)
-    return {"heavy": is_heavy(sig), "violations": violations(sig, cap or caps()), "sig": sig}
+    heavy, owed = is_blocking(sig, has_debt, cap)
+    return {"heavy": heavy, "owed": owed, "violations": violations(sig, cap or caps()), "sig": sig}

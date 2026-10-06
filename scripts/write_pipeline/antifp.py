@@ -12,8 +12,8 @@ from pathlib import Path
 
 from . import editguard as G
 from . import mdlib as M
-from .fpcontract import (EM_DASH_CAP, HEAVY_COMPOSITE, HEAVY_TEMPLATE_HITS, ONE_SENTENCE_PARA_FLOOR, TRANSITION_FLOOR, WEIGHTS, caps as _caps,  # noqa: F401  re-exported: ONE contract
-                         is_heavy, signals, violations as _violations)
+from .fpcontract import (EM_DASH_CAP, HEAVY_COMPOSITE, HEAVY_TEMPLATE_HITS, ONE_SENTENCE_PARA_FLOOR, TRANSITION_FLOOR, WEIGHTS,  # noqa: F401  re-exported: ONE contract
+                         is_blocking, signals)
 from .core import Pipeline, PipelineError, atomic_write, sha_bytes
 from .validators import asserted_unresolved
 
@@ -159,11 +159,8 @@ def finish(pipe: Pipeline) -> dict:
     except (OSError, ValueError, PipelineError) as e:
         return {"ok": False, "reasons": [str(e)]}
     sig = signals(cur)
-    heavy = is_heavy(sig)
     debts = {st: pipe.rec(st)["fingerprint_debt"] for st in ("draft", "editorial", "voice") if (pipe.rec(st) or {}).get("fingerprint_debt")}
-    owed = _violations(sig, _caps()) if debts else []
-    if owed:  # a stage accepted with fingerprint_debt must be clear of the caps by the end of this loop
-        heavy = True
+    heavy, owed = is_blocking(sig, bool(debts))  # a stage accepted with fingerprint_debt must be clear of the caps by the end of this loop
     report = {"policy": "own style-fingerprint metrics only; no third-party AI detector was used or targeted",
               "reference_sha256": loop["reference_sha"], "final_sha256": sha_bytes(cur.encode()),
               "baseline": {"composite": loop["baseline"]["composite"], "values": loop["baseline"]["values"]},

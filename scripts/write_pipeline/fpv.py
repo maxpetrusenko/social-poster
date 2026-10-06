@@ -92,9 +92,10 @@ def report(pipe: Pipeline, cur: str, loop: dict) -> dict:
     deltas = [{"signal": k, "label": PF.SIGNALS[k]["label"], "baseline": bs[k]["value"], "final": fs[k]["value"], "delta": round(fs[k]["value"] - bs[k]["value"], 4),
                "baseline_severity": bs[k]["severity"], "final_severity": fs[k]["severity"], "band": fs[k]["band"]} for k in PF.SIGNALS if k in bs and k in fs]
     remaining = [r for r in f["signals"] if r["significant"]]
-    verdict = CT.assess(cur)
+    debt = any((pipe.rec(st) or {}).get("fingerprint_debt") for st in ("draft", "editorial", "voice"))
+    verdict = CT.assess(cur, debt)
     return {
-        "contract": {"heavy": verdict["heavy"], "cap_violations": verdict["violations"], "composite": verdict["sig"]["composite"]},
+        "contract": {"heavy": verdict["heavy"], "cap_violations": verdict["violations"], "owed": verdict["owed"], "composite": verdict["sig"]["composite"]},
         "policy": "own style-fingerprint metrics only (scripts.fingerprint_eval.metrics); no third-party AI detector was used or targeted",
         "author_corpus": {"docs": prof["n_docs"], "words": prof["n_words"]},
         "baseline": {"sha256": sha_bytes(baseline_text(pipe).encode()), "n_words": b["n_words"], "values": b["values"], "distance": b["distance"],
@@ -142,7 +143,7 @@ def _contract_bad(rep: dict) -> list[str]:
     out = []
     if c["heavy"]:
         out.append(f"the text is heavy by the anti-fingerprint contract (composite {c['composite']}; heavy at template hits >= {CT.HEAVY_TEMPLATE_HITS} or composite >= {CT.HEAVY_COMPOSITE})")
-    out += [f"{x['signal']} {x['value']} exceeds the generation cap {x['cap']}" for x in c["cap_violations"]]
+    out += [f"{x['signal']} {x['value']} exceeds the generation cap {x['cap']} while a stage carries fingerprint debt" for x in c["owed"]]
     return out
 
 

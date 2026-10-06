@@ -124,3 +124,11 @@ def prune(pipe: Pipeline) -> list[str]:
         pipe.log("prune_stale_cuts", dropped=dropped, invalidated=hit)
         pipe.save()
     return dropped
+
+
+def signed_removal_entries(pkg) -> list[dict]:
+    """The entries of the signed ledger file as written on disk (empty when absent)."""
+    try:
+        return json.loads((pkg / LEDGER_REL).read_text()).get("entries", [])
+    except (OSError, ValueError):
+        return []
