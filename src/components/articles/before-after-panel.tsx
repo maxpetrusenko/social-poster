@@ -3,6 +3,7 @@ import {
   COMPARE_BEFORE_STAGES,
   type CompareBeforeStage,
   type CompareDiffOp,
+  type CompareUnit,
   type CompareStageMeasure,
   type FingerprintCompare,
 } from "@/lib/article-agent/pipeline-compare-types";
@@ -168,17 +169,56 @@ export function BeforeAfterPanel({
   );
 }
 
+function Unit({ unit }: { unit: CompareUnit }) {
+  if (unit.kind === "heading") {
+    const level = Math.min(Math.max(unit.level ?? 2, 1), 6);
+    const size = level <= 1 ? "text-lg" : level === 2 ? "text-base" : "text-sm";
+    return <span className={`block font-semibold ${size}`} data-kind="heading" data-level={level}>{unit.text}</span>;
+  }
+  if (unit.kind === "image") {
+    return <span className="block text-xs italic" data-kind="image">{`[image: ${unit.text}]`}</span>;
+  }
+  if (unit.kind === "quote") {
+    return <span className="block border-l-2 border-[#d4c6b1] pl-4" data-kind="quote">{unit.text}</span>;
+  }
+  if (unit.kind === "list") {
+    return <span className="block pl-4" data-kind="list">{`- ${unit.text}`}</span>;
+  }
+  return <span className="block" data-kind={unit.kind}>{unit.text}</span>;
+}
+
+function Units({ units }: { units: CompareUnit[] }) {
+  return (
+    <>
+      {units.map((unit, index) => (
+        <Unit key={index} unit={unit} />
+      ))}
+    </>
+  );
+}
+
 function DiffOp({ op }: { op: CompareDiffOp }) {
   const removed = op.op === "delete" || op.op === "replace" ? op.a : [];
   const added = op.op === "insert" || op.op === "replace" ? op.b : [];
-  if (op.op === "equal") return <p className="text-[#5f523f]">{op.a.join(" ")}</p>;
+  if (op.op === "equal") {
+    return (
+      <div className="text-[#5f523f]">
+        <Units units={op.a} />
+      </div>
+    );
+  }
   return (
-    <p>
+    <div>
       {removed.length ? (
-        <del className="bg-[#fbe3df] text-[#a3342a] line-through decoration-[#a3342a]">{removed.join(" ")}</del>
+        <del className="block bg-[#fbe3df] text-[#a3342a] line-through decoration-[#a3342a]">
+          <Units units={removed} />
+        </del>
       ) : null}
-      {removed.length && added.length ? " " : null}
-      {added.length ? <ins className="bg-[#dcefd5] text-[#1f4d1a] no-underline">{added.join(" ")}</ins> : null}
-    </p>
+      {added.length ? (
+        <ins className="block bg-[#dcefd5] text-[#1f4d1a] no-underline">
+          <Units units={added} />
+        </ins>
+      ) : null}
+    </div>
   );
 }

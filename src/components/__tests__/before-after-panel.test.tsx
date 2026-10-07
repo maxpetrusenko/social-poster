@@ -27,9 +27,9 @@ const data: FingerprintCompare = {
   diffs: {
     draft: {
       ops: [
-        { op: "equal", a: ["Kept sentence."], b: ["Kept sentence."] },
-        { op: "delete", a: ["Removed sentence."], b: [] },
-        { op: "insert", a: [], b: ["Added sentence."] },
+        { op: "equal", a: [{ kind: "paragraph", text: "Kept sentence." }], b: [{ kind: "paragraph", text: "Kept sentence." }] },
+        { op: "delete", a: [{ kind: "paragraph", text: "Removed sentence." }], b: [] },
+        { op: "insert", a: [], b: [{ kind: "paragraph", text: "Added sentence." }] },
       ],
     },
     voice: { ops: [] },
@@ -58,6 +58,29 @@ describe("BeforeAfterPanel", () => {
     expect(container.querySelector("del")?.className).toContain("line-through");
     expect(container.querySelector("ins")?.textContent).toBe("Added sentence.");
     expect(container.querySelector("ins")?.className).toContain("bg-[#dcefd5]");
+  });
+
+  it("renders heading, image and quote units by kind", () => {
+    const withUnits: FingerprintCompare = {
+      ...data,
+      diffs: {
+        ...data.diffs,
+        voice: {
+          ops: [
+            { op: "equal", a: [{ kind: "heading", level: 2, text: "What the jam study found" }], b: [] },
+            { op: "insert", a: [], b: [{ kind: "image", text: "A hero alt" }] },
+            { op: "insert", a: [], b: [{ kind: "quote", text: "A quoted line." }] },
+          ],
+        },
+      },
+    };
+    const { container } = render(createElement(BeforeAfterPanel, { slug: "s", data: withUnits, before: "voice" }));
+    const heading = container.querySelector('[data-kind="heading"]');
+    expect(heading?.textContent).toBe("What the jam study found");
+    expect(heading?.getAttribute("data-level")).toBe("2");
+    expect(container.querySelector('[data-kind="image"]')?.textContent).toBe("[image: A hero alt]");
+    expect(container.querySelector('[data-kind="quote"]')?.className).toContain("pl-4");
+    expect(container.textContent).not.toContain("![");
   });
 
   it("labels the stage selector with file names and lists kept and rejected edits with reasons", () => {

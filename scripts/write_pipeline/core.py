@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import subprocess
 import tempfile
 from datetime import datetime, timezone
@@ -49,6 +50,19 @@ STATE_REL = Path("write-pipeline") / "state.json"
 ART_REL = Path("write-pipeline") / "artifacts"
 LOG_REL = Path("write-pipeline") / "log.jsonl"
 FINAL_NAME = "FINAL.md"
+NOT_READY_BANNER_PREFIX = "Do not publish. This article did not pass the pipeline ("
+NOT_READY_BANNER_RE = re.compile(r"\A> NOT READY\. " + re.escape(NOT_READY_BANNER_PREFIX) + r"[^\n]*\)\.[ \t]*\n(?:[ \t]*\n)*")
+
+
+def not_ready_banner(reason: str) -> str:
+    """The banner text final.write_not_ready_package puts on FINAL.md (as '> NOT READY. <banner>') and FINAL.html."""
+    return f"{NOT_READY_BANNER_PREFIX}{reason[:200]})."
+
+
+def strip_not_ready_banner(text: str) -> tuple[str, str | None]:
+    """(text without the leading pipeline banner, the banner line removed or None)."""
+    m = NOT_READY_BANNER_RE.match(text)
+    return (text[m.end():], m.group(0).strip()) if m else (text, None)
 
 
 def sha_bytes(b: bytes) -> str:

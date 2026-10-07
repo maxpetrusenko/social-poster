@@ -19,6 +19,7 @@ WORSE = (
 
 def _package(tmp_path, final=WORSE):
     pkg = tmp_path / "pkg"
+    pkg.mkdir(parents=True, exist_ok=True)
     art = pkg / "write-pipeline" / "artifacts"
     art.mkdir(parents=True)
     (art / "06-draft.md").write_text(CLEAN)
@@ -69,3 +70,59 @@ def test_missing_stage_fails_open_exit_code(tmp_path):
     (pkg / "FINAL.md").unlink()
     assert CMP.main(["--package", str(pkg), "--out", str(tmp_path / "x.json")]) == 1
     assert not (tmp_path / "x.json").exists()
+
+
+BLOCKS = (
+    "# Title line\n\n"
+    "### Subtitle line.\n\n"
+    "![A hero alt](assets/hero.jpg)\n\n"
+    "First sentence here. Second sentence with [a link](https://example.com/x) inside.\n\n"
+    "## A heading\n\n"
+    "> Quoted one. Quoted two.\n\n"
+    "- item one\n- item two\n"
+)
+
+
+def test_units_split_per_block_and_keep_kind():
+    u = CMP.units(BLOCKS)
+    assert u[0] == {"kind": "heading", "level": 1, "text": "Title line"}
+    assert u[1] == {"kind": "heading", "level": 3, "text": "Subtitle line."}
+    assert u[2] == {"kind": "image", "text": "A hero alt"}
+    assert [x["text"] for x in u if x["kind"] == "paragraph"] == ["First sentence here.", "Second sentence with a link inside."]
+    heading = [x for x in u if x["text"] == "A heading"]
+    assert heading == [{"kind": "heading", "level": 2, "text": "A heading"}]  # never glued to the previous sentence
+    assert [x["text"] for x in u if x["kind"] == "quote"] == ["Quoted one.", "Quoted two."]
+    assert [x["text"] for x in u if x["kind"] == "list"] == ["item one", "item two"]
+    assert not any("](" in x["text"] or x["text"].startswith(">") for x in u)
+
+
+def test_diff_ops_carry_units_with_kind():
+    ops = CMP.diff_ops(CMP.units("## Same\n\nOld one."), CMP.units("## Same\n\nNew one."))
+    assert [o["op"] for o in ops] == ["equal", "replace"]
+    assert ops[0]["a"] == [{"kind": "heading", "level": 2, "text": "Same"}]
+    assert ops[1]["a"][0]["kind"] == "paragraph" and ops[1]["b"][0]["text"] == "New one."
+
+
+def test_banner_stripped_before_measuring_and_recorded(tmp_path):
+    from scripts.write_pipeline.core import not_ready_banner
+    banner = f"> NOT READY. {not_ready_banner('critic: budget exhausted')}\n\n"
+    plain = _package(tmp_path / "a", final=CLEAN)
+    bannered = _package(tmp_path / "b", final=banner + CLEAN)
+    docs = []
+    for i, pkg in enumerate((plain, bannered)):
+        out = tmp_path / f"fp{i}.json"
+        assert CMP.main(["--package", str(pkg), "--out", str(out)]) == 0
+        docs.append(json.loads(out.read_text()))
+    assert docs[0]["stripped"] == []
+    assert docs[1]["stripped"] == [{"stage": "final", "path": "FINAL.md", "kind": "not_ready_banner", "text": banner.strip()}]
+    assert docs[1]["stages"]["final"]["contract"] == docs[0]["stages"]["final"]["contract"]
+    assert docs[1]["stages"]["final"]["n_words"] == docs[0]["stages"]["final"]["n_words"]
+    assert all(o["op"] == "equal" for o in docs[1]["diffs"]["draft"]["ops"])  # no inserted banner text
+
+
+def test_banner_pattern_is_exact(tmp_path):
+    from scripts.write_pipeline.core import strip_not_ready_banner
+    text = "> NOT READY. Something else entirely.\n\nBody."
+    assert strip_not_ready_banner(text) == (text, None)
+    quote = "> NOT READY. Do not publish. This article did not pass the pipeline (x).\n\n> a real quote\n"
+    assert strip_not_ready_banner(quote)[0] == "> a real quote\n"

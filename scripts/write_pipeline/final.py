@@ -17,7 +17,7 @@ from . import frame as FR
 from . import furniture as FU
 from . import linkpolicy as LP
 from . import mdlib as M
-from .core import (NAMES, BLOCKED, DONE, FAILED, FINAL_NAME, NOT_READY, QUARANTINED, READY_ROUTES, Pipeline, PipelineError, atomic_write, fail_exc, now,
+from .core import (not_ready_banner, NAMES, BLOCKED, DONE, FAILED, FINAL_NAME, NOT_READY, QUARANTINED, READY_ROUTES, Pipeline, PipelineError, atomic_write, fail_exc, now,
                    safe_path, sha_bytes)
 from . import fpv as FPV
 from . import report as RP
@@ -526,7 +526,7 @@ def write_not_ready_package(pipe: Pipeline) -> dict | None:
         reasons = [f"pipeline state invalid: {invalid.get('reason', 'unknown')}"]
     else:
         reasons = [f"{t.get('stage', 'pipeline')}: {t.get('reason')}"] if t else ["the run is NOT_READY"]
-    banner = f"Do not publish. This article did not pass the pipeline ({reasons[0][:200]})."
+    banner = not_ready_banner(reasons[0])
     fp = pipe.pkg / FINAL_NAME
     existing = _safe(lambda: fp.read_text(), None) if fp.exists() else None
     owned = _owned_sha(pipe)
