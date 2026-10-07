@@ -191,6 +191,18 @@ export function getArticleWorkspaceSections(): SectionConfig[] {
   ];
 }
 
+/** Absolute path of a file inside one article folder of the workspace, or null when the slug or path would escape it. */
+export function resolveArticleWorkspaceArticlePath(slug: string, relativePath: string) {
+  const safeSlug = normalizeEntryName(slug);
+  if (!safeSlug) return null;
+  const articlesRoot = getArticleWorkspaceSections()[0].root;
+  try {
+    return safeResolve(articlesRoot, path.join(safeSlug, relativePath));
+  } catch {
+    return null;
+  }
+}
+
 export function makeArticleWorkspaceOpenRef(
   section: ArticleWorkspaceSection,
   relativePath = ""

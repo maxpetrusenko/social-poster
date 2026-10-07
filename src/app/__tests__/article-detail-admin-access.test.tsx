@@ -32,6 +32,10 @@ vi.mock("@/db", () => ({
   },
 }));
 
+vi.mock("@/lib/article-agent/pipeline-compare", () => ({
+  readPipelineCompare: vi.fn(async () => null),
+}));
+
 vi.mock("@/components/articles/article-editor", () => ({
   ArticleEditor: () => null,
 }));

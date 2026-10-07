@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { blogAutomationPosts, blogAutomationRuns } from "@/db/schema";
+import { BeforeAfterPanel, parseBeforeStage } from "@/components/articles/before-after-panel";
+import { readPipelineCompare } from "@/lib/article-agent/pipeline-compare";
 import { ArticleEditor } from "@/components/articles/article-editor";
 import { BlogMarkdownRenderer } from "@/components/blog/markdown-renderer";
 import { isAdmin } from "@/lib/admin-auth";
@@ -14,11 +16,12 @@ import {
 
 type Props = {
   params: Promise<{ id: string }>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 };
 
 export const dynamic = "force-dynamic";
 
-export default async function ArticleDetailPage({ params }: Props) {
+export default async function ArticleDetailPage({ params, searchParams }: Props) {
   const tenant = await getTenantContext();
   if (!tenant) notFound();
 
@@ -40,7 +43,30 @@ export default async function ArticleDetailPage({ params }: Props) {
     )
     .limit(1);
 
-  if (!article) notFound();
+  const before = parseBeforeStage((searchParams ? await searchParams : {}).before);
+
+  if (!article) {
+    const workspaceArticle = await readPipelineCompare(id);
+    if (!workspaceArticle) notFound();
+    return (
+      <div className="mx-auto max-w-7xl px-5 py-8 md:px-8">
+        <Link href="/dashboard/articles" className="text-sm font-semibold text-[#5f523f] hover:underline">
+          Back to Articles
+        </Link>
+        <h1 className="mt-6 max-w-4xl font-serif text-4xl font-semibold leading-tight text-[#171717]">
+          {workspaceArticle.title}
+        </h1>
+        <div className="mt-8 space-y-6">
+          <BeforeAfterPanel slug={workspaceArticle.slug} data={workspaceArticle.compare} before={before} />
+          <article className="rounded-[22px] border border-[#d4c6b1] bg-white p-6">
+            <BlogMarkdownRenderer markdown={workspaceArticle.finalMarkdown} />
+          </article>
+        </div>
+      </div>
+    );
+  }
+
+  const pipelineCompare = await readPipelineCompare(article.slug);
 
   const runs = await db
     .select()
@@ -85,6 +111,9 @@ export default async function ArticleDetailPage({ params }: Props) {
 
       <div className="mt-8 grid gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
         <main className="space-y-6">
+          {pipelineCompare ? (
+            <BeforeAfterPanel slug={article.id} data={pipelineCompare.compare} before={before} />
+          ) : null}
           <article className="rounded-[22px] border border-[#d4c6b1] bg-white p-6">
             {article.heroImageUrl ? (
               <figure className="mb-8 overflow-hidden rounded-[18px] border border-[#eadfce] bg-[#fffaf2]">
