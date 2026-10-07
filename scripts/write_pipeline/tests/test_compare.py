@@ -126,3 +126,12 @@ def test_banner_pattern_is_exact(tmp_path):
     assert strip_not_ready_banner(text) == (text, None)
     quote = "> NOT READY. Do not publish. This article did not pass the pipeline (x).\n\n> a real quote\n"
     assert strip_not_ready_banner(quote)[0] == "> a real quote\n"
+
+
+def test_edit_lists_drop_link_urls(tmp_path):
+    pkg = _package(tmp_path)
+    (pkg / "write-pipeline" / "removals-ledger.json").write_text(json.dumps({"entries": [
+        {"stage": "repair", "sentence": "See [Annie Duke](https://example.com/a) won.", "reason": "r", "replacement": "[Annie Duke](https://example.com/a) won *more*."}]}))
+    doc = CMP.compare(pkg)
+    assert doc["edits"]["kept"][0]["sentence"] == "See Annie Duke won."
+    assert doc["edits"]["kept"][0]["replacement"] == "Annie Duke won more."

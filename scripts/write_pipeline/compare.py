@@ -99,6 +99,11 @@ def diff_ops(before: list[dict], after: list[dict]) -> list[dict]:
     return ops
 
 
+def _plain(text) -> str:
+    """Display form of an edit sentence: link URLs and emphasis dropped, anchor text kept."""
+    return " ".join(strip_inline(str(text)).split())
+
+
 def _edits(pkg: Path) -> dict:
     wp = pkg / "write-pipeline"
     state = _json(wp / "state.json", {}) or {}
@@ -106,16 +111,16 @@ def _edits(pkg: Path) -> dict:
     seen: set[str] = set()
     ledger = _json(wp / "removals-ledger.json", {}) or {}
     for e in ledger.get("entries", []) if isinstance(ledger, dict) else []:
-        s = str(e.get("sentence", "")).strip()
+        s = _plain(e.get("sentence", ""))
         if s in seen:
             continue
         seen.add(s)
         row = {"stage": e.get("stage", ""), "sentence": s, "reason": e.get("reason", "")}
         if e.get("replacement"):
-            row["replacement"] = e["replacement"]
+            row["replacement"] = _plain(e["replacement"])
         kept.append(row)
     for c in state.get("repair_cuts", []) or []:
-        s = str(c.get("text", "")).strip()
+        s = _plain(c.get("text", ""))
         if s and s not in seen:
             seen.add(s)
             kept.append({"stage": "repair", "sentence": s, "reason": c.get("reason", "")})
