@@ -16,6 +16,7 @@ from . import editguard as G
 from . import frame as FR
 from . import furniture as FU
 from . import linkpolicy as LP
+from . import measure as MS
 from . import mdlib as M
 from .core import (not_ready_banner, NAMES, BLOCKED, DONE, FAILED, FINAL_NAME, NOT_READY, QUARANTINED, READY_ROUTES, Pipeline, PipelineError, atomic_write, fail_exc, now,
                    safe_path, sha_bytes)
@@ -285,6 +286,7 @@ def _run_package(pipe: Pipeline, runner: G.Runner) -> dict:
     text = fpath.read_text()
     title, _, _ = M.title_subtitle(text)
     (pipe.pkg / "FINAL.html").write_text(FR.to_html(text, title or pipe.state["slug"]))
+    MS.run(pipe.pkg, text, sha)  # optional detector measurement, once per FINAL hash; errors are recorded and never block
     pmd = RP.build_package_md(pipe, review, route, sha)
     atomic_write(pipe.pkg / "PACKAGE.md", pmd.encode())
     files = {n: sha_bytes(safe_path(pipe.pkg, n).read_bytes()) for n in (FINAL_NAME, "FINAL.html", "PACKAGE.md")}

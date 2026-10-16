@@ -96,11 +96,22 @@ def read_rows(corpus: Path) -> list[dict]:
 
 def ingest(detector: str, file: Path, article_sha: str | None = None, corpus: Path | None = None, now: str | None = None) -> dict:
     """Append the report's sentences to the corpus, skipping any (detector, label, sentence) already there. Returns {added, skipped, corpus}."""
-    if detector not in DETECTORS:
-        raise ValueError(f"detector must be one of {', '.join(DETECTORS)}, got {detector!r}")
-    file, corpus = Path(file), Path(corpus or DEFAULT_CORPUS)
+    file = Path(file)
     text = file.read_text()
     parsed = parse_json(text) if file.suffix.lower() == ".json" else parse_paste(text)
+    return _append(detector, parsed, article_sha, corpus, now)
+
+
+def ingest_result(detector: str, result: dict, article_sha: str | None = None, corpus: Path | None = None, now: str | None = None) -> dict:
+    """Ingest a detector adapter result dict (DetectorResult.to_dict()): its flagged_sentences become flagged rows. An errored result adds nothing."""
+    parsed = {"flagged": [], "human": []} if result.get("error") else parse_json(json.dumps({"flagged": result.get("flagged_sentences") or []}))
+    return _append(detector, parsed, article_sha or result.get("text_sha256"), corpus, now)
+
+
+def _append(detector: str, parsed: dict, article_sha: str | None, corpus: Path | None, now: str | None) -> dict:
+    if detector not in DETECTORS:
+        raise ValueError(f"detector must be one of {', '.join(DETECTORS)}, got {detector!r}")
+    corpus = Path(corpus or DEFAULT_CORPUS)
     seen = {(r.get("detector"), r.get("label"), _norm(str(r.get("sentence", "")))) for r in read_rows(corpus)}
     stamp = now or datetime.now(timezone.utc).isoformat(timespec="seconds")
     new, skipped = [], 0
