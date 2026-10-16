@@ -323,7 +323,15 @@ def main(argv: list[str] | None = None, runner=None, critic=None) -> int:
     bl.add_argument("stage", choices=NAMES)
     bl.add_argument("--category", default="MODEL_UNAVAILABLE")
     bl.add_argument("--reason", required=True)
+    pp = sub.add_parser("postpublish")  # after publishing; never touches Medium or FINAL.md
+    pp.add_argument("sub", choices=("friendlink",))
+    pp.add_argument("--package", required=True, type=Path)
+    pp.add_argument("--url")
+    pp.add_argument("--paywalled", required=True, choices=("yes", "no"))
     a = ap.parse_args(argv)
+    if a.cmd == "postpublish":
+        from . import postpublish as PP
+        return PP.cmd(a)
     if a.cmd == "init":
         return cmd_init(a)
     try:

@@ -31,7 +31,7 @@ def _direct_author_voice(pipe: Pipeline, text: str) -> dict | None:
 
 SECTIONS = ["TITLE", "SUBTITLE", "ARTICLE", "SOURCES", "IMAGES", "FURNITURE", "EDITORIAL SCORECARD", "AUTHOR-VOICE RESULT", "FINGERPRINT BASELINE", "FINGERPRINT FINAL",
             "FINGERPRINT CHANGES", "REMAINING FINGERPRINT SIGNALS", "CLAIM CHECK", "LINK CHECK", "SOURCE CHECK", "STRUCTURE CHECK", "SEMANTIC PRESERVATION",
-            "MEDIUM REVIEW", "EXACT FINAL HASH", "READY/NOT_READY"]
+            "MEDIUM REVIEW", "DETECTOR MEASUREMENT", "EXACT FINAL HASH", "READY/NOT_READY"]
 HEADINGS = {"IMAGES": "IMAGES (provenance, captions, ALT)", "AUTHOR-VOICE RESULT": "AUTHOR-VOICE RESULT (metric)"}
 
 
@@ -235,6 +235,11 @@ def build_package_md(pipe: Pipeline, review: dict | None, route: dict | None, fi
         S["MEDIUM REVIEW"] += [f"  - {r}" for r in route.get("reasons", [])]
         S["MEDIUM REVIEW"] += [f"  - candidate publication: {c.get('name')} {c.get('submission_url', '')}" for c in route.get("publication_candidates", []) or []]
     S["MEDIUM REVIEW"] += ["- author input suggestions (topically relevant only):", *["  " + x for x in author_opportunities(pipe, review, text)]]
+    try:
+        from . import measure as MS
+        S["DETECTOR MEASUREMENT"] = MS.section_lines(pipe.pkg, final_sha or sha_text(text))
+    except Exception:  # noqa: BLE001  report formatting must never fail the package
+        S["DETECTOR MEASUREMENT"] = ["- not run (optional, measurement only)"]
     fw = pipe.state.get("framework") or {}
     S["EXACT FINAL HASH"] = [f"- FINAL.md sha256: {final_sha or sha_text(text)}", f"- framework: {fw.get('path')} sha256 {fw.get('sha256')}", *[f"- stage {n}: {(pipe.rec(n) or {}).get('bundle_sha256')}" for n in NAMES if pipe.rec(n)],
                              f"- overrides: {json.dumps(pipe.state.get('overrides', []))}"]
