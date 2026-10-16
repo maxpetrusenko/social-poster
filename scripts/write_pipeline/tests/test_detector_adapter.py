@@ -28,7 +28,7 @@ class Fake:
 
 
 def run(pkg, tf, env=ENV, tmp=None):
-    return MS.run(pkg, TEXT, SHA, env=env, transport=tf, corpus=tmp / "corpus.jsonl")
+    return MS.run(pkg, TEXT, SHA, env=env, transport=tf, corpus=(tmp or pkg) / "corpus.jsonl")
 
 
 def test_disabled_by_default_and_without_key(tmp_path):
