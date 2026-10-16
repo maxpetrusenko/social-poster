@@ -124,3 +124,20 @@ def test_fpcaps_check_reports_pattern_offenders_as_advisory():
     assert res["ok"] is True  # advisory: never makes a text fail
     assert res["advisory"]["patterns"]["so_closer"]["count"] == 1
     assert res["advisory"]["patterns"]["so_closer"]["examples"]
+
+
+def test_author_corpus_rates_stay_low():
+    """Calibration guard: Max's own pre-2023 writing (frozen corpus) must not trip the detectors, per 1000 words."""
+    from scripts.fingerprint_eval.contracts import AUTHOR_CORPUS_DIR
+    root = Path(__file__).resolve().parents[3] / AUTHOR_CORPUS_DIR
+    files = sorted(root.glob("*.txt"))
+    assert len(files) >= 50
+    total = {k: 0 for k in P.PATTERNS}
+    n = 0
+    for f in files:
+        t = f.read_text()
+        n += P.n_words(t)
+        for k, v in P.counts(t).items():
+            total[k] += v
+    rate = {k: 1000 * v / n for k, v in total.items()}
+    assert max(rate.values()) < 0.2, rate

@@ -51,7 +51,7 @@ HEDGE_RE = re.compile(
     r"somewhat|presumably|ostensibly|supposedly|seemingly|essentially|more or less|to some extent|in some sense|in part|"
     r"largely|mostly|tends? to|seems? to|appears? to|may well|might well|could well)\b", re.I)
 SO_RE = re.compile(r"^So,? (?:the|that|it|this|what|here|then|why|how)\b", re.I)
-SO_TAIL_RE = re.compile(r"\b(?:whole|entire|real|only|big|bottom|end|upshot|point|question|bet|math|answer|story|thing)\b|\b(?:hinges?|comes? down|boils down|turns?) (?:on|to)\b", re.I)
+SO_TAIL_RE = re.compile(r"\b(?:whole|entire|bottom line|upshot|question|bet|math|real (?:question|issue|problem|test))\b|\b(?:hinges?|comes? down|boils down|turns?) (?:on|to)\b", re.I)
 TEMPT_RE = re.compile(r"\b(?:it'?s|it is|is|be|feels?|seems?) (?:so |very |a little )?(?:tempting|easy|natural|comforting|neat) to (?:tell|say|think|read|frame|see|call|assume|conclude|blame)\b|"
                       r"\bthe tempting (?:story|read|version|conclusion|take|narrative|explanation)\b", re.I)
 SETUP_RE = re.compile(r"\b(?:tempting|neat|tidy|clean|simple|easy|comfortable|convenient|familiar|obvious|popular|common|conventional) (?:\w+ )?(?:story|tale|version|narrative|read|reading|explanation|answer|lesson|take|conclusion|framing)\b|"
@@ -75,8 +75,8 @@ LOGIC_RES = [re.compile(p, re.I) for p in (
     r"\bhing(?:e|es|ed|ing) (?:entirely |largely |mostly |all )?on\b",
     r"\b(?:whole|entire) (?:thing|case|bet|argument|story|debate|question|game) (?:rests?|turns?|depends?|comes?|boils?)\b",
     r"\bboils? down to\b", r"\bcomes? down to (?:whether|one|a single|a simple|this)\b")]
-FIG_RE = re.compile(r"\$\s?\d[\d,.]*\s?(?:billion|million|trillion|bn|[bmk])?\b|\b\d[\d,.]*\s?(?:billion|million|trillion|percent|%)", re.I)
-APPROX_RE = re.compile(r"\b(?:around|roughly|approximately|nearly|almost|about|close to|some)\s+\$?\d", re.I)
+FIG_RE = re.compile(r"\$?\d[\d,.]*\s?(?:billion|million|trillion|bn)\b", re.I)  # large-scale figures only
+APPROX_RE = re.compile(r"\b(?:around|roughly|approximately|nearly|almost|about|close to)\s+\$?\d[\d,.]*\s?(?:billion|million|trillion|bn)\b", re.I)
 PRON_LEAD = {"it", "this", "that", "which", "who", "they", "he", "she", "we", "i", "you", "the", "a", "an", "and", "but", "then", "also", "now", "so"}
 PREPS = {"at", "without", "with", "in", "on", "for", "by", "from", "of", "to", "across", "under", "over", "through", "within", "into"}
 IRREGULAR_PAST = set("tore went grew ran took made found saw built bought sold lost won paid left kept held brought thought wrote drew fell rose chose gave began came became "
@@ -124,6 +124,8 @@ def _triple(sent: str) -> bool:
         a, b, c = parts[i - 2], parts[i - 1], re.sub(r"^(?:and|or) ", "", parts[i], flags=re.I)
         if max(len(a.split()), len(b.split()), len(c.split())) <= 2 or min(len(b.split()), len(c.split())) < 2:
             continue
+        if i >= 3 and _shapes(parts[i - 3], True) & _shapes(a) & _shapes(b):
+            continue  # a longer run is a list, not a triple
         if _shapes(a, True) & _shapes(b) & _shapes(c):
             return True
     return False
@@ -172,19 +174,19 @@ def _sent_rules(sent: str) -> set[str]:
 
 # ---- paragraph rhythm --------------------------------------------------------------------------------------------------------------------------
 
-MIN_RHYTHM_PARAS = 6
-RHYTHM_SHARE = 0.5
+MIN_RHYTHM_PARAS = 6  # multi-sentence paragraphs needed before uniformity means anything
+RHYTHM_SHARE = 0.6  # tuned on the author corpus: Max's own writing tops out at one file in 65 above this
 
 
 def _shape(sents: list[str]) -> tuple[int, str]:
+    """(sentence count capped at 4, closing sentence short/mid/long against the average earlier sentence): setup, evidence, punchline is (3, short)."""
     n = [len(s.split()) for s in sents]
     body = sum(n[:-1]) / (len(n) - 1)
-    close = "short" if n[-1] <= 0.6 * body else "long" if n[-1] >= 1.4 * body else "mid"
-    return (min(len(n), 4), close)
+    return (min(len(n), 4), "short" if n[-1] <= 0.6 * body else "long" if n[-1] >= 1.4 * body else "mid")
 
 
 def _rhythm(paras: list[list[str]]) -> dict:
-    """Share of multi-sentence paragraphs with the same shape (sentence count, closing sentence short/mid/long against the rest)."""
+    """Share of multi-sentence paragraphs that have the same shape. count is the size of the dominant group once it passes RHYTHM_SHARE."""
     shapes = [_shape(p) for p in paras if len(p) >= 2]
     if len(shapes) < MIN_RHYTHM_PARAS:
         return {"count": 0, "examples": [], "share": 0.0}

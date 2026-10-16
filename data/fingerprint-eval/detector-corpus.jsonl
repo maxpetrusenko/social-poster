@@ -1,0 +1,17 @@
+{"detector": "gptzero", "ingested_at": "2026-10-16T18:20:38+00:00", "label": "flagged", "sentence": "The warranty costs cannot simply be assigned to AI, and there's no clean proof that rehiring produced the quality improvement."}
+{"detector": "gptzero", "ingested_at": "2026-10-16T18:20:38+00:00", "label": "flagged", "sentence": "A system passes its demo, a team celebrates how quickly the code was produced, and the cost emerges weeks later in review, integration, monitoring, support, or the one failure mode no one thought to test."}
+{"detector": "gptzero", "ingested_at": "2026-10-16T18:20:38+00:00", "label": "flagged", "sentence": "I've seen versions of this problem in software."}
+{"detector": "gptzero", "ingested_at": "2026-10-16T18:20:38+00:00", "label": "flagged", "sentence": "It's tempting to tell that as a neat cautionary tale: Ford replaced people with AI, paid for it, rehired the experts, and recovered."}
+{"detector": "gptzero", "ingested_at": "2026-10-16T18:20:38+00:00", "label": "flagged", "sentence": "The evidence doesn't support that whole sequence."}
+{"detector": "gptzero", "ingested_at": "2026-10-16T18:20:38+00:00", "label": "flagged", "sentence": "It reduces turnaround time, improves quality, and lets a small team do work that used to need ten people."}
+{"detector": "gptzero", "ingested_at": "2026-10-16T18:20:38+00:00", "label": "flagged", "sentence": "The tool lets a manager decide immediately, at scale, and without having to make difficult judgments."}
+{"detector": "gptzero", "ingested_at": "2026-10-16T18:20:38+00:00", "label": "human", "sentence": "Ford needed experienced people."}
+{"detector": "gptzero", "ingested_at": "2026-10-16T18:20:38+00:00", "label": "human", "sentence": "Companies made AI adoption mandatory."}
+{"detector": "gptzero", "ingested_at": "2026-10-16T18:20:38+00:00", "label": "human", "sentence": "Now some are finding out that adoption was the easy part."}
+{"detector": "gptzero", "ingested_at": "2026-10-16T18:20:38+00:00", "label": "human", "sentence": "Their judgment still had a job to do even when tools were supposed to make the work more efficient."}
+{"detector": "gptzero", "ingested_at": "2026-10-16T18:20:38+00:00", "label": "human", "sentence": "I keep coming back to an awkward question about the last two years of corporate AI: how many executives know what their AI rollout accomplished?"}
+{"detector": "winston", "ingested_at": "2026-10-16T18:20:38+00:00", "label": "flagged", "sentence": "So the whole thing hinges on whether AI can do your job for less than you cost."}
+{"detector": "winston", "ingested_at": "2026-10-16T18:20:38+00:00", "label": "flagged", "sentence": "The companies are finding out now, because the metric finally flipped."}
+{"detector": "winston", "ingested_at": "2026-10-16T18:20:38+00:00", "label": "flagged", "sentence": "The logic of the bet is that a pile that size only works if it returns something close to what it cost, and the pool of money big enough to carry it is the wage bill."}
+{"detector": "winston", "ingested_at": "2026-10-16T18:20:38+00:00", "label": "flagged", "sentence": "Amazon tore down the usage leaderboard, UBS started watching the throttling, and Ford learned the same lesson in the costliest way."}
+{"detector": "winston", "ingested_at": "2026-10-16T18:20:38+00:00", "label": "flagged", "sentence": "Wall Street's consensus for big-tech AI capital expenditure this year has climbed from around $485 billion in January to roughly 730 billion by July."}
