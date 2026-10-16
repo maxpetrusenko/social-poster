@@ -19,7 +19,8 @@ STAGES: list[tuple[str, str, tuple[str, ...]]] = [
     ("source", "agent", ()),
     ("research", "agent", ("source",)),
     ("angle", "agent", ("research",)),
-    ("outline", "agent", ("angle",)),
+    ("human", "agent", ("angle",)),
+    ("outline", "agent", ("angle", "human")),
     ("brief", "cli", ("outline", "research")),
     ("draft", "agent", ("outline", "research", "brief")),
     ("validate", "agent", ("draft", "research", "source")),
@@ -41,6 +42,14 @@ NAMES = [s[0] for s in STAGES]
 KIND = {n: k for n, k, _ in STAGES}
 DEPS = {n: d for n, _, d in STAGES}
 NUM = {n: i + 1 for i, n in enumerate(NAMES)}
+# Artifact file prefixes. Stages that existed before the human stage keep the numbers their files have always had (06-draft.md, 09-voice.md, ...);
+# a stage listed in ART_PREFIX is named by its own prefix and takes no number from that sequence.
+ART_PREFIX = {"human": "03h"}
+ART_NUM = {n: i + 1 for i, n in enumerate(x for x in NAMES if x not in ART_PREFIX)}
+
+
+def art_prefix(stage: str) -> str:
+    return ART_PREFIX.get(stage) or f"{ART_NUM[stage]:02d}"
 
 DONE, STALE, FAILED, BLOCKED, NOT_READY, QUARANTINED, PENDING, WAITING = (
     "DONE", "STALE", "FAILED", "BLOCKED", "NOT_READY", "QUARANTINED", "PENDING", "WAITING")
@@ -340,7 +349,7 @@ class Pipeline:
         return hit
 
     def store(self, stage: str, name: str, data: bytes) -> str:
-        rel = ART_REL / f"{NUM[stage]:02d}-{stage}.{name}"
+        rel = ART_REL / f"{art_prefix(stage)}-{stage}.{name}"
         atomic_write(safe_path(self.pkg, rel), data)
         return str(rel)
 

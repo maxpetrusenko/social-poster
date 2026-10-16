@@ -49,7 +49,7 @@ def _r(x: float, n: int = 0):
     return round(x, n) if n else int(round(x))
 
 
-def targets(prof: dict, ev: dict, outline: dict) -> dict:
+def targets(prof: dict, ev: dict, outline: dict, human: dict | None = None) -> dict:
     b, sl, pl = prof["bands"], prof["sentence_len"], prof["paragraph_len"]
     claims = [c for c in ev.get("claims", []) if isinstance(c, dict)]
     return {
@@ -62,7 +62,7 @@ def targets(prof: dict, ev: dict, outline: dict) -> dict:
         "fingerprint_caps": FC.caps(),  # fingerprint caps never come from the author corpus; the author's distributions below are voice targets
         "author_transitions_per_1k_p90": _r(b["transition_density"]["p90"]),
         "punctuation_share": {k: _r(prof["punctuation_share"][k], 3) for k in (",", ";", ":", "(", "?")},
-        "first_person_per_1k": _r(prof["first_person_per_1k"], 1),
+        "first_person_per_1k": 0 if (human or {}).get("status") != "answered" else _r(prof["first_person_per_1k"], 1),  # no human answer: no first-person experience to write
         "readability": {"median_sentence_words": min(_r(sl["p50"]), READABILITY_MEDIAN_CEILING), "max_grade": READABILITY_MAX_GRADE},
         "claims": {"use": [str(c.get("id")) for c in claims if c.get("status") in ("supported", "attributed", "inference")],
                    "omit": [str(c.get("id")) for c in claims if c.get("status") == "unresolved"]},
@@ -91,6 +91,13 @@ def _example(name: str) -> str:
             "ai_vocab": "robust, seamless, pivotal, landscape"}[name]
 
 
+def _first_person(t: dict) -> str:
+    n = t["first_person_per_1k"]
+    if not n:
+        return "No first-person experience: the author gave no answer, so write no 'I tested / I saw / in my experience' sentence at all."
+    return f"First person about {n} per 1k words, only for experience the author supplied."
+
+
 def prompt_block(t: dict) -> str:
     """Ready to paste, verbatim, into the draft, editorial and voice prompts. 300 words at most."""
     c, s, p = t["fingerprint_caps"], t["sentence_words"], t["paragraph_words"]
@@ -101,7 +108,7 @@ def prompt_block(t: dict) -> str:
         "Banned patterns, each counts as a template hit: " + " | ".join(f'"{_example(n)}"' for n in names) + ".",
         "Rule of three: do not write 'X, Y and Z' lists in prose; use two items or four, or a sentence each.",
         f"Voice: sentences median {s['median']} words (spread {s['p10']} to {s['p90']}), paragraphs median {p['median']} words (spread {p['p10']} to {p['p90']}); mix short and long.",
-        f"Punctuation: commas, few colons and semicolons, no em dashes, no tables. First person about {t['first_person_per_1k']} per 1k words, only for experience the author supplied.",
+        "Punctuation: commas, few colons and semicolons, no em dashes, no tables. " + _first_person(t),
         "Never trade a fact, a link or a claim's meaning for any of this.",
     ]
     text = "\n".join(L)
@@ -138,7 +145,7 @@ def render(t: dict) -> str:
         f"Transitions and signposts ({', '.join(FM.TRANSITIONS[:8])} ...): at most {transitions_per_1k(t)} per 1k words. No 'first, second, third' scaffolding, no announcing what comes next.",
         f"Repetition: no phrase of 3 to 5 words used twice; at most {int(t['same_two_word_opener_share_max'] * 100)} percent of sentences share a two-word opener.",
         f"Punctuation habits (share of marks): commas {pu[',']}, colons {pu[':']}, parentheses {pu['(']}, semicolons {pu[';']}, questions {pu['?']}. No em dashes, no tables.",
-        f"Author voice: first person about {t['first_person_per_1k']} per 1k words, but only for experience the author supplied. Never invent experience.",
+        "Author voice: " + _first_person(t) + " Never invent experience.",
         f"Claims: assert only ids {', '.join(t['claims']['use']) or 'none'}; omit {', '.join(t['claims']['omit']) or 'none'}; every figure and link from the evidence map.",
         f"Structure: follow the outline's {t['sections']} sections; keep headings, links and numbers intact through editorial and voice passes.",
     ]
@@ -161,7 +168,7 @@ def run_brief(pipe: Pipeline) -> dict:
         pipe.set("brief", "BLOCKED", reasons=msg, extra={"category": "DEPENDENCY_FAILURE"})
         pipe.save()
         return {"ok": False, "code": "BLOCKED", "stage": "brief", "reasons": msg}
-    t = targets(prof, pipe.read_json("research"), pipe.read_json("outline"))
+    t = targets(prof, pipe.read_json("research"), pipe.read_json("outline"), pipe.read_json("human"))
     text = render(t)
     block = prompt_block(t)
     dblock = detector_patterns_block(t, recent_flagged(NEGATIVE_EXAMPLES))

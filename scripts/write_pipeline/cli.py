@@ -20,10 +20,11 @@ from . import brief as BR
 from . import editguard as G
 from . import final as FN
 from . import fpv as FPV
+from . import humaninput as HI
 from . import runs as RN
 from . import submit as SB
 from . import verify as VF
-from .core import (BLOCKED, DEPS, DONE, FAILED, KIND, NAMES, NOT_READY, NUM, PENDING, STALE, Pipeline, PipelineError, fail_exc, contain_input, input_roots, sha_bytes)
+from .core import (BLOCKED, DEPS, DONE, FAILED, KIND, NAMES, NOT_READY, NUM, PENDING, STALE, Pipeline, PipelineError, atomic_write, fail_exc, contain_input, input_roots, sha_bytes)
 
 from scripts.fingerprint_eval.record import RecordError as R_ERR  # noqa: E402
 
@@ -34,6 +35,7 @@ SPEC = {
     "source": "JSON {sources:[{id, kind url|text|transcript|draft|note|author, status captured|blocked, file (captured, under the package), url/captured_at/method (kind url), blocker (blocked)}]}",
     "research": "JSON {research_delta, claims:[{id, claim, status supported|attributed|inference|unresolved, supported_wording, evidence:[{url|source_id, passage, date}]}]}",
     "angle": "JSON {question, reader, angle, verdict adds|summary_only, contributions:[{id, text, kind, evidence_ids}], author_opportunities:[{id, prompt, why}]}",
+    "human": "JSON {status answered|no_answer, answers:{experience, opinion, detail_or_outline}, outline_supplied bool, method text|voice, transcript_file (voice: transcript saved under the package), asked_at, answered_at (answered)} or the filled HUMAN_INPUT.md (human ask writes it). Ask the 3 questions in chat and wait when interactive; unattended: human ask, then submit it unchanged (no_answer). WRITE_PIPELINE_HUMAN=require exits 4 (BLOCKED_INPUT) on no_answer. Without an answer the article has no first-person experience.",
     "outline": "JSON {sections:[{heading, purpose, evidence_ids}]} (2+ sections, unique headings)",
     "brief": "run brief (deterministic, no file): the fingerprint and voice brief, 400 words at most. Quote its sha256 as {\"brief_sha256\": ...} in the --report of draft, editorial and voice.",
     "draft": "Markdown starting with '# Title' plus --report {brief_sha256}. Links only from the evidence set; numbers only from sources or evidence; no tables, em dashes or invented experience. Follow the brief targets.",
@@ -154,7 +156,8 @@ def cmd_begin(pipe: Pipeline, a) -> int:
     ins = {d: (pipe.rec(d) or {}).get("artifact") for d in DEPS[s]}
     hint = f"submit {s} --file F" if KIND[s] == "agent" and s != "repair" else {"antifp": "antifp baseline / try / finish", "repair": "repair try --file F [--report R with removals] | repair done",
                                                                                  "fpverify": "run fpverify | fpverify try --file F --signal S (2 rounds max) | fpverify done"}.get(s, f"run {s}")
-    _out({"stage": s, "action": "run", "previous_state": st, "reasons": (pipe.rec(s) or {}).get("reasons", []), "inputs": ins, "artifact_spec": SPEC.get(s), "then": hint})
+    extra = {"questions": HI.questions(pipe.read_json("angle"))} if s == "human" else {}
+    _out({"stage": s, "action": "run", "previous_state": st, "reasons": (pipe.rec(s) or {}).get("reasons", []), "inputs": ins, "artifact_spec": SPEC.get(s), "then": hint, **extra})
     return 0
 
 
@@ -164,6 +167,20 @@ def cmd_next(pipe: Pipeline, a) -> int:
             _out({"next": n, "state": pipe.status(n), "kind": KIND[n]})
             return 0
     _out({"next": None, "overall": pipe.overall()})
+    return 0
+
+
+def cmd_human_ask(pipe: Pipeline) -> int:
+    ok, why = pipe.can_run("human")
+    if not ok:
+        _out({"ok": False, "code": "WAITING", "stage": "human", "reasons": [why]})
+        return 2
+    angle = pipe.read_json("angle")
+    path = pipe.pkg / HI.FILE_NAME
+    if not path.exists():  # an answered file the author already filled is never overwritten
+        atomic_write(path, HI.render_md(angle).encode())
+    _out({"ok": True, "stage": "human", "file": str(path), "questions": HI.questions(angle),
+          "then": f"unattended: submit human --file {HI.FILE_NAME} (no_answer) and continue; interactive: ask the questions, fill the file, then submit"})
     return 0
 
 
@@ -284,6 +301,8 @@ def main(argv: list[str] | None = None, runner=None, critic=None) -> int:
     sm.add_argument("--file", required=True, type=Path)
     sm.add_argument("--report", type=Path)
     pkg(sub.add_parser("run")).add_argument("stage", choices=NAMES)
+    hm = pkg(sub.add_parser("human", help="human ask: write HUMAN_INPUT.md (the 3 questions, status no_answer) into the package and print the questions"))
+    hm.add_argument("sub", choices=("ask",))
     af = pkg(sub.add_parser("antifp"))
     af.add_argument("sub", choices=("baseline", "rank", "try", "finish"))
     af.add_argument("--file")
@@ -379,6 +398,8 @@ def _dispatch(a, pipe: Pipeline, runner, critic) -> int:
         return _code(r)
     if a.cmd == "run":
         return cmd_run(pipe, a, runner, critic)
+    if a.cmd == "human":
+        return cmd_human_ask(pipe)
     if a.cmd == "antifp":
         return cmd_antifp(pipe, a, runner)
     if a.cmd == "repair":

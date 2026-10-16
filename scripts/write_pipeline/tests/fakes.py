@@ -49,6 +49,13 @@ This isn't a limit. It's an opportunity. Let's be honest: what this really means
 """
 
 
+NO_ANSWER = {"status": "no_answer", "answers": {"experience": "", "opinion": "", "detail_or_outline": ""}, "outline_supplied": False, "method": "text",
+             "asked_at": "2026-10-16T09:00:00+00:00"}
+ANSWERED = {"status": "answered", "outline_supplied": False, "method": "text", "asked_at": "2026-10-16T09:00:00+00:00", "answered_at": "2026-10-16T09:30:00+00:00",
+            "answers": {"experience": "In March 2025 I tested a cache change on my own fleet of 12 servers and the median dropped.",
+                        "opinion": "I think a single published run is weak evidence for any other workload.",
+                        "detail_or_outline": "The slowest requests got worse on Redis after the change."}}
+
 UNSLOP = {"unslop": {"applied": True, "prose_checker": "ran"}}
 
 
@@ -228,6 +235,7 @@ class Driver:
         self.fw.write_text("# framework v6 (test copy)\n")
         self.runner, self.critic = Runner(), Critic()
         self.last_rc = 0
+        self.human = dict(NO_ANSWER)
         self.texts = {"draft": DRAFT, "validate": DRAFT, "editorial": EDITORIAL, "voice": VOICE}
 
     def same_text(self, t: str):
@@ -315,6 +323,7 @@ class Driver:
             "source": lambda: self.submit("source", self.sources()),
             "research": lambda: self.submit("research", self.EVIDENCE),
             "angle": lambda: self.submit("angle", self.ANGLE),
+            "human": lambda: self.submit("human", self.human),
             "outline": lambda: self.submit("outline", self.OUTLINE),
             "brief": lambda: self.cli("run", "brief"),
             "draft": lambda: self.submit_through("draft", self.texts["draft"]),

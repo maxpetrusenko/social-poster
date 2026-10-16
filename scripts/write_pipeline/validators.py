@@ -208,7 +208,7 @@ def outline(data: dict, ev: dict) -> dict:
     return {"ok": not reasons, "reasons": reasons, "data": data}
 
 
-def text_basic(text: str, *, src: dict, urls: set[str], require_h1: bool = True) -> list[str]:
+def text_basic(text: str, *, src: dict, urls: set[str], require_h1: bool = True, human_answered: bool = False) -> list[str]:
     reasons = list(M.lint_v6(text))
     if require_h1 and M.title_subtitle(text)[0] is None:
         reasons.append("the text must start with a single H1 title")
@@ -217,7 +217,7 @@ def text_basic(text: str, *, src: dict, urls: set[str], require_h1: bool = True)
     extra = {u for u in M.link_urls(text) if u not in urls}
     if extra:
         reasons.append(f"link not in the source or evidence set (missing source): {sorted(extra)[:3]}")
-    if M.EXPERIENCE.search(M.strip_code(text)) and not any(s.get("kind") == "author" and s.get("status") == "captured" for s in src.get("sources", [])):
+    if M.EXPERIENCE.search(M.strip_code(text)) and not human_answered and not any(s.get("kind") == "author" and s.get("status") == "captured" for s in src.get("sources", [])):
         reasons.append("first-person experience claim but no author-supplied material in the source manifest (record an AUTHOR OPPORTUNITY)")
     return reasons
 

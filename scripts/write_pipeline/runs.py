@@ -373,7 +373,7 @@ def repair_try(pipe: Pipeline, cand: str, runner: G.Runner, report: dict | None 
     gate_ref, cuts = CT.apply_cuts(raw_gate, cand, all_rem)
     guard_ref = reference_frame(pipe, cand)
     undone = [r["text"][:80] for r in new_rem if CT._key(r["text"]) not in {x["sentence"] for x in cuts} and CT._key(r["text"]) not in {CT._key(p["text"]) for p in prior}]
-    g = G.edit_guard(guard_ref, cand, known_urls=c["known_urls"], blob_numbers=c["blob_numbers"], strict=True, removals=all_rem, author_material=c["author_material"], ev=c["ev"])
+    g = G.edit_guard(guard_ref, cand, known_urls=c["known_urls"], blob_numbers=c["blob_numbers"], strict=True, removals=all_rem, author_material=c["author_material"], ev=c["ev"], trace=c["trace"])
     reasons = [*rem_bad, *g["reasons"]]
     if not reasons:  # a link-bearing sentence may be rewritten only as a declared rewrite that keeps its URLs and is support-checked
         reasons += RW.check_rewrites(guard_ref, cand, all_rem, new_rem, ev=c["ev"], blob=c["blob"], known_urls=c["known_urls"], blob_numbers=c["blob_numbers"], author_material=c["author_material"])

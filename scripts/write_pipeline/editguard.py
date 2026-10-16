@@ -18,6 +18,7 @@ from scripts.fingerprint_eval.gateway import child_env, claude_env, plain_env
 from scripts.fingerprint_eval.textutil import resolve_pipeline_corpus
 
 from . import cuts as CT
+from . import experience as EX
 from . import furniture as FU
 from . import linkpolicy as LP
 from . import mdlib as M
@@ -77,7 +78,7 @@ def has_author_material(sources: dict) -> bool:
 
 
 def edit_guard(ref: str, cand: str, *, known_urls: set[str], blob_numbers: Counter, strict: bool, removals: list[dict] | None = None,
-               author_material: bool = False, ev: dict | None = None) -> dict:
+               author_material: bool = False, ev: dict | None = None, trace: dict | None = None) -> dict:
     """Returns {"ok", "reasons", "categories"}. strict=True is used after the reference is frozen: no removals, structure and
     frozen blocks must be identical to the reference. strict=False (editorial and voice) allows only declared removals."""
     reasons: list[str] = []
@@ -141,6 +142,10 @@ def edit_guard(ref: str, cand: str, *, known_urls: set[str], blob_numbers: Count
             cats.append("STRUCTURAL_DAMAGE")
     if not author_material and M.EXPERIENCE.search(M.strip_code(cand)) and not M.EXPERIENCE.search(M.strip_code(ref)):
         reasons.append("first-person experience claim with no author-supplied material: record an AUTHOR OPPORTUNITY instead")
+        cats.append("ADDED_UNSUPPORTED_CLAIM")
+    traced = EX.reasons(cand, trace)  # per sentence: has_author_material above is all-or-nothing, this ties each experience sentence to what the author said
+    if traced:
+        reasons += traced
         cats.append("ADDED_UNSUPPORTED_CLAIM")
     return {"ok": not reasons, "reasons": reasons, "categories": sorted(set(cats)), "removed_urls": lp["removed_urls"], "removed_sentences": lp["removed_sentences"]}
 

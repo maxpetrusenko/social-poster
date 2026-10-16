@@ -131,7 +131,7 @@ def _run_integrity(pipe: Pipeline, runner: G.Runner) -> dict:
     write_final(pipe, cbytes)
     final_sha = sha_bytes(_read_final(pipe))  # re-read: the gate sees these bytes and no others
     c = deps_ctx(pipe)
-    pre = G.edit_guard(ref, _read_final(pipe).decode("utf-8"), known_urls=c["known_urls"], blob_numbers=c["blob_numbers"], strict=True, author_material=c["author_material"], ev=c["ev"])
+    pre = G.edit_guard(ref, _read_final(pipe).decode("utf-8"), known_urls=c["known_urls"], blob_numbers=c["blob_numbers"], strict=True, author_material=c["author_material"], ev=c["ev"], trace=c["trace"])
     try:  # hero, TLDR and the frozen footer, verbatim against their sources; merged with the guard so the claim categories are never hidden
         furn, bio = FU.pipeline_inputs(pipe)
         fbad = FU.verify(_read_final(pipe).decode("utf-8"), furn, bio, exact_tldr=False)  # the TLDR is editable prose: the edit guard and the claims gate judge it

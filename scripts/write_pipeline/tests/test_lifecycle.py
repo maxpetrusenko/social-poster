@@ -54,7 +54,7 @@ def test_user_edit_after_pass_is_detected_and_invalidates_final_stages(d):
     assert rc == 6 and s["overall"] == "USER_MODIFIED"
     by = {r["stage"]: r["state"] for r in s["stages"]}
     assert all(by[n] == "STALE" for n in ("integrity", "hash", "package", "stop"))
-    assert all(by[n] == "DONE" for n in core.NAMES[:12])  # analysis upstream of the edit stays cached
+    assert all(by[n] == "DONE" for n in core.NAMES[:13])  # analysis upstream of the edit stays cached
     for cmd in (["run", "package"], ["finalize"], ["begin", "critic"]):
         assert d.cli(*cmd)[0] == 6  # nothing proceeds on the stale state
 
@@ -195,7 +195,7 @@ def test_status_shows_every_stage_state(d):
     d.to_stage("review")
     rc, out = d.cli("status")
     lines = [ln for ln in out.splitlines() if re.match(r"\s*\d+ ", ln)]
-    assert len(lines) == 20 and sum(" DONE " in ln for ln in lines) == 10
+    assert len(lines) == 21 and sum(" DONE " in ln for ln in lines) == 11
 
 
 def _evaluator_clean() -> bool:

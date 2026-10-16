@@ -259,6 +259,7 @@ def test_personal_experience_is_allowed_only_with_author_supplied_material(d):
     assert d.submit("source", src)[0] == 0
     d.submit("research", d.EVIDENCE)
     d.submit("angle", d.ANGLE)
+    d.submit("human", d.human)
     d.submit("outline", d.OUTLINE)
     d.cli("run", "brief")
     assert d.submit("draft", DRAFT + "\nWhen I tested this on my own fleet, the numbers matched.\n")[0] == 0

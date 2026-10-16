@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 from . import brief as BR
@@ -9,22 +10,35 @@ from . import cuts as CT
 from . import editguard as G
 from . import fpcaps as FC
 from . import furniture as FU
+from . import experience as EX
+from . import humaninput as HI
 from . import frame as FR
 from . import mdlib as M
 from . import relevance as RV
 from . import validators as V
 from .core import BLOCKED, DONE, FAILED, KIND, NOT_READY, Pipeline, PipelineError, atomic_write, contain_input, fail_exc, sha_bytes, sha_json
 
-JSON_STAGES = {"source": "json", "research": "json", "angle": "json", "outline": "json", "title": "json", "images": "json"}
+JSON_STAGES = {"source": "json", "research": "json", "angle": "json", "human": "json", "outline": "json", "title": "json", "images": "json"}
 TEXT_STAGES = {"draft": "md", "validate": "md", "editorial": "md", "voice": "md"}
+
+
+def author_texts(src: dict, pkg) -> list[str]:
+    """Text of every captured author-kind source (hash-checked by source_blob in the same deps_ctx call)."""
+    from .core import safe_path
+    return [safe_path(pkg, s["file"]).read_bytes().decode("utf-8", "replace") for s in (src.get("sources") or []) if s.get("kind") == "author" and s.get("status") == "captured" and s.get("file")]
 
 
 def deps_ctx(pipe: Pipeline) -> dict:
     src = pipe.read_json("source")
     ev = pipe.read_json("research")
+    human = pipe.read_json("human")
     blob = V.source_blob(src, pipe.pkg) if src else ""
+    said = HI.answered_text(human)
+    if said:  # the author's answers are source material: their numbers are allowed and the claims gate's source notes carry them
+        blob = (blob + "\n\n" if blob else "") + "## The author's own answers (human input stage)\n\n" + said
     return {"src": src, "ev": ev, "known_urls": V.known_urls(src, ev), "blob_numbers": V.blob_numbers(blob, ev),
-            "author_material": G.has_author_material(src), "blob": blob}
+            "author_material": G.has_author_material(src) or bool(said), "blob": blob, "human": human,
+            "trace": {"human": human, "author_sources": author_texts(src, pipe.pkg) if src else []}}
 
 
 def _fail(pipe: Pipeline, stage: str, reasons: list[str], code: str = "INVALID") -> dict:
@@ -33,7 +47,7 @@ def _fail(pipe: Pipeline, stage: str, reasons: list[str], code: str = "INVALID")
     return {"ok": False, "code": code, "stage": stage, "reasons": reasons}
 
 
-REWORK_STAGES = ("source", "research", "angle", "outline", "draft", "validate", "editorial", "voice")
+REWORK_STAGES = ("source", "research", "angle", "human", "outline", "draft", "validate", "editorial", "voice")
 REWORK_LIMIT = 1  # an already-finished content stage may be redone once; a second rework means the problem is upstream of the writer
 
 
@@ -79,10 +93,16 @@ def _finish(pipe: Pipeline, stage: str, main: bytes, ext: str, extra_bundle: byt
     return {"ok": True, "cached": False, "stage": stage, "bundle_sha256": bundle, "artifact": art}
 
 
-def _json(path: Path) -> tuple[dict | None, str]:
+def _json(path: Path, stage: str | None = None) -> tuple[dict | None, str]:
     try:
-        d = json.loads(Path(path).read_text())
+        raw = Path(path).read_text()
     except (OSError, ValueError) as e:
+        return None, f"not valid JSON: {e}"
+    if stage == "human" and not raw.lstrip().startswith("{"):  # the human stage also takes HUMAN_INPUT.md
+        return HI.parse_md(raw), ""
+    try:
+        d = json.loads(raw)
+    except ValueError as e:
         return None, f"not valid JSON: {e}"
     return (d, "") if isinstance(d, dict) else (None, "JSON must be an object")
 
@@ -114,7 +134,7 @@ def submit(pipe: Pipeline, stage: str, file: Path, report: Path | None, runner: 
     try:  # stage boundary: nothing raised below may leave the stage pending
         c = deps_ctx(pipe)
         if stage in JSON_STAGES:
-            data, err = _json(file)
+            data, err = _json(file, stage)
             if data is None:
                 return _fail(pipe, stage, [err])
             return _json_stage(pipe, stage, data, c, runner)
@@ -136,7 +156,7 @@ def _cached_resubmit(pipe: Pipeline, stage: str, file: Path, raw: bytes, rep_raw
     try:
         stored = G_read(pipe, prev["artifact"])
         if stage in JSON_STAGES:
-            data, _ = _json(file)
+            data, _ = _json(file, stage)
             if data is None or stored != (json.dumps(data, indent=1, sort_keys=True) + "\n").encode():
                 return None
         elif stored != raw:
@@ -168,6 +188,16 @@ def _json_stage(pipe: Pipeline, stage: str, data: dict, c: dict, runner: G.Runne
         r = V.evidence(data, c["src"])
     elif stage == "angle":
         r = V.angle(data, c["ev"], c["src"])
+    elif stage == "human":
+        r = HI.validate(data, pipe.pkg)
+        if r["ok"] and data["status"] == "no_answer" and os.environ.get(HI.HUMAN_ENV) == "require":
+            msg = [f"{HI.HUMAN_ENV}=require: the author has not answered; ask the 3 questions (begin human), wait for the answers, then submit status answered"]
+            pipe.set(stage, BLOCKED, reasons=msg, extra={"category": "BLOCKED_INPUT"})
+            pipe.save()
+            return {"ok": False, "code": "BLOCKED_INPUT", "stage": stage, "reasons": msg, "questions": HI.questions(pipe.read_json("angle"))}
+        if r["ok"] and data.get("transcript_file"):
+            from .core import safe_path
+            extra = {"external": {data["transcript_file"]: sha_bytes(safe_path(pipe.pkg, data["transcript_file"]).read_bytes())}}
     elif stage == "outline":
         r = V.outline(data, c["ev"])
     elif stage == "title":
@@ -208,6 +238,11 @@ def _json_stage(pipe: Pipeline, stage: str, data: dict, c: dict, runner: G.Runne
     data = r.get("data", data)
     main = (json.dumps(data, indent=1, sort_keys=True) + "\n").encode()
     out = _finish(pipe, stage, main, "json", extra_bundle=sha_json(extra).encode(), extra=extra)
+    if stage == "human" and out.get("ok") and not out.get("cached"):
+        # provenance.steps reads this: the long AI disclosure may say "outlined by me" only when the author really supplied the outline
+        pipe.state.setdefault("provenance", {})["outline_supplied"] = data["status"] == "answered" and data["outline_supplied"] is True
+        pipe.log("human_input", status=data["status"], method=data["method"], outline_supplied=pipe.state["provenance"]["outline_supplied"])
+        pipe.save()
     if stage == "title" and out.get("ok"):
         opp = FU.author_opportunity(FU.from_title(data))
         if opp:
@@ -248,11 +283,12 @@ BRIEF_STAGES = ("draft", "editorial", "voice")
 
 
 def _text_stage(pipe: Pipeline, stage: str, text: str, rep: dict | None, rep_raw: bytes | None, c: dict, runner: G.Runner) -> dict:
-    reasons = V.text_basic(text, src=c["src"], urls=c["known_urls"])
+    reasons = V.text_basic(text, src=c["src"], urls=c["known_urls"], human_answered=c["human"].get("status") == "answered")
     if stage in BRIEF_STAGES:
         reasons += BR.check_reference(pipe, stage, rep)
     reasons += V.unsupported_numbers(text, c["blob_numbers"] + M.significant_numbers(pipe.read_art(PREV.get(stage, "")) or ""))
-    if stage == "draft":
+    if stage == "draft":  # editorial and voice reach the trace through edit_guard; the draft has no earlier text to guard against
+        reasons += EX.reasons(text, c["trace"])
         heads = {M.norm(b.text.lstrip("# ").strip()) for b in M.blocks(text) if b.kind == "heading"}
         want = [M.norm(s.get("heading", "")) for s in pipe.read_json("outline").get("sections", [])]
         miss = [w for w in want if w not in heads]
@@ -272,7 +308,7 @@ def _text_stage(pipe: Pipeline, stage: str, text: str, rep: dict | None, rep_raw
     removals = (rep or {}).get("removals") if stage in ("validate", "editorial", "voice") else None
     if stage in PREV:
         g = G.edit_guard(pipe.read_art(PREV[stage]) or "", text, known_urls=c["known_urls"], blob_numbers=c["blob_numbers"], strict=False,
-                         removals=removals if isinstance(removals, list) else [], author_material=c["author_material"], ev=c["ev"])
+                         removals=removals if isinstance(removals, list) else [], author_material=c["author_material"], ev=c["ev"], trace=c["trace"])
         reasons += g["reasons"]
         if not g["reasons"] and stage in ("editorial", "voice"):  # policy rule (b): a removed link's claims must really be gone
             more, blocked = G.confirm_link_removals(g, runner, pipe.pkg, text, pipe.pkg / "write-pipeline" / "work" / stage / "removed")

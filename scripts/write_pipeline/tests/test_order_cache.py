@@ -11,7 +11,7 @@ def stages(d):
 
 
 def test_stage_table_is_the_specified_order():
-    assert NAMES == ["source", "research", "angle", "outline", "brief", "draft", "validate", "editorial", "voice", "antifp", "review", "title",
+    assert NAMES == ["source", "research", "angle", "human", "outline", "brief", "draft", "validate", "editorial", "voice", "antifp", "review", "title",
                      "images", "critic", "repair", "fpverify", "integrity", "hash", "package", "stop"]
 
 
@@ -51,6 +51,9 @@ def test_changed_input_invalidates_only_the_downstream_chain(d):
     s = stages(d)
     assert s["source"] == s["research"] == s["angle"] == "DONE"
     assert all(s[n] == "STALE" for n in NAMES[3:])  # outline onward is bound to the old angle hash
+    rc, out = d.cli("begin", "outline")
+    assert out["action"] == "wait" and "human" in out["reason"]  # the human stage hangs off the angle and must be redone first
+    assert d.submit("human", d.human)[1]["cached"] is False
     rc, out = d.cli("begin", "outline")
     assert out["action"] == "run" and out["previous_state"] == "STALE"
 
