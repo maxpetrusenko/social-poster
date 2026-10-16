@@ -358,16 +358,19 @@ MODES = ("local", "whole")
 
 
 def no_fingerprint_regression(cur: str, cand: str) -> list[str]:
-    """Every repair mode: the candidate's fingerprint composite and its advisory pattern total (patterns.detect, summed counts) may not rise
-    above the current candidate's. A repair that fixes a finding by writing a more detectable article is rejected."""
-    a, b = FCT.signals(cur), FCT.signals(cand)
+    """Every repair mode: the BODY of the candidate (title, subtitle, hero, caption, TLDR, disclosure line and footer removed on both sides) may
+    not have a higher fingerprint composite or a higher pattern total (patterns.detect, summed counts) than the current candidate's body. A
+    repair that fixes a finding by writing a worse article is rejected.
+    Policy: this is a writing-quality rule from our own rubric (it blocks a repair that ADDS AI-tell patterns). It reads only our own
+    fpcontract composite and patterns.detect; it never consults a third-party detector result, and no detector score is a target or a gate."""
+    a, b = FCT.signals(FU.body_only(cur)), FCT.signals(FU.body_only(cand))
     out = []
     if b["composite"] > a["composite"] + FCT.REGRESSION_EPS + 1e-9:  # REGRESSION_EPS is 0.0 in production: any rise is a rejection
         out.append(f"fingerprint composite rose {a['composite']} -> {b['composite']}: the repair makes the article more detectable than the current candidate")
     pa, pb = sum(a["patterns"]["counts"].values()), sum(b["patterns"]["counts"].values())
     if pb > pa:
         new = sorted(k for k, v in b["patterns"]["counts"].items() if v > a["patterns"]["counts"].get(k, 0))
-        out.append(f"advisory pattern total rose {pa} -> {pb} (more of: {', '.join(new)}): the repair adds writing patterns detectors flag")
+        out.append(f"pattern total rose {pa} -> {pb} (more of: {', '.join(new)}): the repair adds writing patterns from our own rubric")
     return out
 
 

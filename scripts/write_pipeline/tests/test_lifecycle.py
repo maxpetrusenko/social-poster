@@ -102,7 +102,7 @@ def test_critic_major_then_safe_repair_then_pass(d):
     assert rc == 0 and out["majors"] == 1 and out["round"] == 1
     assert d.cli("repair", "done")[0] == 2  # an open major blocks the stage
     cand = candidate(d)
-    fixed = cand.replace("The report covers one workload on one fleet.", "According to the report, it covers one workload on one fleet.")
+    fixed = cand.replace("The report covers one workload on one fleet.", "As the report notes, it covers one workload on one fleet.")
     f = d.write("repair.md", fixed)
     rc, out = d.cli("repair", "try", "--file", str(f))
     assert rc == 0 and out["code"] == "ACCEPTED"
@@ -123,8 +123,8 @@ def test_critic_loop_is_capped_at_three_rounds(d):
     major = {"verdict": "revise", "findings": [{"id": "F1", "severity": "major", "passage": "Median latency fell from 120 ms to 85 ms after the change.", "reason": "x"}]}
     d.critic.replies = [major, major, major, major]
     d.cli("run", "critic")
-    for i, phrase in enumerate(("As the report notes, it covers", "The report says it covers"), 1):
-        f = d.write(f"r{i}.md", candidate(d).replace("The report covers", phrase, 1).replace("As the report notes, it covers", phrase, 1))
+    for i, phrase in enumerate(("The report says it covers", "As the report notes, it covers"), 1):  # the composite may only fall on each pass
+        f = d.write(f"r{i}.md", candidate(d).replace("The report covers", phrase, 1).replace("As the report notes, it covers", phrase, 1).replace("The report says it covers", phrase, 1))
         assert d.cli("repair", "try", "--file", str(f))[0] == 0
         rc, out = d.cli("run", "critic")
     assert rc == 3 and out["code"] == "NOT_READY" and "exhausted" in out["reasons"][0]

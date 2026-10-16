@@ -29,7 +29,9 @@ The report describes the setup in plain terms. Each node served the same request
 
 The report covers one workload on one fleet. A reader with a different request mix should rerun the comparison before relying on the figure. The team has not published tail latency, so the median alone cannot say whether the slowest requests improved.
 """
-EDITORIAL = DRAFT.replace("The report describes the setup in plain terms.", "The report describes the setup briefly.")
+# Word-count neutral edits (editorial +1 word, voice -1 word): the regression guard compares the body's fingerprint composite with a strict EPS of 0, and the
+# fixtures are ~120 words, so a net shorter body alone would raise the per-1k transition share and read as a regression.
+EDITORIAL = DRAFT.replace("The report describes the setup in plain terms.", "The report describes the setup briefly, in plain terms.")
 VOICE = EDITORIAL.replace("A reader with a different request mix should rerun", "Anyone with a different request mix should rerun")
 GENERIC = """# Why the cache change cut latency
 

@@ -104,9 +104,9 @@ def test_repair_rejects_removing_the_only_source_link_and_accepts_anchor_only_re
 
 
 def test_final_integrity_honors_the_signed_ledger_and_rejects_a_forged_one(d):
-    cut = "The report covers one workload on one fleet."
+    cut = "Each node served the same request mix before and after the change, and the team compared medians."
     major_open(d)
-    d.runner.required = ["covers one workload on one fleet"]
+    d.runner.required = ["served the same request mix"]
     rc, out = try_repair(d, candidate(d).replace(cut + " ", ""), removals=[{"text": cut, "reason": "restates the next paragraph"}])
     assert rc == 0, out
     d.critic.replies = [{"verdict": "pass", "findings": []}]

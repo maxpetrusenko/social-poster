@@ -14,8 +14,8 @@ import re
 from pathlib import Path
 from urllib.parse import urlparse
 
-from scripts.fingerprint_eval.rewrite import footer_start, hero_furniture, unquote
-from scripts.fingerprint_eval.textutil import parse_blocks
+from scripts.fingerprint_eval.rewrite import CAPTION_RE, footer_start, hero_furniture, unquote
+from scripts.fingerprint_eval.textutil import DISCLOSURE_RE, parse_blocks, render_blocks
 
 from . import mdlib as M
 from .core import Pipeline
@@ -210,6 +210,30 @@ def split_footer(md: str) -> tuple[str, str | None]:
     if i is None:
         return md, None
     return "\n\n".join(b.text for b in blocks[:i]) + "\n", "\n\n".join(b.text for b in blocks[i:]) + "\n"
+
+
+def body_only(text: str) -> str:
+    """The argument alone: `text` with the title, subtitle, hero image, hero caption, TLDR, AI disclosure line, every other image (with its
+    italic caption line) and the footer removed. The first draft (06-draft) is body only, so every like-for-like comparison against it (the
+    final-vs-draft regression guard, the repair no-regression rule) measures this on both sides. The frame has its own restate check."""
+    t, _s, k = M.title_subtitle(text)
+    rest = "\n".join(text.split("\n")[k:]) if t else text
+    blocks = parse_blocks(rest)
+    foot = footer_start(blocks)
+    cap, tl = hero_furniture(blocks, foot)
+    end = len(blocks) if foot is None else foot
+    drop = {i for i in (cap, tl) if i is not None}
+    keep = []
+    for i, b in enumerate(blocks[:end]):
+        if i in drop or (b.kind == "paragraph" and DISCLOSURE_RE.match(b.text.strip())):
+            continue
+        if b.kind == "image":
+            nxt = blocks[i + 1] if i + 1 < end else None
+            if nxt is not None and nxt.kind == "paragraph" and CAPTION_RE.match(nxt.text.strip()):
+                drop.add(i + 1)  # the one-line italic caption that follows an image is furniture too
+            continue
+        keep.append(b)
+    return render_blocks(keep)
 
 
 def footer_changed(ref: str, cand: str) -> str | None:

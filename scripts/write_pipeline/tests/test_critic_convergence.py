@@ -2,7 +2,7 @@
 import json
 
 OLD = "The report covers one workload on one fleet."
-NEW = "According to the report, it covers one workload on one fleet."
+NEW = "As the report notes, it covers one workload on one fleet."
 UNCHANGED = "Median latency fell from 120 ms to 85 ms after the change."
 ROUND1 = {"verdict": "revise", "findings": [{"id": "F1", "severity": "major", "passage": OLD, "reason": "stated as bare fact", "fix": "attribute it to the report"}]}
 
@@ -82,12 +82,12 @@ def test_budget_stays_three_and_is_not_refilled(d):
     open_reply = {"verdict": "revise", "findings": [], "resolutions": [{"id": "F1", "status": "unresolved", "evidence": "still bare"}]}
     d.critic.replies = [ROUND1, open_reply, open_reply, open_reply]
     d.cli("run", "critic")
-    for i, phrase in enumerate(("As the report notes, it covers", "The report says it covers"), 1):
-        f = d.write(f"r{i}.md", candidate(d).replace("The report covers", phrase, 1).replace("As the report notes, it covers", phrase, 1))
+    for i, phrase in enumerate(("The report says it covers", "As the report notes, it covers"), 1):  # the composite may only fall on each pass
+        f = d.write(f"r{i}.md", candidate(d).replace("The report covers", phrase, 1).replace("As the report notes, it covers", phrase, 1).replace("The report says it covers", phrase, 1))
         assert d.cli("repair", "try", "--file", str(f))[0] == 0
         rc, out = d.cli("run", "critic")
     assert rc == 3 and out["code"] == "NOT_READY" and len(d.critic.prompts) == 3
-    f = d.write("r3.md", candidate(d).replace("The report says it covers", "The report states it covers"))
+    f = d.write("r3.md", candidate(d).replace("As the report notes, it covers", "As the report states, it covers"))
     d.cli("repair", "try", "--file", str(f))
     rc, out = d.cli("run", "critic")
     assert rc == 3 and len(d.critic.prompts) == 3

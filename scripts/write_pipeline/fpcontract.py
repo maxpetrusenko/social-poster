@@ -26,8 +26,11 @@ EM_DASH_REPORT_FLOOR = 0.01  # per 1k words: the reporting resolution of the em 
 
 
 def advisory_patterns(text: str) -> dict:
-    """Third-party-detector writing patterns and readability: measured and reported, NEVER in WEIGHTS, the composite, a cap or a gate (Max's policy:
-    detectors are for measuring and learning patterns only, not an optimization target)."""
+    """Writing patterns (patterns.detect) and readability: measured and reported, NEVER in WEIGHTS, the composite, a cap, a stage gate or the
+    final verdict (Max's policy: measure and learn patterns only, never gate on a detector or optimize against it).
+    The one place the pattern total is compared is runs.no_fingerprint_regression: it rejects a repair that ADDS patterns of our own
+    rubric to the body. That is a writing-quality rule, not a detector score; it reads patterns.detect and the composite here, never a
+    third-party detector result, and no detector output is a target or a gate anywhere."""
     det = PT.detect(text)
     return {"counts": {k: v["count"] for k, v in det.items()}, "examples": {k: v["examples"] for k, v in det.items() if v["count"]},
             "readability": PT.readability(text), "advisory": True}

@@ -139,13 +139,15 @@ def run_fpverify(pipe: Pipeline) -> dict:
 
 
 def regression_vs_draft(pipe: Pipeline, cur: str) -> dict | None:
-    """Final (footer stripped, TLDR kept) against the first draft, both measured with the one contract composite. None when there is no draft.
-    Strict: a composite above the draft's by more than CT.REGRESSION_EPS is a regression. There is no automatic fallback to the draft."""
+    """Final against the first draft, like for like: the draft is body only, so the final is reduced to its body too (title, subtitle, hero,
+    caption, TLDR, AI disclosure line and footer removed; the frame has its own restate check). Both go through the one contract composite.
+    None when there is no draft. Strict: a composite above the draft's by more than CT.REGRESSION_EPS is a regression. There is no automatic
+    fallback to the draft."""
     draft = pipe.read_art("draft")
     if not draft or not draft.strip():
         return None
-    d = CT.signals(draft)["composite"]
-    f = CT.signals(FU.split_footer(cur)[0])["composite"]
+    d = CT.signals(FU.body_only(draft))["composite"]
+    f = CT.signals(FU.body_only(cur))["composite"]
     return {"draft": d, "final": f, "delta": round(f - d, 4), "regressed": f > d + CT.REGRESSION_EPS + 1e-12}
 
 

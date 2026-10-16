@@ -22,7 +22,9 @@ from .fakes import sha
 from .test_lifecycle import final_run, st
 from .test_repair_adds import candidate, major_open, try_repair
 
-CUT = "The report covers one workload on one fleet."
+# A cut shortens a ~120 word body, so the cut sentence must hold a higher share of transitions than the body (here: "and") or the strict body-only
+# regression rule would reject the cut for raising the per-1k transition share.
+CUT = "Each node served the same request mix before and after the change, and the team compared medians."
 
 
 # ---- 1. user bytes are never overwritten ------------------------------------------------------------------------------
@@ -61,7 +63,7 @@ def test_user_edit_survives_a_half_finished_revalidate(d):
 # ---- 2. cuts, ledger entries and rebases are bound to the current reference and candidate -------------------------------
 def _repair_with_cut(d):
     major_open(d)
-    d.runner.required = ["covers one workload on one fleet"]
+    d.runner.required = ["served the same request mix"]
     rc, out = try_repair(d, candidate(d).replace(CUT + " ", ""), removals=[{"text": CUT, "reason": "restates the next paragraph"}])
     assert rc == 0, out
     p = Pipeline(d.pkg)

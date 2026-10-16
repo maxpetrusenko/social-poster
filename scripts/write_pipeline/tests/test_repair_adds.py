@@ -5,7 +5,7 @@ from .fakes import sha
 from .test_critic_budget import MAJOR, state
 
 TARGET = "A reader with a different request mix should rerun"
-CONCLUSION = "Taken together, the 40 node test links the latency drop to the cache change."
+CONCLUSION = "The cache change is the only difference the report names."
 TAIL = "so the median alone cannot say whether the slowest requests improved."
 
 
@@ -80,8 +80,8 @@ def test_changed_factual_meaning_and_lost_link_are_rejected(d):
 
 def test_undeclared_deletion_is_rejected_and_a_declared_one_is_checked_and_accepted(d):
     major_open(d)
-    cut = "The report covers one workload on one fleet."
-    d.runner.required = ["covers one workload on one fleet"]  # the gate sees a missing claim when the reference still has it
+    cut = "Each node served the same request mix before and after the change, and the team compared medians."
+    d.runner.required = ["served the same request mix"]  # the gate sees a missing claim when the reference still has it
     gone = candidate(d).replace(cut + " ", "")
     rc, out = try_repair(d, gone)
     assert rc == 1 and any("claims gate failed" in r for r in out["reasons"])
@@ -117,5 +117,5 @@ def test_an_added_sentence_naming_a_new_entity_is_rejected_before_any_model_call
 
 def test_a_restatement_of_a_ledger_claim_with_new_wording_reaches_the_support_check(d):
     major_open(d)
-    rc, out = try_repair(d, candidate(d).replace(TAIL, TAIL + " The lab put the test on 40 nodes during 2025."))
+    rc, out = try_repair(d, candidate(d).replace(TAIL, TAIL + " The figure comes from that one 2025 run on 40 nodes."))
     assert rc == 0 and out["added_sentences"] == 1, out  # same facts, other words: no deterministic objection, and the judge sees the ledger passage

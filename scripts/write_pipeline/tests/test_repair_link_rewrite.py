@@ -9,8 +9,8 @@ from .test_repair_adds import candidate, try_repair
 MELLERS = "http://www.houdekpetr.cz/!data/papers/Mellers%20et%20al%202014.pdf"
 OLD1 = f"One large test of that instruction, on this article's own reading, came in a [multi-year geopolitical tournament]({MELLERS})."
 OLD2 = "Forecasters in it received probability training and worked on teams rather than alone."
-NEW = (f"A [multi-year geopolitical tournament]({MELLERS}) evaluated probability training, teaming and tracking as interventions, "
-       "and the walkthrough's advice resembles the first of those only loosely.")
+NEW = (f"A [multi-year geopolitical tournament]({MELLERS}) evaluated probability training as one of the interventions it tried; "
+       "the walkthrough's advice resembles that one only loosely.")  # no list of three and few conjunctions: the strict body-only composite may not rise
 SECTION = ("\n## What the forecasting tournament measured\n\n"
            f"The walkthrough asks you to replace binary thinking with probabilities and to say how confident you are. {OLD1} {OLD2} "
            "The organisers also tracked the best performers, moving the top ones from the first year into teams that kept working together. "
@@ -44,7 +44,7 @@ def test_declared_rewrite_of_a_link_bearing_sentence_keeping_its_url_is_accepted
     cand = setup(d)
     assert OLD1 in cand
     rc, out = try_repair(d, rewritten(cand), removals=decl())
-    assert rc == 0 and out["code"] == "ACCEPTED", out
+    assert rc == 0 and out["code"] == "ACCEPTED", out["reasons"]
     assert NEW in candidate(d) and OLD1 not in candidate(d)
     led = [e for e in state(d)["removals_ledger"] if e["stage"] == "repair"]
     assert any(e.get("replacement") == NEW for e in led)  # the signed ledger records the replacement
@@ -52,7 +52,7 @@ def test_declared_rewrite_of_a_link_bearing_sentence_keeping_its_url_is_accepted
 
 def test_the_replacement_is_support_checked_like_an_added_sentence(d):
     cand = setup(d)
-    d.runner.unsupported = ["resembles the first of those only loosely"]  # the claims gate's added-claim check finds it unsupported
+    d.runner.unsupported = ["resembles that one only loosely"]  # the claims gate's added-claim check finds it unsupported
     rc, out = try_repair(d, rewritten(cand), removals=decl())
     assert rc == 1 and any("unsupported by the evidence ledger" in r for r in out["reasons"]), out
     bad = NEW.replace("evaluated", "proved beyond doubt 2013")
@@ -80,6 +80,7 @@ def test_replacement_must_appear_verbatim_and_map_to_a_ledger_claim(d):
     cand = setup(d)
     rc, out = try_repair(d, rewritten(cand), removals=decl(replacement=NEW + " It settled the matter."))
     assert rc == 1 and any("not in the text word for word" in r for r in out["reasons"]), out
-    offtopic = f"The [paper]({MELLERS}) is long."
+    offtopic = f"The [paper]({MELLERS}) is a long document with many pages of dense figures printed for readers who enjoy such detail."
     rc, out = try_repair(d, cand.replace(f"{OLD1} {OLD2}", offtopic), removals=decl(replacement=offtopic))
     assert rc == 1 and any("no evidence-ledger claim" in r for r in out["reasons"]), out
+

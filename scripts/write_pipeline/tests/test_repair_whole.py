@@ -61,9 +61,7 @@ def test_whole_mode_still_runs_the_experience_trace(d):
     assert rc == 1 and any("experience trace" in r for r in out["reasons"]), out
 
 
-def test_a_repair_that_raises_the_fingerprint_composite_is_rejected_in_every_mode(d, monkeypatch):
-    from scripts.write_pipeline import fpcontract
-    monkeypatch.setattr(fpcontract, "REGRESSION_EPS", 0.0)  # conftest relaxes it for ~120 word fixtures; production is strict
+def test_a_repair_that_raises_the_fingerprint_composite_is_rejected_in_every_mode(d):
     major_open(d)
     worse = candidate(d).replace(TAIL, TAIL + " This isn't a benchmark, it's a shift. Not speed, but trust.")
     for run in (lambda: try_repair(d, worse), lambda: whole(d, worse)):
@@ -74,12 +72,10 @@ def test_a_repair_that_raises_the_fingerprint_composite_is_rejected_in_every_mod
 def test_a_repair_that_adds_advisory_patterns_is_rejected(d):
     major_open(d)
     rc, out = try_repair(d, candidate(d).replace(TAIL, TAIL + " It's tempting to say the cache alone explains the drop."))
-    assert rc == 1 and any(r.startswith("advisory pattern total rose") and "tempting_frame" in r for r in out["reasons"]), out
+    assert rc == 1 and any(r.startswith("pattern total rose") and "tempting_frame" in r for r in out["reasons"]), out
 
 
-def test_no_regression_helper_accepts_equal_and_better(monkeypatch):
-    from scripts.write_pipeline import fpcontract
-    monkeypatch.setattr(fpcontract, "REGRESSION_EPS", 0.0)
+def test_no_regression_helper_accepts_equal_and_better():
     a = "# T\n\nThe lab ran the test on 40 nodes. Latency fell.\n"
     assert RN.no_fingerprint_regression(a, a) == []
     worse = a + "\nIt's tempting to say the cache explains it.\n"
