@@ -181,6 +181,11 @@ describe("external Hermes v4 compatibility", () => {
     expect(() => validateExternalBlogPublishPayload(jsonReviewPayload)).not.toThrow();
   });
 
+  it("accepts a v4 article with a --- thematic break (not a table)", () => {
+    const base = "# Short verified article\n### A `literal` subtitle\n\n![Students using a laptop](https://upload.wikimedia.org/wikipedia/commons/8/84/Students-using-laptop.jpg)\n\n*Image: [Students using a laptop](https://commons.wikimedia.org/wiki/File:Students-using-laptop.jpg) by Dvitalo12, licensed under [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/).*\n\nA short paragraph with [one source](https://example.com/source).\n\n---\n\nRead next: another paragraph.\n\n---\n";
+    expect(() => validateExternalBlogPublishPayload(versionFourPayload({ article: base }))).not.toThrow();
+  });
+
   it("accepts a v4 source whose proof uses content_locator (controller output)", () => {
     // The Hermes controller emits the proof locator as content_locator (and
     // source.locator at top level), not inspection_proof.locator. The receiver
@@ -245,6 +250,8 @@ describe("external Hermes v4 compatibility", () => {
 
     const table = versionFourPayload({ article: "# A table\n\n| A | B |\n| --- | --- |\n| 1 | 2 |\n" });
     expect(() => validateExternalBlogPublishPayload(table)).toThrow(/table/i);
+    const pipeless = versionFourPayload({ article: "# A table\n\nA | B\n--- | ---\n1 | 2\n" });
+    expect(() => validateExternalBlogPublishPayload(pipeless)).toThrow(/table/i);
 
     const unclosed = versionFourPayload({ article: "# Unclosed\n\n```ts\nconst value = 1;\n" });
     expect(() => validateExternalBlogPublishPayload(unclosed)).toThrow(/fence/i);

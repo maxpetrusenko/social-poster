@@ -599,7 +599,8 @@ function inspectMarkdownStructure(markdown: string) {
     const h3 = line.match(/^###\s+(.+?)\s*$/);
     if (h1) h1s.push({ title: h1[1].trim(), lineIndex });
     if (h3) h3s.push({ title: h3[1].trim(), lineIndex });
-    if (/^\s*\|.*\|\s*$/.test(line) || /^\s*\|?\s*:?-{3,}/.test(line)) {
+    // A table row has pipes; a bare "---" line is a thematic break, not a table separator.
+    if (/^\s*\|.*\|\s*$/.test(line) || /^\s*\|?\s*:?-{3,}:?\s*\|/.test(line)) {
       hasTable = true;
     }
   }
