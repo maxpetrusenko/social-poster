@@ -189,11 +189,11 @@ def _json_stage(pipe: Pipeline, stage: str, data: dict, c: dict, runner: G.Runne
             t = pipe.read_json("title")
             imgs = data.get("images") or []
             try:
-                furn, bio = FU.from_title(t), FU.load_bio()
+                furn, bio = FU.with_disclosure(FU.from_title(t), pipe), FU.load_bio()
             except FU.FurnitureError as e:
                 return _fail(pipe, stage, [str(e)])
-            cand = FR.assemble(pipe.read_art("antifp") or "", t["pick"], t["subtitle"], imgs, furn, bio)
-            refframe = FR.assemble(pipe.read_art("voice") or "", t["pick"], t["subtitle"], imgs, furn, bio)
+            cand = FR.assemble(pipe.read_art("antifp") or "", t["pick"], t["subtitle"], imgs, furn, bio, disclosure=furn["ai_disclosure"])
+            refframe = FR.assemble(pipe.read_art("voice") or "", t["pick"], t["subtitle"], imgs, furn, bio, disclosure=furn["ai_disclosure"])
             lint = M.lint_v6(cand)
             if lint:
                 r = {"ok": False, "reasons": lint}

@@ -16,8 +16,8 @@ def _image_block(im: dict) -> str:
     return f"![{im['alt']}]({im['path']})\n\n*{im['caption']}*\n"
 
 
-def assemble(body_text: str, title: str, subtitle: str, images: list[dict], furn: dict | None = None, bio: str | None = None) -> str:
-    """title, subtitle, hero, TLDR (furn), body with its other images, footer (furn and bio: Read next, author bio, sharing line, disclosure)."""
+def assemble(body_text: str, title: str, subtitle: str, images: list[dict], furn: dict | None = None, bio: str | None = None, disclosure: str | None = None) -> str:
+    """title, subtitle, hero, TLDR (furn), the AI disclosure line (italic, right after the TLDR), body with its other images, footer (furn and bio: Read next, author bio, sharing line, disclosure)."""
     body = M.body_without_frame(body_text)
     heroes = [i for i in images if i["placement"] == "hero"]
     after_head = {M.norm(i["placement"][6:]): i for i in images if i["placement"].startswith("after:")}
@@ -25,6 +25,8 @@ def assemble(body_text: str, title: str, subtitle: str, images: list[dict], furn
     out = [f"# {title}", f"### {subtitle}"] + [_image_block(i).rstrip("\n") for i in heroes]
     if furn:
         out.append(FU.tldr_md(furn))
+        if disclosure:
+            out.append(FU.disclosure_line_md(disclosure))
     n_par = 0
     for b in M.blocks(body):
         out.append(b.text.rstrip("\n"))

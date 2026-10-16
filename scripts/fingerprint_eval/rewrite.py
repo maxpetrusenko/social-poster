@@ -13,7 +13,7 @@ import re
 from dataclasses import dataclass, field
 
 from .gateway import GatewayError, Model, chat, extract_json
-from .textutil import HEADING_RE, LINK_RE, Block, parse_blocks, render_blocks, split_sentences, words
+from .textutil import DISCLOSURE_RE, HEADING_RE, LINK_RE, Block, parse_blocks, render_blocks, split_sentences, words
 
 FROZEN_KINDS = {"heading", "image", "code", "rule", "list", "quote", "table"}
 BOILERPLATE_HEAD = re.compile(r"about the author|sources?\b|references|further reading", re.I)
@@ -128,6 +128,9 @@ def segment_article(md: str) -> list[Segment]:
         if n == tldr_i:
             flush_run()
             segs.append(Segment(len(segs), section, sec_idx, [b], tldr=True))  # prose, whatever its length: its claims are judged against the body
+        elif b.kind == "paragraph" and DISCLOSURE_RE.match(b.text.strip()):
+            flush_run()
+            segs.append(Segment(len(segs), section, sec_idx, [b], frozen=True))  # the AI disclosure: exact text, no claims extracted
         elif n == cap_i:
             flush_run()
             segs.append(Segment(len(segs), section, sec_idx, [b], frozen=True, caption=True))

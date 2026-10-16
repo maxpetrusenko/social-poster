@@ -26,7 +26,9 @@ DEFAULT_PASS_IT_ON = "If this was useful, I would be glad if you passed it on to
 HERO_PATH = "assets/hero.jpg"
 TLDR_MIN_WORDS, TLDR_MAX_WORDS = 15, 90
 BAD_TLDR = re.compile(r"^\W*(?:direct answer|tl;?dr)\b", re.I)
-PARTS = ("hero", "TLDR", "Read next", "bio", "pass-it-on", "disclosure")
+PARTS = ("hero", "TLDR", "AI disclosure", "Read next", "bio", "pass-it-on", "disclosure")
+AI_DISCLOSURE = "I build agents for a living, and one of them drafted this. The opinions and the edits are mine."
+DISCLOSURE_VARIANTS = ("default", "long")
 
 
 class FurnitureError(ValueError):
@@ -138,6 +140,9 @@ def check_footer_inputs(data: dict) -> list[str]:
         v = data.get(k)
         if v is not None and (not isinstance(v, str) or not v.strip() or "\n" in v.strip()):
             out.append(f"titles: {k} must be one line of text or omitted")
+    dv = data.get("disclosure_variant")
+    if dv is not None and dv not in DISCLOSURE_VARIANTS:
+        out.append(f"titles: disclosure_variant must be one of {list(DISCLOSURE_VARIANTS)} or omitted")
     pi = data.get("pass_it_on")
     if isinstance(pi, str) and pi.strip() and not re.search(r"\b(?:I|my|me|I'd|I'll)\b", pi):
         out.append("titles: pass_it_on must be first person (I, my, me)")
@@ -148,7 +153,8 @@ def from_title(t: dict) -> dict:
     """The furniture inputs recorded by the title stage."""
     rn = t.get("read_next") if isinstance(t.get("read_next"), dict) else None
     return {"tldr": str(t.get("tldr") or "").strip(), "read_next": ({"title": rn["title"].strip(), "url": rn["url"].strip()} if rn else None),
-            "pass_it_on": str(t.get("pass_it_on") or "").strip() or DEFAULT_PASS_IT_ON, "disclosure": str(t.get("disclosure") or "").strip() or None}
+            "pass_it_on": str(t.get("pass_it_on") or "").strip() or DEFAULT_PASS_IT_ON, "disclosure": str(t.get("disclosure") or "").strip() or None,
+            "disclosure_variant": str(t.get("disclosure_variant") or "default").strip()}
 
 
 def footer_md(furn: dict, bio: str) -> str:
@@ -158,9 +164,33 @@ def footer_md(furn: dict, bio: str) -> str:
     if rn:
         parts += [f"Read next: [{rn['title']}]({rn['url']})", "---"]
     parts += [bio, furn["pass_it_on"]]
-    if furn.get("disclosure"):
-        parts.append(furn["disclosure"])
+    dis = furn.get("disclosure")
+    if dis and dis.strip("*").strip() != (furn.get("ai_disclosure") or "\0"):  # the italic AI line after the TLDR already says it
+        parts.append(dis)
     return "\n\n".join(parts) + "\n"
+
+
+def _step(steps: object, name: str) -> bool:
+    return (steps.get(name) if isinstance(steps, dict) else getattr(steps, name, False)) is True
+
+
+def ai_disclosure(variant: str, steps: object = None) -> str:
+    """The disclosure sentence. "default" is the fixed line. "long" is built only from steps that are true: researched with AI and drafted by my
+    agent always, "outlined by me" only with steps.outline_supplied, "edited by me" only with steps.human_edit, "every citation checked" only
+    with steps.citations_checked (the validate stage is DONE)."""
+    if variant == "default":
+        return AI_DISCLOSURE
+    if variant != "long":
+        raise ValueError(f"disclosure_variant must be one of {DISCLOSURE_VARIANTS} (got {variant!r})")
+    head = "Researched with AI, outlined by me, drafted by my agent" if _step(steps, "outline_supplied") else "Researched with AI and drafted by my agent"
+    edit, cite = _step(steps, "human_edit"), _step(steps, "citations_checked")
+    tail = (", then edited by me" + (" with every citation checked" if cite else "")) if edit else (", with every citation checked" if cite else "")
+    return head + tail + "."
+
+
+def disclosure_line_md(line: str) -> str:
+    """The disclosure as an italic paragraph (one line), placed right after the TLDR blockquote."""
+    return "*" + line + "*"
 
 
 def tldr_md(furn: dict) -> str:
@@ -227,7 +257,11 @@ def status(text: str, furn: dict | None, bio: str | None) -> dict[str, str]:
     out["bio"] = "present" if foot and bio and bio in foot else "missing"
     pi = (furn or {}).get("pass_it_on")
     out["pass-it-on"] = "present" if foot and pi and pi in foot else "missing"
+    ai = (furn or {}).get("ai_disclosure")
+    out["AI disclosure"] = ("present" if any(b.text.strip() == disclosure_line_md(ai) for b in parse_blocks(core)) else "missing") if ai else "none requested"
     dis = (furn or {}).get("disclosure")
+    if dis and ai and dis.strip("*").strip() == ai:
+        dis = None
     out["disclosure"] = ("present" if foot and dis in foot else "missing") if dis else "none requested (the skill does not require one)"
     return out
 
@@ -252,6 +286,12 @@ def verify(text: str, furn: dict, bio: str, exact_tldr: bool = False) -> list[st
         out.append("furniture: the TLDR blockquote must match the submitted tldr verbatim")
     elif BAD_TLDR.search(tl.lstrip("> ")):
         out.append("furniture: the TLDR must not open with 'Direct answer' or a 'TLDR:' label")
+    ai = furn.get("ai_disclosure")
+    if ai:
+        blocks, _, tli, _ = head_parts(core)
+        nxt = blocks[tli + 1].text.strip() if tli is not None and tli + 1 < len(blocks) else None
+        if nxt != disclosure_line_md(ai):
+            out.append(f"furniture: the AI disclosure line (an italic paragraph right after the TLDR) is missing or differs from {disclosure_line_md(ai)!r}")
     return out
 
 
@@ -265,12 +305,18 @@ def _first_diff(want: str, got: str) -> str:
 
 def pipeline_inputs(pipe: Pipeline) -> tuple[dict, str]:
     """(furniture inputs from the recorded title stage, the bio read now)."""
-    return from_title(pipe.read_json("title")), load_bio()
+    return with_disclosure(from_title(pipe.read_json("title")), pipe), load_bio()
+
+
+def with_disclosure(furn: dict, pipe: Pipeline) -> dict:
+    """`furn` plus the AI disclosure sentence its variant yields from this package's logged steps."""
+    from . import provenance as PV
+    return {**furn, "ai_disclosure": ai_disclosure(furn.get("disclosure_variant") or "default", PV.steps(pipe))}
 
 
 def report_lines(pipe: Pipeline, text: str) -> list[str]:
     try:
-        furn, bio = from_title(pipe.read_json("title")), load_bio()
+        furn, bio = with_disclosure(from_title(pipe.read_json("title")), pipe), load_bio()
     except Exception:  # noqa: BLE001  a report never fails the package
         furn, bio = None, None
     st = status(text, furn, bio)

@@ -267,11 +267,21 @@ def load_pipeline_corpus(directory: Path, exclude: str | None = None) -> list[tu
     return out
 
 
+# The AI disclosure line: one italic paragraph right after the TLDR (write_pipeline.furniture builds it). Only the exact default sentence and the
+# exact shapes of the "long" variant match; the gate freezes such a paragraph and style measurement skips it.
+DISCLOSURE_RE = re.compile(
+    r"^\*(?:I build agents for a living, and one of them drafted this\. The opinions and the edits are mine\."
+    r"|Researched with AI(?: and drafted by my agent|, outlined by me, drafted by my agent)"
+    r"(?:, then edited by me(?: with every citation checked)?|, with every citation checked)?\.)\*$")
+
+
 def core_markdown(md: str) -> str:
-    """Drop boilerplate sections (About the author, sources) before measuring style."""
+    """Drop boilerplate sections (About the author, sources) and the AI disclosure line before measuring style."""
     out: list[Block] = []
     skip = False
     for b in parse_blocks(md):
+        if b.kind == "paragraph" and DISCLOSURE_RE.match(b.text.strip()):
+            continue
         if b.kind == "heading":
             m = HEADING_RE.match(b.text)
             skip = len(m.group(1)) >= 2 and bool(re.search(r"about the author|sources?\b|references|further reading", m.group(2), re.I))
