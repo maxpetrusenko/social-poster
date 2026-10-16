@@ -13,6 +13,7 @@ from . import addcheck as AC
 from . import criticev as CE
 from . import cuts as CT
 from . import editguard as G
+from . import fpcontract as FCT
 from . import furniture as FU
 from . import mdlib as M
 from . import rewrite as RW
@@ -353,6 +354,23 @@ def _removals(report) -> tuple[list[dict], list[str]]:
     return out, bad
 
 
+MODES = ("local", "whole")
+
+
+def no_fingerprint_regression(cur: str, cand: str) -> list[str]:
+    """Every repair mode: the candidate's fingerprint composite and its advisory pattern total (patterns.detect, summed counts) may not rise
+    above the current candidate's. A repair that fixes a finding by writing a more detectable article is rejected."""
+    a, b = FCT.signals(cur), FCT.signals(cand)
+    out = []
+    if b["composite"] > a["composite"] + FCT.REGRESSION_EPS + 1e-9:  # REGRESSION_EPS is 0.0 in production: any rise is a rejection
+        out.append(f"fingerprint composite rose {a['composite']} -> {b['composite']}: the repair makes the article more detectable than the current candidate")
+    pa, pb = sum(a["patterns"]["counts"].values()), sum(b["patterns"]["counts"].values())
+    if pb > pa:
+        new = sorted(k for k, v in b["patterns"]["counts"].items() if v > a["patterns"]["counts"].get(k, 0))
+        out.append(f"advisory pattern total rose {pa} -> {pb} (more of: {', '.join(new)}): the repair adds writing patterns detectors flag")
+    return out
+
+
 def repair_try(pipe: Pipeline, cand: str, runner: G.Runner, report: dict | None = None) -> dict:
     """An editorial repair may reword, cut and ADD sentences. Every added sentence is evaluated on its own (addcheck: numbers, links,
     invented experience, negation, hedges; then the evaluator's added-claim support check against the evidence ledger and source notes,
@@ -366,6 +384,14 @@ def repair_try(pipe: Pipeline, cand: str, runner: G.Runner, report: dict | None 
     if pipe.status("critic") != DONE or not crit.get("majors"):
         return {"ok": False, "code": "USAGE", "stage": "repair", "reasons": ["no open major finding on the current candidate: run the critic, or 'repair done'"]}
     st = pipe.state.setdefault("critic", {"rounds": 0, "history": [], "repair_rejected": 0})
+    mode = (report or {}).get("mode", "local") if isinstance(report, dict) else "local"
+    if mode not in MODES:
+        return {"ok": False, "code": "USAGE", "stage": "repair", "reasons": [f"report.mode must be one of {list(MODES)} (got {str(mode)[:40]!r})"]}
+    if mode == "whole":
+        if st.get("whole_used"):
+            return {"ok": False, "code": "USAGE", "stage": "repair", "reasons": ['the whole-article rewrite ("mode": "whole") is used once per run and was already used; send a local repair']}
+        st["whole_used"] = True  # spent when attempted, accepted or not: one whole-article voice pass per run
+        pipe.log("repair_whole_attempt")
     new_rem, rem_bad = _removals(report)
     prior = repair_cuts(pipe)
     all_rem = [*prior, *[r for r in new_rem if CT._key(r["text"]) not in {CT._key(p["text"]) for p in prior}]]
@@ -374,7 +400,7 @@ def repair_try(pipe: Pipeline, cand: str, runner: G.Runner, report: dict | None 
     guard_ref = reference_frame(pipe, cand)
     undone = [r["text"][:80] for r in new_rem if CT._key(r["text"]) not in {x["sentence"] for x in cuts} and CT._key(r["text"]) not in {CT._key(p["text"]) for p in prior}]
     g = G.edit_guard(guard_ref, cand, known_urls=c["known_urls"], blob_numbers=c["blob_numbers"], strict=True, removals=all_rem, author_material=c["author_material"], ev=c["ev"], trace=c["trace"])
-    reasons = [*rem_bad, *g["reasons"]]
+    reasons = [*rem_bad, *g["reasons"], *no_fingerprint_regression(candidate_text(pipe), cand)]
     if not reasons:  # a link-bearing sentence may be rewritten only as a declared rewrite that keeps its URLs and is support-checked
         reasons += RW.check_rewrites(guard_ref, cand, all_rem, new_rem, ev=c["ev"], blob=c["blob"], known_urls=c["known_urls"], blob_numbers=c["blob_numbers"], author_material=c["author_material"])
     if not reasons:  # policy rule (b): the claims of a removed link-bearing sentence must really be gone
@@ -417,7 +443,7 @@ def repair_try(pipe: Pipeline, cand: str, runner: G.Runner, report: dict | None 
             pipe.save()
             return {"ok": False, "code": "NOT_READY", "stage": "repair", "reasons": msg}
         pipe.save()
-        return {"ok": False, "code": "INVALID", "stage": "repair", "reasons": reasons, "rejected": st["repair_rejected"], "added_sentences": added_n}
+        return {"ok": False, "code": "INVALID", "stage": "repair", "reasons": reasons, "rejected": st["repair_rejected"], "added_sentences": added_n, "mode": mode}
     n = len(pipe.state["candidate"].get("history", [])) + 1
     p = pipe.pkg / "write-pipeline" / "frame" / f"candidate-repair-{n}.md"
     atomic_write(p, cand.encode())
@@ -431,7 +457,7 @@ def repair_try(pipe: Pipeline, cand: str, runner: G.Runner, report: dict | None 
     pipe.log("repair_accepted", sha256=pipe.state["candidate"]["sha256"], added=added_n, cuts=len(cuts))
     pipe.save()
     return {"ok": True, "code": "ACCEPTED", "stage": "repair", "candidate_sha256": pipe.state["candidate"]["sha256"], "reasons": [], "added_sentences": added_n,
-            "removed_sentences": len(cuts), "claims_gate": gate_state, "next": "run critic on the repaired candidate"}
+            "removed_sentences": len(cuts), "claims_gate": gate_state, "mode": mode, "next": "run critic on the repaired candidate"}
 
 
 def repair_done(pipe: Pipeline) -> dict:
