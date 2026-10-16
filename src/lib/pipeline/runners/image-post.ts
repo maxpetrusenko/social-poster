@@ -39,6 +39,12 @@ async function resolveStoryImages(
   );
 }
 
+/**
+ * A run that never settles stays "running" forever and silently skips the slot
+ * (seen 2026-10-15 3 PM and 2026-10-16 1 PM / 3 PM). Fail it loudly instead.
+ */
+export const IMAGE_POST_RUN_DEADLINE_MS = 5 * 60_000;
+
 export async function runImagePostJob(
   schedule: typeof schedules.$inferSelect,
   trigger: "cron" | "manual" | "api" = "cron"
@@ -65,6 +71,19 @@ export async function runImagePostJob(
     startedAt,
   });
 
+  let deadlineHit = false;
+  const deadline = setTimeout(() => {
+    deadlineHit = true;
+    const stuckStep = steps[steps.length - 1]?.name ?? "startup";
+    void fail(
+      runId,
+      steps,
+      startedAt,
+      `Run exceeded ${IMAGE_POST_RUN_DEADLINE_MS / 1000}s deadline while step "${stuckStep}" was running`
+    ).catch((err) => console.error(`[image-post] run ${runId} deadline update failed:`, err));
+  }, IMAGE_POST_RUN_DEADLINE_MS);
+  deadline.unref?.();
+
   const targetIds = (schedule.targetPlatformIds || []) as string[];
   const platformRows = await Promise.all(
     targetIds.map((pid) => db.query.platforms.findFirst({ where: eq(platforms.id, pid) }))
@@ -72,6 +91,7 @@ export async function runImagePostJob(
   const targets = platformRows.filter(Boolean).map((platform) => platform!);
 
   if (targets.length === 0) {
+    clearTimeout(deadline);
     await fail(runId, steps, startedAt, "No target platforms");
     return;
   }
@@ -238,6 +258,9 @@ export async function runImagePostJob(
     await assertPublicPublishMediaUrls(publishTargets);
 
     // 3. Publish (text only)
+    if (deadlineHit) {
+      throw new Error("Run deadline exceeded before publish; not publishing late");
+    }
     const s3: PipelineStep = { name: "publish", status: "running", startedAt: new Date().toISOString() };
     steps.push(s3);
     const summary = await publishPlatformTargets(publishTargets);
@@ -349,7 +372,11 @@ export async function runImagePostJob(
 
     console.log(`[image-post] run ${runId} done — ${ok.length}/${results.length} → post ${postId}`);
   } catch (err) {
-    await fail(runId, steps, startedAt, err instanceof Error ? err.message : String(err));
+    if (!deadlineHit) {
+      await fail(runId, steps, startedAt, err instanceof Error ? err.message : String(err));
+    }
+  } finally {
+    clearTimeout(deadline);
   }
 }
 
@@ -426,6 +453,13 @@ function resolveSourceHost(value: string | undefined) {
 
 async function fail(runId: string, steps: PipelineStep[], startedAt: Date, error: string) {
   console.error(`[image-post] run ${runId} FAILED: ${error}`);
+  for (const step of steps) {
+    if (step.status === "running") {
+      step.status = "failed";
+      step.error = error;
+      step.completedAt = new Date().toISOString();
+    }
+  }
   await db.update(pipelineRuns).set({
     status: "failed", steps, error,
     durationMs: Date.now() - startedAt.getTime(),
