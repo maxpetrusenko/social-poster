@@ -60,7 +60,7 @@ def test_footer_bio_and_hero_image_are_still_frozen(d):
     assert rc == 1 and "images changed" in reasons(out), out
 
 
-CAP = "*Median latency before and after the change. Source: the lab report.*"
+CAP = "*Medians before and after, side by side. Source: the lab report.*"
 
 
 def test_the_hero_caption_is_editable(d):

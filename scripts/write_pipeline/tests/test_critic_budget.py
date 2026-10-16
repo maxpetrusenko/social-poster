@@ -13,7 +13,7 @@ def state(d):
 
 def resubmit_frame(d, n):
     """A caption change rebuilds the candidate frame (new bytes) without touching the prose."""
-    imgs = d.images(caption=f"Median latency before and after the change, version {n}. Source: the lab report.")
+    imgs = d.images(caption=f"Medians before and after, side by side, version {n}. Source: the lab report.")
     rc, out = d.submit("images", imgs)
     assert rc == 0, out
 
@@ -25,7 +25,7 @@ def test_round_count_survives_resubmitted_images_title_and_subtitle(d):
     resubmit_frame(d, 2)  # candidate bytes change, so the critic is STALE and must run again
     assert state(d)["critic"]["rounds"] == 1  # not reset by the images resubmit
     assert d.cli("run", "critic")[1]["round"] == 2
-    t = dict(d.TITLES, subtitle="A 2025 report shows median latency falling from 120 ms to 85 ms on 40 nodes, measured on one workload.")
+    t = dict(d.TITLES, subtitle="A 2025 lab test on 40 nodes reports a faster median after one cache change, measured once.")
     assert d.submit("title", t)[0] == 0 and state(d)["critic"]["rounds"] == 2  # a new subtitle does not reset it either
     resubmit_frame(d, 3)
     rc, out = d.cli("run", "critic")

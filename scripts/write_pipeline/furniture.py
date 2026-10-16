@@ -74,6 +74,34 @@ def check_read_next(rn: object) -> list[str]:
     return out
 
 
+RESTATE_RUN_WORDS = 6        # a shared run of this many normalized words is a restated sentence
+RESTATE_NGRAM = 4
+RESTATE_SHARE = 0.2          # more than this share of the text's 4-grams found in the body is a restatement
+_WORD = re.compile(r"[a-z0-9]+(?:'[a-z]+)?")
+
+
+def _words(text: str) -> list[str]:
+    return _WORD.findall(re.sub(r"\]\([^)]*\)", " ", text).lower())
+
+
+def restates_body(text: str, body: str) -> str | None:
+    """Why `text` (TLDR, hero caption, subtitle) restates the body, else None. Furniture frames the argument in new words: a normalized run of
+    RESTATE_RUN_WORDS words shared with the body, or a 4-gram overlap share above RESTATE_SHARE, rejects it."""
+    t, b = _words(text), _words(body)
+    grams = lambda w, n: [tuple(w[i:i + n]) for i in range(len(w) - n + 1)]  # noqa: E731
+    if len(t) < RESTATE_NGRAM:
+        return None
+    bn = set(grams(b, RESTATE_NGRAM))
+    run = RESTATE_RUN_WORDS
+    if set(grams(t, run)) & set(grams(b, run)):
+        return f"shares a run of {run} or more words with the body"
+    tg = grams(t, RESTATE_NGRAM)
+    share = sum(1 for g in tg if g in bn) / len(tg)
+    if share > RESTATE_SHARE:
+        return f"{round(share * 100)} percent of its 4-grams are in the body (limit {round(RESTATE_SHARE * 100)})"
+    return None
+
+
 def check_tldr(tldr: object, body: str, ev: dict | None = None) -> list[str]:
     """Deterministic floor for the TLDR; the claims gate adds the semantic check against the body (submit.py)."""
     from .validators import asserted_unresolved
@@ -98,6 +126,9 @@ def check_tldr(tldr: object, body: str, ev: dict | None = None) -> list[str]:
         out.append("titles: tldr makes a first-person experience claim")
     if ev and asserted_unresolved(t, ev):
         out.append("titles: tldr asserts an unresolved claim")
+    why = restates_body(t, body)
+    if why:
+        out.append(f"titles: the tldr restates the body ({why}); say it in new words, it frames the argument and does not repeat it")
     return out
 
 
@@ -288,6 +319,8 @@ def furniture_edit_reasons(ref: str, cand: str, ev: dict | None = None) -> list[
         body = "\n\n".join(b.text for b in blocks[tl + 1:foot if foot is not None else len(blocks)])
         out += [r.replace("titles: ", "TLDR edit: ", 1) for r in check_tldr(ct, body, ev)]
     rc, cc = caption_text(ref), caption_text(cand)
+    blocks, _, tl, foot = head_parts(cand)
+    body_text = "\n\n".join(b.text for b in blocks[(tl if tl is not None else 0) + 1:foot if foot is not None else len(blocks)])
     if rc is not None and cc is None:
         out.append("the hero caption was removed: it must stay one italic line under the hero image")
     elif rc is not None and cc != rc:
@@ -296,4 +329,7 @@ def furniture_edit_reasons(ref: str, cand: str, ev: dict | None = None) -> list[
             out.append(f"hero caption edit: {len(plain.split())} words, the limit is {CAPTION_MAX_WORDS}")
         if M.URL_RE.search(plain) or re.search(r"\]\(", plain):
             out.append("hero caption edit: a caption carries no link")
+        why = restates_body(plain, body_text)
+        if why:
+            out.append(f"hero caption edit: the caption restates the body ({why})")
     return out

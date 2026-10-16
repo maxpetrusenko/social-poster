@@ -356,6 +356,8 @@ def titles(data: dict, body: str, ev: dict | None = None) -> dict:
         bad = [n for n in M.significant_numbers(t) if n not in M.significant_numbers(body)]
         if bad:
             reasons.append(f"weak {label}: number {bad[:2]} is not supported by the body")
+        if label == "subtitle" and FU.restates_body(t, body):
+            reasons.append(f"weak subtitle: restates the body ({FU.restates_body(t, body)}); it adds scope or stakes in new words")
     reasons += FU.check_tldr(data.get("tldr"), body, ev)
     reasons += FU.check_footer_inputs(data)
     if pick and not (8 <= len(pick) <= 100):
@@ -444,6 +446,9 @@ def images(data: dict, pkg: Path, body: str) -> dict:
             pass  # a documentary frame from the source video is the one allowed video frame; _hero_reasons screens it for presenters and thumbnails
         elif im.get("is_video_frame") or im.get("contains_presenter") or video_frame_claim(" ".join(str(im.get(k, "")) for k in ("purpose", "provenance", "path", "method"))):
             reasons.append(f"{w}: presenter and video frames are not allowed (a negated statement such as 'no video frames' is fine; images need method one of {sorted(IMG_METHODS)} and a provenance that says how it was made)")
+        why = FU.restates_body(str(im.get("caption", "")), body) if hero else None
+        if why:
+            reasons.append(f"{w}: the hero caption restates the body ({why}); the caption frames the image in new words")
         alt = str(im.get("alt", ""))
         if alt and not (10 <= len(alt) <= 220):
             reasons.append(f"{w}: alt text must be 10 to 220 characters")

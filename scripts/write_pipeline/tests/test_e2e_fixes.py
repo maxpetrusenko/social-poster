@@ -107,4 +107,4 @@ def test_second_rework_of_a_content_stage_ends_not_ready(d):
 def test_title_and_images_are_not_rework_limited(d):
     d.to_stage("critic")
     for n in range(2, 6):
-        assert d.submit("images", d.images(caption=f"Median latency before and after the change, take {n}. Source: the lab report."))[0] == 0
+        assert d.submit("images", d.images(caption=f"Medians before and after, side by side, take {n}. Source: the lab report."))[0] == 0
