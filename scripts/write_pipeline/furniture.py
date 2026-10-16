@@ -88,7 +88,11 @@ def _words(text: str) -> list[str]:
 
 def restates_body(text: str, body: str) -> str | None:
     """Why `text` (TLDR, hero caption, subtitle) restates the body, else None. Furniture frames the argument in new words: a normalized run of
-    RESTATE_RUN_WORDS words shared with the body, or a 4-gram overlap share above RESTATE_SHARE, rejects it."""
+    RESTATE_RUN_WORDS words shared with the body, or a 4-gram overlap share above RESTATE_SHARE, rejects it.
+    Headings are not the argument and are left out of the body side: a subtitle or caption may legitimately echo a section heading.
+    Known limit: this is lexical. A paraphrase that shares no 6-word run and under 20 percent of its 4-grams with the body (a semantic restatement)
+    passes; catching it would take embeddings, which this deterministic floor does not use. The claims gate judges meaning."""
+    body = "\n".join(ln for ln in body.split("\n") if not re.match(r"\s*#{1,6}\s", ln))
     t, b = _words(text), _words(body)
     grams = lambda w, n: [tuple(w[i:i + n]) for i in range(len(w) - n + 1)]  # noqa: E731
     if len(t) < RESTATE_NGRAM:
@@ -134,12 +138,24 @@ def check_tldr(tldr: object, body: str, ev: dict | None = None) -> list[str]:
     return out
 
 
+def allowed_disclosures() -> tuple[str, ...]:
+    """Every AI disclosure sentence the pipeline can generate: the default and each shape of the long variant (see `ai_disclosure`)."""
+    import itertools
+    from types import SimpleNamespace
+    longs = (ai_disclosure("long", SimpleNamespace(outline_supplied=o, human_edit=e, citations_checked=c)) for o, e, c in itertools.product([False, True], repeat=3))
+    return (AI_DISCLOSURE, *dict.fromkeys(longs))
+
+
 def check_footer_inputs(data: dict) -> list[str]:
     out = check_read_next(data.get("read_next"))
-    for k in ("pass_it_on", "disclosure"):
-        v = data.get(k)
-        if v is not None and (not isinstance(v, str) or not v.strip() or "\n" in v.strip()):
-            out.append(f"titles: {k} must be one line of text or omitted")
+    v = data.get("pass_it_on")
+    if v is not None and (not isinstance(v, str) or not v.strip() or "\n" in v.strip()):
+        out.append("titles: pass_it_on must be one line of text or omitted")
+    dis = data.get("disclosure")
+    if dis is not None and not (isinstance(dis, str) and (not dis.strip() or dis.strip().strip("*").strip() in allowed_disclosures())):
+        # the footer is frozen boilerplate and the evaluator gate extracts no claims from it: free text there would ship unchecked
+        out.append("titles: disclosure must be omitted, empty, or exactly one of the AI disclosure sentences the pipeline generates (the default or a long variant); "
+                   "free text is not accepted because the frozen footer is never claims-checked. The disclosure_variant field chooses the italic line after the TLDR")
     dv = data.get("disclosure_variant")
     if dv is not None and dv not in DISCLOSURE_VARIANTS:
         out.append(f"titles: disclosure_variant must be one of {list(DISCLOSURE_VARIANTS)} or omitted")
@@ -164,9 +180,8 @@ def footer_md(furn: dict, bio: str) -> str:
     if rn:
         parts += [f"Read next: [{rn['title']}]({rn['url']})", "---"]
     parts += [bio, furn["pass_it_on"]]
-    dis = furn.get("disclosure")
-    if dis and dis.strip("*").strip() != (furn.get("ai_disclosure") or "\0"):  # the italic AI line after the TLDR already says it
-        parts.append(dis)
+    # No disclosure text ever goes in the footer: the italic AI disclosure line right after the TLDR is the one place (furn["disclosure"] is
+    # validated to be one of its sentences, and that line is generated from logged steps, so a footer copy could be false).
     return "\n\n".join(parts) + "\n"
 
 
@@ -284,9 +299,12 @@ def status(text: str, furn: dict | None, bio: str | None) -> dict[str, str]:
     ai = (furn or {}).get("ai_disclosure")
     out["AI disclosure"] = ("present" if any(b.text.strip() == disclosure_line_md(ai) for b in parse_blocks(core)) else "missing") if ai else "none requested"
     dis = (furn or {}).get("disclosure")
-    if dis and ai and dis.strip("*").strip() == ai:
-        dis = None
-    out["disclosure"] = ("present" if foot and dis in foot else "missing") if dis else "none requested (the skill does not require one)"
+    if not dis:
+        out["disclosure"] = "none requested (the skill does not require one)"
+    elif ai and dis.strip("*").strip() == ai:
+        out["disclosure"] = out["AI disclosure"]
+    else:
+        out["disclosure"] = "not rendered (the italic AI disclosure line after the TLDR is generated from logged steps and is the only disclosure)"
     return out
 
 
@@ -311,11 +329,16 @@ def verify(text: str, furn: dict, bio: str, exact_tldr: bool = False) -> list[st
     elif BAD_TLDR.search(tl.lstrip("> ")):
         out.append("furniture: the TLDR must not open with 'Direct answer' or a 'TLDR:' label")
     ai = furn.get("ai_disclosure")
+    found = [b for b in parse_blocks(text) if b.kind == "paragraph" and DISCLOSURE_RE.match(b.text.strip())]  # DISCLOSURE_RE is position-agnostic: count them all
     if ai:
         blocks, _, tli, _ = head_parts(core)
         nxt = blocks[tli + 1].text.strip() if tli is not None and tli + 1 < len(blocks) else None
         if nxt != disclosure_line_md(ai):
             out.append(f"furniture: the AI disclosure line (an italic paragraph right after the TLDR) is missing or differs from {disclosure_line_md(ai)!r}")
+        if len(found) > 1:
+            out.append(f"furniture: the AI disclosure appears {len(found)} times; exactly one, right after the TLDR, is allowed")
+    elif found:
+        out.append("furniture: an AI disclosure paragraph is present but none was requested; the frozen disclosure pattern is only valid as the one line right after the TLDR")
     return out
 
 

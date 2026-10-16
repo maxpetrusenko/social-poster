@@ -59,8 +59,10 @@ def test_skip_no_answer_is_recorded_and_the_run_continues_without_first_person(d
     assert rc == 0
     art = json.loads((d.pkg / "write-pipeline/artifacts/05-brief.json").read_text())
     assert art["targets"]["first_person_per_1k"] == 0 and "No first-person experience" in art["text"]
-    state = json.loads((d.pkg / "write-pipeline/state.json").read_text())
-    assert state["provenance"]["outline_supplied"] is False
+    from scripts.write_pipeline import provenance as PV
+    from scripts.write_pipeline.core import Pipeline
+    assert "provenance" not in json.loads((d.pkg / "write-pipeline/state.json").read_text())  # no state flag: provenance is derived from the artifact
+    assert PV.steps(Pipeline(d.pkg)).outline_supplied is False
 
 
 def test_unattended_flow_human_ask_writes_the_file_and_submitting_it_unchanged_is_no_answer(d):
@@ -83,7 +85,9 @@ def test_resume_answered_md_is_stored_with_the_outline_provenance_and_feeds_note
     assert rc == 0, out
     art = json.loads((d.pkg / "write-pipeline/artifacts/03h-human.json").read_text())
     assert art["status"] == "answered" and art["outline_supplied"] is True and "Redis" in art["answers"]["detail_or_outline"]
-    assert json.loads((d.pkg / "write-pipeline/state.json").read_text())["provenance"]["outline_supplied"] is True
+    from scripts.write_pipeline import provenance as PV
+    from scripts.write_pipeline.core import Pipeline
+    assert PV.steps(Pipeline(d.pkg)).outline_supplied is True
     from scripts.write_pipeline import runs as RN
     from scripts.write_pipeline.core import Pipeline
     from scripts.write_pipeline.submit import deps_ctx

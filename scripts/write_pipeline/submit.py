@@ -239,9 +239,8 @@ def _json_stage(pipe: Pipeline, stage: str, data: dict, c: dict, runner: G.Runne
     main = (json.dumps(data, indent=1, sort_keys=True) + "\n").encode()
     out = _finish(pipe, stage, main, "json", extra_bundle=sha_json(extra).encode(), extra=extra)
     if stage == "human" and out.get("ok") and not out.get("cached"):
-        # provenance.steps reads this: the long AI disclosure may say "outlined by me" only when the author really supplied the outline
-        pipe.state.setdefault("provenance", {})["outline_supplied"] = data["status"] == "answered" and data["outline_supplied"] is True
-        pipe.log("human_input", status=data["status"], method=data["method"], outline_supplied=pipe.state["provenance"]["outline_supplied"])
+        # informational only: provenance.steps derives "outlined by me" from the hash-bound human artifact, never from this log line
+        pipe.log("human_input", status=data["status"], method=data["method"], outline_supplied=data["status"] == "answered" and data["outline_supplied"] is True)
         pipe.save()
     if stage == "title" and out.get("ok"):
         opp = FU.author_opportunity(FU.from_title(data))

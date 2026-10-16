@@ -105,13 +105,18 @@ def test_patterns_are_advisory_never_in_the_composite():
     assert "patterns" not in sig["values"]
 
 
-def test_signals_composite_ignores_pattern_hits():
+def test_signals_composite_is_identical_with_and_without_pattern_hits(monkeypatch):
     from scripts.write_pipeline import fpcontract as C
-    base = "The table was set for four people at noon today."
-    flagged = base + " So the whole thing hinges on cost."
-    a, b = C.signals(base), C.signals(flagged)
-    assert b["patterns"]["counts"]["so_closer"] == 1 and a["patterns"]["counts"]["so_closer"] == 0
-    assert set(b["values"]) == set(C.WEIGHTS)
+    text = "The table was set for four people at noon today. So the whole thing hinges on cost. It's tempting to say the rain explains it."
+    real = C.signals(text)
+    assert sum(real["patterns"]["counts"].values()) >= 2  # the text really carries pattern hits
+    monkeypatch.setattr(P, "detect", lambda md: {k: {"count": 0, "examples": []} for k in P.PATTERNS})
+    none = C.signals(text)
+    monkeypatch.setattr(P, "detect", lambda md: {k: {"count": 99, "examples": ["x"]} for k in P.PATTERNS})
+    many = C.signals(text)
+    assert sum(none["patterns"]["counts"].values()) == 0 and sum(many["patterns"]["counts"].values()) == 99 * len(P.PATTERNS)
+    assert real["composite"] == none["composite"] == many["composite"]  # identical, not merely close
+    assert real["values"] == none["values"] == many["values"] and set(real["values"]) == set(C.WEIGHTS)
 
 
 BODY = ("The table was set for four people at noon today. Rain had stopped an hour before, and the street smelled of wet stone.\n\n"

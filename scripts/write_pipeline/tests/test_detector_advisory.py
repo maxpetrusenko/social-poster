@@ -10,7 +10,7 @@ from scripts.write_pipeline import fpcontract as C
 from .test_compare import CLEAN, _package
 
 
-def test_compare_sidecar_carries_pattern_counts_and_readability_per_stage_outside_bad_direction(tmp_path):
+def test_compare_sidecar_carries_pattern_counts_and_readability_per_stage_outside_bad_direction(tmp_path, monkeypatch):
     pkg = _package(tmp_path, final=CLEAN + "\nSo the whole thing hinges on bread.\n")
     out = tmp_path / "fp.json"
     assert CMP.main(["--package", str(pkg), "--out", str(out)]) == 0
@@ -20,7 +20,26 @@ def test_compare_sidecar_carries_pattern_counts_and_readability_per_stage_outsid
         assert {"flesch", "grade", "long_sentence_share"} <= set(st["readability"])
     assert doc["stages"]["final"]["patterns"]["counts"]["so_closer"] == 1 and doc["stages"]["draft"]["patterns"]["counts"]["so_closer"] == 0
     assert not set(PT.PATTERNS) & set(doc["bad_direction"]) and "readability" not in doc["bad_direction"]
-    assert doc["stages"]["final"]["contract"]["composite"] == C.signals(CLEAN + "\nSo the whole thing hinges on bread.\n")["composite"]
+    # a real comparison: the same package measured again with a flood of injected pattern hits has the same contract composite at every stage
+    monkeypatch.setattr(PT, "detect", lambda md: {k: {"count": 50, "examples": ["x"]} for k in PT.PATTERNS})
+    out2 = tmp_path / "fp2.json"
+    assert CMP.main(["--package", str(pkg), "--out", str(out2)]) == 0
+    doc2 = json.loads(out2.read_text())
+    assert doc2["stages"]["final"]["patterns"]["counts"]["so_closer"] == 50 and doc["stages"]["final"]["patterns"]["counts"]["so_closer"] == 1
+    for name in doc["stages"]:
+        assert doc2["stages"][name]["contract"] == doc["stages"][name]["contract"]
+
+
+def test_injected_pattern_hits_change_neither_ok_nor_the_composite(monkeypatch):
+    from scripts.write_pipeline import fpcaps
+    text = CLEAN + "\nSo the whole thing hinges on bread.\n"
+    base = fpcaps.check(text)
+    monkeypatch.setattr(PT, "detect", lambda md: {k: {"count": 50, "examples": ["x"]} for k in PT.PATTERNS})
+    flooded = fpcaps.check(text)
+    assert flooded["advisory"]["patterns"] and flooded["advisory"] != base["advisory"]
+    assert flooded["ok"] is base["ok"] and flooded["composite"] == base["composite"] and flooded["violations"] == base["violations"]
+    bad = fpcaps.check(CLEAN + "\nHere's the thing: it isn't just bread. It's a different story. Here's the thing: it isn't just wine. It's a different story.\n")
+    assert bad["ok"] is False  # the real caps still gate; the injected patterns above never could
 
 
 def test_detector_block_is_separate_covers_every_pattern_and_sets_the_readability_target():

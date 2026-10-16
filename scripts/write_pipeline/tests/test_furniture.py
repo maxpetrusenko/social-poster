@@ -162,11 +162,17 @@ def test_no_read_next_omits_the_line_and_records_an_author_opportunity(d):
     assert "- Read next: missing" in pk and pk.count("AUTHOR OPPORTUNITY: add a related published Medium article") >= 1
 
 
-def test_the_disclosure_line_is_rendered_after_the_footer(d):
-    d.TITLES = titles(d, read_next=RN, disclosure="Disclosure: drafted with AI assistance and edited by the author.")
+def test_an_allowed_footer_disclosure_adds_nothing_to_the_footer_and_is_reported_as_the_ai_line(d):
+    d.TITLES = titles(d, read_next=RN, disclosure="I build agents for a living, and one of them drafted this. The opinions and the edits are mine.")
     passed(d)
-    assert final(d).endswith(f"{FU.DEFAULT_PASS_IT_ON}\n\nDisclosure: drafted with AI assistance and edited by the author.\n")
+    assert final(d).endswith(f"{FU.DEFAULT_PASS_IT_ON}\n")  # the italic line after the TLDR is the one place; the footer stays free of disclosure text
     assert "- disclosure: present" in (d.pkg / "PACKAGE.md").read_text()
+
+
+def test_free_text_footer_disclosure_is_rejected_at_submit(d):
+    d.to_stage("title")
+    rc, out = d.submit("title", titles(d, read_next=RN, disclosure="Disclosure: drafted with AI assistance and edited by the author."))
+    assert rc == 1 and any("disclosure must be omitted, empty, or exactly one of the AI disclosure sentences" in r for r in out["reasons"]), out
 
 
 def test_final_html_renders_the_hero_inline_from_a_package_relative_path(d):

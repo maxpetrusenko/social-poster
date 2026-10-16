@@ -69,7 +69,9 @@ def test_recent_flagged_and_corpus_echo(tmp_path):
     DC.ingest("gptzero", FIX / "gptzero_paste.txt", corpus=c, now="2026-10-17T00:00:00+00:00")
     recent = DC.recent_flagged(5, corpus=c)
     assert len(recent) == 5 and all(isinstance(s, str) for s in recent)
-    assert recent[0].startswith("The tool lets") or "immediately" in recent[0] or recent[0]  # newest first
+    gz = [r["sentence"] for r in rows(c) if r["detector"] == "gptzero" and r["label"] == "flagged"]
+    assert recent == list(reversed(gz))[:5]  # newest batch first (gptzero was ingested last), later rows first within it; no older winston row yet
+    assert recent[0].startswith("The tool lets a manager decide immediately")
     echo = P.corpus_echo("Intro. The logic of the bet is that a pile that size only works. Other words here.", corpus=c)
     assert echo["count"] >= 5 and echo["examples"]
     assert P.corpus_echo("Nothing in common with the corpus at all.", corpus=c)["count"] == 0

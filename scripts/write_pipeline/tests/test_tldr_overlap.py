@@ -76,3 +76,12 @@ def test_v5_tldr_restates_its_body():
     body = "\n\n".join(b.text for b in blocks[tl + 1:])
     assert FU.restates_body(tldr, body)
     assert any("restates the body" in r for r in FU.check_tldr(tldr, body))
+
+
+def test_a_subtitle_equal_to_a_body_heading_is_not_a_restatement():
+    from scripts.write_pipeline import furniture as FU
+    heading = "What the numbers leave open after one single run"
+    body = f"A lab ran one test.\n\n## {heading}\n\nThe report covers one workload on one fleet and says little else about it.\n"
+    assert FU.restates_body(heading, body) is None  # fail-before: the heading stayed in the body side and shared a 6-word run with the subtitle
+    sentence_body = f"A lab ran one test.\n\n## Scope\n\n{heading}, the report covers one workload.\n"
+    assert FU.restates_body(heading, sentence_body)  # the same words in a sentence of the argument are still a restatement

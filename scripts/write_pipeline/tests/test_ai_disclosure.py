@@ -89,11 +89,52 @@ def test_verify_checks_the_line_verbatim_and_its_position():
     assert FU.verify(assembled(None), {**FURN}, BIO_TEXT) == []  # a furniture without a disclosure line asks for none
 
 
-def test_a_footer_disclosure_that_duplicates_the_line_is_skipped():
+def test_the_footer_never_carries_disclosure_text_even_when_the_field_matches_the_line():
     furn = {**FURN, "ai_disclosure": DEFAULT, "disclosure": DEFAULT}
     assert DEFAULT not in FU.footer_md(furn, BIO_TEXT)
-    other = {**furn, "disclosure": "Disclosure: edited by the author."}
-    assert FU.footer_md(other, BIO_TEXT).rstrip().endswith("Disclosure: edited by the author.")
+    assert DEFAULT not in FU.footer_md({**furn, "disclosure": f"*{DEFAULT}*"}, BIO_TEXT)
+
+
+def test_footer_disclosure_input_is_empty_or_exactly_an_allowed_ai_sentence():
+    allowed = FU.allowed_disclosures()
+    assert allowed[0] == DEFAULT and set(LONG.values()) <= set(allowed) and len(allowed) == 9
+    for ok in (None, DEFAULT, f"*{DEFAULT}*", *LONG.values()):
+        assert FU.check_footer_inputs({"disclosure": ok}) == [], ok
+    for bad in ("The lab proved this works for everyone.", DEFAULT + " The lab proved this works for everyone.", "Disclosure: " + DEFAULT,
+                DEFAULT.replace("mine.", "mine!"), "", "   ", 5, DEFAULT + "\n\nThe lab proved this works for everyone."):
+        if bad in ("", "   "):
+            assert FU.check_footer_inputs({"disclosure": bad}) == [], repr(bad)  # empty means omitted
+        else:
+            assert any("disclosure must be omitted" in r or "one line" in r for r in FU.check_footer_inputs({"disclosure": bad})), repr(bad)
+
+
+def test_the_claim_free_text_disclosure_from_the_review_is_rejected():
+    assert FU.check_footer_inputs({"disclosure": "The lab proved this works for everyone."})  # failing input of the review: it rendered frozen and was never claims-checked
+
+
+def test_verify_rejects_an_appended_text_disclosure():
+    furn = {**FURN, "ai_disclosure": DEFAULT}
+    t = assembled().replace(f"*{DEFAULT}*", f"*{DEFAULT}* The lab proved this works for everyone.")
+    assert any("AI disclosure line" in r for r in FU.verify(t, furn, BIO_TEXT))
+
+
+def test_verify_rejects_multiple_disclosure_paragraphs():
+    furn = {**FURN, "ai_disclosure": DEFAULT}
+    t = assembled()
+    twice = t.replace(f"*{DEFAULT}*\n\n", f"*{DEFAULT}*\n\n*{DEFAULT}*\n\n")
+    assert any("appears 2 times" in r for r in FU.verify(twice, furn, BIO_TEXT))
+    in_body = t.replace("## Section\n\n", f"## Section\n\n*{LONG[(False, False, False)]}*\n\n")
+    assert any("appears 2 times" in r for r in FU.verify(in_body, furn, BIO_TEXT))
+    in_footer = t.rstrip("\n") + f"\n\n*{DEFAULT}*\n"
+    assert any("disclosure" in r for r in FU.verify(in_footer, furn, BIO_TEXT))
+
+
+def test_verify_rejects_a_disclosure_in_the_wrong_position_and_one_nobody_asked_for():
+    furn = {**FURN, "ai_disclosure": DEFAULT}
+    t = assembled()
+    moved = t.replace(f"*{DEFAULT}*\n\n", "").replace("## Section\n\n", f"## Section\n\n*{DEFAULT}*\n\n")
+    assert any("right after the TLDR" in r for r in FU.verify(moved, furn, BIO_TEXT))
+    assert any("none was requested" in r for r in FU.verify(t, {**FURN}, BIO_TEXT))  # the frozen pattern is valid only as the requested line
 
 
 @pytest.mark.parametrize("line", [DEFAULT, LONG[(True, True, True)], LONG[(False, False, False)]])
@@ -127,31 +168,71 @@ def test_the_hermes_narrative_gate_drops_a_single_italic_line():
     assert not any("drafted this" in x for x in m.prose_paragraphs(assembled()))
 
 
-# ---- provenance: facts come from state and logs, never assumed -----------------------------------------------------------
-def fake_pipe(tmp_path, validate="PENDING", state_prov=None, log=()):
-    (tmp_path / "write-pipeline").mkdir()
-    (tmp_path / "write-pipeline/log.jsonl").write_text("".join(json.dumps(e) + "\n" for e in log))
-    st = {"stages": {}}
-    if state_prov is not None:
-        st["provenance"] = state_prov
-    return SimpleNamespace(pkg=tmp_path, state=st, status=lambda s: validate if s == "validate" else "PENDING")
-
-
-def test_steps_assume_nothing(tmp_path):
-    s = PV.steps(fake_pipe(tmp_path))
+# ---- provenance: facts come from hash-bound artifacts, never from flags or log lines ---------------------------------------
+def test_steps_assume_nothing_on_a_fresh_pipeline(d):
+    from scripts.write_pipeline.core import Pipeline
+    d.cli("init")
+    s = PV.steps(Pipeline(d.pkg))
     assert (s.outline_supplied, s.human_edit, s.citations_checked) == (False, False, False)
 
 
-def test_citations_checked_follows_the_validate_stage(tmp_path):
-    assert PV.steps(fake_pipe(tmp_path, validate="DONE")).citations_checked is True
+def test_citations_checked_follows_the_validate_stage(d):
+    from scripts.write_pipeline.core import Pipeline
+    d.to_stage("validate")
+    assert PV.steps(Pipeline(d.pkg)).citations_checked is False
+    d.to_stage("editorial")
+    assert PV.steps(Pipeline(d.pkg)).citations_checked is True
 
 
-def test_human_facts_need_a_recorded_fact_in_state_or_log(tmp_path):
-    s = PV.steps(fake_pipe(tmp_path, state_prov={"outline_supplied": True, "human_edit": "yes"}))
-    assert s.outline_supplied is True and s.human_edit is False  # only a literal true counts
-    (tmp_path / "x").mkdir()
-    s = PV.steps(fake_pipe(tmp_path / "x", log=[{"event": "provenance_fact", "fact": "human_edit"}, {"event": "stage", "stage": "human_edit"}]))
-    assert s.human_edit is True and s.outline_supplied is False
+def _with_human(d, **over):
+    from .fakes import ANSWERED
+    from scripts.write_pipeline.core import Pipeline
+    d.human = {**ANSWERED, **over}
+    d.to_stage("outline")
+    return Pipeline(d.pkg)
+
+
+def test_outline_supplied_comes_only_from_the_answered_human_artifact(d):
+    assert PV.steps(_with_human(d, outline_supplied=True)).outline_supplied is True
+
+
+def test_an_answered_record_without_an_outline_does_not_claim_one(d):
+    assert PV.steps(_with_human(d, outline_supplied=False)).outline_supplied is False
+
+
+def test_a_no_answer_record_does_not_claim_one(d):
+    from .fakes import NO_ANSWER
+    d.human = dict(NO_ANSWER)
+    d.to_stage("outline")
+    from scripts.write_pipeline.core import Pipeline
+    assert PV.steps(Pipeline(d.pkg)).outline_supplied is False
+
+
+def test_a_fabricated_state_flag_or_log_fact_never_produces_outlined_or_edited_by_me(d):
+    pipe = _with_human(d, outline_supplied=False)
+    pipe.state["provenance"] = {"outline_supplied": True, "human_edit": True}  # the old flag path
+    pipe.log("provenance_fact", fact="human_edit")  # the old log path: {"event": "provenance_fact"}
+    pipe.log("provenance_fact", fact="outline_supplied")
+    pipe.save()
+    s = PV.steps(pipe)
+    assert (s.outline_supplied, s.human_edit) == (False, False)
+    line = FU.ai_disclosure("long", s)
+    assert "outlined by me" not in line and "edited by me" not in line
+
+
+def test_a_tampered_human_artifact_loses_the_outline_claim(d):
+    pipe = _with_human(d, outline_supplied=False)
+    art = d.pkg / pipe.rec("human")["artifact"]
+    art.write_text(art.read_text().replace('"outline_supplied": false', '"outline_supplied": true'))  # edited after the state recorded its sha
+    assert json.loads(art.read_text())["outline_supplied"] is True
+    assert PV.steps(pipe).outline_supplied is False  # status is no longer DONE and the sha no longer matches
+
+
+def test_human_edit_is_always_false_even_after_a_revalidate_adopted_an_edit(d):
+    pipe = _with_human(d, outline_supplied=True)
+    pipe.state["candidate"] = {"path": "x", "sha256": "0" * 64, "origin": "user-edit"}
+    pipe.state["user_modified"] = {"adopted_sha256": "0" * 64}
+    assert PV.steps(pipe).human_edit is False
 
 
 # ---- end to end through the pipeline ------------------------------------------------------------------------------------
@@ -171,3 +252,11 @@ def test_the_long_variant_in_the_title_json_is_rendered_from_logged_steps(d):
     d.TITLES = titles(d, read_next=RN, disclosure_variant="long")
     passed(d)
     assert f"*{LONG[(False, False, True)]}*" in final(d)  # validate is DONE, no outline or human edit is recorded
+
+
+def test_the_long_variant_says_outlined_by_me_only_with_an_answered_outline(d):
+    from .fakes import ANSWERED
+    d.human = {**ANSWERED, "outline_supplied": True}
+    d.TITLES = titles(d, read_next=RN, disclosure_variant="long")
+    passed(d)
+    assert f"*{LONG[(True, False, True)]}*" in final(d)  # outline from the hash-bound human artifact, validate DONE, no human edit mechanism
