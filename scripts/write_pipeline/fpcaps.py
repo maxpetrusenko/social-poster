@@ -106,7 +106,13 @@ def check(text: str, cap: dict | None = None) -> dict:
     sig = C.signals(text)
     viol = violations(sig, cap)
     return {"ok": not viol, "caps": cap, "values": sig["values"], "composite": sig["composite"], "violations": viol,
-            "offenders": offenders(text, viol) if viol else {}}
+            "offenders": offenders(text, viol) if viol else {}, "advisory": advisory(sig)}
+
+
+def advisory(sig: dict) -> dict:
+    """Detector patterns found in the text with their sentences. Reported only: never a violation, never part of `ok`."""
+    p = sig["patterns"]
+    return {"patterns": {k: {"count": n, "examples": p["examples"].get(k, [])} for k, n in p["counts"].items() if n}, "readability": p["readability"]}
 
 
 def reasons(res: dict, stage: str, attempt: int) -> list[str]:
@@ -119,4 +125,5 @@ def reasons(res: dict, stage: str, attempt: int) -> list[str]:
     r += [f"repeated sequence x{g['count']}: {g['ngram']!r}" for g in o.get("repeated_ngrams", [])]
     r += [f"one-sentence paragraph: {p!r}" for p in o.get("one_sentence_paragraphs", [])]
     r += [f"em dash: {s!r}" for s in o.get("em_dash_sentences", [])]
+    r += [f"advisory pattern [{k}] (not a cap, optional to fix): {e!r}" for k, v in res.get("advisory", {}).get("patterns", {}).items() for e in v["examples"][:1]]
     return r

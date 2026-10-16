@@ -1,0 +1,63 @@
+{
+ "flagged": [
+  {
+   "pattern": "stacked_hedges",
+   "text": "The warranty costs cannot simply be assigned to AI, and there's no clean proof that rehiring produced the quality improvement."
+  },
+  {
+   "pattern": "generic_scene",
+   "text": "A system passes its demo, a team celebrates how quickly the code was produced, and the cost emerges weeks later in review, integration, monitoring, support, or the one failure mode no one thought to test."
+  },
+  {
+   "pattern": "vague_experience",
+   "text": "I've seen versions of this problem in software."
+  },
+  {
+   "pattern": "tempting_frame",
+   "text": "It's tempting to tell that as a neat cautionary tale: Ford replaced people with AI, paid for it, rehired the experts, and recovered. The evidence doesn't support that whole sequence."
+  },
+  {
+   "pattern": "setup_correct",
+   "text": "It's tempting to tell that as a neat cautionary tale: Ford replaced people with AI, paid for it, rehired the experts, and recovered. The evidence doesn't support that whole sequence."
+  },
+  {
+   "pattern": "clause_triple",
+   "text": "The tool lets a manager decide immediately, at scale, and without having to make difficult judgments."
+  },
+  {
+   "pattern": "clause_triple",
+   "text": "It reduces turnaround time, improves quality, and lets a small team do work that used to need ten people."
+  },
+  {
+   "pattern": "so_closer",
+   "text": "So the whole thing hinges on whether AI can do your job for less than you cost."
+  },
+  {
+   "pattern": "logic_framing",
+   "text": "So the whole thing hinges on whether AI can do your job for less than you cost."
+  },
+  {
+   "pattern": "dramatic_closer",
+   "text": "The companies are finding out now, because the metric finally flipped."
+  },
+  {
+   "pattern": "logic_framing",
+   "text": "The logic of the bet is that a pile that size only works if it returns something close to what it cost, and the pool of money big enough to carry it is the wage bill."
+  },
+  {
+   "pattern": "clause_triple",
+   "text": "Amazon tore down the usage leaderboard, UBS started watching the throttling, and Ford learned the same lesson in the costliest way."
+  },
+  {
+   "pattern": "hedged_figures",
+   "text": "Wall Street's consensus for big-tech AI capital expenditure this year has climbed from around $485 billion in January to roughly 730 billion by July."
+  }
+ ],
+ "human": [
+  "Ford needed experienced people.",
+  "Companies made AI adoption mandatory.",
+  "Now some are finding out that adoption was the easy part.",
+  "Their judgment still had a job to do even when tools were supposed to make the work more efficient.",
+  "I keep coming back to an awkward question about the last two years of corporate AI: how many executives know what their AI rollout accomplished?"
+ ]
+}

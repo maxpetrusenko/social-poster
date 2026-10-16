@@ -8,6 +8,9 @@ export type CompareStageMeasure = {
   n_words: number;
   contract: { composite: number; values: Record<string, number> };
   author: { values: Record<string, number>; distance: Record<string, number> };
+  /** Advisory detector patterns and readability: absent in sidecars written before they existed. Never part of the composite. */
+  patterns?: { counts: Record<string, number>; examples: Record<string, string[]>; advisory: true };
+  readability?: { flesch: number; grade: number; long_sentence_share: number; n_sentences: number; median_sentence_words: number };
 };
 
 export type CompareUnit = {
