@@ -10,6 +10,8 @@ from __future__ import annotations
 import json
 
 from scripts.fingerprint_eval import metrics as FM
+from scripts.fingerprint_eval import patterns as PT
+from scripts.fingerprint_eval.detector_corpus import recent_flagged
 
 from . import antifp as AF
 from . import authorprofile as PF
@@ -24,6 +26,22 @@ BRIEF_KEY = "brief_sha256"
 BANNED_OPENERS = ["This isn't X, it's Y", "Not X but Y", "Not only X but also Y", "Here's the thing / the catch is", "Let's be honest", "What this really means",
                   "a question followed by its own answer"]
 BANNED_CLOSERS = ["In conclusion", "In short", "In summary", "The bottom line", "What to do next", "a rhetorical question as the last line"]
+READABILITY_MEDIAN_CEILING = 16  # the median sentence length target is min(author p50, this)
+READABILITY_MAX_GRADE = 9
+NEGATIVE_EXAMPLES = 5
+PATTERN_ADVICE = {  # advisory only: measured and reported, never scored, capped or gated
+    "so_closer": "a sentence opening 'So the whole thing ...'",
+    "tempting_frame": "'It's tempting to say X' framing",
+    "setup_correct": "a neat story told in one sentence only to be corrected in the next",
+    "stacked_hedges": "two or more hedges in one sentence (cannot simply, no clean proof)",
+    "vague_experience": "'I've seen versions of this' with no named case, number or date",
+    "generic_scene": "an unnamed scene of 'a team ..., a system ..., the cost ...'",
+    "dramatic_closer": "a paragraph closer that announces what companies are 'finding out now'",
+    "logic_framing": "'the logic of the bet', 'hinges on', 'comes down to'",
+    "clause_triple": "three parallel clauses or phrases closed by ', and ...'",
+    "hedged_figures": "approximate figures stacked in one sentence (around X to roughly Y)",
+    "rhythm_uniformity": "every paragraph shaped setup, evidence, punchline",
+}
 AI_VOCAB = "delve, tapestry, landscape, realm, navigate, unlock, leverage, crucial, pivotal, testament, underscore, embark, seamless, robust, holistic"
 
 
@@ -45,6 +63,7 @@ def targets(prof: dict, ev: dict, outline: dict) -> dict:
         "author_transitions_per_1k_p90": _r(b["transition_density"]["p90"]),
         "punctuation_share": {k: _r(prof["punctuation_share"][k], 3) for k in (",", ";", ":", "(", "?")},
         "first_person_per_1k": _r(prof["first_person_per_1k"], 1),
+        "readability": {"median_sentence_words": min(_r(sl["p50"]), READABILITY_MEDIAN_CEILING), "max_grade": READABILITY_MAX_GRADE},
         "claims": {"use": [str(c.get("id")) for c in claims if c.get("status") in ("supported", "attributed", "inference")],
                    "omit": [str(c.get("id")) for c in claims if c.get("status") == "unresolved"]},
         "sections": len(outline.get("sections") or []),
@@ -90,6 +109,19 @@ def prompt_block(t: dict) -> str:
     return text if len(words) <= PROMPT_BLOCK_WORDS else " ".join(words[:PROMPT_BLOCK_WORDS])
 
 
+def detector_patterns_block(t: dict, negatives: list[str] | None = None) -> str:
+    """Advisory text for the draft prompts, SEPARATE from generation_prompt_block (which stays within PROMPT_BLOCK_WORDS): writing patterns that
+    third-party AI detectors flagged, the readability target, and up to 5 recently flagged sentences as negative examples. Nothing here is scored."""
+    r = t["readability"]
+    L = ["ADVISORY WRITING PATTERNS (measured by code for learning only; never a score or a gate, and never a reason to trade a fact or a link):"]
+    L += [f"- avoid {v}" for v in PATTERN_ADVICE.values()]
+    L.append(f"Readability: median sentence {r['median_sentence_words']} words (the lower of the author's median and {READABILITY_MEDIAN_CEILING}), reading grade {r['max_grade']} or lower.")
+    if negatives:
+        L.append("Recently flagged sentences (do not echo their wording or shape):")
+        L += [f'- "{n[:200]}"' for n in negatives[:NEGATIVE_EXAMPLES]]
+    return "\n".join(L)
+
+
 def render(t: dict) -> str:
     s, p = t["sentence_words"], t["paragraph_words"]
     pu = t["punctuation_share"]
@@ -132,12 +164,14 @@ def run_brief(pipe: Pipeline) -> dict:
     t = targets(prof, pipe.read_json("research"), pipe.read_json("outline"))
     text = render(t)
     block = prompt_block(t)
+    dblock = detector_patterns_block(t, recent_flagged(NEGATIVE_EXAMPLES))
     art = {"hierarchy": HIERARCHY, "targets": t, "text": text, "word_count": len(text.split()), "generation_prompt_block": block, "prompt_block_words": len(block.split()),
+           "detector_patterns_block": dblock, "detector_patterns": sorted(PT.PATTERNS),
            "inputs": {"author_docs": prof["n_docs"], "author_words": prof["n_words"], "signals": sorted(PF.SIGNALS),
                       "evaluator_templates": [n for n, _ in FM.TEMPLATES]}}
     main = (json.dumps(art, indent=1, sort_keys=True) + "\n").encode()
     out = _finish(pipe, "brief", main, "json")
-    return {**out, "brief": text, "generation_prompt_block": block, "brief_sha256": current_hash(pipe), "word_count": art["word_count"],
+    return {**out, "brief": text, "generation_prompt_block": block, "detector_patterns_block": dblock, "brief_sha256": current_hash(pipe), "word_count": art["word_count"],
             "then": f"paste generation_prompt_block verbatim into the draft, editorial and voice prompts; submit those stages with --report JSON containing {{\"{BRIEF_KEY}\": \"<this hash>\"}}"}
 
 

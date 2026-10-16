@@ -1,0 +1,11 @@
+Winston AI Detection Report
+Human score: 0%
+
+Sections driving AI score
+1. So the whole thing hinges on whether AI can do your job for less than you cost. (0% human)
+2. The companies are finding out now, because the metric finally flipped. (0% human)
+3. The logic of the bet is that a pile that size only works if it returns something close to what it cost, and the pool of money big enough to carry it is the wage bill. (0% human)
+4. Amazon tore down the usage leaderboard, UBS started watching the throttling, and Ford learned the same lesson in the costliest way. (0% human)
+5. Wall Street's consensus for big-tech AI capital expenditure this year has climbed from around $485 billion in January to roughly 730 billion by July. (0% human)
+
+Readability score: 56

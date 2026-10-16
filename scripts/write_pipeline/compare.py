@@ -71,7 +71,10 @@ def units(md: str) -> list[dict]:
 def measure_stage(text: str, prof: dict) -> dict:
     sig = CT.signals(text)
     ev = PF.evaluate(text, prof)
+    adv = sig["patterns"]  # advisory: shown beside the contract metrics, in neither the composite nor bad_direction
     return {
+        "patterns": {"counts": adv["counts"], "examples": adv["examples"], "advisory": True},
+        "readability": adv["readability"],
         "n_words": ev["n_words"],
         "contract": {"composite": sig["composite"], "values": {k: round(v, 4) for k, v in sig["values"].items()}},
         "author": {"values": {k: round(v, 4) for k, v in ev["values"].items()}, "distance": {k: round(v, 4) for k, v in ev["distance"].items()}},

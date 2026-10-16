@@ -1,0 +1,24 @@
+GPTZero AI Detection Report
+Overall: 74% probability this text is AI generated
+
+Your most AI sentences
+1. "The warranty costs cannot simply be assigned to AI, and there's no clean proof that rehiring produced the quality improvement." (98% AI)
+2. "A system passes its demo, a team celebrates how quickly the code was produced, and the cost emerges weeks later in review, integration, monitoring, support, or the one failure mode no one thought to test." (97% AI)
+3. "I've seen versions of this problem in software." (95% AI)
+
+Your most human sentences
+- "Ford needed experienced people." (2% AI)
+- "Companies made AI adoption mandatory." (3% AI)
+- "Now some are finding out that adoption was the easy part." (4% AI)
+- "Their judgment still had a job to do even when tools were supposed to make the work more efficient." (5% AI)
+- "I keep coming back to an awkward question about the last two years of corporate AI: how many executives know what their AI rollout accomplished?" (6% AI)
+
+Sentence impact
+High AI impact
+"It's tempting to tell that as a neat cautionary tale: Ford replaced people with AI, paid for it, rehired the experts, and recovered."
+"The evidence doesn't support that whole sequence."
+Medium AI impact
+"It reduces turnaround time, improves quality, and lets a small team do work that used to need ten people."
+High AI impact: The tool lets a manager decide immediately, at scale, and without having to make difficult judgments.
+Low AI impact
+"Ford needed experienced people."

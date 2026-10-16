@@ -8,6 +8,7 @@ Heavy (antifp): template hits >= HEAVY_TEMPLATE_HITS or composite >= HEAVY_COMPO
 from __future__ import annotations
 
 from scripts.fingerprint_eval import metrics as FM
+from scripts.fingerprint_eval import patterns as PT
 from scripts.fingerprint_eval.textutil import core_markdown
 
 HEAVY_TEMPLATE_HITS = 4
@@ -23,6 +24,14 @@ EM_DASH_CAP = 0.0  # V6 forbids em dashes in prose
 EM_DASH_REPORT_FLOOR = 0.01  # per 1k words: the reporting resolution of the em dash author signal (one dash in 100k words); the cap above is still 0
 
 
+def advisory_patterns(text: str) -> dict:
+    """Third-party-detector writing patterns and readability: measured and reported, NEVER in WEIGHTS, the composite, a cap or a gate (Max's policy:
+    detectors are for measuring and learning patterns only, not an optimization target)."""
+    det = PT.detect(text)
+    return {"counts": {k: v["count"] for k, v in det.items()}, "examples": {k: v["examples"] for k, v in det.items() if v["count"]},
+            "readability": PT.readability(text), "advisory": True}
+
+
 def signals(text: str) -> dict:
     fp = FM.fingerprint(core_markdown(text))
     tmpl = fp["templates"]
@@ -34,7 +43,8 @@ def signals(text: str) -> dict:
         "transition_excess": max(0.0, fp["transition_total_per_1k"] - TRANSITION_FLOOR),
     }
     return {"values": v, "composite": round(sum(WEIGHTS[k] * x for k, x in v.items()), 4),
-            "templates": {k: {"count": t["count"], "examples": t["examples"]} for k, t in tmpl.items()}, "n_words": fp["n_words"]}
+            "templates": {k: {"count": t["count"], "examples": t["examples"]} for k, t in tmpl.items()}, "n_words": fp["n_words"],
+            "patterns": advisory_patterns(text)}
 
 
 def is_heavy(sig: dict) -> bool:

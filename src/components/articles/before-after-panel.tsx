@@ -8,7 +8,7 @@ import {
   type FingerprintCompare,
 } from "@/lib/article-agent/pipeline-compare-types";
 
-type MetricRow = { key: string; label: string; read: (stage: CompareStageMeasure) => number | undefined };
+type MetricRow = { key: string; label: string; read: (stage: CompareStageMeasure) => number | undefined; advisory?: boolean };
 
 const METRICS: MetricRow[] = [
   { key: "composite", label: "Composite", read: (s) => s.contract.composite },
@@ -19,6 +19,14 @@ const METRICS: MetricRow[] = [
   { key: "paragraph_regularity", label: "Paragraph regularity", read: (s) => s.author.values.paragraph_regularity },
   { key: "burstiness", label: "Burstiness", read: (s) => s.author.values.burstiness },
   { key: "author_distance", label: "Author distance", read: (s) => s.author.values.author_distance },
+  {
+    key: "pattern_hits",
+    label: "Detector patterns (advisory)",
+    advisory: true,
+    read: (s) => (s.patterns ? Object.values(s.patterns.counts).reduce((sum, n) => sum + n, 0) : undefined),
+  },
+  { key: "reading_grade", label: "Reading grade (advisory)", advisory: true, read: (s) => s.readability?.grade },
+  { key: "flesch", label: "Flesch reading ease (advisory)", advisory: true, read: (s) => s.readability?.flesch },
 ];
 
 const EPSILON = 0.0001;
@@ -105,7 +113,7 @@ export function BeforeAfterPanel({
             const b = metric.read(beforeStage);
             const a = metric.read(afterStage);
             const delta = b === undefined || a === undefined ? 0 : a - b;
-            const worse = b !== undefined && a !== undefined && isWorse(data.bad_direction[metric.key], delta);
+            const worse = !metric.advisory && b !== undefined && a !== undefined && isWorse(data.bad_direction[metric.key], delta);
             return (
               <tr key={metric.key} className="border-b border-[#f4ebdd]">
                 <td className="py-2 pr-3 text-[#171717]">{metric.label}</td>
