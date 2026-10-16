@@ -8,8 +8,8 @@ from . import fakes
 from .test_repair_adds import candidate, major_open, state, try_repair
 
 OLD = "> " + fakes.Driver.TITLES["tldr"]
-NEW = ("> A 2025 lab report found median latency fell from 120 ms to 85 ms on 40 nodes after a cache change. The authors attribute the drop to the cache, "
-       "for one workload.")
+NEW = ("> Operators of a 40 node fleet saw the middle request get faster once the cache changed, and they credit the cache. "
+       "That holds for the single workload they ran.")
 
 
 def reasons(out):
@@ -27,7 +27,7 @@ def test_a_rewritten_tldr_is_accepted_in_repair_and_judged_by_the_claims_gate(d)
 
 @pytest.mark.parametrize("bad,why", [
     (NEW + " Median latency also fell 300 ms on cloud hardware.", "number"),
-    (NEW.replace("a cache change", "a [cache change](https://example.com/lab-report)"), "link"),
+    (NEW.replace("the cache changed", "the [cache changed](https://example.com/lab-report)"), "link"),
     ("> Direct answer: " + NEW[2:], "Direct answer"),
     (NEW + " The change will cut hosting costs by 30 percent worldwide.", "number"),
 ])
@@ -85,7 +85,7 @@ def test_fingerprint_measurement_includes_the_tldr(d):
     paras, sents = FC._prose(cand)
     assert any(unquote(OLD).strip() in p for p in paras)       # generation caps and fpverify count the TLDR's sentences and templates
     sl, pl, texts = PF._lengths(cand)
-    assert any("lab report found median latency" in t for t in texts)
+    assert any("got quicker after a cache tweak" in t for t in texts)
 
 
 def test_an_edited_tldr_and_caption_survive_fpverify_and_the_final_integrity_gate(d):

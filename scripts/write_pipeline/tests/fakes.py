@@ -297,7 +297,7 @@ class Driver:
     TITLES = {"candidates": [f"How a cache change moved median latency on 40 nodes, variant {i}" for i in range(1, 10)] + ["What a lab's cache test says about latency and what it leaves open"],
               "pick": "What a lab's cache test says about latency and what it leaves open", "rationale": "Names the subject and the scope limit the body proves.",
               "subtitle": "A 2025 report shows median latency falling from 120 ms to 85 ms on 40 nodes, for one workload.",
-              "tldr": "A 2025 lab report found median latency fell from 120 ms to 85 ms on 40 nodes after a cache change, and the authors attribute the drop to the cache for one workload.",
+              "tldr": "One fleet of 40 nodes got quicker after a cache tweak, and its operators credit the tweak. Whether your own traffic gains as much is the open question, and a single published run cannot settle it.",
               "read_next": {"title": "Why tail latency tells a different story", "url": "https://medium.com/@max.petrusenko/why-tail-latency-tells-a-different-story-0123456789ab"}}
 
     def images(self, **over):

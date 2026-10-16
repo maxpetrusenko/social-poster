@@ -137,8 +137,8 @@ def test_final_md_has_hero_tldr_body_and_the_footer_in_order(d):
     d.TITLES = titles(d, read_next=RN)
     passed(d)
     t = final(d)
-    assert re.match(r"# .+\n\n### .+\n\n!\[[^\]]+\]\(assets/hero\.jpg\)\n\n\*[^\n]+\*\n\n> A 2025 lab report found", t)
-    assert t.index("> A 2025 lab report") < t.index("## What the test measured")
+    assert re.match(r"# .+\n\n### .+\n\n!\[[^\]]+\]\(assets/hero\.jpg\)\n\n\*[^\n]+\*\n\n> One fleet of 40 nodes", t)
+    assert t.index("> One fleet") < t.index("## What the test measured")
     assert t.endswith(f"\n---\n\nRead next: [{RN['title']}]({RN['url']})\n\n---\n\n{BIO_TEXT}\n\n{FU.DEFAULT_PASS_IT_ON}\n")
     assert state_json(d)["stages"]["images"]["bio_sha256"]
 

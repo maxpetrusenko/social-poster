@@ -19,6 +19,7 @@ WEIGHTS = {"template_hits": 3.0, "em_dash_per_1k": 1.0, "repeated_ngram": 50.0, 
 COMPOSITE_MARGIN = 0.7  # the composite cap is this share of the heavy threshold
 TEMPLATE_MARGIN = 2  # template hits allowed = heavy threshold minus this
 SHARES = {"transition_excess": 0.25, "repeated_ngram": 0.15, "one_sentence_para_excess": 0.12}  # share of the composite budget each soft signal may use
+REGRESSION_EPS = 0.0  # the final composite may not exceed the draft composite by more than this (Max: strict, any increase is NOT_READY)
 EM_DASH_CAP = 0.0  # V6 forbids em dashes in prose
 EM_DASH_REPORT_FLOOR = 0.01  # per 1k words: the reporting resolution of the em dash author signal (one dash in 100k words); the cap above is still 0
 

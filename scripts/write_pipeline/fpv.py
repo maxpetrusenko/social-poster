@@ -16,6 +16,7 @@ from . import addcheck as AC
 from . import antifp as AF
 from . import brief as BR
 from . import fpcontract as CT
+from . import furniture as FU
 from . import editguard as G
 from . import authorprofile as PF
 from .core import BLOCKED, NOT_READY, Pipeline, PipelineError, atomic_write, sha_bytes
@@ -96,6 +97,7 @@ def report(pipe: Pipeline, cur: str, loop: dict) -> dict:
     verdict = CT.assess(cur, debt)
     return {
         "contract": {"heavy": verdict["heavy"], "cap_violations": verdict["violations"], "owed": verdict["owed"], "composite": verdict["sig"]["composite"]},
+        "regression": regression_vs_draft(pipe, cur),
         "policy": "own style-fingerprint metrics only (scripts.fingerprint_eval.metrics); no third-party AI detector was used or targeted",
         "author_corpus": {"docs": prof["n_docs"], "words": prof["n_words"]},
         "baseline": {"sha256": sha_bytes(baseline_text(pipe).encode()), "n_words": b["n_words"], "values": b["values"], "distance": b["distance"],
@@ -136,6 +138,17 @@ def run_fpverify(pipe: Pipeline) -> dict:
     return finish(pipe)
 
 
+def regression_vs_draft(pipe: Pipeline, cur: str) -> dict | None:
+    """Final (footer stripped, TLDR kept) against the first draft, both measured with the one contract composite. None when there is no draft.
+    Strict: a composite above the draft's by more than CT.REGRESSION_EPS is a regression. There is no automatic fallback to the draft."""
+    draft = pipe.read_art("draft")
+    if not draft or not draft.strip():
+        return None
+    d = CT.signals(draft)["composite"]
+    f = CT.signals(FU.split_footer(cur)[0])["composite"]
+    return {"draft": d, "final": f, "delta": round(f - d, 4), "regressed": f > d + CT.REGRESSION_EPS + 1e-12}
+
+
 def _contract_bad(rep: dict) -> list[str]:
     """What the generation caps and antifp's heavy rule (fpcontract) still reject in the measured text. Remaining author-band signals are
     reported; these are never accepted."""
@@ -143,6 +156,9 @@ def _contract_bad(rep: dict) -> list[str]:
     out = []
     if c["heavy"]:
         out.append(f"the text is heavy by the anti-fingerprint contract (composite {c['composite']}; heavy at template hits >= {CT.HEAVY_TEMPLATE_HITS} or composite >= {CT.HEAVY_COMPOSITE})")
+    rg = rep.get("regression")
+    if rg and rg.get("regressed"):
+        out.append(f"the final is worse than the draft on the fingerprint contract (composite {rg['draft']} -> {rg['final']}, +{rg['delta']}); a final may never ship worse than its draft")
     out += [f"{x['signal']} {x['value']} exceeds the generation cap {x['cap']} while a stage carries fingerprint debt" for x in c["owed"]]
     return out
 

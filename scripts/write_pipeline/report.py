@@ -202,6 +202,14 @@ def build_package_md(pipe: Pipeline, review: dict | None, route: dict | None, fi
     if av and not fpv.get("author_voice"):
         S["AUTHOR-VOICE RESULT"].insert(0, "- fingerprint verification did not run; distance computed directly with the metrics module (before = draft, after = current text)")
     S["AUTHOR-VOICE RESULT"].append(f"- voice-stage composite (antifp): before {af.get('baseline', {}).get('composite')}, after {af.get('after', {}).get('composite')}")
+    try:
+        from . import fpv as FPV
+        rg = FPV.regression_vs_draft(pipe, text)
+    except Exception:  # noqa: BLE001  report formatting must never fail the package
+        rg = None
+    final_vs_draft = ([f"- Final vs draft: composite {rg['draft']} (draft) -> {rg['final']} (final, footer excluded), delta {rg['delta']:+}; "
+                       + ("REGRESSION: the final is worse than the draft" if rg["regressed"] else "not worse than the draft")]
+                      if rg else ["- Final vs draft: not measured (no draft artifact)"])
     if fpv:
         S["FINGERPRINT BASELINE"] = [f"- the first draft ({fpv['baseline']['sha256'][:12]}, {fpv['baseline']['n_words']} words); author corpus {fpv['author_corpus']['docs']} documents", *_signal_lines(fpv["baseline"]["signals"])]
         S["FINGERPRINT FINAL"] = [f"- the final candidate ({fpv['final']['sha256'][:12]}, {fpv['final']['n_words']} words)", *_signal_lines(fpv["final"]["signals"]), f"- total severity {fpv['baseline']['total_severity']} -> {fpv['final']['total_severity']}"]
@@ -219,6 +227,7 @@ def build_package_md(pipe: Pipeline, review: dict | None, route: dict | None, fi
         for k in ("FINGERPRINT BASELINE", "FINGERPRINT FINAL", "FINGERPRINT CHANGES", "REMAINING FINGERPRINT SIGNALS"):
             S[k] = ["- not reached: fingerprint verification (stage fpverify) did not run"]
         _antifp_sections(pipe, S, text, af)
+    S["FINGERPRINT CHANGES"] = final_vs_draft + S["FINGERPRINT CHANGES"]
     S["CLAIM CHECK"], S["LINK CHECK"], S["SOURCE CHECK"], S["STRUCTURE CHECK"], S["SEMANTIC PRESERVATION"] = ck["claim"], ck["link"], ck["source"], ck["structure"], ck["semantic"]
     S["MEDIUM REVIEW"] = ([f"- status {review.get('status')}; hard policy risks {review.get('hard_policy_risks')}; warnings {review.get('warnings')}"] if review else ["- not reached"])
     if route:
