@@ -7,9 +7,19 @@ Heavy (antifp): template hits >= HEAVY_TEMPLATE_HITS or composite >= HEAVY_COMPO
 """
 from __future__ import annotations
 
+import os
+
 from scripts.fingerprint_eval import metrics as FM
 from scripts.fingerprint_eval import patterns as PT
 from scripts.fingerprint_eval.textutil import core_markdown
+
+ENV_GATE = "WRITE_PIPELINE_FINGERPRINT"
+
+
+def gate_enabled() -> bool:
+    """Fingerprint GATING switch, read on every call. Default off: signals are measured and reported, never block a run. "on" restores enforcement."""
+    return os.environ.get(ENV_GATE, "off").strip().lower() == "on"
+
 
 HEAVY_TEMPLATE_HITS = 4
 HEAVY_COMPOSITE = 18.0

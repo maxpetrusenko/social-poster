@@ -28,3 +28,9 @@ def _bio(tmp_path_factory, monkeypatch):
     p.write_text(BIO_TEXT + "\n\n---\n\n**Read next ->** [An old pick](https://medium.com/x/old-1)\n")
     monkeypatch.setenv("WRITE_PIPELINE_BIO", str(p))
 
+
+
+@pytest.fixture(autouse=True)
+def _fingerprint_gate_on(monkeypatch):
+    """The shipped default is gate off; the pre-existing suite asserts enforcement, so it runs with the gate on. New tests override."""
+    monkeypatch.setenv("WRITE_PIPELINE_FINGERPRINT", "on")

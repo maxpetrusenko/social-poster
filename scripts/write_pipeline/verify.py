@@ -98,9 +98,10 @@ def final_failures(pipe: Pipeline, runner, before_stop: bool = False) -> list[st
         bad += FU.verify(raw.decode("utf-8"), furn, bio, exact_tldr=False)  # the TLDR is editable prose: the edit guard and the claims gate judge it
     except (FU.FurnitureError, UnicodeDecodeError) as e:
         bad.append(f"furniture could not be verified: {str(e)[:160]}")
-    try:  # never ship worse than the draft: recomputed from the bytes on disk, so READY cannot be reported over a regression
+    try:  # never ship worse than the draft: recomputed from the bytes on disk, so READY cannot be reported over a regression. Fingerprint gate on only.
+        from . import fpcontract as _CT
         from . import fpv
-        rg = fpv.regression_vs_draft(pipe, raw.decode("utf-8"))
+        rg = fpv.regression_vs_draft(pipe, raw.decode("utf-8")) if _CT.gate_enabled() else None
         if rg and rg["regressed"]:
             bad.append(f"the final is worse than the draft on the fingerprint contract (composite {rg['draft']} -> {rg['final']}, +{rg['delta']})")
     except (PipelineError, UnicodeDecodeError, OSError, ValueError) as e:

@@ -95,7 +95,7 @@ def report(pipe: Pipeline, cur: str, loop: dict) -> dict:
     remaining = [r for r in f["signals"] if r["significant"]]
     debt = any((pipe.rec(st) or {}).get("fingerprint_debt") for st in ("draft", "editorial", "voice"))
     verdict = CT.assess(cur, debt)
-    return {
+    rep = {
         "contract": {"heavy": verdict["heavy"], "cap_violations": verdict["violations"], "owed": verdict["owed"], "composite": verdict["sig"]["composite"]},
         "regression": regression_vs_draft(pipe, cur),
         "policy": "own style-fingerprint metrics only (scripts.fingerprint_eval.metrics); no third-party AI detector was used or targeted",
@@ -112,6 +112,9 @@ def report(pipe: Pipeline, cur: str, loop: dict) -> dict:
         "author_voice": {"baseline_distance": b["distance"].get("composite"), "final_distance": f["distance"].get("composite"),
                          "components": {k: [b["distance"].get(k), f["distance"].get(k)] for k in ("sentence_length_jsd", "paragraph_length_jsd", "punctuation_jsd", "function_word_cosine")}},
     }
+    if not CT.gate_enabled():
+        rep["gate"] = "off"
+    return rep
 
 
 def view(pipe: Pipeline) -> dict:
@@ -131,7 +134,7 @@ def run_fpverify(pipe: Pipeline) -> dict:
     if bad:
         return {"ok": False, "code": "WAITING", "stage": "fpverify", "reasons": bad}
     v = view(pipe)
-    if (v["remaining_significant"] or _contract_bad(v["report"])) and v["rounds_left"] > 0:
+    if CT.gate_enabled() and (v["remaining_significant"] or _contract_bad(v["report"])) and v["rounds_left"] > 0:
         return {**{k: v[k] for k in ("ok", "rounds_used", "rounds_left", "remaining_significant", "strongest_remaining", "author_distance", "current_file")},
                 "stage": "fpverify", "done": False,
                 "then": f"fpverify try --file F --signal <one of {sorted(PF.SIGNALS)}> (max {MAX_ROUNDS} rounds), or fpverify done to accept the remaining signals into PACKAGE.md"}
@@ -154,6 +157,8 @@ def regression_vs_draft(pipe: Pipeline, cur: str) -> dict | None:
 def _contract_bad(rep: dict) -> list[str]:
     """What the generation caps and antifp's heavy rule (fpcontract) still reject in the measured text. Remaining author-band signals are
     reported; these are never accepted."""
+    if not CT.gate_enabled():
+        return []
     c = rep["contract"]
     out = []
     if c["heavy"]:

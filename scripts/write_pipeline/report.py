@@ -7,6 +7,7 @@ from collections import Counter
 
 from scripts.fingerprint_eval.guards import structure_preservation
 
+from . import fpcontract as FPC
 from . import furniture as FU
 from . import mdlib as M
 from . import relevance as RV
@@ -252,6 +253,9 @@ def build_package_md(pipe: Pipeline, review: dict | None, route: dict | None, fi
                 S["READY/NOT_READY"].append(f"- open critic finding {f.get('id')}: {f.get('reason')} (passage: {str(f.get('passage'))[:140]!r})")
     head = [f"# Review package: {title}", "", ("Stopped for review. Nothing was published, scheduled or changed on Medium." if verdict == "READY"
                                               else "NOT READY. This run ended without a verified article. Nothing was published, scheduled or changed on Medium."), ""]
+    if not FPC.gate_enabled():
+        head.insert(2, "Fingerprint gate: off (WRITE_PIPELINE_FINGERPRINT); signals reported, not enforced")
+        head.insert(3, "")
     body = []
     for k in SECTIONS:
         body += [f"## {HEADINGS.get(k, k)}", "", *(S[k] or ["- none"]), ""]

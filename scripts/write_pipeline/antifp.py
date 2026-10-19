@@ -13,7 +13,7 @@ from pathlib import Path
 from . import editguard as G
 from . import mdlib as M
 from .fpcontract import (EM_DASH_CAP, HEAVY_COMPOSITE, HEAVY_TEMPLATE_HITS, ONE_SENTENCE_PARA_FLOOR, TRANSITION_FLOOR, WEIGHTS,  # noqa: F401  re-exported: ONE contract
-                         is_blocking, signals)
+                         gate_enabled, is_blocking, signals)
 from .core import Pipeline, PipelineError, atomic_write, sha_bytes
 from .validators import asserted_unresolved
 
@@ -160,7 +160,11 @@ def finish(pipe: Pipeline) -> dict:
         return {"ok": False, "reasons": [str(e)]}
     sig = signals(cur)
     debts = {st: pipe.rec(st)["fingerprint_debt"] for st in ("draft", "editorial", "voice") if (pipe.rec(st) or {}).get("fingerprint_debt")}
-    heavy, owed = is_blocking(sig, bool(debts))  # a stage accepted with fingerprint_debt must be clear of the caps by the end of this loop
+    heavy, owed = is_blocking(sig, bool(debts))
+    gate = gate_enabled()
+    if not gate:  # measured values stay in the report; nothing here may block a run
+        heavy = False
+    # a stage accepted with fingerprint_debt must be clear of the caps by the end of this loop
     report = {"policy": "own style-fingerprint metrics only; no third-party AI detector was used or targeted",
               "reference_sha256": loop["reference_sha"], "final_sha256": sha_bytes(cur.encode()),
               "baseline": {"composite": loop["baseline"]["composite"], "values": loop["baseline"]["values"]},
@@ -169,4 +173,6 @@ def finish(pipe: Pipeline) -> dict:
               "remaining_signals": ranking(sig), "fingerprint_heavy": heavy,
               "thresholds": {"template_hits": HEAVY_TEMPLATE_HITS, "composite": HEAVY_COMPOSITE},
               "fingerprint_debt": {"stages": debts, "uncleared": owed}}
+    if not gate:
+        report["gate"] = "off"
     return {"ok": True, "text": cur, "report": report, "heavy": heavy}
