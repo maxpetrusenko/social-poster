@@ -9,6 +9,7 @@ from . import brief as BR
 from . import cuts as CT
 from . import editguard as G
 from . import fpcaps as FC
+from . import fpcontract as FPC
 from . import furniture as FU
 from . import experience as EX
 from . import humaninput as HI
@@ -366,7 +367,9 @@ def _text_stage(pipe: Pipeline, stage: str, text: str, rep: dict | None, rep_raw
 def _fingerprint_gate(pipe: Pipeline, stage: str, text: str) -> dict | None:
     """Generation-time enforcement of the brief's fingerprint caps (after the claims gate, which stays first). Up to FC.MAX_REJECTIONS rejections per
     stage with the exact offending passages; the next failure is accepted with a recorded fingerprint_debt that antifp must clear, so a run never deadlocks.
-    Returns a rejection dict, {"fingerprint_debt": ...} to attach to the stage, or None."""
+    Returns a rejection dict, {"fingerprint_debt": ...} to attach to the stage, or None. Off with the fingerprint gate (FPC.gate_enabled)."""
+    if not FPC.gate_enabled():
+        return None
     prev = pipe.rec(stage)
     if prev and pipe.status(stage) == DONE and (pipe.read_art(stage) or "") == text:
         return {"fingerprint_debt": prev["fingerprint_debt"]} if prev.get("fingerprint_debt") else None  # an idempotent resubmit is not measured again

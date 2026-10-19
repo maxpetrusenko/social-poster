@@ -96,3 +96,13 @@ def test_package_md_states_the_gate_only_when_off(d, monkeypatch):
     assert report.build_package_md(pipe, None, None, None, text=text).count(line) == 1
     monkeypatch.setenv(ENV, "on")
     assert line not in report.build_package_md(pipe, None, None, None, text=text)
+
+
+def test_off_generic_draft_is_not_rejected_at_submit(d, monkeypatch):
+    import json
+    from .fakes import GENERIC
+    monkeypatch.setenv(CT.ENV_GATE, "off")
+    d.to_stage("draft")
+    rc, out = d.submit("draft", GENERIC)
+    st = json.loads((d.pkg / "write-pipeline" / "state.json").read_text())
+    assert out.get("code") != "FINGERPRINT" and "fingerprint_debt" not in st["stages"]["draft"] and not st.get("fingerprint_rejections")
