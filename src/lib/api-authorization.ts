@@ -12,7 +12,7 @@ import { validateApiKey, buildTenantFromApiKey } from "@/lib/api-key-auth";
 type TenantContext = Awaited<ReturnType<typeof requireTenantContext>>;
 type ApiTenantCheck = (context: TenantContext) => boolean;
 
-async function requireApiTenant(check: ApiTenantCheck, message: string) {
+async function requireApiTenant(check: ApiTenantCheck, message: string, options: { requireWrite?: boolean } = {}) {
   // Try session auth first
   const session = await requireApiSession();
   if (!(session instanceof NextResponse)) {
@@ -35,7 +35,11 @@ async function requireApiTenant(check: ApiTenantCheck, message: string) {
   }
 
   // For API key auth, check permission level
-  if (check === canPublishCurrentWorkspaceContent || check === canEditCurrentWorkspaceContent) {
+  if (
+    options.requireWrite ||
+    check === canPublishCurrentWorkspaceContent ||
+    check === canEditCurrentWorkspaceContent
+  ) {
     if (keyCtx.permission !== "read_write") {
       return NextResponse.json({ error: "This API key only has read permission. A read_write key is required." }, { status: 403 });
     }
@@ -55,7 +59,17 @@ export async function requireApiOrgAdmin() {
   );
 }
 
+/** Mutating manager access: API keys must be read_write. Use the Read variant for GET-only routes. */
 export async function requireApiWorkspaceManager() {
+  return requireApiTenant(
+    canManageCurrentWorkspace,
+    "Workspace manager access is required.",
+    { requireWrite: true }
+  );
+}
+
+/** Read-only manager access: any active API key (read or read_write) in the workspace. */
+export async function requireApiWorkspaceManagerRead() {
   return requireApiTenant(
     canManageCurrentWorkspace,
     "Workspace manager access is required."

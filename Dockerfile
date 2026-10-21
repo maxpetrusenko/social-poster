@@ -46,6 +46,7 @@ COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/scripts/container-entrypoint.sh ./container-entrypoint.sh
 COPY --from=builder /app/scripts/seed-work-to-post-recent-work.mjs ./scripts/seed-work-to-post-recent-work.mjs
+COPY --from=builder /app/scripts/create-api-key.mjs ./scripts/create-api-key.mjs
 
 RUN chmod +x ./container-entrypoint.sh
 

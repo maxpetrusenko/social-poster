@@ -146,8 +146,10 @@ function isLocalOAuthDebugRequest(
   platform: string
 ) {
   if (platform !== "instagram") return false;
-  if (process.env.NODE_ENV === "production") return false;
   if (request.nextUrl.searchParams.get("debug") !== "oauth") return false;
+  // In production the route is already auth-gated; show the exact redirect_uri
+  // so it can be compared with Meta's "OAuth redirect URIs" list.
+  if (process.env.NODE_ENV === "production") return true;
 
   try {
     return isLoopback(new URL(redirectUri).hostname);
