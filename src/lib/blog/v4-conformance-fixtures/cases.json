@@ -1,0 +1,86 @@
+[
+  {
+    "name": "valid",
+    "file": "valid.json",
+    "expect": "accept",
+    "note": "baseline v4 article"
+  },
+  {
+    "name": "valid-pipes-in-code-fence",
+    "file": "valid-pipes-in-code-fence.json",
+    "expect": "accept",
+    "note": "table syntax inside a code fence is code, not a table"
+  },
+  {
+    "name": "table",
+    "file": "table.json",
+    "expect": "reject",
+    "note": "Markdown table; Worker and verifier reject"
+  },
+  {
+    "name": "thematic-break",
+    "file": "thematic-break.json",
+    "expect": "accept",
+    "note": "bare --- is a thematic break, not a table (manager #163)"
+  },
+  {
+    "name": "wrong-framework-hash",
+    "file": "wrong-framework-hash.json",
+    "expect": "reject",
+    "note": "unapproved framework sha256"
+  },
+  {
+    "name": "missing-research-evidence",
+    "file": "missing-research-evidence.json",
+    "expect": "reject",
+    "note": "required field absent"
+  },
+  {
+    "name": "missing-readiness-gate",
+    "file": "missing-readiness-gate.json",
+    "expect": "reject",
+    "note": "readiness.factual absent"
+  },
+  {
+    "name": "host-mismatch-image",
+    "file": "host-mismatch-image.json",
+    "expect": "reject",
+    "note": "image host is not upload.wikimedia.org"
+  },
+  {
+    "name": "host-mismatch-proof-url",
+    "file": "host-mismatch-proof-url.json",
+    "expect": "reject",
+    "note": "capture proof url differs from source url"
+  },
+  {
+    "name": "package-sources-proof",
+    "file": "package-sources-proof.json",
+    "expect": "accept",
+    "note": "engine package.sources capture proof (manager #172)"
+  },
+  {
+    "name": "unknown-proof-tool",
+    "file": "unknown-proof-tool.json",
+    "expect": "reject",
+    "note": "proof tool not allowed"
+  },
+  {
+    "name": "manifest-blocker",
+    "file": "manifest-blocker.json",
+    "expect": "reject",
+    "note": "research manifest has a blocker"
+  },
+  {
+    "name": "no-subtitle",
+    "file": "no-subtitle.json",
+    "expect": "reject",
+    "note": "no H3 subtitle under the H1"
+  },
+  {
+    "name": "unclosed-fence",
+    "file": "unclosed-fence.json",
+    "expect": "reject",
+    "note": "unclosed code fence"
+  }
+]
