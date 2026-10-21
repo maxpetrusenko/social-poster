@@ -1,4 +1,4 @@
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const { cookieStore, getProvider, upsertPlatformConnection } = vi.hoisted(() => ({
@@ -89,7 +89,7 @@ describe("native OAuth platform route", () => {
     expect(getProvider).not.toHaveBeenCalled();
   });
 
-  it("does not expose Instagram OAuth diagnostics on non-local origins", async () => {
+  it("outside production, ?debug=oauth is ignored on non-local origins", async () => {
     getProvider.mockReturnValue({
       getAuthUrl: vi.fn(() => "https://www.facebook.com/v21.0/dialog/oauth"),
     });
@@ -107,6 +107,56 @@ describe("native OAuth platform route", () => {
     expect(response.headers.get("content-type") ?? "").not.toContain(
       "application/json"
     );
+  });
+
+  describe("production NODE_ENV", () => {
+    const debugRequest = () =>
+      new NextRequest("https://smmagent.app/api/auth/instagram?debug=oauth", {
+        headers: { "x-forwarded-host": "smmagent.app", "x-forwarded-proto": "https" },
+      });
+    const params = { params: Promise.resolve({ platform: "instagram" }) };
+
+    it("shows the exact redirectUri only to an authorized manager", async () => {
+      vi.stubEnv("NODE_ENV", "production");
+      getProvider.mockReturnValue({
+        getAuthUrl: vi.fn(() => "https://www.instagram.com/oauth/authorize?client_id=x"),
+      });
+      const { GET } = await import("@/app/api/auth/[platform]/route");
+      const response = await GET(debugRequest(), params);
+      expect(response.status).toBe(200);
+      expect(await response.json()).toMatchObject({ redirectUri: "https://smmagent.app/api/auth/callback" });
+      vi.unstubAllEnvs();
+    });
+
+    it("leaks nothing when the caller is not authorized", async () => {
+      vi.stubEnv("NODE_ENV", "production");
+      const auth = await import("@/lib/api-authorization");
+      vi.mocked(auth.requireApiWorkspaceManager).mockResolvedValueOnce(
+        NextResponse.json({ error: "Authentication required" }, { status: 401 }) as never
+      );
+      const { GET } = await import("@/app/api/auth/[platform]/route");
+      const response = await GET(debugRequest(), params);
+      expect(response.status).toBe(401);
+      expect(JSON.stringify(await response.json())).not.toContain("redirectUri");
+      vi.unstubAllEnvs();
+    });
+
+    it("still redirects to Meta without the debug flag", async () => {
+      vi.stubEnv("NODE_ENV", "production");
+      getProvider.mockReturnValue({
+        getAuthUrl: vi.fn(() => "https://www.instagram.com/oauth/authorize?client_id=x"),
+      });
+      const { GET } = await import("@/app/api/auth/[platform]/route");
+      const response = await GET(
+        new NextRequest("https://smmagent.app/api/auth/instagram", {
+          headers: { "x-forwarded-host": "smmagent.app", "x-forwarded-proto": "https" },
+        }),
+        params
+      );
+      expect(response.status).toBe(307);
+      expect(response.headers.get("location")).toContain("instagram.com/oauth/authorize");
+      vi.unstubAllEnvs();
+    });
   });
 
   it("blocks legacy Instagram Personal direct OAuth starts", async () => {

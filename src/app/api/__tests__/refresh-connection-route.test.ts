@@ -58,6 +58,8 @@ describe("POST /api/platforms/[id]/refresh-connection", () => {
   it("rejects non-Instagram or non-direct platforms and unknown ids", async () => {
     state.platform = { id: "p1", type: "instagram", provider: "zernio", workspaceId: "w1" };
     expect((await call()).status).toBe(400);
+    state.platform = { id: "p1", type: "instagram_personal", provider: "direct", workspaceId: "w1" };
+    expect((await call()).status).toBe(400);
     state.platform = null;
     expect((await call()).status).toBe(404);
   });

@@ -290,8 +290,7 @@ function ConnectionCard({
   onReconnectBird: (platformId: string, authToken: string, ct0: string) => void;
 }) {
   const canRefreshConnection =
-    item.provider === "direct" &&
-    (item.platformType === "instagram" || item.platformType === "instagram_personal");
+    item.provider === "direct" && item.platformType === "instagram";
   const canCheckBirdSession =
     item.provider === "bird" && item.platformType === "twitter";
 

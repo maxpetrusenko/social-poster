@@ -7,10 +7,9 @@ import { refreshPlatformConnection } from "@/lib/providers/token-refresh";
 import { and, eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
-const INSTAGRAM_TYPES = new Set(["instagram", "instagram_personal"]);
 
 // POST /api/platforms/[id]/refresh-connection
-// Instagram (direct) only. Tries to refresh the stored long-lived token. If that is
+// Instagram (type "instagram", direct) only; instagram_personal uses the managed relay. Tries to refresh the stored long-lived token. If that is
 // impossible (expired/invalidated/no token), answers `reauth_required` with a
 // browser URL: OAuth must finish in a browser session, so an agent hands the URL to a human.
 export async function POST(
@@ -27,7 +26,7 @@ export async function POST(
   if (!platform) {
     return NextResponse.json({ error: "Platform not found" }, { status: 404 });
   }
-  if (!INSTAGRAM_TYPES.has(platform.type) || platform.provider !== "direct") {
+  if (platform.type !== "instagram" || platform.provider !== "direct") {
     return NextResponse.json(
       { error: "Refresh connection is only available for direct Instagram connections." },
       { status: 400 }
@@ -40,7 +39,7 @@ export async function POST(
   }
 
   const appUrl = getRequestAppUrl(request);
-  const reconnectUrl = new URL(`/api/auth/${platform.type.replace(/_/g, "-")}`, appUrl);
+  const reconnectUrl = new URL("/api/auth/instagram", appUrl);
   reconnectUrl.searchParams.set("next", "/dashboard/workspace-settings/social-accounts");
   return NextResponse.json(
     {
