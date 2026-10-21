@@ -1,4 +1,12 @@
-import { requireApiWorkspaceManager } from "@/lib/api-authorization";
+import { db } from "@/db";
+import { platforms } from "@/db/schema";
+import {
+  requireApiWorkspaceManager,
+  requireApiWorkspaceManagerRead,
+} from "@/lib/api-authorization";
+import { isPlatformConnectionDisconnected } from "@/lib/platform-connection-state";
+import { readTokenExpiresAt } from "@/lib/providers/credentials";
+import { asc, eq } from "drizzle-orm";
 import { upsertPlatformConnection } from "@/lib/platform-connections";
 import { PLATFORM_TYPES } from "@/lib/platforms";
 import { NextRequest, NextResponse } from "next/server";
@@ -53,4 +61,37 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+// GET /api/platforms — list this workspace's connections (safe fields only; never credentials).
+export async function GET() {
+  const tenant = await requireApiWorkspaceManagerRead();
+  if (tenant instanceof NextResponse) return tenant;
+
+  const rows = await db
+    .select()
+    .from(platforms)
+    .where(eq(platforms.workspaceId, tenant.currentWorkspace.id))
+    .orderBy(asc(platforms.createdAt));
+
+  return NextResponse.json({
+    platforms: rows.map((row) => {
+      const expiresAt = readTokenExpiresAt(row.config);
+      const disconnected = isPlatformConnectionDisconnected(row.config);
+      return {
+        id: row.id,
+        type: row.type,
+        provider: row.provider,
+        displayName: row.name,
+        username: row.handle,
+        enabled: row.enabled,
+        connectionStatus: disconnected
+          ? "disconnected"
+          : expiresAt !== null && expiresAt < Date.now()
+            ? "token_expired"
+            : "connected",
+        tokenExpiresAt: expiresAt !== null ? new Date(expiresAt).toISOString() : null,
+      };
+    }),
+  });
 }
