@@ -81,6 +81,8 @@ const INSPECTION_TOOLS = new Set([
   "hermes.web.open",
   "browse.get",
   "scrapling.extract.get",
+  // engine package_source_records: the generator's saved sources/ bytes, hashed and located
+  "package.sources",
 ]);
 
 export function isBlogPublishAuthorized(

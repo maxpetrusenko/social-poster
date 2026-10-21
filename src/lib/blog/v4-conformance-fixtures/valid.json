@@ -1,0 +1,98 @@
+{
+  "article": "# Cross-language fixture\n### A `literal` subtitle\n\n![Students using a laptop](https://upload.wikimedia.org/wikipedia/commons/8/84/Students-using-laptop.jpg)\n\n*Image: [Students using a laptop](https://commons.wikimedia.org/wiki/File:Students-using-laptop.jpg) by Dvitalo12, licensed under [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/).*\n\nA measured result with a tiny numeric fixture marker: 1e-7. [Primary source](https://example.org/primary).\n",
+  "articleSha256": "18f4c3920daa48284b86dd68465549b87c7fd1cdf739cf2aba339e20ddba9c31",
+  "contractVersion": 4,
+  "framework": {
+    "id": "research-enriched-article-prompt",
+    "sha256": "00e870819bc1a02aa28e86e49162f7ca93c5f3a05bde072c8b4679c00d5b43af",
+    "version": "v6"
+  },
+  "image": {
+    "alt": "Students using a laptop",
+    "author": "Dvitalo12",
+    "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/8/84/Students-using-laptop.jpg",
+    "license": "CC BY-SA 3.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0/",
+    "provider": "wikimedia_commons",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Students-using-laptop.jpg"
+  },
+  "packageId": "2026-09-07-weekly-fixture123456",
+  "publicationDate": "2026-09-07",
+  "readiness": {
+    "articleSha256": "18f4c3920daa48284b86dd68465549b87c7fd1cdf739cf2aba339e20ddba9c31",
+    "editorial": {
+      "articleSha256": "18f4c3920daa48284b86dd68465549b87c7fd1cdf739cf2aba339e20ddba9c31",
+      "proof": "controller-policy-and-review",
+      "status": "pass"
+    },
+    "factual": {
+      "articleSha256": "18f4c3920daa48284b86dd68465549b87c7fd1cdf739cf2aba339e20ddba9c31",
+      "proof": "independent-review",
+      "status": "pass"
+    },
+    "format": {
+      "articleSha256": "18f4c3920daa48284b86dd68465549b87c7fd1cdf739cf2aba339e20ddba9c31",
+      "proof": "formatter-and-anti-slop",
+      "status": "pass"
+    },
+    "semantic": {
+      "articleSha256": "18f4c3920daa48284b86dd68465549b87c7fd1cdf739cf2aba339e20ddba9c31",
+      "proof": "independent-review",
+      "status": "pass"
+    },
+    "status": "pass"
+  },
+  "researchEvidence": {
+    "manifest": {
+      "blockers": [],
+      "confidence": 1.0,
+      "evidence_ledger": [
+        {
+          "claim": "A measured result.",
+          "claim_id": "claim-001",
+          "classification": "verified_fact",
+          "limitations": "Limited setting",
+          "locator": "captured_text[0:64]",
+          "source_ids": [
+            "source-001"
+          ],
+          "support": "Direct"
+        }
+      ],
+      "inspected_sources": [
+        {
+          "evidence_type": "primary",
+          "id": "source-001",
+          "inspected": true,
+          "inspection_proof": {
+            "content_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "locator": "captured_text[0:64]",
+            "status": "captured",
+            "tool": "hermes.web.open",
+            "url": "https://example.org/primary"
+          },
+          "limitations": "Limited setting",
+          "locator": "captured_text[0:64]",
+          "title": "Primary evidence",
+          "url": "https://example.org/primary"
+        }
+      ],
+      "research_delta": {
+        "added": [
+          "A material limitation."
+        ],
+        "corrected": [],
+        "materially_improves_decision": true,
+        "ruled_out": []
+      },
+      "status": "research_ready",
+      "tiny": 1e-07
+    },
+    "manifestJson": "{\"blockers\":[],\"confidence\":1.0,\"evidence_ledger\":[{\"claim\":\"A measured result.\",\"claim_id\":\"claim-001\",\"classification\":\"verified_fact\",\"limitations\":\"Limited setting\",\"locator\":\"captured_text[0:64]\",\"source_ids\":[\"source-001\"],\"support\":\"Direct\"}],\"inspected_sources\":[{\"evidence_type\":\"primary\",\"id\":\"source-001\",\"inspected\":true,\"inspection_proof\":{\"content_sha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"locator\":\"captured_text[0:64]\",\"status\":\"captured\",\"tool\":\"hermes.web.open\",\"url\":\"https://example.org/primary\"},\"limitations\":\"Limited setting\",\"locator\":\"captured_text[0:64]\",\"title\":\"Primary evidence\",\"url\":\"https://example.org/primary\"}],\"research_delta\":{\"added\":[\"A material limitation.\"],\"corrected\":[],\"materially_improves_decision\":true,\"ruled_out\":[]},\"status\":\"research_ready\",\"tiny\":1e-07}",
+    "manifestSha256": "bd810d86b1421459c84e5d63444c9e88eaefe4d0bd07b9fee84ab7256776741b",
+    "producer": "hermes-weekly-app-articles",
+    "status": "research_ready"
+  },
+  "review": "{\"article_sha256\":\"18f4c3920daa48284b86dd68465549b87c7fd1cdf739cf2aba339e20ddba9c31\",\"blockers\":[],\"gates\":{\"editorial\":{\"status\":\"pass\"},\"factual\":{\"status\":\"pass\"},\"semantic\":{\"status\":\"pass\"}},\"outcome\":\"pass\"}",
+  "runId": "fixture123456"
+}
