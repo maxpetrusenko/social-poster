@@ -7,9 +7,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 
 const auth = vi.hoisted(() => ({ tenant: null as unknown }));
+vi.mock("@/lib/scheduler", () => ({ reconcileSchedules: vi.fn(async () => undefined) }));
+vi.mock("@/lib/audit", () => ({ recordTenantAuditEvent: vi.fn(async () => undefined) }));
 vi.mock("@/lib/api-authorization", () => ({
+  requireApiWorkspaceEditor: vi.fn(async () => auth.tenant),
   requireApiWorkspaceManager: vi.fn(async () => auth.tenant),
-  requireApiWorkspaceManagerWrite: vi.fn(async () => auth.tenant),
 }));
 
 let tempDir: string | null = null;
@@ -74,22 +76,22 @@ describe("PATCH /api/platforms/[id]", () => {
   });
 });
 
-describe("x-likes-autopost setting route", () => {
-  it("defaults to the env var and lets a workspace override win, then clear", async () => {
+describe("PATCH /api/schedules/[id]", () => {
+  it("pauses and resumes a schedule in the caller's workspace only", async () => {
     const { sqlite } = await setup();
-    vi.stubEnv("X_LIKES_AUTOPUBLISH_ENABLED", "true");
-    vi.stubEnv("X_LIKES_AUTOPUBLISH_MODE", "publish");
-    const { GET, PATCH } = await import("@/app/api/settings/x-likes-autopost/route");
-
-    let body = await (await GET()).json();
-    expect(body).toMatchObject({ enabled: true, source: "env", envDefault: true, override: null, workerActive: true, latestRun: null });
-
-    body = await (await PATCH(patch({ enabled: false }))).json();
-    expect(body).toMatchObject({ enabled: false, source: "workspace", envDefault: true, override: false, workerActive: false });
-
-    body = await (await PATCH(patch({ enabled: null }))).json();
-    expect(body).toMatchObject({ enabled: true, source: "env", override: null });
-    expect((await PATCH(patch({ enabled: "on" }))).status).toBe(400);
+    const now = Math.floor(Date.now() / 1000);
+    for (const [id, ws] of [["s1", "w1"], ["s2", "w2"]]) {
+      sqlite
+        .prepare("INSERT INTO schedules (id, workspace_id, name, cron, job_type, enabled, created_at, updated_at) VALUES (?,?,?,?,?,1,?,?)")
+        .run(id, ws, id, "0 9 * * *", "image_post", now, now);
+    }
+    const { PATCH } = await import("@/app/api/schedules/[id]/route");
+    expect((await PATCH(patch({ paused: true }), { params: Promise.resolve({ id: "s1" }) })).status).toBe(200);
+    expect(sqlite.prepare("SELECT enabled FROM schedules WHERE id='s1'").get()).toEqual({ enabled: 0 });
+    expect((await PATCH(patch({ enabled: true }), { params: Promise.resolve({ id: "s1" }) })).status).toBe(200);
+    expect(sqlite.prepare("SELECT enabled FROM schedules WHERE id='s1'").get()).toEqual({ enabled: 1 });
+    expect((await PATCH(patch({ paused: true }), { params: Promise.resolve({ id: "s2" }) })).status).toBe(404);
+    expect((await PATCH(patch({}), { params: Promise.resolve({ id: "s1" }) })).status).toBe(400);
     sqlite.close();
   });
 });

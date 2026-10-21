@@ -135,3 +135,46 @@ export async function POST(
     );
   }
 }
+
+// PATCH /api/schedules/[id] { enabled } or { paused } — pause/resume a schedule.
+// Session or read_write API key; scoped to the caller's workspace.
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const tenant = await requireApiWorkspaceEditor();
+  if (tenant instanceof Response) return tenant;
+
+  const body = (await request.json().catch(() => null)) as { enabled?: unknown; paused?: unknown } | null;
+  const enabled =
+    typeof body?.enabled === "boolean"
+      ? body.enabled
+      : typeof body?.paused === "boolean"
+        ? !body.paused
+        : null;
+  if (enabled === null) {
+    return Response.json({ error: "Provide boolean `enabled` or `paused`." }, { status: 400 });
+  }
+
+  const { id: scheduleId } = await params;
+  const result = await db
+    .update(schedules)
+    .set({ enabled, updatedAt: new Date() })
+    .where(and(eq(schedules.id, scheduleId), eq(schedules.workspaceId, tenant.currentWorkspace.id)))
+    .returning({ id: schedules.id });
+  if (result.length === 0) {
+    return Response.json({ error: "Schedule not found" }, { status: 404 });
+  }
+
+  await reconcileSchedules("schedule:update");
+  await recordTenantAuditEvent(tenant, {
+    action: "schedule.update",
+    targetType: "schedule",
+    targetId: scheduleId,
+    metadata: {
+      status: enabled ? "scheduled" : "paused",
+      endpoint: `PATCH /api/schedules/${scheduleId}`,
+    },
+  });
+  return Response.json({ success: true, id: scheduleId, enabled });
+}
