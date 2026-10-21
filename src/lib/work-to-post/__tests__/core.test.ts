@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { createInMemoryWorkToPostRepository } from "@/lib/work-to-post/repository";
 import { ingestCompletedWork } from "@/lib/work-to-post/ingestion";
@@ -75,7 +75,14 @@ describe("work-to-post core walking skeleton", () => {
     expect(unsafe.status).toBe("blocked_privacy");
   });
 
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("blocks stale or ambiguous dossiers and accepts cited public-professional evidence", async () => {
+    // Evidence freshness is relative to "now"; pin it so the fixture dates never age out.
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-07-25T12:00:00.000Z"));
     const repository = createInMemoryWorkToPostRepository();
     const valid = await createPersonDossier(repository, "workspace-a", {
       canonicalIdentityKey: "linkedin:person-a",
