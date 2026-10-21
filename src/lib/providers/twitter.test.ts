@@ -320,3 +320,78 @@ async function assertMediaBody(value: unknown, expected: Buffer) {
   }
   assert.fail("Append request should include media bytes or base64 media");
 }
+
+test("Twitter/X self-replies to the posted tweet when firstComment is set", async () => {
+  const calls: FetchCall[] = [];
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (input, init) => {
+    const url = new URL(String(input));
+    calls.push({ url, init });
+    return jsonResponse({ data: { id: calls.length === 1 ? "tweet-1" : "reply-2" } });
+  };
+
+  try {
+    const provider = new TwitterProvider({ clientId: "id", clientSecret: "secret" });
+    const result = await provider.publishPost("tok", {
+      text: "Main tweet",
+      firstComment: "  link in reply  ",
+    });
+
+    assert.equal(result.platformPostId, "tweet-1");
+    assert.equal(calls.length, 2);
+    assert.deepEqual(await readBody(calls[1].init), {
+      text: "link in reply",
+      reply: { in_reply_to_tweet_id: "tweet-1" },
+    });
+    assert.deepEqual(result.extra?.firstComment, {
+      id: "reply-2",
+      url: "https://x.com/i/web/status/reply-2",
+    });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("Twitter/X keeps the main post when the self-reply fails", async () => {
+  let call = 0;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => {
+    call += 1;
+    if (call === 1) return jsonResponse({ data: { id: "tweet-1" } });
+    return new Response(JSON.stringify({ title: "Forbidden" }), {
+      status: 403,
+      headers: { "content-type": "application/json" },
+    });
+  };
+
+  try {
+    const provider = new TwitterProvider({ clientId: "id", clientSecret: "secret" });
+    const result = await provider.publishPost("tok", {
+      text: "Main tweet",
+      firstComment: "reply",
+    });
+
+    assert.equal(result.platformPostId, "tweet-1");
+    assert.equal(result.extra?.firstComment, undefined);
+    assert.match(String(result.extra?.firstCommentError), /403|Forbidden/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("Twitter/X does not reply when firstComment is empty", async () => {
+  let call = 0;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => {
+    call += 1;
+    return jsonResponse({ data: { id: "tweet-1" } });
+  };
+
+  try {
+    const provider = new TwitterProvider({ clientId: "id", clientSecret: "secret" });
+    await provider.publishPost("tok", { text: "Main", firstComment: "   " });
+    assert.equal(call, 1);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});

@@ -29,8 +29,17 @@ export interface PublishResult {
   classification: PublishClassification;
   postId?: string;
   postUrl?: string;
+  /** Outcome of the same-account reply/comment (X self-reply, LinkedIn first comment). Never fails the main post. */
+  firstComment?: FirstCommentOutcome;
   error?: string;
   raw?: unknown;
+}
+
+export interface FirstCommentOutcome {
+  success: boolean;
+  id?: string;
+  url?: string;
+  error?: string;
 }
 
 export interface PublishTarget {

@@ -216,6 +216,7 @@ async function publishViaBirdWithDirectFallback(
     mediaUrl: target.mediaUrl,
     mediaUrls: target.mediaUrls,
     threadLongPosts: target.threadLongPosts,
+    firstComment: target.firstComment,
   });
 
   if (birdResult.success) {
@@ -235,6 +236,7 @@ async function publishViaBirdWithDirectFallback(
       platform: birdPlatform,
       content: fallbackTarget.content,
       threadLongPosts: fallbackTarget.threadLongPosts,
+      firstComment: fallbackTarget.firstComment,
     });
 
     if (textOnlyBirdResult.success) {

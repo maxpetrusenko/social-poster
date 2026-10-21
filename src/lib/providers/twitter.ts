@@ -150,10 +150,34 @@ export class TwitterProvider extends OAuthProvider {
     const data = readRecord(body, "data");
     const id = readString(data, "id");
 
+    let extra: JsonRecord = body;
+    const comment = content.firstComment?.trim();
+    if (comment && id) {
+      try {
+        const replyBody = await this.requestJson<JsonRecord>("POST", TWEETS_URL, {
+          accessToken,
+          json: { text: comment, reply: { in_reply_to_tweet_id: id } },
+        });
+        const replyId = readString(readRecord(replyBody, "data"), "id");
+        extra = {
+          ...body,
+          firstComment: {
+            id: replyId,
+            url: replyId ? `https://x.com/i/web/status/${replyId}` : undefined,
+          },
+        };
+      } catch (error) {
+        extra = {
+          ...body,
+          firstCommentError: error instanceof Error ? error.message : String(error),
+        };
+      }
+    }
+
     return {
       platformPostId: id,
       url: id ? `https://x.com/i/web/status/${id}` : undefined,
-      extra: body,
+      extra,
     };
   }
 

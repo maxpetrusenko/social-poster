@@ -192,6 +192,12 @@ async function publishScheduledPost(post: ScheduledPost) {
           : "failed",
       publishedUrl: result.postUrl ?? null,
       platformPostId: result.postId ?? null,
+      firstCommentId: result.firstComment?.id ?? null,
+      firstCommentUrl: result.firstComment?.url ?? null,
+      firstCommentError:
+        result.firstComment && !result.firstComment.success
+          ? result.firstComment.error ?? "First comment failed."
+          : null,
       error: result.classification === "disabled" ? null : result.error ?? null,
       publishedAt: result.success ? stepEnd : null,
     }).where(eq(postTargets.id, target.id));

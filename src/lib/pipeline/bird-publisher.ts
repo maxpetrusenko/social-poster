@@ -8,7 +8,7 @@ import { platforms } from "@/db/schema";
 import { getPublicAppUrlFromEnv } from "@/lib/app-url";
 import { readStoredConnectionConfig } from "@/lib/connection-config";
 
-import type { PublishResult } from "./publisher";
+import type { FirstCommentOutcome, PublishResult } from "./publisher";
 import {
   buildBirdEnv,
   classifyBirdError,
@@ -29,6 +29,8 @@ type BirdPublishTarget = {
   mediaUrl?: string;
   mediaUrls?: string[];
   threadLongPosts?: boolean;
+  /** Reply to the posted tweet from the same account. Failure never fails the main post. */
+  firstComment?: string;
 };
 
 export function resolveBirdCredentials(
@@ -267,6 +269,12 @@ async function publishToBirdWithCredentials(
       lastUrl = replyUrl;
     }
 
+    const firstComment = await publishBirdFirstComment(
+      target.firstComment,
+      lastUrl,
+      credentials
+    );
+
     return {
       platform: normalizedPlatform,
       provider: "bird",
@@ -275,6 +283,7 @@ async function publishToBirdWithCredentials(
       classification: "success",
       postId: extractBirdPostId(firstUrl),
       postUrl: firstUrl,
+      ...(firstComment ? { firstComment } : {}),
       raw: {
         threadParts: threadParts.length,
         finalUrl: lastUrl,
@@ -292,6 +301,28 @@ async function publishToBirdWithCredentials(
     };
   } finally {
     await Promise.all(media.map((item) => item.cleanup()));
+  }
+}
+
+async function publishBirdFirstComment(
+  comment: string | undefined,
+  replyToUrl: string,
+  credentials: BirdCredentials
+): Promise<FirstCommentOutcome | undefined> {
+  const text = comment?.trim();
+  if (!text) return undefined;
+  try {
+    const output = await runBird(["reply", "--plain", replyToUrl, text], credentials);
+    const url = extractBirdUrl(output);
+    if (!url) {
+      return { success: false, error: output || "Bird did not return a reply URL." };
+    }
+    return { success: true, id: extractBirdPostId(url), url };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
   }
 }
 

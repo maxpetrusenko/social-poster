@@ -12,7 +12,10 @@ import { normalizeNativePlatform } from "./platform-key";
 import { classifyAuthFailure } from "@/lib/platform-connection-state";
 import { readStoredConnectionConfig } from "@/lib/connection-config";
 import { mediaTypeFromUrl } from "@/lib/media-url";
-import type { PublishResult as PipelinePublishResult } from "@/lib/pipeline/publisher";
+import type {
+  FirstCommentOutcome,
+  PublishResult as PipelinePublishResult,
+} from "@/lib/pipeline/publisher";
 import type { InstagramPublishContentType } from "@/lib/post-publish-metadata";
 import type { PublishContent } from "./types";
 
@@ -88,6 +91,7 @@ export async function publishViaNativeProvider(
       classification: "success",
       postId: result.platformPostId,
       postUrl: result.url,
+      firstComment: readFirstCommentOutcome(result.extra),
       raw: result.extra,
     };
   } catch (error) {
@@ -249,6 +253,25 @@ function buildPublishExtra(target: NativePublishInput) {
   }
 
   return Object.keys(extra).length ? extra : undefined;
+}
+
+function readFirstCommentOutcome(
+  extra: Record<string, unknown> | undefined
+): FirstCommentOutcome | undefined {
+  if (!extra) return undefined;
+  if (typeof extra.firstCommentError === "string") {
+    return { success: false, error: extra.firstCommentError };
+  }
+  const comment = extra.firstComment;
+  if (comment && typeof comment === "object" && !Array.isArray(comment)) {
+    const record = comment as Record<string, unknown>;
+    return {
+      success: true,
+      id: typeof record.id === "string" ? record.id : undefined,
+      url: typeof record.url === "string" ? record.url : undefined,
+    };
+  }
+  return undefined;
 }
 
 function classifyNativeError(error: unknown): PipelinePublishResult["classification"] {
