@@ -60,7 +60,29 @@ export async function findPlatformByExternalAccount({
   );
 }
 
+const upsertQueues = new Map<string, Promise<unknown>>();
+
+/** Serializes concurrent upserts for the same external account (double callbacks). */
 export async function upsertPlatformConnection(input: PlatformConnectionInput) {
+  const key = [
+    input.workspaceId,
+    input.provider,
+    input.type,
+    normalizeAccountId(input.accountId) ?? "",
+  ].join("|");
+  if (!normalizeAccountId(input.accountId)) return upsertPlatformConnectionUnlocked(input);
+
+  const previous = upsertQueues.get(key) ?? Promise.resolve();
+  const run = previous.catch(() => undefined).then(() => upsertPlatformConnectionUnlocked(input));
+  upsertQueues.set(key, run);
+  try {
+    return await run;
+  } finally {
+    if (upsertQueues.get(key) === run) upsertQueues.delete(key);
+  }
+}
+
+async function upsertPlatformConnectionUnlocked(input: PlatformConnectionInput) {
   const now = input.now ?? new Date();
   const reactivateDisconnected = input.reactivateDisconnected ?? true;
   const accountId = normalizeAccountId(input.accountId);
