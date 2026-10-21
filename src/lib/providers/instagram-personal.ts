@@ -61,15 +61,18 @@ export class InstagramPersonalProvider extends OAuthProvider {
         redirect_uri: redirectUri,
       },
     });
-    const shortLivedToken = optionalString(body.access_token);
+    // Meta documents `{ data: [{ access_token, user_id, permissions }] }`;
+    // older responses were flat. Accept both.
+    const tokenBody = unwrapTokenResponse(body);
+    const shortLivedToken = optionalString(tokenBody.access_token);
     if (!shortLivedToken) {
-      throw new OAuthError(`Instagram token exchange failed: ${JSON.stringify(body)}`, {
+      throw new OAuthError(`Instagram token exchange failed: ${JSON.stringify(redactTokenFields(body))}`, {
         platform: this.platformName,
         rawResponse: body,
       });
     }
 
-    return this.exchangeForLongLivedToken(shortLivedToken, body);
+    return this.exchangeForLongLivedToken(shortLivedToken, tokenBody);
   }
 
   async refreshToken(refreshToken: string): Promise<OAuthTokens> {
@@ -198,7 +201,7 @@ export class InstagramPersonalProvider extends OAuthProvider {
     const accessToken = optionalString(body.access_token);
     if (!accessToken) {
       throw new OAuthError(
-        `Instagram long-lived token exchange failed: ${JSON.stringify(body)}`,
+        `Instagram long-lived token exchange failed: ${JSON.stringify(redactTokenFields(body))}`,
         { platform: this.platformName, rawResponse: body }
       );
     }
@@ -355,6 +358,24 @@ export class InstagramPersonalProvider extends OAuthProvider {
 function isVideoUrl(url: string) {
   const lowerUrl = url.toLowerCase();
   return lowerUrl.endsWith(".mp4") || lowerUrl.endsWith(".mov");
+}
+
+function unwrapTokenResponse(body: Record<string, unknown>): Record<string, unknown> {
+  const first = Array.isArray(body.data) ? recordValue(body.data[0]) : null;
+  return first && Object.keys(first).length > 0 ? { ...body, ...first } : body;
+}
+
+function redactTokenFields(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(redactTokenFields);
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>).map(([k, v]) => [
+        k,
+        /token|secret/i.test(k) ? "[redacted]" : redactTokenFields(v),
+      ])
+    );
+  }
+  return value;
 }
 
 function optionalString(value: unknown) {

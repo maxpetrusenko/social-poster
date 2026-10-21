@@ -77,6 +77,8 @@ export async function handleNativeOAuthCallback(
   }
 
   const redirectUri = oauthFlow.redirectUri ?? oauthCallbackUrl(platform, request);
+  // Values that must never reach logs or redirect URLs.
+  const secrets: string[] = [code];
 
   try {
     const provider = getProvider(
@@ -102,7 +104,17 @@ export async function handleNativeOAuthCallback(
       });
     }
 
+    secrets.push(tokens.accessToken);
+    if (tokens.refreshToken) secrets.push(tokens.refreshToken);
+
     const profile = await getCallbackProfile(provider, platform, tokens.accessToken);
+    if (platform === "instagram" && !profile?.platformId) {
+      // Without the account id we cannot upsert, and a token that cannot read
+      // /me is unusable. Refuse instead of saving a junk duplicate row.
+      throw new Error(
+        "Instagram connected, but the account profile could not be read with the new token. Nothing was saved. Try connecting again."
+      );
+    }
     const now = new Date();
     const expiresAt = tokens.expiresIn
       ? now.getTime() + tokens.expiresIn * 1000
@@ -118,7 +130,7 @@ export async function handleNativeOAuthCallback(
       enabled: true,
       config: {
         profileId: state.profileId ?? null,
-        authMethod: state.methodId ?? `${platform}_native`,
+        authMethod: callbackAuthMethod(platform, state.methodId),
         credentials: {
           accessToken: tokens.accessToken,
           refreshToken: tokens.refreshToken ?? null,
@@ -147,13 +159,14 @@ export async function handleNativeOAuthCallback(
 
     return NextResponse.redirect(fallback);
   } catch (callbackError) {
-    console.error(`[oauth-callback] ❌ ${platform} callback failed:`, callbackError);
-    fallback.searchParams.set(
-      "error",
+    const message = redactSecrets(
       callbackError instanceof Error
         ? callbackError.message
-        : "Native OAuth callback failed."
+        : "Native OAuth callback failed.",
+      secrets
     );
+    console.error(`[oauth-callback] ❌ ${platform} callback failed: ${message}`);
+    fallback.searchParams.set("error", message);
     return NextResponse.redirect(fallback);
   }
 }
@@ -252,6 +265,20 @@ async function saveFacebookPageConnections({
   }
 
   return NextResponse.redirect(fallback);
+}
+
+/** One canonical authMethod per platform so /api/auth/instagram and the UI flow store the same value. */
+function callbackAuthMethod(platform: string, methodId: string | null | undefined) {
+  if (platform === "instagram") return "instagram_oauth";
+  return methodId ?? `${platform}_native`;
+}
+
+function redactSecrets(message: string, secrets: string[]) {
+  let out = message;
+  for (const secret of secrets) {
+    if (secret && secret.length >= 8) out = out.split(secret).join("[redacted]");
+  }
+  return out;
 }
 
 async function getCallbackProfile(
