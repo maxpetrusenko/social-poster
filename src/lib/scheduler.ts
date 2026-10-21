@@ -20,7 +20,6 @@ import {
   getBirdSessionCheckSnapshot,
 } from "./replies/bird-session-health";
 import { runXLikedAutopost } from "./x-liked-autopost";
-import { isXLikedAutopostPublishMode, readXLikedAutopostEnabled } from "./x-liked-autopost-setting";
 import {
   isXLikedAutopostWorkerEnabled,
   readXLikedAutopostFetchCount,
@@ -268,16 +267,13 @@ function ensureScheduledPostPublisherWorker() {
 }
 
 function ensureXLikedAutopostWorker() {
-  // MODE=publish is the process-level safety switch; per-workspace enablement is
-  // resolved on every sweep (workspace setting overrides X_LIKES_AUTOPUBLISH_ENABLED).
-  if (!isXLikedAutopostPublishMode()) return;
+  if (!isXLikedAutopostWorkerEnabled()) return;
   if (xLikedAutopostInterval || xLikedAutopostBootTimer) return;
 
   const runSweep = async () => {
     try {
       const workspaceIds = await findXLikedAutopostWorkspaceIds();
       for (const workspaceId of workspaceIds) {
-        if (!(await readXLikedAutopostEnabled(workspaceId)).enabled) continue;
         const summary = await runXLikedAutopost({
           workspaceId,
           limit: readXLikedAutopostLimit(),
