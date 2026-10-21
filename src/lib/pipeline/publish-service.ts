@@ -14,6 +14,11 @@ import {
   shouldPublishViaNativeProvider,
 } from "@/lib/providers/native-publisher";
 import { mediaTypeFromUrl } from "@/lib/media-url";
+import {
+  clearPlatformAuthFailure,
+  recordAuthFailureFromError,
+} from "@/lib/platform-auth-status";
+import { readConnectionIssue } from "@/lib/platform-connection-state";
 import { and, eq } from "drizzle-orm";
 
 type PlatformRow = typeof platforms.$inferSelect;
@@ -116,6 +121,7 @@ export async function publishPlatformTargets(
     }
 
     const outcome = await publishSingleTarget(target);
+    await syncConnectionStatus(target.platform, outcome);
 
     outcomes.push(outcome);
   }
@@ -135,6 +141,31 @@ export async function publishPlatformTargets(
         classification: outcome.classification,
       })),
   };
+}
+
+/**
+ * Keep the platform row honest: auth failures (Graph 190, 401/403, Zernio
+ * "disconnected") surface as token_expired/disconnected in GET /api/platforms;
+ * a successful publish clears a stale flag.
+ */
+async function syncConnectionStatus(
+  platform: Pick<PlatformRow, "id" | "config">,
+  outcome: PublishResult
+) {
+  if (outcome.success) {
+    if (readConnectionIssue(platform.config)) {
+      await clearPlatformAuthFailure(platform.id);
+    }
+    return;
+  }
+  if (outcome.classification === "disabled" || outcome.classification === "duplicate") {
+    return;
+  }
+  await recordAuthFailureFromError(platform.id, {
+    message: outcome.error,
+    raw: outcome.raw,
+    classification: outcome.classification,
+  });
 }
 
 async function publishSingleTarget(

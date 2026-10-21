@@ -9,6 +9,7 @@ import {
   readRefreshToken,
 } from "./credentials";
 import { normalizeNativePlatform } from "./platform-key";
+import { classifyAuthFailure } from "@/lib/platform-connection-state";
 import { readStoredConnectionConfig } from "@/lib/connection-config";
 import { mediaTypeFromUrl } from "@/lib/media-url";
 import type { PublishResult as PipelinePublishResult } from "@/lib/pipeline/publisher";
@@ -255,6 +256,9 @@ function classifyNativeError(error: unknown): PipelinePublishResult["classificat
   if (error instanceof OAuthError) return "auth_error";
   if (error instanceof APIError) {
     if (error.statusCode === 401 || error.statusCode === 403) return "auth_error";
+    if (classifyAuthFailure({ message: error.message, statusCode: error.statusCode, raw: error.rawResponse })) {
+      return "auth_error";
+    }
     if (error.statusCode === 400 || error.statusCode === 422) {
       return "validation_error";
     }

@@ -12,6 +12,10 @@ import { APIError, OAuthError } from "./errors";
 import { normalizeNativePlatform } from "./platform-key";
 import { getProvider, hasNativeProvider } from "./registry";
 import { shouldRefreshToken } from "./token-refresh-policy";
+import {
+  recordAuthFailureFromError,
+} from "@/lib/platform-auth-status";
+import { CONNECTION_ISSUE_KEY } from "@/lib/platform-connection-state";
 
 type PlatformRow = typeof platforms.$inferSelect;
 
@@ -182,7 +186,7 @@ async function refreshPlatformToken(
       ? options.now.getTime() + refreshed.expiresIn * 1000
       : null;
     const credentials = readCredentialObject(platform.config);
-    const nextConfig = {
+    const nextConfig: Record<string, unknown> = {
       ...(platform.config ?? {}),
       credentials: {
         ...credentials,
@@ -195,6 +199,7 @@ async function refreshPlatformToken(
       },
     };
 
+    delete nextConfig[CONNECTION_ISSUE_KEY];
     await db
       .update(platforms)
       .set({ config: nextConfig, updatedAt: new Date() })
@@ -215,6 +220,12 @@ async function refreshPlatformToken(
     );
   } catch (error) {
     const reason = tokenRefreshErrorMessage(error);
+    await recordAuthFailureFromError(platform.id, {
+      message: reason,
+      statusCode: error instanceof APIError ? error.statusCode : null,
+      raw: error instanceof APIError || error instanceof OAuthError ? error.rawResponse : undefined,
+      classification: error instanceof OAuthError ? "auth_error" : undefined,
+    });
     await recordTokenRefreshAudit(platform, {
       status: "failed",
       expiresAt,

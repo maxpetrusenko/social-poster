@@ -4,7 +4,7 @@ import {
   requireApiWorkspaceManager,
   requireApiWorkspaceManagerRead,
 } from "@/lib/api-authorization";
-import { isPlatformConnectionDisconnected } from "@/lib/platform-connection-state";
+import { resolveConnectionStatus } from "@/lib/platform-connection-state";
 import { readTokenExpiresAt } from "@/lib/providers/credentials";
 import { asc, eq } from "drizzle-orm";
 import { upsertPlatformConnection } from "@/lib/platform-connections";
@@ -77,7 +77,6 @@ export async function GET() {
   return NextResponse.json({
     platforms: rows.map((row) => {
       const expiresAt = readTokenExpiresAt(row.config);
-      const disconnected = isPlatformConnectionDisconnected(row.config);
       return {
         id: row.id,
         type: row.type,
@@ -85,11 +84,7 @@ export async function GET() {
         displayName: row.name,
         username: row.handle,
         enabled: row.enabled,
-        connectionStatus: disconnected
-          ? "disconnected"
-          : expiresAt !== null && expiresAt < Date.now()
-            ? "token_expired"
-            : "connected",
+        connectionStatus: resolveConnectionStatus(row.config, expiresAt),
         tokenExpiresAt: expiresAt !== null ? new Date(expiresAt).toISOString() : null,
       };
     }),
