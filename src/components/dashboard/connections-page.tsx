@@ -58,6 +58,7 @@ export function ConnectionsPage({
   const router = useRouter();
   const [drawerOpen, setDrawerOpen] = useState(initialDrawerOpen);
   const [localPlatforms, setLocalPlatforms] = useState(platforms);
+  const [refreshingId, setRefreshingId] = useState<string | null>(null);
   const [selectedPlatformType, setSelectedPlatformType] = useState<PlatformType>(
     initialPlatformType ?? CONNECTION_PLATFORM_DEFINITIONS[0].type
   );
@@ -455,6 +456,34 @@ export function ConnectionsPage({
     }
   }
 
+  async function handleRefreshConnection(platformId: string) {
+    setRefreshingId(platformId);
+    try {
+      const response = await fetch(`/api/platforms/${platformId}/refresh-connection`, {
+        method: "POST",
+      });
+      const body = (await response.json().catch(() => ({}))) as {
+        status?: string;
+        reconnectUrl?: string;
+        reason?: string;
+        error?: string;
+      };
+      if (body.status === "reauth_required" && body.reconnectUrl) {
+        alert(`Token could not be refreshed (${body.reason ?? "expired"}). Reconnecting through Instagram.`);
+        window.location.assign(body.reconnectUrl);
+        return;
+      }
+      if (!response.ok) {
+        throw new Error(body.error ?? "Failed to refresh connection.");
+      }
+      router.refresh();
+    } catch (refreshError) {
+      alert(refreshError instanceof Error ? refreshError.message : "Failed to refresh connection.");
+    } finally {
+      setRefreshingId(null);
+    }
+  }
+
   async function handleCheckBirdSession(platformId: string) {
     setCheckingBirdId(platformId);
 
@@ -556,6 +585,8 @@ export function ConnectionsPage({
           disconnectingId={disconnectingId}
           checkingBirdId={checkingBirdId}
           reconnectingBirdId={reconnectingBirdId}
+          refreshingId={refreshingId}
+          onRefreshConnection={handleRefreshConnection}
           onToggle={(platformId) => {
             const platform = platforms.find((item) => item.id === platformId);
             if (platform) handleToggleEnabled(platform);

@@ -129,6 +129,11 @@ Use this matrix when testing locally:
 | `http://127.0.0.1:3000` | `npm run dev` | `http://127.0.0.1:3000/api/auth/callback` | Only if Meta accepts HTTP loopback | Usually not preferred |
 | `https://*.ngrok-free.app` | `ngrok http 3000` | `https://<ngrok-host>/api/auth/callback` | Yes, exact current ngrok host | Mobile/external HTTPS tunnel to local code |
 | `https://social.maxpetrusenko.com` | production | `https://social.maxpetrusenko.com/api/auth/callback` | Yes | Production |
+| `https://smmagent.app` | production (primary host) | `https://smmagent.app/api/auth/callback` | **Yes, required** | `social.maxpetrusenko.com` 308-redirects here, so this is the URI actually sent. |
+
+Where to register: Meta for Developers, My Apps, the Instagram app, Instagram, "API setup with Instagram login", step "Set up Instagram business login", Business login settings, **OAuth redirect URIs**. Add the exact string, no trailing slash. `?debug=oauth` on `POST /api/auth/instagram` (signed in) returns the exact `redirectUri` the app sends.
+
+Agents: `POST /api/platforms/<id>/refresh-connection` (read_write key) refreshes the long-lived token; if it cannot, it answers 409 `reauth_required` with a `reconnectUrl` for a human to open in a browser.
 
 The app blocks unsupported local HTTP Instagram OAuth starts before redirecting
 to Meta. This keeps local tests from producing Meta's `Invalid redirect_uri`

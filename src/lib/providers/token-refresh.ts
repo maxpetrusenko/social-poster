@@ -109,6 +109,19 @@ async function runTokenRefresh(
   return summary;
 }
 
+/** Force-refresh one platform's stored token (used by the "Refresh connection" action). */
+export async function refreshPlatformConnection(
+  platform: PlatformRow,
+  now: Date = new Date()
+): Promise<TokenRefreshResult> {
+  return refreshPlatformToken(platform, {
+    force: true,
+    now,
+    refreshWindowMs: 0,
+    unknownExpiryRefreshMs: 0,
+  });
+}
+
 async function selectRefreshablePlatforms(workspaceId?: string) {
   const baseFilters = [
     eq(platforms.provider, "direct"),
