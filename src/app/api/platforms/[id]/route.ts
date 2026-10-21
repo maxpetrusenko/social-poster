@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { platforms } from "@/db/schema";
-import { requireApiWorkspaceManagerWrite } from "@/lib/api-authorization";
+import { requireApiWorkspaceManager } from "@/lib/api-authorization";
 import {
   findPlatformByExternalAccount,
   type PlatformProvider,
@@ -24,7 +24,7 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const tenant = await requireApiWorkspaceManagerWrite();
+  const tenant = await requireApiWorkspaceManager();
   if (tenant instanceof NextResponse) return tenant;
 
   try {
@@ -109,7 +109,7 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const tenant = await requireApiWorkspaceManagerWrite();
+  const tenant = await requireApiWorkspaceManager();
   if (tenant instanceof NextResponse) return tenant;
 
   let body: z.infer<typeof patchPlatformSchema>;

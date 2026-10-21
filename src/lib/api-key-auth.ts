@@ -64,7 +64,10 @@ export async function buildTenantFromApiKey(keyCtx: ApiKeyContext) {
   if (!user) return null;
 
   const orgMembership = await db.query.orgMemberships.findFirst({
-    where: eq(orgMemberships.userId, keyCtx.userId),
+    where: and(
+      eq(orgMemberships.userId, keyCtx.userId),
+      eq(orgMemberships.organizationId, workspace.organizationId)
+    ),
   });
   if (!orgMembership) return null;
 

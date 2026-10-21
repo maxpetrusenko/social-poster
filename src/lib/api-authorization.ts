@@ -59,19 +59,20 @@ export async function requireApiOrgAdmin() {
   );
 }
 
+/** Mutating manager access: API keys must be read_write. Use the Read variant for GET-only routes. */
 export async function requireApiWorkspaceManager() {
-  return requireApiTenant(
-    canManageCurrentWorkspace,
-    "Workspace manager access is required."
-  );
-}
-
-/** Manager access for mutations: API keys must be read_write. */
-export async function requireApiWorkspaceManagerWrite() {
   return requireApiTenant(
     canManageCurrentWorkspace,
     "Workspace manager access is required.",
     { requireWrite: true }
+  );
+}
+
+/** Read-only manager access: any active API key (read or read_write) in the workspace. */
+export async function requireApiWorkspaceManagerRead() {
+  return requireApiTenant(
+    canManageCurrentWorkspace,
+    "Workspace manager access is required."
   );
 }
 

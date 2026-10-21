@@ -9,6 +9,7 @@
 // The raw key is written to STDOUT only (pipe it into a secret store);
 // all diagnostics go to STDERR. The key is never logged or stored in plaintext.
 import { createHash, randomUUID } from "node:crypto";
+import { pathToFileURL } from "node:url";
 import Database from "better-sqlite3";
 
 function parseArgs(argv) {
@@ -44,17 +45,14 @@ export function mintApiKey(db, { workspaceId, name, permission = "read_write", u
   // The key acts as its creator, so the creator must be a workspace member
   // and an org owner/admin (API-key tenants carry no workspace list, so manager
   // checks resolve through the org role) or every authenticated request would 403.
+  const creatorQuery = `SELECT wm.user_id AS id FROM workspace_memberships wm
+     JOIN workspaces w ON w.id = wm.workspace_id
+     JOIN org_memberships om ON om.user_id = wm.user_id AND om.organization_id = w.organization_id
+     WHERE wm.workspace_id = ? AND om.org_role IN ('owner','admin')`;
   const creator = userId
-    ? db.prepare("SELECT user_id AS id FROM workspace_memberships WHERE workspace_id = ? AND user_id = ?").get(workspaceId, userId)
-    : db
-        .prepare(
-          `SELECT wm.user_id AS id FROM workspace_memberships wm
-           JOIN org_memberships om ON om.user_id = wm.user_id
-           WHERE wm.workspace_id = ? AND om.org_role IN ('owner','admin')
-           ORDER BY wm.added_at ASC LIMIT 1`
-        )
-        .get(workspaceId);
-  if (!creator) throw new Error("No eligible creator user found for workspace (pass --user)");
+    ? db.prepare(`${creatorQuery} AND wm.user_id = ? LIMIT 1`).get(workspaceId, userId)
+    : db.prepare(`${creatorQuery} ORDER BY wm.added_at ASC LIMIT 1`).get(workspaceId);
+  if (!creator) throw new Error("No eligible creator: needs an owner/admin of the workspace's organization who is a workspace member");
 
   const fullKey = generateApiKey();
   const id = randomUUID();
@@ -66,9 +64,10 @@ export function mintApiKey(db, { workspaceId, name, permission = "read_write", u
   return { id, key: fullKey, name, scope, permission, createdBy: creator.id };
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const args = parseArgs(process.argv.slice(2));
   const db = new Database(process.env.DATABASE_URL ?? "./data/social-poster.db");
+  db.pragma("busy_timeout = 5000");
   try {
     const result = mintApiKey(db, {
       workspaceId: args.workspace,
