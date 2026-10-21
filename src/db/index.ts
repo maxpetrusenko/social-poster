@@ -702,6 +702,14 @@ function ensureSchema(sqlite: Database.Database) {
       updated_at INTEGER NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS workspace_settings (
+      workspace_id TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+      key TEXT NOT NULL,
+      value TEXT NOT NULL,
+      updated_at INTEGER NOT NULL,
+      PRIMARY KEY (workspace_id, key)
+    );
+
     CREATE UNIQUE INDEX IF NOT EXISTS users_email_idx ON users(email);
     CREATE UNIQUE INDEX IF NOT EXISTS organizations_slug_idx ON organizations(slug);
     CREATE UNIQUE INDEX IF NOT EXISTS workspaces_org_slug_idx ON workspaces(organization_id, slug);

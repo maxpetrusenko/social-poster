@@ -3,16 +3,8 @@ import { db } from "@/db";
 import { apiKeys } from "@/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { requireTenantContext } from "@/lib/tenancy";
-import { randomUUID, createHash } from "crypto";
-
-function hashKey(key: string): string {
-  return createHash("sha256").update(key).digest("hex");
-}
-
-function generateApiKey(): string {
-  const raw = randomUUID().replace(/-/g, "") + randomUUID().replace(/-/g, "");
-  return `sk_${raw}`;
-}
+import { randomUUID } from "crypto";
+import { generateApiKey, hashApiKey as hashKey } from "@/lib/api-key-mint";
 
 // GET /api/api-keys — list keys (masked)
 export async function GET() {

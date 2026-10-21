@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, uniqueIndex, index } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, uniqueIndex, index, primaryKey } from "drizzle-orm/sqlite-core";
 import { sql } from "drizzle-orm";
 
 export const users = sqliteTable("users", {
@@ -654,6 +654,20 @@ export const rssSettings = sqliteTable("rss_settings", {
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
 });
+
+// ── Workspace key/value settings (runtime overrides of env defaults) ──
+export const workspaceSettings = sqliteTable(
+  "workspace_settings",
+  {
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    key: text("key").notNull(),
+    value: text("value").notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.workspaceId, table.key] })]
+);
 
 // ── Waitlist ──────────────────────────────────────────────────────────
 export const waitlistSignups = sqliteTable("waitlist_signups", {

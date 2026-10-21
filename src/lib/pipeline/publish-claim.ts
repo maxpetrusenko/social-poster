@@ -62,6 +62,14 @@ const CLAIMABLE_POST_STATUSES = [
   "partial_failure",
 ] as const;
 
+/**
+ * A network_error leaves the target in `publishing` on purpose (delivery state
+ * unknown, so no silent auto-retry that could double-post). Without an escape
+ * hatch it stays there forever and every retry gets 409. After this window an
+ * explicit manual publish may re-attempt such targets; scheduled sweeps never do.
+ */
+export const STALE_PUBLISHING_MS = 10 * 60 * 1000;
+
 export const DISABLED_TARGET_RETRY_MARKER =
   "disabled-target: re-enable this platform to retry";
 
@@ -185,12 +193,22 @@ export function claimPostForPublishing(input: {
       };
     }
 
-    if (post.status === "publishing" || targets.some(({ target }) => target.status === "publishing")) {
+    const hasInFlight =
+      post.status === "publishing" || targets.some(({ target }) => target.status === "publishing");
+    const staleInFlight =
+      input.mode === "manual" &&
+      hasInFlight &&
+      now.getTime() - post.updatedAt.getTime() >= STALE_PUBLISHING_MS;
+    if (hasInFlight && !staleInFlight) {
       return { kind: "publishing" };
     }
 
     const delivered = targets.some(({ target }) => isDeliveredTarget(target));
-    const retryableTargets = targets.filter(({ target }) => isRetryableTarget(target));
+    const retryableTargets = targets.filter(
+      ({ target }) =>
+        isRetryableTarget(target) ||
+        (staleInFlight && target.status === "publishing" && !isDeliveredTarget(target))
+    );
     if (post.status === "published" && retryableTargets.length === 0) {
       return { kind: "completed" };
     }
@@ -203,9 +221,10 @@ export function claimPostForPublishing(input: {
       return { kind: "not_due" };
     }
 
-    const claimableStatus = CLAIMABLE_POST_STATUSES.includes(
-      post.status as (typeof CLAIMABLE_POST_STATUSES)[number]
-    );
+    const claimableStatuses: string[] = staleInFlight
+      ? [...CLAIMABLE_POST_STATUSES, "publishing"]
+      : [...CLAIMABLE_POST_STATUSES];
+    const claimableStatus = claimableStatuses.includes(post.status);
     if (!claimableStatus && !(post.status === "published" && retryableTargets.length > 0)) {
       return { kind: "invalid_state", status: post.status };
     }
@@ -227,7 +246,7 @@ export function claimPostForPublishing(input: {
           eq(posts.workspaceId, input.workspaceId),
           post.status === "published"
             ? eq(posts.status, "published")
-            : inArray(posts.status, [...CLAIMABLE_POST_STATUSES])
+            : inArray(posts.status, claimableStatuses)
         );
     const claim = tx
       .update(posts)

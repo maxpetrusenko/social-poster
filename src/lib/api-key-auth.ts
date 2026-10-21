@@ -1,13 +1,9 @@
 import { db } from "@/db";
 import { apiKeys, workspaces, organizations, orgMemberships, workspaceMemberships, users } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
-import { createHash } from "crypto";
+import { hashApiKey as hashKey } from "@/lib/api-key-mint";
 import { headers } from "next/headers";
 import { trackUsage } from "@/lib/usage";
-
-function hashKey(key: string): string {
-  return createHash("sha256").update(key).digest("hex");
-}
 
 export type ApiKeyContext = {
   apiKeyId: string;
