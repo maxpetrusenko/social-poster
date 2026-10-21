@@ -27,6 +27,13 @@ vi.mock("@/lib/api-authorization", () => ({
 }));
 
 type Account = { igId: string; username: string; name: string };
+type StoredConfig = {
+  authMethod?: string;
+  providerProfile?: Record<string, unknown>;
+  credentials: { accessToken: string; expiresAt: number };
+  disconnectedAt?: unknown;
+  connectionIssue?: unknown;
+};
 const PERSONAL: Account = { igId: "17841401341900143", username: "max.petrusenko", name: "Max" };
 const MIAMI: Account = { igId: "17841499999999999", username: "miamicontactimprov", name: "Miami CI" };
 
@@ -143,7 +150,7 @@ describe("Instagram connect upsert", () => {
     expect(res.headers.get("location")).toContain("connected=instagram");
     const rows = await igRows();
     expect(rows).toHaveLength(1);
-    const cfg = rows[0].config as Record<string, any>;
+    const cfg = rows[0].config as StoredConfig;
     expect(rows[0].accountId).toBe(PERSONAL.igId);
     expect(rows[0].handle).toBe("max.petrusenko");
     expect(cfg.authMethod).toBe("instagram_oauth");
@@ -163,7 +170,7 @@ describe("Instagram connect upsert", () => {
     await runCallback("ui-2");
     const rows = await igRows();
     expect(rows).toHaveLength(1);
-    expect((rows[0].config as Record<string, any>).credentials.accessToken).toBe("long-2-SECRETTOKEN");
+    expect((rows[0].config as StoredConfig).credentials.accessToken).toBe("long-2-SECRETTOKEN");
   });
 
   it("concurrent callbacks for the same IG user produce one row", async () => {
@@ -192,7 +199,7 @@ describe("Instagram connect upsert", () => {
     const rows = await igRows();
     expect(rows).toHaveLength(1);
     expect(rows[0].id).toBe(row.id);
-    const cfg = rows[0].config as Record<string, any>;
+    const cfg = rows[0].config as StoredConfig;
     expect(cfg.disconnectedAt).toBeUndefined();
     expect(cfg.connectionIssue).toBeUndefined();
     expect(cfg.credentials.accessToken).toBe("long-2-SECRETTOKEN");
