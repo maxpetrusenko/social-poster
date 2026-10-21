@@ -278,6 +278,10 @@ function classifyNativeError(error: unknown): PipelinePublishResult["classificat
   if (error instanceof RateLimitError) return "rate_limited";
   if (error instanceof OAuthError) return "auth_error";
   if (error instanceof APIError) {
+    // X answers 403 for duplicate content; that is not an auth failure.
+    if (error.statusCode === 409 || /duplicate/i.test(error.message)) {
+      return "duplicate";
+    }
     if (error.statusCode === 401 || error.statusCode === 403) return "auth_error";
     if (classifyAuthFailure({ message: error.message, statusCode: error.statusCode, raw: error.rawResponse })) {
       return "auth_error";
@@ -285,7 +289,6 @@ function classifyNativeError(error: unknown): PipelinePublishResult["classificat
     if (error.statusCode === 400 || error.statusCode === 422) {
       return "validation_error";
     }
-    if (error.statusCode === 409) return "duplicate";
     return "provider_error";
   }
   return "network_error";

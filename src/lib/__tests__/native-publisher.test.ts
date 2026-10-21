@@ -89,3 +89,36 @@ describe("native publisher X media scope guard", () => {
     expect(result.error).toContain("Reconnect");
   });
 });
+
+describe("native publisher X 403 classification", () => {
+  it("classifies X duplicate-content 403 as duplicate, not auth_error", async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = (async () =>
+      new Response(
+        JSON.stringify({
+          detail: "You are not allowed to create a Tweet with duplicate content.",
+          status: 403,
+        }),
+        { status: 403, headers: { "content-type": "application/json" } }
+      )) as typeof fetch;
+    try {
+      const result = await publishViaNativeProvider({
+        platform: {
+          id: "platform-1",
+          provider: "direct",
+          type: "twitter",
+          accountId: "x-account",
+          config: {
+            authMethod: "twitter_native",
+            credentials: { accessToken: "token", scope: "tweet.write users.read" },
+          },
+        } as never,
+        content: "Same text again",
+      });
+      expect(result.success).toBe(false);
+      expect(result.classification).toBe("duplicate");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+});
