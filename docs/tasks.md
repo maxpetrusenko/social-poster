@@ -349,3 +349,5 @@ social-poster/
 - Landing domains: clawposter.app, www.clawposter.app, smmclaw.app, www.smmclaw.app
 - Simli Face ID: 7bb46589-4be6-4df8-ab80-03443fb75d6f
 - Cartesia Voice ID: 7270ea4d-a17a-4f21-a3da-03f2b128669d
+
+- [x] X self-reply (`platformOverrides.*.firstComment`) for Bird and direct X; platform rows now show `token_expired`/`disconnected` after observed auth failures
