@@ -42,10 +42,31 @@ describe("classifyAuthFailure", () => {
     ).toBe("token_expired");
   });
 
-  it("treats 401/403 as token_expired and Zernio disconnected as disconnected", () => {
+  it("treats 401 as token_expired and Zernio disconnected as disconnected", () => {
     expect(classifyAuthFailure({ message: "nope", statusCode: 401 })).toBe("token_expired");
-    expect(classifyAuthFailure({ message: "nope", statusCode: 403 })).toBe("token_expired");
     expect(classifyAuthFailure({ message: "Account disconnected, reconnect it" })).toBe("disconnected");
+  });
+
+  it("does not treat a bare 403, X duplicate/permission 403s or network drops as auth", () => {
+    expect(classifyAuthFailure({ message: "nope", statusCode: 403 })).toBeNull();
+    expect(
+      classifyAuthFailure({
+        message:
+          'X API error 403: {"detail":"You are not allowed to create a Tweet with duplicate content.","status":403}',
+        statusCode: 403,
+      })
+    ).toBeNull();
+    expect(
+      classifyAuthFailure({
+        message: 'X API error 403: {"detail":"You are not permitted to perform this action."}',
+        statusCode: 403,
+      })
+    ).toBeNull();
+    expect(
+      classifyAuthFailure({
+        message: "Client network socket disconnected before secure TLS connection was established",
+      })
+    ).toBeNull();
   });
 
   it("ignores unrelated failures", () => {
@@ -121,6 +142,18 @@ describe("platform auth status persistence", () => {
     mocks.set.mockClear();
     expect(
       await recordAuthFailureFromError("p1", { message: "too long", classification: "validation_error" })
+    ).toBeNull();
+    expect(
+      await recordAuthFailureFromError("p1", {
+        message: 'X API error 403: {"detail":"You are not permitted to perform this action."}',
+        classification: "auth_error",
+      })
+    ).toBeNull();
+    expect(
+      await recordAuthFailureFromError("p1", { message: "Late API error 403: plan limit", classification: "auth_error" })
+    ).toBeNull();
+    expect(
+      await recordAuthFailureFromError("p1", { message: "Bird failed: forbidden", statusCode: 403, classification: "auth_error" })
     ).toBeNull();
     expect(mocks.set).not.toHaveBeenCalled();
   });

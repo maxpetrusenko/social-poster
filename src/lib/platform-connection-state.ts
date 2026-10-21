@@ -47,9 +47,35 @@ export function resolveConnectionStatus(
 }
 
 /**
+ * Failures that are never a dead-credential signal even when the provider
+ * answers 401/403: X returns 403 for duplicate content and for policy/permission
+ * refusals; network drops ("socket disconnected") must not read as Zernio
+ * "disconnected".
+ */
+const NON_AUTH_FAILURE_PATTERN =
+  /duplicate|already (?:tweeted|posted|exists|been posted)|rate.?limit|too many requests|not permitted to|not allowed to|client-not-enrolled|socket|\beconn|\betimedout|timed? ?out|network|fetch failed/;
+
+const DISCONNECTED_PATTERN =
+  /\baccount (?:is |has been |was )?(?:disconnected|removed|revoked)|reconnect (?:the |your |this )?account|re-?connect(?:ion)? required|access (?:has been |was )?revoked|token (?:has been |was )?revoked/;
+
+const TOKEN_EXPIRED_PATTERN =
+  /token (?:has )?expired|expired token|invalid[_ ]token|session (?:has been )?invalidated|invalid oauth|missing access token/;
+
+export function isNonAuthFailure(message: string | null | undefined): boolean {
+  return NON_AUTH_FAILURE_PATTERN.test((message ?? "").toLowerCase());
+}
+
+/** HTTP status embedded in provider error text, e.g. "X API error 403: ...". */
+export function readHttpStatusFromText(message: string | null | undefined): number | null {
+  const match = (message ?? "").match(/\berror (\d{3})\b/i);
+  return match ? Number(match[1]) : null;
+}
+
+/**
  * Decide whether a provider failure message/payload means the stored
- * credentials are no longer usable (Graph code 190, 401/403, Zernio
- * "disconnected"), and which status to surface for it.
+ * credentials are no longer usable (Graph code 190, 401, explicit token text,
+ * Zernio "account disconnected"), and which status to surface for it.
+ * A bare 403 is not enough: it is also used for duplicates and permissions.
  */
 export function classifyAuthFailure(input: {
   message?: string | null;
@@ -59,24 +85,36 @@ export function classifyAuthFailure(input: {
   const message = (input.message ?? "").toLowerCase();
   const code = readGraphErrorCode(input.raw) ?? readGraphErrorCodeFromText(message);
 
-  if (
-    /disconnected|account (?:was )?removed|reconnect (?:the )?account|re-?connect required|revoked/.test(
-      message
-    )
-  ) {
-    return "disconnected";
-  }
   if (code === 190 || code === 102) return "token_expired";
-  if (
-    input.statusCode === 401 ||
-    input.statusCode === 403 ||
-    /token (?:has )?expired|expired token|invalid[_ ]token|session (?:has been )?invalidated|invalid oauth|missing access token/.test(
-      message
-    )
-  ) {
+  if (NON_AUTH_FAILURE_PATTERN.test(message)) return null;
+  if (DISCONNECTED_PATTERN.test(message)) return "disconnected";
+  if (input.statusCode === 401 || TOKEN_EXPIRED_PATTERN.test(message)) {
     return "token_expired";
   }
   return null;
+}
+
+export type AuthFailureInput = {
+  message?: string | null;
+  statusCode?: number | null;
+  raw?: unknown;
+  classification?: string;
+};
+
+/**
+ * Status to persist for a failed publish/refresh, or null when credentials look fine.
+ * An auth_error classification alone only counts when it is not a 403 or a known
+ * non-auth failure: providers classify every 403 as auth_error, and X uses 403 for
+ * duplicate content and permission refusals, which must not flag a healthy account.
+ */
+export function resolveAuthFailureStatus(input: AuthFailureInput): ConnectionIssueStatus | null {
+  const detected = classifyAuthFailure(input);
+  if (detected) return detected;
+  if (input.classification !== "auth_error") return null;
+  if (isNonAuthFailure(input.message)) return null;
+  const httpStatus = input.statusCode ?? readHttpStatusFromText(input.message);
+  if (httpStatus === 403) return null;
+  return "token_expired";
 }
 
 function readGraphErrorCode(raw: unknown): number | null {

@@ -28,9 +28,8 @@ vi.mock("@/lib/platform-auth-status", async () => {
     clearPlatformAuthFailure: mocks.clearFailure,
     markPlatformAuthFailure: mocks.markFailure,
     recordAuthFailureFromError: vi.fn(async (id: string, input) => {
-      const { classifyAuthFailure } = await import("@/lib/platform-connection-state");
-      const status =
-        classifyAuthFailure(input) ?? (input.classification === "auth_error" ? "token_expired" : null);
+      const { resolveAuthFailureStatus } = await import("@/lib/platform-connection-state");
+      const status = resolveAuthFailureStatus(input);
       if (status) mocks.markFailure(id, status, input.message);
       return status;
     }),
@@ -96,6 +95,38 @@ describe("publish service connection status", () => {
       "disconnected",
       "Account disconnected. Reconnect the account."
     );
+  });
+
+  it("does not flag a healthy X account on a duplicate or permission 403", async () => {
+    for (const detail of [
+      "You are not allowed to create a Tweet with duplicate content.",
+      "You are not permitted to perform this action.",
+    ]) {
+      mocks.publishViaNativeProvider.mockResolvedValueOnce({
+        platform: "twitter",
+        provider: "direct",
+        accountId: "acc",
+        success: false,
+        classification: "auth_error",
+        error: `X API error 403: {"detail":"${detail}","status":403}`,
+        raw: { detail, status: 403 },
+      });
+      await publishPlatformTargets([{ platform: platform(), content: "hi" }]);
+    }
+    expect(mocks.markFailure).not.toHaveBeenCalled();
+  });
+
+  it("does not flag on a network drop", async () => {
+    mocks.publishViaNativeProvider.mockResolvedValueOnce({
+      platform: "instagram",
+      provider: "direct",
+      accountId: "acc",
+      success: false,
+      classification: "network_error",
+      error: "Client network socket disconnected before secure TLS connection was established",
+    });
+    await publishPlatformTargets([{ platform: platform(), content: "hi" }]);
+    expect(mocks.markFailure).not.toHaveBeenCalled();
   });
 
   it("does not mark unrelated failures, and clears a stale flag on success", async () => {

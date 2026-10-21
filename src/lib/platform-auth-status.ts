@@ -3,8 +3,9 @@ import { db } from "@/db";
 import { platforms } from "@/db/schema";
 import {
   CONNECTION_ISSUE_KEY,
-  classifyAuthFailure,
   readConnectionIssue,
+  resolveAuthFailureStatus,
+  type AuthFailureInput,
   type ConnectionIssueStatus,
 } from "@/lib/platform-connection-state";
 
@@ -58,11 +59,9 @@ export async function clearPlatformAuthFailure(platformId: string) {
 /** Record a publish/refresh outcome when it indicates dead credentials. Returns the status written. */
 export async function recordAuthFailureFromError(
   platformId: string,
-  input: { message?: string | null; statusCode?: number | null; raw?: unknown; classification?: string }
+  input: AuthFailureInput
 ): Promise<ConnectionIssueStatus | null> {
-  const detected = classifyAuthFailure(input);
-  const status =
-    detected ?? (input.classification === "auth_error" ? "token_expired" : null);
+  const status = resolveAuthFailureStatus(input);
   if (!status) return null;
   await markPlatformAuthFailure(platformId, status, input.message ?? "Authentication failed");
   return status;
