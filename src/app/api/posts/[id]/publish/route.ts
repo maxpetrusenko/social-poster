@@ -328,6 +328,7 @@ async function persistTargetResult(
         status: "published",
         publishedUrl: result.postUrl ?? null,
         platformPostId: result.postId ?? null,
+        ...firstCommentColumns(result),
         error: null,
         publishedAt: completedAt,
       })
@@ -357,6 +358,17 @@ async function persistTargetResult(
         : result.error ?? null,
     })
     .where(eq(postTargets.id, targetId));
+}
+
+function firstCommentColumns(result: PublishResult) {
+  return {
+    firstCommentId: result.firstComment?.id ?? null,
+    firstCommentUrl: result.firstComment?.url ?? null,
+    firstCommentError:
+      result.firstComment && !result.firstComment.success
+        ? result.firstComment.error ?? "First comment failed."
+        : null,
+  };
 }
 
 function isVideoContent(contentType: string) {

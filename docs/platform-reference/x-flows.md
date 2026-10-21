@@ -648,3 +648,20 @@ GET /2/tweets/:id
 13. Autoplug system (monitor + auto-reply)
 14. Evergreen retweet automation
 15. Real-time webhook notifications
+
+## Self-reply (firstComment)
+
+Set `platformOverrides.<platformId|"twitter">.firstComment` on `POST /api/posts`
+(for example `{"platformOverrides":{"twitter":{"firstComment":"link in reply"}}}`).
+After the main tweet publishes, the same account replies to it: Bird runs
+`bird reply <url> <text>`; the direct provider posts `reply.in_reply_to_tweet_id`.
+The reply id, url, and any error land on `post_targets.first_comment_id`,
+`first_comment_url`, `first_comment_error` and in the pipeline step output
+(`output.firstComment`). A failed reply never fails the main post.
+
+## Connection status truth
+
+Publish and token-refresh auth failures (Graph error 190, HTTP 401/403, Zernio
+"disconnected") write `platforms.config.connectionIssue`, so `GET /api/platforms`
+reports `token_expired` or `disconnected`. A later successful publish, token
+refresh, or OAuth reconnect clears it.

@@ -30,6 +30,7 @@ describe("GET /api/platforms", () => {
         config: { credentials: { accessToken: SECRET, refreshToken: SECRET, expiresAt: Date.now() - 1000, X_AUTH_TOKEN: SECRET } },
       },
       { id: "b", workspaceId: "w1", name: "X", type: "twitter", provider: "bird", handle: "@m", accountId: null, enabled: false, config: { disconnectedAt: "2026-01-01" } },
+      { id: "d", workspaceId: "w1", name: "IG2", type: "instagram", provider: "direct", handle: "m2", accountId: "9", enabled: true, config: { credentials: { expiresAt: Date.now() + 86_400_000 }, connectionIssue: { status: "token_expired", reason: "190", at: "2026-01-01" } } },
       { id: "c", workspaceId: "w1", name: "LI", type: "linkedin_personal", provider: "direct", handle: null, enabled: true, config: { credentials: { accessToken: SECRET, expiresAt: Date.now() + 86_400_000 } } },
     ];
     const { GET } = await import("@/app/api/platforms/route");
@@ -40,12 +41,12 @@ describe("GET /api/platforms", () => {
     expect(text).not.toMatch(/accessToken|refreshToken|X_AUTH_TOKEN|credentials|accountId|config/);
     const { platforms } = JSON.parse(text);
     expect(platforms.map((p: Record<string, unknown>) => p.connectionStatus)).toEqual([
-      "token_expired", "disconnected", "connected",
+      "token_expired", "disconnected", "token_expired", "connected",
     ]);
     expect(Object.keys(platforms[0]).sort()).toEqual(
       ["connectionStatus", "displayName", "enabled", "id", "provider", "tokenExpiresAt", "type", "username"]
     );
-    expect(platforms[2].tokenExpiresAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+    expect(platforms[3].tokenExpiresAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
   });
 
   it("passes through auth failures", async () => {

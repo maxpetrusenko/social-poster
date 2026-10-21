@@ -9,9 +9,13 @@ import {
   readRefreshToken,
 } from "./credentials";
 import { normalizeNativePlatform } from "./platform-key";
+import { classifyAuthFailure } from "@/lib/platform-connection-state";
 import { readStoredConnectionConfig } from "@/lib/connection-config";
 import { mediaTypeFromUrl } from "@/lib/media-url";
-import type { PublishResult as PipelinePublishResult } from "@/lib/pipeline/publisher";
+import type {
+  FirstCommentOutcome,
+  PublishResult as PipelinePublishResult,
+} from "@/lib/pipeline/publisher";
 import type { InstagramPublishContentType } from "@/lib/post-publish-metadata";
 import type { PublishContent } from "./types";
 
@@ -87,6 +91,7 @@ export async function publishViaNativeProvider(
       classification: "success",
       postId: result.platformPostId,
       postUrl: result.url,
+      firstComment: readFirstCommentOutcome(result.extra),
       raw: result.extra,
     };
   } catch (error) {
@@ -250,15 +255,40 @@ function buildPublishExtra(target: NativePublishInput) {
   return Object.keys(extra).length ? extra : undefined;
 }
 
+function readFirstCommentOutcome(
+  extra: Record<string, unknown> | undefined
+): FirstCommentOutcome | undefined {
+  if (!extra) return undefined;
+  if (typeof extra.firstCommentError === "string") {
+    return { success: false, error: extra.firstCommentError };
+  }
+  const comment = extra.firstComment;
+  if (comment && typeof comment === "object" && !Array.isArray(comment)) {
+    const record = comment as Record<string, unknown>;
+    return {
+      success: true,
+      id: typeof record.id === "string" ? record.id : undefined,
+      url: typeof record.url === "string" ? record.url : undefined,
+    };
+  }
+  return undefined;
+}
+
 function classifyNativeError(error: unknown): PipelinePublishResult["classification"] {
   if (error instanceof RateLimitError) return "rate_limited";
   if (error instanceof OAuthError) return "auth_error";
   if (error instanceof APIError) {
+    // X answers 403 for duplicate content; that is not an auth failure.
+    if (error.statusCode === 409 || /duplicate/i.test(error.message)) {
+      return "duplicate";
+    }
     if (error.statusCode === 401 || error.statusCode === 403) return "auth_error";
+    if (classifyAuthFailure({ message: error.message, statusCode: error.statusCode, raw: error.rawResponse })) {
+      return "auth_error";
+    }
     if (error.statusCode === 400 || error.statusCode === 422) {
       return "validation_error";
     }
-    if (error.statusCode === 409) return "duplicate";
     return "provider_error";
   }
   return "network_error";

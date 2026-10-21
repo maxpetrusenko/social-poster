@@ -737,6 +737,9 @@ function ensureSchema(sqlite: Database.Database) {
   `);
 
   addColumnIfMissing(sqlite, "platforms", "workspace_id", "workspace_id TEXT");
+  addColumnIfMissing(sqlite, "post_targets", "first_comment_id", "first_comment_id TEXT");
+  addColumnIfMissing(sqlite, "post_targets", "first_comment_url", "first_comment_url TEXT");
+  addColumnIfMissing(sqlite, "post_targets", "first_comment_error", "first_comment_error TEXT");
   addColumnIfMissing(sqlite, "profiles", "workspace_id", "workspace_id TEXT");
   addColumnIfMissing(sqlite, "posts", "workspace_id", "workspace_id TEXT");
   addColumnIfMissing(sqlite, "schedules", "workspace_id", "workspace_id TEXT");

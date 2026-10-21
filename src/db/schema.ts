@@ -393,6 +393,10 @@ export const postTargets = sqliteTable("post_targets", {
   publishedUrl: text("published_url"),
   platformPostId: text("platform_post_id"),
   error: text("error"),
+  // Same-account reply/first comment (X self-reply). Errors never fail the main post.
+  firstCommentId: text("first_comment_id"),
+  firstCommentUrl: text("first_comment_url"),
+  firstCommentError: text("first_comment_error"),
   publishedAt: integer("published_at", { mode: "timestamp" }),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
 });
