@@ -75,6 +75,7 @@ Target state:
 - optional Bird health interval: `BIRD_SESSION_CHECK_HOURS=24`
 - `APP_URL` is optional in Coolify; when set, use the single dashboard origin `https://smmagent.app`. Do not paste the comma-separated Coolify domain list into `APP_URL`.
 - `PUBLIC_APP_URL` is optional; use it only if social-platform media fetch URLs should differ from `APP_URL`. Default fallback is `https://smmagent.app`.
+- `SOCIAL_POSTER_OAUTH_CALLBACK_URL` is only honored when its origin equals the host the user is on. `social.maxpetrusenko.com` now redirects to `smmagent.app`, so set it to `https://smmagent.app/api/auth/callback` and register that URI with Meta (Instagram login redirect URIs) and every other OAuth provider.
 - Keep legacy provider callback registrations for `https://social.maxpetrusenko.com/api/auth/callback` during the observation window. Add `https://smmagent.app/api/auth/callback` before switching provider traffic.
 - X/Bird image posts should use PNG/JPG/WebP assets, not SVG
 - Coolify should deploy from the prebuilt GHCR image, not build the repo on the VPS.

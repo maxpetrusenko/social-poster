@@ -210,20 +210,24 @@ export function ConnectionsGrid({
   disconnectingId,
   checkingBirdId,
   reconnectingBirdId,
+  refreshingId,
   onToggle,
   onDisconnect,
   onCheckBirdSession,
   onReconnectBird,
+  onRefreshConnection,
 }: {
   items: ConnectionCardItem[];
   togglingId: string | null;
   disconnectingId: string | null;
   checkingBirdId: string | null;
   reconnectingBirdId: string | null;
+  refreshingId: string | null;
   onToggle: (platformId: string) => void;
   onDisconnect: (platformId: string) => void;
   onCheckBirdSession: (platformId: string) => void;
   onReconnectBird: (platformId: string, authToken: string, ct0: string) => void;
+  onRefreshConnection: (platformId: string) => void;
 }) {
   if (items.length === 0) {
     return (
@@ -248,6 +252,8 @@ export function ConnectionsGrid({
           disconnecting={disconnectingId === item.id}
           checkingBird={checkingBirdId === item.id}
           reconnectingBird={reconnectingBirdId === item.id}
+          refreshing={refreshingId === item.id}
+          onRefreshConnection={onRefreshConnection}
           onToggle={onToggle}
           onDisconnect={onDisconnect}
           onCheckBirdSession={onCheckBirdSession}
@@ -264,6 +270,8 @@ function ConnectionCard({
   disconnecting,
   checkingBird,
   reconnectingBird,
+  refreshing,
+  onRefreshConnection,
   onToggle,
   onDisconnect,
   onCheckBirdSession,
@@ -274,11 +282,16 @@ function ConnectionCard({
   disconnecting: boolean;
   checkingBird: boolean;
   reconnectingBird: boolean;
+  refreshing: boolean;
+  onRefreshConnection: (platformId: string) => void;
   onToggle: (platformId: string) => void;
   onDisconnect: (platformId: string) => void;
   onCheckBirdSession: (platformId: string) => void;
   onReconnectBird: (platformId: string, authToken: string, ct0: string) => void;
 }) {
+  const canRefreshConnection =
+    item.provider === "direct" &&
+    (item.platformType === "instagram" || item.platformType === "instagram_personal");
   const canCheckBirdSession =
     item.provider === "bird" && item.platformType === "twitter";
 
@@ -324,6 +337,16 @@ function ConnectionCard({
         >
           {item.manageLabel}
         </Link>
+        {canRefreshConnection ? (
+          <button
+            type="button"
+            onClick={() => onRefreshConnection(item.id)}
+            disabled={refreshing}
+            className="inline-flex items-center justify-center gap-2 rounded-[0.8rem] border border-[#ddd2bf] bg-white px-3 py-2 text-sm font-semibold text-[#6c5d48] transition hover:border-[#c9b899] disabled:opacity-60"
+          >
+            {refreshing ? "Refreshing..." : "Refresh connection"}
+          </button>
+        ) : null}
         <button
           type="button"
           onClick={() => onDisconnect(item.id)}
