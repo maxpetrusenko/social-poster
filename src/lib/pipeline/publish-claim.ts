@@ -45,6 +45,7 @@ export type PublishClaimResult =
       runId: string;
       startedAt: Date;
       approvalState: string;
+      reclaimedUnknownDelivery: boolean;
     }
   | { kind: "not_found" }
   | { kind: "approval_blocked"; approvalState: string; reason: string }
@@ -61,6 +62,28 @@ const CLAIMABLE_POST_STATUSES = [
   "failed",
   "partial_failure",
 ] as const;
+
+/**
+ * A network_error leaves the target in `publishing` on purpose (delivery state
+ * unknown, so no silent auto-retry that could double-post). The target error is
+ * then stamped `network_error:<ISO time>: ...` when the attempt FINISHES.
+ * Only an explicit manual request with retryUnknownDelivery=true may reclaim
+ * such a target, after this window, and only if no pipeline run for the post is
+ * still `running`. A slow in-flight publish has no marker and stays blocked.
+ * Scheduled sweeps never retry.
+ */
+export const STALE_PUBLISHING_MS = 10 * 60 * 1000;
+export const NETWORK_ERROR_MARKER_PREFIX = "network_error:";
+
+export function stampNetworkError(detail: string, at: Date) {
+  return `${NETWORK_ERROR_MARKER_PREFIX}${at.toISOString()}: ${detail}`;
+}
+
+function networkErrorMarkerTime(error: string | null | undefined) {
+  if (!error?.startsWith(NETWORK_ERROR_MARKER_PREFIX)) return null;
+  const ts = Date.parse(error.slice(NETWORK_ERROR_MARKER_PREFIX.length, NETWORK_ERROR_MARKER_PREFIX.length + 24));
+  return Number.isFinite(ts) ? ts : null;
+}
 
 export const DISABLED_TARGET_RETRY_MARKER =
   "disabled-target: re-enable this platform to retry";
@@ -116,6 +139,8 @@ export function claimPostForPublishing(input: {
   postId: string;
   mode: PublishClaimMode;
   now?: Date;
+  /** Explicit opt-in to re-attempt targets whose delivery state is unknown. */
+  retryUnknownDelivery?: boolean;
 }): PublishClaimResult {
   const now = input.now ?? new Date();
 
@@ -185,12 +210,38 @@ export function claimPostForPublishing(input: {
       };
     }
 
-    if (post.status === "publishing" || targets.some(({ target }) => target.status === "publishing")) {
+    const hasInFlight =
+      post.status === "publishing" || targets.some(({ target }) => target.status === "publishing");
+    const reclaimable = (target: typeof postTargets.$inferSelect) => {
+      const markedAt = networkErrorMarkerTime(target.error);
+      return (
+        target.status === "publishing" &&
+        !isDeliveredTarget(target) &&
+        markedAt !== null &&
+        now.getTime() - markedAt >= STALE_PUBLISHING_MS
+      );
+    };
+    const runningRun = tx
+      .select({ id: pipelineRuns.id })
+      .from(pipelineRuns)
+      .where(and(eq(pipelineRuns.postId, input.postId), eq(pipelineRuns.status, "running")))
+      .get();
+    const staleInFlight =
+      input.mode === "manual" &&
+      input.retryUnknownDelivery === true &&
+      hasInFlight &&
+      !runningRun &&
+      targets.some(({ target }) => reclaimable(target));
+    if (hasInFlight && !staleInFlight) {
       return { kind: "publishing" };
     }
 
     const delivered = targets.some(({ target }) => isDeliveredTarget(target));
-    const retryableTargets = targets.filter(({ target }) => isRetryableTarget(target));
+    const retryableTargets = targets.filter(
+      ({ target }) =>
+        isRetryableTarget(target) ||
+        (staleInFlight && reclaimable(target))
+    );
     if (post.status === "published" && retryableTargets.length === 0) {
       return { kind: "completed" };
     }
@@ -203,9 +254,10 @@ export function claimPostForPublishing(input: {
       return { kind: "not_due" };
     }
 
-    const claimableStatus = CLAIMABLE_POST_STATUSES.includes(
-      post.status as (typeof CLAIMABLE_POST_STATUSES)[number]
-    );
+    const claimableStatuses: string[] = staleInFlight
+      ? [...CLAIMABLE_POST_STATUSES, "publishing"]
+      : [...CLAIMABLE_POST_STATUSES];
+    const claimableStatus = claimableStatuses.includes(post.status);
     if (!claimableStatus && !(post.status === "published" && retryableTargets.length > 0)) {
       return { kind: "invalid_state", status: post.status };
     }
@@ -227,7 +279,7 @@ export function claimPostForPublishing(input: {
           eq(posts.workspaceId, input.workspaceId),
           post.status === "published"
             ? eq(posts.status, "published")
-            : inArray(posts.status, [...CLAIMABLE_POST_STATUSES])
+            : inArray(posts.status, claimableStatuses)
         );
     const claim = tx
       .update(posts)
@@ -259,6 +311,7 @@ export function claimPostForPublishing(input: {
       runId,
       startedAt: now,
       approvalState: approvalGuard.approvalState,
+      reclaimedUnknownDelivery: staleInFlight,
     };
   });
 }

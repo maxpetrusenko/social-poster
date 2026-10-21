@@ -9,6 +9,7 @@ import {
   claimPostForPublishing,
   DISABLED_TARGET_RETRY_MARKER,
   resolvePostStatusFromTargetRows,
+  stampNetworkError,
 } from "@/lib/pipeline/publish-claim";
 import { publishPlatformTargets } from "@/lib/pipeline/publish-service";
 import type { PublishResult } from "@/lib/pipeline/publisher";
@@ -25,17 +26,20 @@ import { sendNotificationEmail } from "@/lib/notifications/send";
 import { trackUsage } from "@/lib/usage";
 
 export async function POST(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const tenant = await requireApiWorkspacePublisher();
   if (tenant instanceof NextResponse) return tenant;
 
   const { id: postId } = await params;
+  const requestBody = (await request.json().catch(() => null)) as { retryUnknownDelivery?: unknown } | null;
+  const retryUnknownDelivery = requestBody?.retryUnknownDelivery === true;
   const claim = claimPostForPublishing({
     workspaceId: tenant.currentWorkspace.id,
     postId,
     mode: "manual",
+    retryUnknownDelivery,
   });
 
   if (claim.kind !== "claimed") {
@@ -63,7 +67,7 @@ export async function POST(
     }
     if (claim.kind === "publishing") {
       return NextResponse.json(
-        { error: "Post is already publishing. Wait for the current delivery attempt to finish." },
+        { error: "Post is already publishing. Wait for the current delivery attempt to finish. If a previous attempt ended with an unknown delivery state (network_error) for 10+ minutes, verify the platform and retry with {\"retryUnknownDelivery\": true}." },
         { status: 409 }
       );
     }
@@ -93,6 +97,19 @@ export async function POST(
   }
 
   const { post, targets, publishTargets, runId, startedAt } = claim;
+  if (claim.reclaimedUnknownDelivery) {
+    await recordTenantAuditEvent(tenant, {
+      action: "post.publish.retry_unknown_delivery",
+      targetType: "post",
+      targetId: postId,
+      metadata: {
+        status: "retry",
+        endpoint: `POST /api/posts/${postId}/publish`,
+        runId,
+        targetIds: publishTargets.map(({ target }) => target.id),
+      },
+    });
+  }
   const steps: PipelineStep[] = [];
   const results: PublishResult[] = [];
   const publishMetadata = normalizePostPublishMetadata(post.metadata);
@@ -287,7 +304,7 @@ function applyTargetResult(
 
   if (result.classification === "network_error") {
     target.status = "publishing";
-    target.error = result.error ?? "Delivery state is unknown.";
+    target.error = stampNetworkError(result.error ?? "Delivery state is unknown.", completedAt);
     return;
   }
 
@@ -323,7 +340,7 @@ async function persistTargetResult(
       .update(postTargets)
       .set({
         status: "publishing",
-        error: result.error ?? "Delivery state is unknown.",
+        error: stampNetworkError(result.error ?? "Delivery state is unknown.", completedAt),
       })
       .where(eq(postTargets.id, targetId));
     return;

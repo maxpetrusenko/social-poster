@@ -1,13 +1,9 @@
 import { db } from "@/db";
 import { apiKeys, workspaces, organizations, orgMemberships, workspaceMemberships, users } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
-import { createHash } from "crypto";
+import { hashApiKey as hashKey } from "@/lib/api-key-mint";
 import { headers } from "next/headers";
 import { trackUsage } from "@/lib/usage";
-
-function hashKey(key: string): string {
-  return createHash("sha256").update(key).digest("hex");
-}
 
 export type ApiKeyContext = {
   apiKeyId: string;
@@ -68,7 +64,10 @@ export async function buildTenantFromApiKey(keyCtx: ApiKeyContext) {
   if (!user) return null;
 
   const orgMembership = await db.query.orgMemberships.findFirst({
-    where: eq(orgMemberships.userId, keyCtx.userId),
+    where: and(
+      eq(orgMemberships.userId, keyCtx.userId),
+      eq(orgMemberships.organizationId, workspace.organizationId)
+    ),
   });
   if (!orgMembership) return null;
 

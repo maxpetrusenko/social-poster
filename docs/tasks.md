@@ -338,6 +338,8 @@ social-poster/
 - Imported schedules default to disabled, matching pre-cutover safety
 - Platform skills live in `platforms.config.skills`; advanced per-platform settings live in `platforms.config`
 - Direct OAuth access tokens are refreshed by the scheduler every `TOKEN_REFRESH_SWEEP_HOURS` hours (default 6) when within `TOKEN_REFRESH_WINDOW_DAYS` days of expiry (default 7). Manual refresh: `POST /api/platforms/refresh-tokens` with optional `{ "force": true }`.
+- Agent control (no dashboard): mint an API key in the container with `docker exec <app> node scripts/create-api-key.mjs --workspace <id> --name <label> [--permission read_write]` (key on stdout only, pipe to a secret store). `PATCH /api/platforms/[id] {enabled}` (and the existing POST) toggles a platform; `PATCH /api/schedules/[id] {enabled}` pauses/resumes a schedule. Mutating manager routes require a read_write key.
+- A `network_error` leaves a post target in `publishing` stamped `network_error:<ISO>` (delivery state unknown). After 10 minutes, with no running pipeline run, an explicit manual `POST /api/posts/[id]/publish {"retryUnknownDelivery":true}` may retry it (audited; may double-post if the first attempt delivered). Scheduled sweeps never retry.
 - Bird-backed X connections store read-only session health in `platforms.config.birdSession`; the scheduler checks enabled Bird sessions every `BIRD_SESSION_CHECK_HOURS` hours (default 24), and connection cards expose a manual "Check Bird session" action.
 
 ## Environment
