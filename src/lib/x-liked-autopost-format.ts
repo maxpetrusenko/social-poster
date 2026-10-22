@@ -590,8 +590,17 @@ export function buildXLikedPlatformPostContent(input: {
   if (isX && input.externalUrls && input.externalUrls.length > 0) {
     const externalArtifact = pickExternalArtifact(input.externalUrls);
     if (externalArtifact && input.authorHandle) {
-      const mainContent = input.baseContent.replace(input.sourceUrl, "").trim();
-      const firstComment = `${externalArtifact.url}\n\nvia ${input.authorHandle}`;
+      // Fix #2: Strip artifact URL from main post when moved to first reply
+      let mainContent = input.baseContent
+        .replace(input.sourceUrl, "")
+        .replace(externalArtifact.url, "")
+        .trim();
+      // Clean up any double spaces or trailing punctuation from URL removal
+      mainContent = mainContent.replace(/\s+/g, " ").replace(/[,;]\s*$/, "").trim();
+      
+      // Fix #1: Ensure authorHandle starts with '@'
+      const handle = input.authorHandle.startsWith('@') ? input.authorHandle : `@${input.authorHandle}`;
+      const firstComment = `${externalArtifact.url}\n\nvia ${handle}`;
       return { mainContent, firstComment };
     }
   }
