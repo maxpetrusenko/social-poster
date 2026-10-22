@@ -350,11 +350,12 @@ Rules for this draft:
 - Do NOT reproduce the original's exact wording or layout. Reframe sentences, vary vocabulary, restructure paragraphs while keeping all meaning.
 - No em-dashes (—). Use commas, periods, or conjunctions instead.
 - No subject flips: if the source says "X does Y", do not flip to "Y happens because of X" unless the source already uses that structure.
-- Fix #3: CRITICAL VOICE RULE - Use lowercase style throughout. Only capitalize: (1) first word of sentences, (2) acronyms (AI, GPUs, NASA), (3) @handles, (4) brand/product names from the source (OpenAI, ChatGPT, QwenGyre). Do NOT capitalize ordinary words mid-sentence. Example: "openai released gpt-5" not "OpenAI Released GPT-5".
+- Fix #3: CRITICAL VOICE RULE - Use lowercase style throughout. Do NOT capitalize sentence starts. Only capitalize: (1) acronyms (AI, GPUs, NASA), (2) @handles, (3) brand/product names from the source (OpenAI, ChatGPT, QwenGyre). Example: "openai released gpt-5. google responded." NOT "OpenAI released GPT-5. Google responded."
 - For personal stories: preserve all specific timeframes, events, and outcomes, but reframe experiences to avoid claiming the author's completed work or personal ownership as Max's own.
 - Fix #5: Never first-person-claim others' reviews, demos, or completed work. If the author shows "agents I keep connected" or their own demo/video, do NOT reframe as "I keep connected" or claim it as Max's. Attribute properly or return SKIP.
 - Fix #4: Third-party work we can't reproduce (author shows their own demo/video/app): Return "SKIP: third-party demo/work - credit original author" UNLESS it's a comparison/opinion post with no proprietary detail (e.g., "X is better than Y" takes are OK as standalone).
 - Fix #2: When describing the author's work, opinion, or observation, ALWAYS credit them as @${input.authorHandle} (e.g., "@tibo_maker says", "@researcher found", "per @author"). Never use bare names ("Tibo says"), generic terms ("the author", "researchers"), or omit attribution. This applies to ALL author-specific content.
+- Fix #4: When the liked post quotes/links someone else's video or work, credit that creator by @handle too (e.g., "@anshuc"). Refer to people by @handle, not pronouns ("them", "they"). Keep at most one inline link in the X post body.
 - First-person framing rule: Never claim experiences, ownership, or completed work as Max's own ("I built", "I shipped", "my code", "agents I use") when we can't prove it. Reframe to what happened / what was done. For build claims in longer posts, add a short varied "so what's next" angle. For very short one-liners (< 100 chars), neutral first-person observation is OK without a "what's next" line.
 - Ban canned framings: Do not use formulaic phrases like "what stood out:", "make the case for this side", "here's what matters". Vary your language naturally.
 - Factual accuracy: Every number in your draft must appear in the source. Do not invent numbers, alter digits, or flip who-does-what relationships. If source says "LiteLLM got hijacked", do not write "LiteLLM hijacked X". If source says "keys were 66 and 237", do not write "randomness of 66 and 237 digits".
@@ -780,7 +781,6 @@ export function enforceVoicePostProcessing(text: string, sourceText: string): st
     
     const words = sentence.split(/(\s+)/);
     const processedWords: string[] = [];
-    let isFirstWord = true;
     
     for (const word of words) {
       if (/^\s+$/.test(word)) {
@@ -790,17 +790,16 @@ export function enforceVoicePostProcessing(text: string, sourceText: string): st
       
       const cleanWord = word.replace(/[.,;:!?()[\]{}'"]/g, '');
       
-      // Preserve:
-      // - First word of sentence (only if sentence-initial)
-      // - Acronyms (all caps, 2+ letters): AI, GPUs, IBM, NASA
+      // Fix #3: Do NOT preserve sentence-initial capitalization. Lowercase throughout.
+      // Preserve ONLY:
+      // - Acronyms (all caps, 2+ letters): AI, GPUs, IBM, NASA (with optional trailing 's')
       // - URLs
       // - Handles (@username)
       // - CamelCase: OpenAI, ChatGPT, DeepSeek
       // - Single capital letters
       // - Brand/product names from source preserve-list
       if (
-        isFirstWord ||
-        /^[A-Z]{2,}$/.test(cleanWord) ||
+        /^[A-Z]{2,}s?$/.test(cleanWord) ||
         /^https?:\/\//i.test(word) ||
         /^@\w+/.test(word) ||
         /^[A-Z][a-z]+[A-Z]/.test(cleanWord) ||
@@ -809,13 +808,11 @@ export function enforceVoicePostProcessing(text: string, sourceText: string): st
         preserveSet.has(cleanWord.toLowerCase())
       ) {
         processedWords.push(word);
-        if (!/^\s+$/.test(word)) isFirstWord = false;
         continue;
       }
       
-      // Lowercase everything else
+      // Lowercase everything else (including sentence starts)
       processedWords.push(word.toLowerCase());
-      isFirstWord = false;
     }
     
     processed.push(processedWords.join(''));
