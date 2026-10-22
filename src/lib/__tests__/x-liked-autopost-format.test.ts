@@ -84,8 +84,9 @@ describe("X liked autopost formatting", () => {
   it("decodes entities and removes trailing t.co media URLs when media is copied", () => {
     expect(cleanXLikedText("UI &amp; Copy")).toBe("UI & Copy");
     expect(cleanXLikedText("Post text\n\nhttps://t.co/abc123")).toBe("Post text");
+    // Bug fix #8: t.co links are stripped, which removes trailing whitespace
     expect(cleanXLikedText("Post text\n\nhttps://example.com/article")).toBe(
-      "Post text\n\nhttps://example.com/article"
+      "Post text\nhttps://example.com/article"
     );
   });
 
