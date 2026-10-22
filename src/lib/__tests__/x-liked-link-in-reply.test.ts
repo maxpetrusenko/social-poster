@@ -5,12 +5,14 @@ import { buildXLikedPlatformPostContent } from "../x-liked-autopost-format.ts";
 describe("X liked post link-in-reply", () => {
   it("moves source URL to first reply when X post has image media and URL in content", () => {
     const sourceUrl = "https://x.com/HowToPrompt__/status/2113248744905064464";
+    const sourceText = "Researchers mathematically proved that AI will cause the Tragedy of the Cognitive Commons.";
     const result = buildXLikedPlatformPostContent({
       baseContent: `researchers proved ai causes cognitive commons tragedy.\n\n${sourceUrl}`,
       platformType: "x",
       media: { url: "https://pbs.twimg.com/media/HVPEb9Wb0AE1DiE.jpg", mediaType: "image" },
       sourceUrl,
       authorHandle: "@HowToPrompt__",
+      sourceText,
     });
 
     expect(result.mainContent).toBe("researchers proved ai causes cognitive commons tragedy.");

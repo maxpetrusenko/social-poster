@@ -334,13 +334,15 @@ ${input.sourceText || "(empty)"}
 
 Rules for this draft:
 - The output is the main post text only.
-- Rewrite the source in your own words while preserving the meaning of EVERY point the author makes. Do not drop points or compress lists into fewer items.
-- Keep the source's train of thought: same paragraph order, same causal chain, same conclusion.
-- Keep the source's rhythm when it's part of the joke or style (e.g. breathless run-on sentences).
+- Rewrite the source in your own words: reframe and restructure the content, not near-1:1 copying. Preserve the meaning of EVERY point the author makes. Do not drop points or compress lists into fewer items.
+- Keep the source's train of thought: same core logic, same causal chain, same conclusion. You can reorder supporting details or rephrase connections, but the argument flow must stay intact.
+- Keep the source's rhythm when it's part of the joke or style (e.g. breathless run-on sentences). Otherwise, you can break long sentences into shorter ones or restructure for clarity.
 - Keep lists as lists when the source uses list format. Do not convert structured lists into prose unless the source is prose.
-- Preserve ALL numbers, named actors, mechanisms, and concrete details exactly as they appear.
+- Preserve ALL numbers, named actors, mechanisms, and concrete details exactly as they appear in the source. Numbers must match exactly.
 - Preserve the full length when needed to cover all points. Do not summarize or compress.
-- Do not reproduce the original's exact wording or layout just to preserve it; preserve meaning and completeness instead.
+- Do NOT reproduce the original's exact wording or layout. Reframe sentences, vary vocabulary, restructure paragraphs while keeping all meaning.
+- No em-dashes (—). Use commas, periods, or conjunctions instead.
+- No subject flips: if the source says "X does Y", do not flip to "Y happens because of X" unless the source already uses that structure.
 - For personal stories: preserve all specific timeframes, events, and outcomes, but reframe experiences to avoid claiming the author's completed work or personal ownership as Max's own.
 - First-person framing rule: Never claim experiences, ownership, or completed work as Max's own ("I built", "I shipped", "my code") when we can't prove it. Reframe to what happened / what was done, then add a short varied "so what's next" angle. Vary these framings creatively; don't use a fixed phrase. First person is OK only for neutral observation that's true for Max (e.g. reading/noticing).
 - For very short posts: do not pad to hit a minimum length. Short posts can stay short if the source is short.

@@ -29,10 +29,13 @@ describe("X liked autopost writer", () => {
     });
 
     expect(prompt).toContain("X Posting rules for Max Petrusenko");
-    expect(prompt).toContain("Rewrite the source in your own words while preserving the meaning of EVERY point");
+    expect(prompt).toContain("reframe and restructure the content");
     expect(prompt).toContain("Do not drop points or compress lists");
     expect(prompt).toContain("Keep the source's train of thought");
     expect(prompt).toContain("Preserve ALL numbers, named actors, mechanisms");
+    expect(prompt).toContain("Numbers must match exactly");
+    expect(prompt).toContain("No em-dashes");
+    expect(prompt).toContain("No subject flips");
     expect(prompt).toContain("not permanent Max-language rules");
     expect(prompt).toContain("Hard length budget: 2500 characters"); // Long mode default
     expect(prompt).toContain("petergyang/no-ai-slop");
@@ -626,9 +629,10 @@ describe("X liked autopost writer", () => {
     expect(runOnSnowballSource.length).toBeGreaterThan(2500);
     
     // Should preserve all points and length
-    expect(prompt).toContain("preserving the meaning of EVERY point");
+    expect(prompt).toContain("reframe and restructure");
     expect(prompt).toContain("Do not drop points or compress lists");
     expect(prompt).toContain("Preserve ALL numbers, named actors, mechanisms");
+    expect(prompt).toContain("Numbers must match exactly");
     
     // Rewritten version (trimmed to fit 2500 budget) should pass
     const rewrittenVersion = runOnSnowballSource.slice(0, 2450).replace(/So basically/g, "Today");

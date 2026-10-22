@@ -557,12 +557,15 @@ function sourceFirstPersonToRule(line: string, handle: string) {
   return `@${handle}'s workflow: ${cleaned}`;
 }
 
+import { shouldIncludeSourceLink } from "./x-liked-autopost-similarity";
+
 export function buildXLikedPlatformPostContent(input: {
   baseContent: string;
   platformType: string;
   media: XLikedMedia | null;
   sourceUrl: string;
   authorHandle?: string;
+  sourceText?: string;
 }): { mainContent: string; firstComment?: string } {
   const normalized = input.platformType.toLowerCase();
   const isX = normalized === "x" || normalized === "twitter";
@@ -582,12 +585,19 @@ export function buildXLikedPlatformPostContent(input: {
   }
 
   // For X with media (image) or text-only: move source URL to first reply when it makes sense
+  // BUT skip if repost is almost identical to source (redundant)
   if (isX && input.media?.mediaType === "image") {
+    // Check similarity first - if repost is almost identical, don't include source link at all
+    if (input.sourceText && !shouldIncludeSourceLink(input.baseContent, input.sourceText)) {
+      // Too similar - no source link needed
+      return { mainContent: input.baseContent };
+    }
+    
     // Extract URLs from content
     const urlPattern = /https?:\/\/[^\s]+/g;
     const urls: string[] = input.baseContent.match(urlPattern) || [];
     
-    // If content has the source URL, move it to first comment
+    // If content has the source URL and texts differ meaningfully, move it to first comment
     if (urls.includes(input.sourceUrl)) {
       const mainContent = input.baseContent.replace(input.sourceUrl, "").trim();
       const firstComment = `source: ${input.sourceUrl}`;
