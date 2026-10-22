@@ -83,8 +83,8 @@ describe("X liked autopost formatting", () => {
 
   it("decodes entities and removes trailing t.co media URLs when media is copied", () => {
     expect(cleanXLikedText("UI &amp; Copy")).toBe("UI & Copy");
-    expect(cleanXLikedText("Post text\n\nhttps://t.co/abc123", { hasMedia: true })).toBe("Post text");
-    expect(cleanXLikedText("Post text\n\nhttps://example.com/article", { hasMedia: true })).toBe(
+    expect(cleanXLikedText("Post text\n\nhttps://t.co/abc123")).toBe("Post text");
+    expect(cleanXLikedText("Post text\n\nhttps://example.com/article")).toBe(
       "Post text\n\nhttps://example.com/article"
     );
   });

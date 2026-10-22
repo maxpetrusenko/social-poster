@@ -404,7 +404,7 @@ export async function getXLikedAutopostReviewCandidates(options: {
     const authorHandle = getTweetAuthor(tweet);
     const fallbackImage = getTweetImageUrl(tweet);
     const media = await resolveXLikedMedia(tweet, fallbackImage);
-    const sourceText = cleanXLikedText(getTweetText(tweet), { hasMedia: Boolean(media) });
+    const sourceText = cleanXLikedText(getTweetText(tweet));
     const policySkip = shouldSkipTweet(tweet, xPlatform, Boolean(media));
     const imported = await alreadyImported(options.workspaceId, sourceUrl, dedupKey);
     const reason = imported ? "already imported or blocked" : policySkip?.reason ?? null;
@@ -483,7 +483,7 @@ export async function runXLikedAutopost(options: RunOptions): Promise<XLikedAuto
     }
 
     const authorHandle = getTweetAuthor(tweet);
-    const cleanText = cleanXLikedText(getTweetText(tweet), { hasMedia: Boolean(media) });
+    const cleanText = cleanXLikedText(getTweetText(tweet));
     const externalUrls = getXLikedExternalUrls({ tweet, sourceText: cleanText });
     if (!cleanText.trim()) {
       result.skipped.push({ url: sourceUrl, reason: "empty cleaned tweet text" });

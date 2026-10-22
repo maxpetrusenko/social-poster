@@ -43,7 +43,7 @@ export function buildXLikedDedupKey(tweet: Pick<BirdTweet, "id" | "url" | "autho
   return `x-like:${tweet.id || buildXLikedSourceUrl(tweet)}`;
 }
 
-export function cleanXLikedText(text: string, options: { hasMedia?: boolean } = {}) {
+export function cleanXLikedText(text: string) {
   const normalized = decodeBasicHtmlEntities(text)
     .replace(/\r\n/g, "\n")
     .replace(/[ \t]+\n/g, "\n")
@@ -61,7 +61,7 @@ export function getXLikedAutopostSkipReason(input: {
   sourceText: string;
   hasMedia?: boolean;
 }) {
-  const text = cleanXLikedText(input.sourceText, { hasMedia: input.hasMedia });
+  const text = cleanXLikedText(input.sourceText);
 
   // Skip posts that are only emojis/flags without meaningful text
   const textWithoutEmojis = text.replace(/[\u{1F1E6}-\u{1F1FF}\u{1F300}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, "").trim();
@@ -84,7 +84,7 @@ export function shouldUseDirectXLikedTextCopy(input: {
   sourceText: string;
   hasMedia?: boolean;
 }) {
-  const text = cleanXLikedText(input.sourceText, { hasMedia: input.hasMedia });
+  const text = cleanXLikedText(input.sourceText);
   if (!text.trim() || text.length > 1200) return false;
   if (hasFirstPersonClaim(text)) return false;
   if (hasSourceOwnedLaunchSignal(text)) return false;
