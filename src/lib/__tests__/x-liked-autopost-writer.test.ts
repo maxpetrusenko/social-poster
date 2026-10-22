@@ -59,7 +59,8 @@ describe("X liked autopost writer", () => {
     });
 
     expect(prompt).toContain("Previous draft failed: writer returned thread numbering");
-    expect(prompt).toContain("Hard length budget: 600 characters");
+    // Bug fix #1: Media posts use same 2500 char limit now
+    expect(prompt).toContain("Hard length budget: 2500 characters");
   });
 
   it("reframes first-person and includes study URLs", () => {
@@ -80,7 +81,7 @@ describe("X liked autopost writer", () => {
 
   it("rejects no-ai-slop patterns with unslop pass", () => {
     const base = {
-      sourceText: "IBM published 0.7nm chip research with 40% SRAM scaling.",
+      sourceText: "IBM published 0.7nm chip research with 40% SRAM scaling and memory density improvements.",
       externalUrls: ["https://newsroom.ibm.com/example"],
       hasMedia: false,
       sourceUrl: "https://x.com/source/status/123",
@@ -95,7 +96,7 @@ describe("X liked autopost writer", () => {
     expect(
       getXLikedAutopostContentRejection({
         ...base,
-        content: "The uncomfortable truth is that SRAM scaling drives the useful result.",
+        content: "The uncomfortable truth is that SRAM scaling drives memory results.",
       })
     ).toBe("writer used no-ai-slop pattern(s): throat_clearing");
     expect(
@@ -107,13 +108,13 @@ describe("X liked autopost writer", () => {
     expect(
       getXLikedAutopostContentRejection({
         ...base,
-        content: "IBM published 0.7nm research. SRAM scales by 40%. Density is the result.",
+        content: "IBM published 0.7nm research. SRAM scales by 40%. Density improves. Memory scales.",
       })
     ).toBe("writer used no-ai-slop pattern(s): stacked_short_sentences");
     expect(
       getXLikedAutopostContentRejection({
         ...base,
-        content: "IBM's 0.7nm research reports 40% SRAM scaling, which concentrates the result in memory density.",
+        content: "IBM's 0.7nm research reports 40% SRAM scaling, density improvements.",
       })
     ).toBeNull();
   });
@@ -321,7 +322,7 @@ describe("X liked autopost writer", () => {
           "Paste the whole thing into Hermes and ask it to build the setup from it:",
           "",
           "SOUL.md",
-          "the first 3 profiles",
+          "your profiles",
           "an overnight /goal",
           "",
           "Articles are becoming playbooks agents can turn into working systems.",
@@ -362,10 +363,11 @@ describe("X liked autopost writer", () => {
   });
 
   it("rejects study drafts that omit a recovered primary source URL", () => {
+    const sourceText = "A study with 2,691 people shows AI saves 7.5 seconds instead of the expected 55.7 seconds.";
     expect(
       getXLikedAutopostContentRejection({
-        content: "AI feels faster before it is faster. Measured saving: 7.5 seconds.",
-        sourceText: "A study with 2,691 people shows AI saves 7.5 seconds instead of the expected 55.7 seconds.",
+        content: "study with 2,691 people: AI saves 7.5 seconds, not expected 55.7 seconds.",
+        sourceText,
         externalUrls: ["https://arxiv.org/abs/2605.22687"],
         hasMedia: false,
         sourceUrl: "https://x.com/source/status/123",
@@ -375,13 +377,11 @@ describe("X liked autopost writer", () => {
     expect(
       getXLikedAutopostContentRejection({
         content: [
-          "AI feels faster before it is faster.",
+          "study with 2,691 people: AI saves 7.5 seconds, not 55.7 seconds.",
           "",
-          "Measured saving: 7.5 seconds.",
-          "",
-          "Study: https://arxiv.org/abs/2605.22687",
+          "https://arxiv.org/abs/2605.22687",
         ].join("\n"),
-        sourceText: "A study with 2,691 people shows AI saves 7.5 seconds instead of the expected 55.7 seconds.",
+        sourceText,
         externalUrls: ["https://arxiv.org/abs/2605.22687"],
         hasMedia: false,
         sourceUrl: "https://x.com/source/status/123",
@@ -394,21 +394,21 @@ describe("X liked autopost writer", () => {
     expect(
       getXLikedAutopostContentRejection({
         content: "A".repeat(2501),
-        sourceText: "Short source.",
+        sourceText: "A".repeat(2501),
         hasMedia: false,
         sourceUrl: "https://x.com/source/status/123",
       })
     ).toBe("writer exceeded 2500 character budget");
 
-    // Media posts still have 600 char limit
+    // Bug fix #1: media posts now use same 2500 limit in long mode (not 600)
     expect(
       getXLikedAutopostContentRejection({
-        content: "A".repeat(601),
-        sourceText: "Short source with media.",
+        content: "A".repeat(2501),
+        sourceText: "A".repeat(2501),
         hasMedia: true,
         sourceUrl: "https://x.com/source/status/123",
       })
-    ).toBe("writer exceeded 600 character budget");
+    ).toBe("writer exceeded 2500 character budget");
   });
 
   it("rejects drafts that lose required concrete source hooks", () => {
@@ -536,24 +536,25 @@ describe("X liked autopost writer", () => {
     expect(vi.mocked(callOpenAIResponses)).toHaveBeenCalledTimes(1); // Only writer, no reviewer
   });
 
-  it("rejects drafts that are too short (< 20 chars excluding URLs)", () => {
+  it("allows short drafts (Bug fix #5: no minimum length requirement)", () => {
+    // Bug fix #5: Short posts are allowed now (no minimum length padding)
     expect(
       getXLikedAutopostContentRejection({
-        content: "good point",
-        sourceText: "This is a longer source text with meaningful content.",
+        content: "good point here from the source",
+        sourceText: "good point here from the source",
         hasMedia: false,
         sourceUrl: "https://x.com/source/status/123",
       })
-    ).toBe("writer returned too-short draft (< 20 chars excluding URLs)");
+    ).toBeNull();
 
     expect(
       getXLikedAutopostContentRejection({
-        content: "check this out\n\nhttps://github.com/example/repo",
-        sourceText: "This is a longer source text with meaningful content.",
+        content: "check this repository\n\nhttps://github.com/example/repo",
+        sourceText: "check this repository now and examine it",
         hasMedia: false,
         sourceUrl: "https://x.com/source/status/123",
       })
-    ).toBe("writer returned too-short draft (< 20 chars excluding URLs)");
+    ).toBeNull();
   });
 
   it("applies unslop pass to catch AI-slop patterns", () => {
@@ -635,7 +636,14 @@ describe("X liked autopost writer", () => {
     expect(prompt).toContain("Numbers must match exactly");
     
     // Rewritten version (trimmed to fit 2500 budget) should pass
-    const rewrittenVersion = runOnSnowballSource.slice(0, 2450).replace(/So basically/g, "Today");
+    // Note: voice check requires lowercase, so proper nouns need to be acronyms or CamelCase
+    const rewrittenVersion = runOnSnowballSource
+      .slice(0, 2450)
+      .replace(/So basically/g, "so basically")
+      .replace(/(\w+)\.\s+([A-Z])/g, (match, word, letter) => `${word}. ${letter.toLowerCase()}`)
+      .replace(/And (\w)/g, (match, letter) => `and ${letter}`)
+      .replace(/PHP/g, "PHP") // Keep as acronym
+      .replace(/NSA/g, "NSA"); // Keep as acronym
     expect(
       getXLikedAutopostContentRejection({
         content: rewrittenVersion,
@@ -654,3 +662,281 @@ function buildReviewerRejection(review: { approved: boolean; issues: string[]; r
     : "";
   return `reviewer rejected draft: ${issues}.${scoresSummary} Repair: ${review.repairInstruction || "rewrite from source facts and x-posting rules"}`;
 }
+
+describe("Bug fixes from production runs (2026-10-22)", () => {
+  describe("Bug #1: Long mode must apply with media too", () => {
+    it("allows 2500 char limit for posts with media when long mode enabled", () => {
+      const longTextWithMedia = "a".repeat(1680);
+      expect(
+        getXLikedAutopostContentRejection({
+          content: longTextWithMedia,
+          sourceText: "a".repeat(1680),
+          hasMedia: true,
+          sourceUrl: "https://x.com/test/status/123",
+        })
+      ).toBeNull();
+    });
+
+    it("rejects posts with media exceeding 2500 chars", () => {
+      const tooLong = "a".repeat(2501);
+      const rejection = getXLikedAutopostContentRejection({
+        content: tooLong,
+        sourceText: "a".repeat(2600),
+        hasMedia: true,
+        sourceUrl: "https://x.com/test/status/123",
+      });
+      expect(rejection).toContain("exceeded 2500 character budget");
+    });
+
+    it("prompt includes 2500 char budget for media posts", () => {
+      const prompt = buildXLikedAutopostWriterPrompt({
+        authorHandle: "@test",
+        sourceUrl: "https://x.com/test/status/123",
+        sourceText: "a".repeat(1800),
+        hasMedia: true,
+        mediaType: "image",
+      });
+      expect(prompt).toContain("Hard length budget: 2500 characters");
+      expect(prompt).not.toContain("600");
+    });
+  });
+
+  describe("Bug #2: Fallback model must enforce voice rules", () => {
+    it("rejects capitalized/news-wire voice regardless of model", () => {
+      const capitalized = "the System Failed And Then The Backup Also Failed So We Had To Try Again.";
+      const sourceText = "the system failed and then the backup also failed so we had to try again longer";
+      const rejection = getXLikedAutopostContentRejection({
+        content: capitalized,
+        sourceText,
+        hasMedia: false,
+        sourceUrl: "https://x.com/test/status/123",
+      });
+      expect(rejection).not.toBeNull();
+      if (rejection) {
+        expect(rejection).toContain("capitalized/news-wire voice");
+      }
+    });
+
+    it("allows proper nouns, acronyms, and first-word capitalization", () => {
+      const validText = "deepseek failed so we used OpenAI and GPT via LiteLLM to recover. NASA approved it.";
+      const sourceText = "deepseek failed so we used openai and gpt via litellm to recover. nasa approved it.";
+      expect(
+        getXLikedAutopostContentRejection({
+          content: validText,
+          sourceText,
+          hasMedia: false,
+          sourceUrl: "https://x.com/test/status/123",
+        })
+      ).toBeNull();
+    });
+
+    it("prompt includes no-em-dash and lowercase instructions", () => {
+      const prompt = buildXLikedAutopostWriterPrompt({
+        authorHandle: "@test",
+        sourceUrl: "https://x.com/test/status/123",
+        sourceText: "test",
+        hasMedia: false,
+        mediaType: null,
+      });
+      expect(prompt).toContain("No em-dashes");
+      expect(prompt).toContain("No subject flips");
+    });
+  });
+
+  describe("Bug #3: Number matching and no subject flips", () => {
+    it("rejects drafts with invented numbers", () => {
+      const sourceWithNumbers = "keys were 66 and 237 characters long in the test";
+      const draftWithWrongNumbers = "randomness of 66 and 237 and 999 digits noted";
+      const rejection = getXLikedAutopostContentRejection({
+        content: draftWithWrongNumbers,
+        sourceText: sourceWithNumbers,
+        hasMedia: false,
+        sourceUrl: "https://x.com/test/status/123",
+      });
+      // "999" is not in the source, so this should be rejected
+      expect(rejection).toContain("invented number");
+      expect(rejection).toContain("999");
+    });
+
+    it("allows drafts where all numbers exist in source", () => {
+      const source = "keys were 66 and 237 characters long in the test run";
+      const draft = "the keys were 66 chars and 237 chars in test run";
+      expect(
+        getXLikedAutopostContentRejection({
+          content: draft,
+          sourceText: source,
+          hasMedia: false,
+          sourceUrl: "https://x.com/test/status/123",
+        })
+      ).toBeNull();
+    });
+
+    it("prompt includes strict number matching instructions", () => {
+      const prompt = buildXLikedAutopostWriterPrompt({
+        authorHandle: "@test",
+        sourceUrl: "https://x.com/test/status/123",
+        sourceText: "test",
+        hasMedia: false,
+        mediaType: null,
+      });
+      expect(prompt).toContain("Every number in your draft must appear in the source");
+      expect(prompt).toContain("Do not invent numbers");
+      expect(prompt).toContain("No subject flips");
+    });
+  });
+
+  describe("Bug #4: Preserve lists as lists", () => {
+    it("prompt instructs to keep lists when source uses list format", () => {
+      const prompt = buildXLikedAutopostWriterPrompt({
+        authorHandle: "@test",
+        sourceUrl: "https://x.com/test/status/123",
+        sourceText: "1. First item\n2. Second item\n3. Third item",
+        hasMedia: false,
+        mediaType: null,
+      });
+      expect(prompt).toContain("Keep lists as lists when the source uses list format");
+      expect(prompt).toContain("Do not convert structured lists into prose");
+    });
+  });
+
+  describe("Bug #5: No padding on short posts", () => {
+    it("allows very short posts without minimum length requirement", () => {
+      const shortPost = "deepseek failed, switched to gpt.";
+      const sourceText = "deepseek failed, switched to gpt.";
+      expect(
+        getXLikedAutopostContentRejection({
+          content: shortPost,
+          sourceText,
+          hasMedia: false,
+          sourceUrl: "https://x.com/test/status/123",
+        })
+      ).toBeNull();
+    });
+
+    it("rejects only truly empty content", () => {
+      expect(
+        getXLikedAutopostContentRejection({
+          content: "https://example.com",
+          sourceText: "test",
+          hasMedia: false,
+          sourceUrl: "https://x.com/test/status/123",
+        })
+      ).toContain("content with only URLs");
+    });
+
+    it("prompt says short posts can stay short", () => {
+      const prompt = buildXLikedAutopostWriterPrompt({
+        authorHandle: "@test",
+        sourceUrl: "https://x.com/test/status/123",
+        sourceText: "short test",
+        hasMedia: false,
+        mediaType: null,
+      });
+      expect(prompt).toContain("For very short posts (< 100 chars): do not pad to hit a minimum length");
+    });
+  });
+
+  describe("Bug #6: Ban canned framings", () => {
+    it("rejects 'what stood out:' framing", () => {
+      const content = "what stood out: the system failed twice";
+      const rejection = getXLikedAutopostContentRejection({
+        content,
+        sourceText: "system failed twice",
+        hasMedia: false,
+        sourceUrl: "https://x.com/test/status/123",
+      });
+      expect(rejection).toContain("canned framing phrases");
+    });
+
+    it("rejects 'make the case for this side' framing", () => {
+      const content = "let me make the case for this side of the debate";
+      const rejection = getXLikedAutopostContentRejection({
+        content,
+        sourceText: "debate point",
+        hasMedia: false,
+        sourceUrl: "https://x.com/test/status/123",
+      });
+      expect(rejection).toContain("canned framing phrases");
+    });
+
+    it("prompt bans canned framings", () => {
+      const prompt = buildXLikedAutopostWriterPrompt({
+        authorHandle: "@test",
+        sourceUrl: "https://x.com/test/status/123",
+        sourceText: "test",
+        hasMedia: false,
+        mediaType: null,
+      });
+      expect(prompt).toContain("Ban canned framings");
+      expect(prompt).toContain("what stood out");
+      expect(prompt).toContain("make the case for this side");
+    });
+  });
+
+  describe("Bug #7: Don't exceed source length much", () => {
+    it("rejects drafts that significantly exceed source length", () => {
+      const source = "a".repeat(910);
+      const draft = "b".repeat(1100); // Exceeds by >15% and >200 chars
+      const rejection = getXLikedAutopostContentRejection({
+        content: draft,
+        sourceText: source,
+        hasMedia: false,
+        sourceUrl: "https://x.com/test/status/123",
+      });
+      expect(rejection).toContain("exceeded source length");
+    });
+
+    it("allows drafts within 15% of source length", () => {
+      const source = "a".repeat(910);
+      const draft = "b".repeat(1000); // Within +15%
+      expect(
+        getXLikedAutopostContentRejection({
+          content: draft,
+          sourceText: source,
+          hasMedia: false,
+          sourceUrl: "https://x.com/test/status/123",
+        })
+      ).toBeNull();
+    });
+
+    it("prompt says do not exceed source length much", () => {
+      const prompt = buildXLikedAutopostWriterPrompt({
+        authorHandle: "@test",
+        sourceUrl: "https://x.com/test/status/123",
+        sourceText: "test",
+        hasMedia: false,
+        mediaType: null,
+      });
+      expect(prompt).toContain("Do NOT exceed the source length much");
+    });
+  });
+
+  describe("Bug #8: Strip raw t.co links", () => {
+    it("rejects drafts with t.co links in body", () => {
+      const content = "check this out for more info https://t.co/abc123xyz";
+      const sourceText = "check this out for more info and details";
+      const rejection = getXLikedAutopostContentRejection({
+        content,
+        sourceText,
+        hasMedia: false,
+        sourceUrl: "https://x.com/test/status/123",
+      });
+      expect(rejection).toContain("t.co links");
+    });
+  });
+
+  describe("Bug #9: First-person build claims with what's next", () => {
+    it("prompt includes first-person framing rule with what's next for longer posts", () => {
+      const prompt = buildXLikedAutopostWriterPrompt({
+        authorHandle: "@test",
+        sourceUrl: "https://x.com/test/status/123",
+        sourceText: "a".repeat(200),
+        hasMedia: false,
+        mediaType: null,
+      });
+      expect(prompt).toContain("First-person framing rule");
+      expect(prompt).toContain("add a short varied \"so what's next\" angle");
+      expect(prompt).toContain("For very short one-liners (< 100 chars), neutral first-person observation is OK");
+    });
+  });
+});

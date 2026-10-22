@@ -50,11 +50,10 @@ export function cleanXLikedText(text: string, options: { hasMedia?: boolean } = 
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 
-  if (!options.hasMedia) return normalized;
-
+  // Bug fix #8: Strip raw t.co links from body (they go to first reply)
   return normalized
-    .replace(/\s+https:\/\/t\.co\/[A-Za-z0-9_]+$/g, "")
-    .replace(/\n+https:\/\/t\.co\/[A-Za-z0-9_]+$/g, "")
+    .replace(/https?:\/\/t\.co\/\S+/g, "")
+    .replace(/\s+$/gm, "")
     .trim();
 }
 
