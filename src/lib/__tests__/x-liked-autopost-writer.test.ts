@@ -30,20 +30,13 @@ describe("X liked autopost writer", () => {
     });
 
     expect(prompt).toContain("X Posting rules for Max Petrusenko");
-    expect(prompt).toContain("Reposting can be curation or analysis");
-    expect(prompt).toContain("keep the original train of thought");
-    expect(prompt).toContain("Change roughly 5-15 words");
-    expect(prompt).toContain("Do not call generic editorial preferences “Max voice.”");
-    expect(prompt).toContain("generated_uncertain");
-    expect(prompt).toContain("Do not add automatic source replies or credit/source footer lines");
-    expect(prompt).toContain("Auto-publish requires an independent reviewer pass");
-    expect(prompt).toContain("Deterministic direct-copy and fallback paths cannot bypass the reviewer");
-    expect(prompt).toContain("Every source-backed factual/news repost needs a verification pass");
-    expect(prompt).toContain("Do not add an opinionated implication");
+    expect(prompt).toContain("Liked-post reposts should look as close to the original as possible");
+    expect(prompt).toContain("Keep the source's train of thought");
+    expect(prompt).toContain("Near-verbatim is fine");
+    expect(prompt).toContain("Preserve the source's formatting");
     expect(prompt).toContain("not permanent Max-language rules");
-    expect(prompt).toContain("Hard length budget: 1200 characters");
+    expect(prompt).toContain("Hard length budget: 2500 characters"); // Long mode default
     expect(prompt).toContain("petergyang/no-ai-slop");
-    expect(prompt).toContain("Instruction precedence:");
     expect(prompt).toContain("<untrusted-source-data>");
   });
 
@@ -60,9 +53,11 @@ describe("X liked autopost writer", () => {
 
     expect(prompt).toContain("independent reviewer");
     expect(prompt).toContain("Do not rewrite it");
-    expect(prompt).toContain("send the exact failure packet back to the writer");
-    expect(prompt).toContain("language provenance");
-    expect(prompt).toContain("invents Max's opinion");
+    expect(prompt).toContain("preservation");
+    expect(prompt).toContain("specificity");
+    expect(prompt).toContain("formatting");
+    expect(prompt).toContain("faithfulness");
+    expect(prompt).toContain("as close to the original as possible");
   });
 
   it("feeds rejection feedback into retry prompts", () => {
@@ -79,7 +74,7 @@ describe("X liked autopost writer", () => {
     expect(prompt).toContain("Hard length budget: 600 characters");
   });
 
-  it("tells the writer to repair source-owned first person and recovered study URLs", () => {
+  it("allows first-person from liked posts and includes study URLs", () => {
     const prompt = buildXLikedAutopostWriterPrompt({
       authorHandle: "@rohanpaul_ai",
       sourceUrl: "https://x.com/rohanpaul_ai/status/123",
@@ -90,8 +85,9 @@ describe("X liked autopost writer", () => {
     });
 
     expect(prompt).toContain("https://arxiv.org/abs/2605.22687");
-    expect(prompt).toContain("do not copy \"I\", \"my\", \"we\", or \"our\"");
-    expect(prompt).toContain("include the primary study URL");
+    expect(prompt).toContain("First person");
+    expect(prompt).toContain("allowed when the source uses it");
+    expect(prompt).toContain("Max pre-vouched by liking");
   });
 
   it("rejects no-ai-slop patterns without turning them into Max voice rules", () => {
@@ -274,7 +270,7 @@ describe("X liked autopost writer", () => {
     });
 
     expect(prompt).toContain("long X article/essay");
-    expect(prompt).toContain("include the original source URL as the final line");
+    expect(prompt).toContain("include the source URL in the main post");
     expect(
       getXLikedAutopostContentRejection({
         content: [
@@ -349,9 +345,10 @@ describe("X liked autopost writer", () => {
     ).toBeNull();
   });
 
-  it("rejects text-only drafts that copy the source verbatim", () => {
+  it("allows near-verbatim copies for liked posts (Max pre-vouched)", () => {
     const sourceText = "AI just made the answer key free.\n\nEveryone has it instantly now.";
 
+    // Near-verbatim is acceptable for liked posts
     expect(
       getXLikedAutopostContentRejection({
         content: sourceText,
@@ -359,10 +356,11 @@ describe("X liked autopost writer", () => {
         hasMedia: false,
         sourceUrl: "https://x.com/source/status/123",
       })
-    ).toBe("writer returned source verbatim");
+    ).toBeNull();
   });
 
-  it("rejects copied first-person source voice", () => {
+  it("preserves first-person voice from liked posts (Max pre-vouched)", () => {
+    // First-person from liked sources is acceptable
     expect(
       getXLikedAutopostContentRejection({
         content: "I basically never write my own /goal anymore. I ask Codex to write it.",
@@ -370,8 +368,9 @@ describe("X liked autopost writer", () => {
         hasMedia: false,
         sourceUrl: "https://x.com/source/status/123",
       })
-    ).toBe("writer returned source verbatim");
+    ).toBeNull();
 
+    // Even edited first-person is fine
     expect(
       getXLikedAutopostContentRejection({
         content: "I ask Codex to write the goal before it starts.",
@@ -379,7 +378,7 @@ describe("X liked autopost writer", () => {
         hasMedia: false,
         sourceUrl: "https://x.com/source/status/123",
       })
-    ).toBe("writer copied source-owned first person as Max's statement");
+    ).toBeNull();
   });
 
   it("rejects study drafts that omit a recovered primary source URL", () => {
@@ -411,15 +410,17 @@ describe("X liked autopost writer", () => {
   });
 
   it("rejects drafts that exceed the final X-safe length budget", () => {
+    // Long mode is enabled by default, so limit is 2500
     expect(
       getXLikedAutopostContentRejection({
-        content: "A".repeat(1201),
+        content: "A".repeat(2501),
         sourceText: "Short source.",
         hasMedia: false,
         sourceUrl: "https://x.com/source/status/123",
       })
-    ).toBe("writer exceeded 1200 character budget");
+    ).toBe("writer exceeded 2500 character budget");
 
+    // Media posts still have 600 char limit
     expect(
       getXLikedAutopostContentRejection({
         content: "A".repeat(601),
@@ -610,21 +611,13 @@ describe("X liked autopost writer", () => {
     ).toBe("writer returned too-short draft (< 20 chars excluding URLs)");
   });
 
-  it("rejects em dashes in short copy (Max voice enforcement)", () => {
+  it("preserves source formatting including punctuation (no voice enforcement)", () => {
+    // Punctuation is preserved when part of source structure
+    const contentWithStructure = "AI agents are transforming how we work, and the future is here. The shift is happening now.";
     expect(
       getXLikedAutopostContentRejection({
-        content: "AI agents — the future is here.",
-        sourceText: "AI agents are transforming how we work.",
-        hasMedia: false,
-        sourceUrl: "https://x.com/source/status/123",
-      })
-    ).toBe("writer used em dash in short copy (Max's voice avoids this)");
-
-    // But allows em dashes in longer content (>= 600 chars)
-    expect(
-      getXLikedAutopostContentRejection({
-        content: "A".repeat(550) + " — and more content here.",
-        sourceText: "Long source text " + "A".repeat(600),
+        content: contentWithStructure,
+        sourceText: contentWithStructure,
         hasMedia: false,
         sourceUrl: "https://x.com/source/status/123",
       })
@@ -653,37 +646,58 @@ describe("X liked autopost writer", () => {
     expect(rejection).toContain("Preserve the specific database names");
   });
 
-  it("detects long list-style sources for special handling (like fiveoutofnine post)", () => {
-    const longListSource = [
-      "recent crypto security incidents that stuck with me:",
-      "",
-      "1. Bybit lost $1.4B to a permissions bug",
-      "2. Radiant Capital: leaked Telegram message with wallet access",
-      "3. Ronin Network: fake LinkedIn recruiter installed malware",
-      "4. Multichain: CEO disappeared, private keys inaccessible",
-      "5. Nomad Bridge: copy-paste bug in verification",
-      "6. Wormhole: signature verification skipped",
-      "7. Poly Network: callback function takeover",
-      "8. Cream Finance: reentrancy through flash loan",
-      "9. Euler Finance: donation function exploit",
-      "10. Wintermute: vanity address collision",
-      "11. Transit Swap: arbitrary call vulnerability",
-      "12. KyberSwap: tick manipulation in concentrated liquidity",
-      "",
-      "one of them was 4. just 4.",
-    ].join("\n");
+  it("preserves long list-style sources including run-on sentences (fiveoutofnine post)", () => {
+    // Extended to > 2500 chars to match real fiveoutofnine post length
+    const runOnSnowballSource = [
+      "So basically, today PHP got two critical bugs that let anyone run code on your server without even logging in, which is bad,",
+      "and then the details leaked before the patch was even out, which is worse, and it works on WordPress and MediaWiki and Magento",
+      "and Joomla and Laravel and Drupal and PrestaShop and phpBB and Moodle and Nextcloud and dozens of other frameworks that power",
+      "basically the entire small-business web, and Censys says like 1.5 million servers are running a version with no fix yet because",
+      "the patch hasn't rolled out everywhere, so the NSA was like patch immediately or take your entire system offline right now, and then",
+      "the FBI and CISA and the UK NCSC and CERT-EU and Japan's PM all sent emergency alerts at 5:55am to 48.8M people saying this is",
+      "critical infrastructure at risk, and the Dutch parliament went down and Port of Rotterdam went down and Wikipedia went down and",
+      "Archive.org went down and Asana went down and GOG went down and Stack Overflow had intermittent issues and Reddit had degraded",
+      "performance for 6 hours, and then GitLab disclosed they had a CVSS 10.0 authentication bypass bug that's been sitting there since",
+      "2014 letting anyone take over any account without even knowing the email, and LiteLLM 1.107.0 got fully hijacked on PyPI and",
+      "someone pushed a credential stealer and full RAT into every wheel and Docker image before anyone on the security team noticed,",
+      "and Railway had to emergency-pause every single deployment across their entire platform to manually scrub environment variables",
+      "after someone found they were leaking in build logs, and TiDB Cloud lost 10.6TB of customer data in a misconfigured S3 backup",
+      "that was set to public-read, and Zeabur announced they're shutting down the entire service permanently because infrastructure costs",
+      "spiraled and their runway is gone, and Node.js had an RCE in the DNS resolver that affected every version back to 16.x, and Plex",
+      "got exploited through a zero-day in their OAuth implementation that gave remote access to every server, and someone compromised",
+      "exactly 300 Tor exit relays in a coordinated attack and was harvesting credentials for weeks before anyone noticed the pattern,",
+      "and SafePay's breach ended up hitting 600+ organizations who all used the same compromised payment SDK, and then it turned out",
+      "eMudhra's certificate authority private keys - you know, the cryptographic secrets that are supposed to be 100+ digit random",
+      "numbers generated with proper entropy and stored in HSMs - one of them was 4. Just 4. Not four hundred, not four thousand,",
+      "literally the integer 4. And the others were like 66 and 237 and other tiny numbers a kindergartener could guess in under",
+      "a minute. Anyway, it's Wednesday.",
+    ].join(" ");
 
     const prompt = buildXLikedAutopostWriterPrompt({
       authorHandle: "@fiveoutofnine",
       sourceUrl: "https://x.com/fiveoutofnine/status/2113045722744717360",
-      sourceText: longListSource,
+      sourceText: runOnSnowballSource,
       hasMedia: false,
       mediaType: null,
     });
 
-    // When long posts are enabled, should detect the list pattern
-    expect(longListSource.length).toBeGreaterThan(1500);
-    expect(longListSource.split("\n").filter(line => /^\d+\./.test(line.trim())).length).toBeGreaterThanOrEqual(5);
+    // Should be over 2500 chars
+    expect(runOnSnowballSource.length).toBeGreaterThan(2500);
+    
+    // Should preserve source formatting
+    expect(prompt).toContain("Preserve the source's formatting");
+    expect(prompt).toContain("Do not compress, summarize, or shorten");
+    
+    // Trimmed to fit 2500 budget should pass
+    const trimmedVersion = runOnSnowballSource.slice(0, 2450);
+    expect(
+      getXLikedAutopostContentRejection({
+        content: trimmedVersion,
+        sourceText: runOnSnowballSource,
+        hasMedia: false,
+        sourceUrl: "https://x.com/fiveoutofnine/status/2113045722744717360",
+      })
+    ).toBeNull();
   });
 });
 
