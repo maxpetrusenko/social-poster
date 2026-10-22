@@ -1,11 +1,11 @@
 import cron from "node-cron";
 import { db } from "@/db";
-import { pipelineRuns, schedules } from "@/db/schema";
+import { schedules } from "@/db/schema";
 import { and, eq, isNotNull } from "drizzle-orm";
 import { processReadyReplyQueue } from "./replies/live";
 import { runScheduleJob } from "./schedule-jobs";
 import { processDueScheduledPosts } from "./pipeline/scheduled-post-publisher";
-import { finalizeAbandonedSteps } from "./pipeline/recovery";
+import { recoverAbandonedRuns } from "./pipeline/recover-abandoned-runs";
 import { getScheduleCronTimeZone } from "./timezone";
 import {
   getTokenRefreshSnapshot,
@@ -38,8 +38,10 @@ type RegisteredScheduleTask = {
 };
 
 const tasks = new Map<string, RegisteredScheduleTask>();
-const ABANDONED_RUN_ERROR = "Run interrupted by app restart before completion";
-let didRecoverAbandonedRuns = false;
+// Process-wide (globalThis) so a duplicate module instance (instrumentation vs
+// route bundles) cannot re-run recovery against a live in-flight publish.
+const RECOVERED_FLAG = Symbol.for("social-poster.scheduler.recoveredAbandonedRuns");
+const recoveryState = globalThis as unknown as Record<symbol, boolean | undefined>;
 let readyQueueInterval: NodeJS.Timeout | null = null;
 let tokenRefreshInterval: NodeJS.Timeout | null = null;
 let tokenRefreshBootTimer: NodeJS.Timeout | null = null;
@@ -200,32 +202,12 @@ function buildScheduleFingerprint(schedule: typeof schedules.$inferSelect) {
 }
 
 async function ensureRecoveredAbandonedRuns() {
-  if (didRecoverAbandonedRuns) {
+  if (recoveryState[RECOVERED_FLAG]) {
     return;
   }
 
   await recoverAbandonedRuns();
-  didRecoverAbandonedRuns = true;
-}
-
-async function recoverAbandonedRuns(): Promise<void> {
-  const runningRuns = await db.select().from(pipelineRuns).where(eq(pipelineRuns.status, "running"));
-  if (runningRuns.length === 0) return;
-
-  console.warn(`[scheduler] recovering ${runningRuns.length} abandoned run(s)`);
-
-  for (const run of runningRuns) {
-    await db
-      .update(pipelineRuns)
-      .set({
-        status: "failed",
-        error: ABANDONED_RUN_ERROR,
-        steps: finalizeAbandonedSteps(run.steps, ABANDONED_RUN_ERROR),
-        completedAt: new Date(),
-        durationMs: Math.max(0, Date.now() - new Date(run.startedAt).getTime()),
-      })
-      .where(eq(pipelineRuns.id, run.id));
-  }
+  recoveryState[RECOVERED_FLAG] = true;
 }
 
 function ensureReadyQueueWorker() {

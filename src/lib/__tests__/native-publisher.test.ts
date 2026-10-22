@@ -147,3 +147,46 @@ describe("Instagram story permalink", () => {
     expect(resolvePostUrl("instagram", "image", result, {})).toBe(result.url);
   });
 });
+
+describe("native publisher pre-publish failure classification", () => {
+  const platform = {
+    id: "platform-ig",
+    provider: "direct",
+    type: "instagram",
+    accountId: "ig-account",
+    config: {
+      authMethod: "instagram_native",
+      credentials: { accessToken: "token" },
+      igUserId: "ig-user",
+    },
+  } as never;
+
+  it("classifies an Instagram container ERROR (before media_publish) as provider_error", async () => {
+    const originalFetch = globalThis.fetch;
+    const calls: string[] = [];
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      const url = String(input);
+      calls.push(url);
+      const body = url.includes("/media")
+        ? { id: "container-1" }
+        : { status_code: "ERROR", status: "Unsupported image format" };
+      return new Response(JSON.stringify(body), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }) as typeof fetch;
+    try {
+      const result = await publishViaNativeProvider({
+        platform,
+        content: "Bad image",
+        mediaUrls: ["https://cdn.example.com/bad.jpg"],
+      });
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("Instagram container failed");
+      expect(result.classification).toBe("provider_error");
+      expect(calls.some((url) => url.includes("media_publish"))).toBe(false);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+});

@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { OAuthProvider, buildAuthUrl } from "./oauth";
-import { PublishError } from "./errors";
+import { PrePublishError, PublishError } from "./errors";
 import type {
   AccountProfile,
   MediaType,
@@ -233,7 +233,16 @@ export class LinkedInProvider extends OAuthProvider {
     responseKey: "image" | "video"
   ): Promise<PublishResult> {
     const mediaSource = firstMedia(content) ?? "";
-    const bytes = await readBytes(mediaSource);
+    // Runs before any LinkedIn upload/post call, so a failure here published nothing.
+    let bytes: Uint8Array;
+    try {
+      bytes = await readBytes(mediaSource);
+    } catch (error) {
+      throw new PrePublishError(
+        error instanceof Error ? error.message : "Media download failed",
+        { platform: this.platformName }
+      );
+    }
     const initializeUploadRequest: JsonRecord = { owner: author };
     if (endpoint === "videos") {
       initializeUploadRequest.fileSizeBytes = bytes.byteLength;

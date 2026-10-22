@@ -1,7 +1,7 @@
 import { db } from "@/db";
 import { platforms } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import { APIError, OAuthError, RateLimitError } from "./errors";
+import { APIError, OAuthError, PrePublishError, RateLimitError } from "./errors";
 import { getProvider, hasNativeProvider } from "./registry";
 import {
   mergeProviderCredentials,
@@ -296,6 +296,8 @@ function readFirstCommentOutcome(
 function classifyNativeError(error: unknown): PipelinePublishResult["classification"] {
   if (error instanceof RateLimitError) return "rate_limited";
   if (error instanceof OAuthError) return "auth_error";
+  // Raised strictly before the provider's final publish call: nothing went out.
+  if (error instanceof PrePublishError) return "provider_error";
   if (error instanceof APIError) {
     // X answers 403 for duplicate content; that is not an auth failure.
     if (error.statusCode === 409 || /duplicate/i.test(error.message)) {
