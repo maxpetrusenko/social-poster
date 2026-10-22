@@ -10,6 +10,7 @@ import { mergeProviderCredentials } from "@/lib/providers/credentials";
 import { getDisabledNativeOAuthMessage } from "@/lib/providers/disabled-native-oauth";
 import { FacebookProvider } from "@/lib/providers/facebook";
 import { getProvider } from "@/lib/providers/registry";
+import { sanitizeOAuthReturnPath } from "@/lib/safe-next-path";
 import {
   type NativeOAuthState,
   decodeNativeOAuthCookie,
@@ -38,14 +39,11 @@ export async function handleNativeOAuthCallback(
   );
   const oauthFlow = findNativeOAuthCookieFlow(oauthCookie, state?.nonce);
 
-  const fallback = new URL(
-    state?.next || "/dashboard/workspace-settings/social-accounts",
-    appUrl
-  );
+  const fallback = new URL(sanitizeOAuthReturnPath(state?.next), appUrl);
   const disabledOAuthMessage = getDisabledNativeOAuthMessage(platform);
   if (disabledOAuthMessage) {
     updateNativeOAuthCookie(cookieStore, oauthCookie, state?.nonce);
-    fallback.searchParams.set("error", disabledOAuthMessage);
+    fallback.searchParams.set("error", "instagram_personal_unavailable");
     return NextResponse.redirect(fallback);
   }
 
@@ -53,7 +51,10 @@ export async function handleNativeOAuthCallback(
   const code = request.nextUrl.searchParams.get("code");
 
   if (error) {
-    fallback.searchParams.set("error", error);
+    fallback.searchParams.set(
+      "error",
+      error === "access_denied" ? "access_denied" : "provider_error"
+    );
     return NextResponse.redirect(fallback);
   }
 
@@ -64,7 +65,7 @@ export async function handleNativeOAuthCallback(
     state.platform !== platform
   ) {
     console.error(`[oauth-callback] ❌ State mismatch for ${platform}: code=${!!code}, state=${!!state}, nonceMatch=${Boolean(oauthFlow)}, platformMatch=${state?.platform === platform}`);
-    fallback.searchParams.set("error", "Invalid OAuth callback state.");
+    fallback.searchParams.set("error", "invalid_state");
     return NextResponse.redirect(fallback);
   }
 
@@ -72,27 +73,33 @@ export async function handleNativeOAuthCallback(
 
   const type = storedPlatformType(platform);
   if (!isPlatformType(type)) {
-    fallback.searchParams.set("error", `Unsupported platform: ${type}`);
+    fallback.searchParams.set("error", "unsupported_platform");
     return NextResponse.redirect(fallback);
   }
 
   const redirectUri = oauthFlow.redirectUri ?? oauthCallbackUrl(platform, request);
   // Values that must never reach logs or redirect URLs.
   const secrets: string[] = [code];
+  if (oauthFlow.codeVerifier) secrets.push(oauthFlow.codeVerifier);
 
   try {
-    const provider = getProvider(
+    const providerConfig = mergeProviderCredentials(
       platform,
-      mergeProviderCredentials(
-        platform,
-        oauthFlow.credentials ? { credentials: oauthFlow.credentials } : null
-      )
+      oauthFlow.credentials ? { credentials: oauthFlow.credentials } : null
     );
-    const tokens = await provider.exchangeCode(
-      code,
-      redirectUri,
-      oauthFlow.codeVerifier ?? undefined
-    );
+    secrets.push(...collectSecretValues(providerConfig));
+    const provider = getProvider(platform, providerConfig);
+    const tokens = await provider
+      .exchangeCode(code, redirectUri, oauthFlow.codeVerifier ?? undefined)
+      .catch((exchangeError: unknown) => {
+        console.error(
+          `[oauth-callback] ${platform} token exchange failed: ${redactSecrets(
+            exchangeError instanceof Error ? exchangeError.message : "unknown",
+            secrets
+          )}`
+        );
+        throw new OAuthCallbackError("token_rejected");
+      });
     if (platform === "facebook" && provider instanceof FacebookProvider) {
       return saveFacebookPageConnections({
         request,
@@ -111,9 +118,7 @@ export async function handleNativeOAuthCallback(
     if (platform === "instagram" && !profile?.platformId) {
       // Without the account id we cannot upsert, and a token that cannot read
       // /me is unusable. Refuse instead of saving a junk duplicate row.
-      throw new Error(
-        "Instagram connected, but the account profile could not be read with the new token. Nothing was saved. Try connecting again."
-      );
+      throw new OAuthCallbackError("instagram_profile_unreadable");
     }
     const now = new Date();
     const expiresAt = tokens.expiresIn
@@ -149,6 +154,7 @@ export async function handleNativeOAuthCallback(
     });
 
     fallback.searchParams.set("connected", platform);
+    fallback.searchParams.set("platformId", result.id);
     console.log(`[oauth-callback] ✅ ${result.created ? "Saved" : "Updated"} ${platform} connection for workspace ${tenant.currentWorkspace.id}`);
 
     // Cancel "connect account" drip if user just connected their first platform
@@ -166,8 +172,19 @@ export async function handleNativeOAuthCallback(
       secrets
     );
     console.error(`[oauth-callback] ❌ ${platform} callback failed: ${message}`);
-    fallback.searchParams.set("error", message);
+    fallback.searchParams.set(
+      "error",
+      callbackError instanceof OAuthCallbackError
+        ? callbackError.code
+        : "callback_failed"
+    );
     return NextResponse.redirect(fallback);
+  }
+}
+
+class OAuthCallbackError extends Error {
+  constructor(readonly code: string) {
+    super(code);
   }
 }
 
@@ -187,10 +204,7 @@ async function saveFacebookPageConnections({
 }) {
   const pages = await provider.getUserPages(tokens.accessToken);
   if (pages.length === 0) {
-    fallback.searchParams.set(
-      "error",
-      "Facebook connected, but no manageable Pages were returned. Make sure the signed-in Facebook user has Page access and grants the requested Page permissions."
-    );
+    fallback.searchParams.set("error", "facebook_no_pages");
     return NextResponse.redirect(fallback);
   }
 
@@ -271,6 +285,17 @@ async function saveFacebookPageConnections({
 function callbackAuthMethod(platform: string, methodId: string | null | undefined) {
   if (platform === "instagram") return "instagram_oauth";
   return methodId ?? `${platform}_native`;
+}
+
+/** Every string under a key containing "secret" (client/app secrets), any depth. */
+function collectSecretValues(value: unknown, depth = 0): string[] {
+  if (!value || typeof value !== "object" || depth > 3) return [];
+  const out: string[] = [];
+  for (const [key, child] of Object.entries(value)) {
+    if (typeof child === "string" && /secret/i.test(key)) out.push(child);
+    else out.push(...collectSecretValues(child, depth + 1));
+  }
+  return out;
 }
 
 function redactSecrets(message: string, secrets: string[]) {

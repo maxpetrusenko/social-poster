@@ -34,6 +34,9 @@ import {
   getManageLabel,
   platformMatchesConnectionFilter,
 } from "./connections-page-utils";
+import { OAuthReturnNoticeBanner } from "./oauth-return-notice";
+import type { OAuthReturnNotice } from "@/lib/providers/oauth-return";
+
 export function ConnectionsPage({
   workspaceName,
   profiles,
@@ -42,6 +45,7 @@ export function ConnectionsPage({
   initialDrawerOpen,
   initialPlatformType,
   initialError,
+  successNotice = null,
   nativeAvailabilityByPlatform,
   oauthCallbackUrlOverride,
 }: {
@@ -52,6 +56,7 @@ export function ConnectionsPage({
   initialDrawerOpen: boolean;
   initialPlatformType: PlatformType | null;
   initialError: string | null;
+  successNotice?: OAuthReturnNotice | null;
   nativeAvailabilityByPlatform: Record<PlatformType, NativeConnectionAvailability>;
   oauthCallbackUrlOverride: string | null;
 }) {
@@ -569,6 +574,8 @@ export function ConnectionsPage({
             )
           }
         />
+
+        <OAuthReturnNoticeBanner notice={error ? null : successNotice} />
 
         {error ? (
           <div

@@ -40,3 +40,36 @@ export function sanitizeAppNextPath(
     return fallback;
   }
 }
+
+export const SOCIAL_ACCOUNTS_PATH = "/dashboard/workspace-settings/social-accounts";
+
+const OAUTH_RETURN_PREFIXES = [
+  "/dashboard/workspace-settings",
+  "/dashboard/settings",
+  "/dashboard/platforms",
+  "/dashboard/profiles",
+  "/dashboard/posts",
+  "/dashboard/calendar",
+  "/dashboard/campaigns",
+  "/dashboard/publish",
+  "/dashboard/schedules",
+] as const;
+
+const TRAILING_PUNCTUATION = /[.,;:!?)\]}'"]+$/;
+
+/**
+ * Post-OAuth return target. Same-origin app path only; trailing punctuation
+ * copied from chat text is stripped; anything outside a small allowlist of
+ * dashboard routes falls back to the social accounts page.
+ */
+export function sanitizeOAuthReturnPath(candidate?: string | null) {
+  const safe = sanitizeAppNextPath(candidate, SOCIAL_ACCOUNTS_PATH);
+  const queryStart = safe.search(/[?#]/);
+  const rawPath = queryStart === -1 ? safe : safe.slice(0, queryStart);
+  const suffix = queryStart === -1 ? "" : safe.slice(queryStart);
+  const path = rawPath.replace(TRAILING_PUNCTUATION, "").replace(/\/+$/, "");
+  const known = OAUTH_RETURN_PREFIXES.some(
+    (prefix) => path === prefix || path.startsWith(`${prefix}/`)
+  );
+  return known ? `${path}${suffix}` : SOCIAL_ACCOUNTS_PATH;
+}

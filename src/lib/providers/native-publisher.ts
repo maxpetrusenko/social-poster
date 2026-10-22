@@ -90,7 +90,7 @@ export async function publishViaNativeProvider(
       success: true,
       classification: "success",
       postId: result.platformPostId,
-      postUrl: result.url,
+      postUrl: resolvePostUrl(platformKey, content.postType, result, target.platform.config),
       firstComment: readFirstCommentOutcome(result.extra),
       raw: result.extra,
     };
@@ -199,6 +199,25 @@ async function resolveAccessToken(
     .where(eq(platforms.id, target.platform.id));
 
   return refreshed.accessToken;
+}
+
+/**
+ * Instagram stories have no /p/<id>/ permalink. Build the stories URL from the
+ * stored handle, or return no URL rather than a wrong feed link.
+ */
+export function resolvePostUrl(
+  platformKey: string,
+  postType: PublishContent["postType"],
+  result: { platformPostId?: string; url?: string },
+  config: unknown
+): string | undefined {
+  if (platformKey !== "instagram" || postType !== "story") return result.url;
+  const profile = (config as { providerProfile?: { handle?: unknown } } | null)
+    ?.providerProfile;
+  const handle =
+    typeof profile?.handle === "string" ? profile.handle.replace(/^@/, "").trim() : "";
+  if (!handle || !result.platformPostId) return undefined;
+  return `https://www.instagram.com/stories/${encodeURIComponent(handle)}/${encodeURIComponent(result.platformPostId)}/`;
 }
 
 function buildPublishContent(target: NativePublishInput): PublishContent {

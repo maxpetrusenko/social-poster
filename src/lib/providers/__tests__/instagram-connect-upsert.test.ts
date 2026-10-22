@@ -216,7 +216,7 @@ describe("Instagram connect upsert", () => {
   it("refuses to save when the profile cannot be read, and never logs tokens", async () => {
     meFails = true;
     const res = await runCallback("native-1");
-    expect(res.headers.get("location")).toContain("error=");
+    expect(res.headers.get("location")).toContain("error=instagram_profile_unreadable");
     expect(await igRows()).toHaveLength(0);
     const all = logs.join("\n") + (res.headers.get("location") ?? "");
     expect(all).not.toContain("SECRETTOKEN");
