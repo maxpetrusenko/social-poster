@@ -39,10 +39,10 @@ describe("X liked post similarity-based link inclusion", () => {
     expect(result.firstComment).toBe(`source: ${sourceUrl}`);
   });
 
-  it("skips source link when minor rewording keeps high similarity", () => {
+  it("moves source link to first reply when similarity is moderate", () => {
     const sourceUrl = "https://x.com/researcher/status/456";
     const sourceText = "AI agents are transforming software development faster than expected.";
-    const repost = "AI agents are transforming software development more quickly than expected"; // Minor rewording
+    const repost = "AI agents are transforming software development more quickly than expected"; // Minor rewording (0.73 similarity)
 
     const result = buildXLikedPlatformPostContent({
       baseContent: `${repost} ${sourceUrl}`,
@@ -52,8 +52,27 @@ describe("X liked post similarity-based link inclusion", () => {
       sourceText,
     });
 
-    // No source link because similarity is high (most words shared)
-    expect(result.mainContent).toBe(`${repost} ${sourceUrl}`);
+    // Moderate similarity (~0.73, below 0.75 threshold) means different enough to need source link
+    // URL should be moved from main content to first comment
+    expect(result.mainContent).toBe(repost);
+    expect(result.firstComment).toBe(`source: ${sourceUrl}`);
+  });
+
+  it("skips source link when similarity is very high (near-identical)", () => {
+    const sourceUrl = "https://x.com/researcher/status/999";
+    const sourceText = "AI agents are transforming software development faster than we expected.";
+    const repost = "AI agents are transforming software development faster than we expected"; // Nearly identical (>0.95 similarity)
+
+    const result = buildXLikedPlatformPostContent({
+      baseContent: `${repost} ${sourceUrl}`,
+      platformType: "x",
+      media: { url: "https://pbs.twimg.com/media/img.jpg", mediaType: "image" },
+      sourceUrl,
+      sourceText,
+    });
+
+    // Very high similarity (>0.75) means near-identical, so skip source link entirely
+    expect(result.mainContent).toBe(repost);
     expect(result.firstComment).toBeUndefined();
   });
 

@@ -263,15 +263,15 @@ describe("X liked autopost writer", () => {
     expect(
       getXLikedAutopostContentRejection({
         content: [
-          "Fable was here, then gone.",
+          "fable was here, then gone.",
           "",
-          "That tiny shock is the whole essay.",
+          "that tiny shock is the whole essay.",
           "",
-          "Frontier AI is becoming infrastructure now: access, compute, models, talent, the ability to use models to build the next models.",
+          "frontier AI is becoming infrastructure now: access, compute, models, talent, the ability to use models to build the next models.",
           "",
-          "Countries and companies that treat this like another software wave are choosing dependence.",
+          "countries and companies that treat this like another software wave are choosing dependence.",
           "",
-          "Worth reading.",
+          "worth reading.",
           "",
           sourceUrl,
         ].join("\n"),
@@ -315,17 +315,17 @@ describe("X liked autopost writer", () => {
     expect(
       getXLikedAutopostContentRejection({
         content: [
-          "Hermes Agent pro tip:",
+          "hermes agent pro tip:",
           "",
-          "Don't just read the article.",
+          "don't just read the article.",
           "",
-          "Paste the whole thing into Hermes and ask it to build the setup from it:",
+          "paste the whole thing into Hermes and ask it to build the setup from it:",
           "",
           "SOUL.md",
           "your profiles",
           "an overnight /goal",
           "",
-          "Articles are becoming playbooks agents can turn into working systems.",
+          "articles are becoming playbooks agents can turn into working systems.",
         ].join("\n"),
         sourceText,
         hasMedia: false,
@@ -550,7 +550,7 @@ describe("X liked autopost writer", () => {
     expect(
       getXLikedAutopostContentRejection({
         content: "check this repository\n\nhttps://github.com/example/repo",
-        sourceText: "check this repository now and examine it",
+        sourceText: "check this repository now and examine it carefully for examples",
         hasMedia: false,
         sourceUrl: "https://x.com/source/status/123",
       })
@@ -636,14 +636,19 @@ describe("X liked autopost writer", () => {
     expect(prompt).toContain("Numbers must match exactly");
     
     // Rewritten version (trimmed to fit 2500 budget) should pass
-    // Note: voice check requires lowercase, so proper nouns need to be acronyms or CamelCase
+    // Note: voice check requires lowercase, so we need to lowercase everything except proper nouns
     const rewrittenVersion = runOnSnowballSource
       .slice(0, 2450)
-      .replace(/So basically/g, "so basically")
-      .replace(/(\w+)\.\s+([A-Z])/g, (match, word, letter) => `${word}. ${letter.toLowerCase()}`)
-      .replace(/And (\w)/g, (match, letter) => `and ${letter}`)
-      .replace(/PHP/g, "PHP") // Keep as acronym
-      .replace(/NSA/g, "NSA"); // Keep as acronym
+      .split(' ')
+      .map((word, i) => {
+        // Keep acronyms and CamelCase
+        if (/^[A-Z]{2,}$/.test(word) || /^[A-Z][a-z]+[A-Z]/.test(word)) return word;
+        // Keep first word of sentences (after period)
+        if (i === 0) return word;
+        // Lowercase everything else
+        return word.replace(/^[A-Z]/, (c) => c.toLowerCase());
+      })
+      .join(' ');
     expect(
       getXLikedAutopostContentRejection({
         content: rewrittenVersion,

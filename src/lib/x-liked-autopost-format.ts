@@ -589,7 +589,9 @@ export function buildXLikedPlatformPostContent(input: {
     // Check similarity first - if repost is almost identical, don't include source link at all
     if (input.sourceText && !shouldIncludeSourceLink(input.baseContent, input.sourceText)) {
       // Too similar - no source link needed
-      return { mainContent: input.baseContent };
+      // Strip source URL from content if present
+      const mainContent = input.baseContent.replace(input.sourceUrl, "").trim();
+      return { mainContent };
     }
     
     // Extract URLs from content
