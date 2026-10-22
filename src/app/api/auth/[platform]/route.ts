@@ -5,6 +5,7 @@ import { requireApiWorkspaceManager } from "@/lib/api-authorization";
 import { getRequestAppUrl } from "@/lib/app-url";
 import { mergeProviderCredentials } from "@/lib/providers/credentials";
 import { getDisabledNativeOAuthMessage } from "@/lib/providers/disabled-native-oauth";
+import { sanitizeOAuthReturnPath } from "@/lib/safe-next-path";
 import { getProvider } from "@/lib/providers/registry";
 import {
   signOAuthState,
@@ -44,7 +45,7 @@ async function startNativeOAuth(
 
   const disabledOAuthMessage = getDisabledNativeOAuthMessage(platform);
   if (disabledOAuthMessage) {
-    return oauthStartError(request, appUrl, disabledOAuthMessage);
+    return oauthStartError(request, appUrl, disabledOAuthMessage, "instagram_personal_unavailable");
   }
 
   const nonce = crypto.randomBytes(24).toString("base64url");
@@ -54,15 +55,13 @@ async function startNativeOAuth(
     platform,
     profileId: request.nextUrl.searchParams.get("profileId"),
     methodId: request.nextUrl.searchParams.get("methodId"),
-    next:
-      request.nextUrl.searchParams.get("next") ??
-      "/dashboard/workspace-settings/social-accounts",
+    next: sanitizeOAuthReturnPath(request.nextUrl.searchParams.get("next")),
     timestamp: Date.now(),
   });
   const redirectUri = oauthCallbackUrl(platform, request);
   const setupError = getOAuthSetupError(platform, appUrl, redirectUri);
   if (setupError) {
-    return oauthStartError(request, appUrl, setupError);
+    return oauthStartError(request, appUrl, setupError, "instagram_local_https_required");
   }
   const oauthCredentials = isAppManagedOAuth(platform)
     ? null
@@ -128,7 +127,12 @@ function isAppManagedOAuth(platform: string) {
   );
 }
 
-function oauthStartError(request: NextRequest, appUrl: string, message: string) {
+function oauthStartError(
+  request: NextRequest,
+  appUrl: string,
+  message: string,
+  code = "oauth_start_failed"
+) {
   if (request.method === "POST") {
     return NextResponse.json({ error: message }, { status: 400 });
   }
@@ -136,7 +140,7 @@ function oauthStartError(request: NextRequest, appUrl: string, message: string) 
     "/dashboard/workspace-settings/social-accounts",
     appUrl
   );
-  fallback.searchParams.set("error", message);
+  fallback.searchParams.set("error", code);
   return NextResponse.redirect(fallback);
 }
 
