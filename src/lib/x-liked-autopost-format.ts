@@ -1,4 +1,5 @@
 import type { BirdTweet } from "@/lib/replies/bird";
+import { calculateTextSimilarity } from "@/lib/x-liked-autopost-similarity";
 
 export type XLikedMedia = {
   url: string;
@@ -43,18 +44,17 @@ export function buildXLikedDedupKey(tweet: Pick<BirdTweet, "id" | "url" | "autho
   return `x-like:${tweet.id || buildXLikedSourceUrl(tweet)}`;
 }
 
-export function cleanXLikedText(text: string, options: { hasMedia?: boolean } = {}) {
+export function cleanXLikedText(text: string) {
   const normalized = decodeBasicHtmlEntities(text)
     .replace(/\r\n/g, "\n")
     .replace(/[ \t]+\n/g, "\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 
-  if (!options.hasMedia) return normalized;
-
+  // Bug fix #8: Strip raw t.co links from body (they go to first reply)
   return normalized
-    .replace(/\s+https:\/\/t\.co\/[A-Za-z0-9_]+$/g, "")
-    .replace(/\n+https:\/\/t\.co\/[A-Za-z0-9_]+$/g, "")
+    .replace(/https?:\/\/t\.co\/\S+/g, "")
+    .replace(/\s+$/gm, "")
     .trim();
 }
 
@@ -62,7 +62,13 @@ export function getXLikedAutopostSkipReason(input: {
   sourceText: string;
   hasMedia?: boolean;
 }) {
-  const text = cleanXLikedText(input.sourceText, { hasMedia: input.hasMedia });
+  const text = cleanXLikedText(input.sourceText);
+
+  // Skip posts that are only emojis/flags without meaningful text
+  const textWithoutEmojis = text.replace(/[\u{1F1E6}-\u{1F1FF}\u{1F300}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, "").trim();
+  if (textWithoutEmojis.length === 0) {
+    return "source post contains only emojis/flags - not publishable";
+  }
 
   if (/\b(fuck|fucking|shit|bitch|cunt|dick)\b/i.test(text)) {
     return "profanity";
@@ -79,7 +85,7 @@ export function shouldUseDirectXLikedTextCopy(input: {
   sourceText: string;
   hasMedia?: boolean;
 }) {
-  const text = cleanXLikedText(input.sourceText, { hasMedia: input.hasMedia });
+  const text = cleanXLikedText(input.sourceText);
   if (!text.trim() || text.length > 1200) return false;
   if (hasFirstPersonClaim(text)) return false;
   if (hasSourceOwnedLaunchSignal(text)) return false;
@@ -557,19 +563,51 @@ export function buildXLikedPlatformPostContent(input: {
   media: XLikedMedia | null;
   sourceUrl: string;
   authorHandle?: string;
-}) {
+  sourceText?: string;
+}): { mainContent: string; firstComment?: string } {
   const normalized = input.platformType.toLowerCase();
+  const isX = normalized === "x" || normalized === "twitter";
+  
+  // For X with video, embed source URL in main post body (video posts don't move links to replies)
   const shouldEmbedSourceVideo =
-    input.media?.mediaType === "video" &&
-    (normalized === "x" || normalized === "twitter");
+    input.media?.mediaType === "video" && isX;
 
-  if (!shouldEmbedSourceVideo) {
-    return input.baseContent;
+  if (shouldEmbedSourceVideo) {
+    const embedUrl = input.media?.sourceUrl || input.sourceUrl;
+    if (input.baseContent.includes(embedUrl)) {
+      return { mainContent: input.baseContent };
+    }
+    return {
+      mainContent: [input.baseContent.trim(), "", embedUrl].join("\n"),
+    };
   }
 
-  const embedUrl = input.media?.sourceUrl || input.sourceUrl;
-  if (input.baseContent.includes(embedUrl)) return input.baseContent;
-  return [input.baseContent.trim(), "", embedUrl].join("\n");
+  // Fix #2: Link-in-first-reply logic - code-driven, not writer-dependent
+  // For X with media (image) or text-only: append source URL as first reply when similarity <= threshold
+  // Video posts: keep current behavior (no automatic link append)
+  if (isX && input.sourceText) {
+    const similarity = input.media?.mediaType === "video" ? 1.0 : // Skip video
+      calculateTextSimilarity(input.baseContent, input.sourceText);
+    
+    // Check if link should be included based on similarity
+    if (similarity > 0.75) {
+      // Too similar - no source link needed
+      // Strip source URL from content if present
+      const mainContent = input.baseContent.replace(input.sourceUrl, "").trim();
+      return { mainContent };
+    }
+    
+    // Similarity <= 0.75: append source link as first reply for image/text posts
+    if (input.media?.mediaType === "image" || !input.media) {
+      // Strip source URL from content if present
+      const mainContent = input.baseContent.replace(input.sourceUrl, "").trim();
+      // Fix #1: Do NOT collapse whitespace - preserve newlines/lists on X (same as LinkedIn)
+      const firstComment = `source: ${input.sourceUrl}`;
+      return { mainContent, firstComment };
+    }
+  }
+
+  return { mainContent: input.baseContent };
 }
 
 function pickTweetMedia(tweet: BirdTweet): XLikedMedia | null {

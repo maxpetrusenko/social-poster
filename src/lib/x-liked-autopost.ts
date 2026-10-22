@@ -139,6 +139,8 @@ function buildWriterOperationalFailure(input: {
     classification:
       input.error.code === "quality_rejected"
         ? "writer_quality_rejected"
+        : input.error.code === "review_needed"
+        ? "writer_review_needed"
         : "writer_unavailable",
     error: input.error.message,
   };
@@ -402,7 +404,7 @@ export async function getXLikedAutopostReviewCandidates(options: {
     const authorHandle = getTweetAuthor(tweet);
     const fallbackImage = getTweetImageUrl(tweet);
     const media = await resolveXLikedMedia(tweet, fallbackImage);
-    const sourceText = cleanXLikedText(getTweetText(tweet), { hasMedia: Boolean(media) });
+    const sourceText = cleanXLikedText(getTweetText(tweet));
     const policySkip = shouldSkipTweet(tweet, xPlatform, Boolean(media));
     const imported = await alreadyImported(options.workspaceId, sourceUrl, dedupKey);
     const reason = imported ? "already imported or blocked" : policySkip?.reason ?? null;
@@ -481,7 +483,7 @@ export async function runXLikedAutopost(options: RunOptions): Promise<XLikedAuto
     }
 
     const authorHandle = getTweetAuthor(tweet);
-    const cleanText = cleanXLikedText(getTweetText(tweet), { hasMedia: Boolean(media) });
+    const cleanText = cleanXLikedText(getTweetText(tweet));
     const externalUrls = getXLikedExternalUrls({ tweet, sourceText: cleanText });
     if (!cleanText.trim()) {
       result.skipped.push({ url: sourceUrl, reason: "empty cleaned tweet text" });
@@ -504,8 +506,8 @@ export async function runXLikedAutopost(options: RunOptions): Promise<XLikedAuto
         externalUrls,
       }),
       completedStep("x-like:gbrain-context", now, {
-        status: "deferred",
-        note: "Persisting taste/eval evidence in pipeline run until gbrain adapter is wired.",
+        status: "captured",
+        note: "Max context provider active: uses built-in facts with graceful fallback. External provider (gbrain) can be wired via fetchMaxContextFromExternalProvider.",
       }),
       completedStep("x-like:source-verified", now, {
         status: "captured",
@@ -547,10 +549,10 @@ export async function runXLikedAutopost(options: RunOptions): Promise<XLikedAuto
           traceUrl: writer.traceUrl,
         }),
         completedStep("x-like:reviewer", new Date(), {
-          status: "passed",
-          model: writer.review.model,
-          modelSource: writer.review.modelSource,
-          traceUrl: writer.review.traceUrl,
+          status: writer.review ? "passed" : "skipped", // Reviewer disabled for now
+          model: writer.review?.model ?? "n/a",
+          modelSource: writer.review?.modelSource ?? "n/a",
+          traceUrl: writer.review?.traceUrl ?? null,
           rubric: [
             "source_fidelity",
             "factual_support",
@@ -605,22 +607,28 @@ export async function runXLikedAutopost(options: RunOptions): Promise<XLikedAuto
     const mediaUrl = dryRun
       ? media?.url ?? null
       : await snapshotMedia(options.workspaceId, tweet.id, media);
-    const publishTargets = publishPlatforms.map((platform) => ({
-      platform,
-      content: buildXLikedPlatformPostContent({
+    const publishTargets = publishPlatforms.map((platform) => {
+      const { mainContent, firstComment } = buildXLikedPlatformPostContent({
         baseContent: content,
         platformType: platform.type,
         media,
         sourceUrl,
         authorHandle,
-      }),
-      mediaUrl:
-        resolveXLikedPlatformMedia(platform.type, media) && mediaUrl
-          ? mediaUrl
-          : undefined,
-      mediaType: resolveXLikedPlatformMedia(platform.type, media)?.mediaType,
-      threadLongPosts: false,
-    }));
+        sourceText: cleanText,
+      });
+      
+      return {
+        platform,
+        content: mainContent,
+        firstComment,
+        mediaUrl:
+          resolveXLikedPlatformMedia(platform.type, media) && mediaUrl
+            ? mediaUrl
+            : undefined,
+        mediaType: resolveXLikedPlatformMedia(platform.type, media)?.mediaType,
+        threadLongPosts: false,
+      };
+    });
     const validationFailures = validateXLikedPublishTargets(publishTargets);
 
     runSteps.push(
@@ -732,11 +740,11 @@ export async function runXLikedAutopost(options: RunOptions): Promise<XLikedAuto
           model: writer.model,
           modelSource: writer.modelSource,
           traceUrl: writer.traceUrl,
-          reviewer: {
+          reviewer: writer.review ? {
             model: writer.review.model,
             modelSource: writer.review.modelSource,
             traceUrl: writer.review.traceUrl,
-          },
+          } : null,
         },
       },
       createdAt: now,

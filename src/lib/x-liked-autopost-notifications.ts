@@ -8,6 +8,7 @@ export type XLikedAutopostOperationalFailure = {
     | PublishClassification
     | "writer_unavailable"
     | "writer_quality_rejected"
+    | "writer_review_needed"
     | "storage_error";
   error: string;
 };
@@ -29,6 +30,7 @@ const OPERATIONAL_CLASSIFICATIONS = new Set<string>([
   "network_error",
   "writer_unavailable",
   "writer_quality_rejected",
+  "writer_review_needed",
   "storage_error",
 ]);
 
