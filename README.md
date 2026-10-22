@@ -146,3 +146,7 @@ The deploy workflow:
 - Comments and DMs have intentionally stricter safeguards and some surfaces are paused until the permission model and audit trail are complete.
 - SQLite is still the active runtime database. Supabase Postgres migration is planned, not complete.
 - Cross-workspace aggregate reporting and some provider depth work remain open.
+
+## License
+
+MIT. See [LICENSE](LICENSE).
