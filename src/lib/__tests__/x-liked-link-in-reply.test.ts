@@ -2,70 +2,97 @@ import { describe, expect, it } from "vitest";
 
 import { buildXLikedPlatformPostContent } from "../x-liked-autopost-format.ts";
 
-describe("X liked post link-in-reply", () => {
-  it("Fix #2: appends source URL as first reply for X image posts when similarity <= 0.75", () => {
+describe("X liked post first-reply source logic", () => {
+  it("adds first reply with arxiv paper link and credits author", () => {
     const sourceUrl = "https://x.com/HowToPrompt__/status/2113248744905064464";
     const sourceText = "Researchers mathematically proved that AI will cause the Tragedy of the Cognitive Commons.";
+    const paperUrl = "https://arxiv.org/abs/2024.12345";
+    
     const result = buildXLikedPlatformPostContent({
-      baseContent: "researchers proved ai causes cognitive commons tragedy", // No URL in content
+      baseContent: "researchers proved ai causes cognitive commons tragedy",
       platformType: "x",
       media: { url: "https://pbs.twimg.com/media/HVPEb9Wb0AE1DiE.jpg", mediaType: "image" },
       sourceUrl,
       authorHandle: "@HowToPrompt__",
       sourceText,
+      externalUrls: [paperUrl],
     });
 
-    // Code should append source link automatically (not writer-dependent)
     expect(result.mainContent).toBe("researchers proved ai causes cognitive commons tragedy");
-    expect(result.firstComment).toBe(`source: ${sourceUrl}`);
+    expect(result.firstComment).toBe(`${paperUrl}\n\nvia @HowToPrompt__`);
   });
 
-  it("Fix #2: appends source URL as first reply for X text-only posts when similarity <= 0.75", () => {
+  it("adds first reply with GitHub repo link when present", () => {
     const sourceUrl = "https://x.com/founder/status/123";
-    const sourceText = "this is an interesting point about technology and progress";
+    const sourceText = "check out this new tool for AI agents";
+    const githubUrl = "https://github.com/example/ai-agent-tool";
+    
     const result = buildXLikedPlatformPostContent({
-      baseContent: "interesting point about tech progress",
+      baseContent: "new tool for ai agents",
       platformType: "x",
       media: null,
       sourceUrl,
+      authorHandle: "@founder",
       sourceText,
+      externalUrls: [githubUrl],
     });
 
-    // Text-only posts also get link in first reply when similarity <= 0.75
-    expect(result.mainContent).toBe("interesting point about tech progress");
-    expect(result.firstComment).toBe(`source: ${sourceUrl}`);
+    expect(result.mainContent).toBe("new tool for ai agents");
+    expect(result.firstComment).toBe(`${githubUrl}\n\nvia @founder`);
   });
 
-  it("Fix #2: video posts embed source URL in body (keep current behavior)", () => {
+  it("no first reply for pure opinion/explanation posts without external artifacts", () => {
     const sourceUrl = "https://x.com/founder/status/123";
     const sourceText = "automation shifts are happening fast in the industry";
     const result = buildXLikedPlatformPostContent({
-      baseContent: "automation shifts",
+      baseContent: "automation shifts happening fast in industry",
       platformType: "x",
-      media: { url: "https://cdn.example/video.mp4", mediaType: "video" },
+      media: null,
       sourceUrl,
+      authorHandle: "@founder",
       sourceText,
+      externalUrls: [], // No external artifacts
     });
 
-    // Video posts embed source URL in body (existing behavior preserved)
-    expect(result.mainContent).toContain("automation shifts");
-    expect(result.mainContent).toContain(sourceUrl);
+    // Pure explanation/opinion - no first reply
+    expect(result.mainContent).toBe("automation shifts happening fast in industry");
     expect(result.firstComment).toBeUndefined();
   });
 
-  it("Fix #2: appends source link even when content has other URLs", () => {
-    const sourceUrl = "https://x.com/founder/status/123";
-    const sourceText = "check this out: https://example.com/article with more details";
+  it("adds first reply with docs link when present", () => {
+    const sourceUrl = "https://x.com/cdngdev/status/456";
+    const sourceText = "new feature in the documentation";
+    const docsUrl = "https://docs.example.com/new-feature";
     const result = buildXLikedPlatformPostContent({
-      baseContent: "check this out: https://example.com/article",
+      baseContent: "new feature explained",
       platformType: "x",
       media: { url: "https://pbs.twimg.com/media/test.jpg", mediaType: "image" },
       sourceUrl,
+      authorHandle: "@cdngdev",
       sourceText,
+      externalUrls: [docsUrl],
     });
 
-    expect(result.mainContent).toBe("check this out: https://example.com/article");
-    expect(result.firstComment).toBe(`source: ${sourceUrl}`);
+    expect(result.mainContent).toBe("new feature explained");
+    expect(result.firstComment).toBe(`${docsUrl}\n\nvia @cdngdev`);
+  });
+
+  it("adds first reply with YouTube demo video", () => {
+    const sourceUrl = "https://x.com/founder/status/789";
+    const sourceText = "demo of the new AI agent framework";
+    const videoUrl = "https://youtube.com/watch?v=abc123";
+    const result = buildXLikedPlatformPostContent({
+      baseContent: "demo of new ai agent framework",
+      platformType: "x",
+      media: null,
+      sourceUrl,
+      authorHandle: "@founder",
+      sourceText,
+      externalUrls: [videoUrl],
+    });
+
+    expect(result.mainContent).toBe("demo of new ai agent framework");
+    expect(result.firstComment).toBe(`${videoUrl}\n\nvia @founder`);
   });
 
   it("keeps link in LinkedIn body (no first comment support)", () => {
@@ -80,35 +107,25 @@ describe("X liked post link-in-reply", () => {
     expect(result.mainContent).toBe(`interesting insight.\n\n${sourceUrl}`);
     expect(result.firstComment).toBeUndefined();
   });
-
-  it("Fix #2: appends source link when content has no URLs", () => {
-    const sourceUrl = "https://x.com/founder/status/123";
-    const sourceText = "clean post with no links but meaningful content";
-    const result = buildXLikedPlatformPostContent({
-      baseContent: "clean post with no links",
-      platformType: "x",
-      media: { url: "https://pbs.twimg.com/media/test.jpg", mediaType: "image" },
-      sourceUrl,
-      sourceText,
-    });
-
-    expect(result.mainContent).toBe("clean post with no links");
-    expect(result.firstComment).toBe(`source: ${sourceUrl}`);
-  });
   
-  it("Fix #2: skips source link when similarity > 0.75 (too similar)", () => {
-    const sourceUrl = "https://x.com/founder/status/123";
-    const sourceText = "the quick brown fox jumps over the lazy dog";
+  it("prefers first external artifact URL over tweet URL", () => {
+    const sourceUrl = "https://x.com/researcher/status/999";
+    const sourceText = "check out my paper and code";
+    const paperUrl = "https://arxiv.org/abs/2024.99999";
+    const githubUrl = "https://github.com/researcher/paper-code";
+    
     const result = buildXLikedPlatformPostContent({
-      baseContent: "the quick brown fox jumps over the lazy dog", // Nearly identical
+      baseContent: "new paper and code released",
       platformType: "x",
-      media: { url: "https://pbs.twimg.com/media/test.jpg", mediaType: "image" },
+      media: null,
       sourceUrl,
+      authorHandle: "@researcher",
       sourceText,
+      externalUrls: [paperUrl, githubUrl], // Paper found first
     });
 
-    // Too similar - no source link needed
-    expect(result.mainContent).toBe("the quick brown fox jumps over the lazy dog");
-    expect(result.firstComment).toBeUndefined();
+    // Should use paper URL (first artifact found)
+    expect(result.mainContent).toBe("new paper and code released");
+    expect(result.firstComment).toBe(`${paperUrl}\n\nvia @researcher`);
   });
 });

@@ -1,5 +1,4 @@
 import type { BirdTweet } from "@/lib/replies/bird";
-import { calculateTextSimilarity } from "@/lib/x-liked-autopost-similarity";
 
 export type XLikedMedia = {
   url: string;
@@ -564,6 +563,7 @@ export function buildXLikedPlatformPostContent(input: {
   sourceUrl: string;
   authorHandle?: string;
   sourceText?: string;
+  externalUrls?: string[];
 }): { mainContent: string; firstComment?: string } {
   const normalized = input.platformType.toLowerCase();
   const isX = normalized === "x" || normalized === "twitter";
@@ -582,32 +582,73 @@ export function buildXLikedPlatformPostContent(input: {
     };
   }
 
-  // Fix #2: Link-in-first-reply logic - code-driven, not writer-dependent
-  // For X with media (image) or text-only: append source URL as first reply when similarity <= threshold
-  // Video posts: keep current behavior (no automatic link append)
-  if (isX && input.sourceText) {
-    const similarity = input.media?.mediaType === "video" ? 1.0 : // Skip video
-      calculateTextSimilarity(input.baseContent, input.sourceText);
-    
-    // Check if link should be included based on similarity
-    if (similarity > 0.75) {
-      // Too similar - no source link needed
-      // Strip source URL from content if present
+  // New rule: first-reply source logic - only when original contains external artifact we can't reproduce
+  // Do NOT add a default 'source: <url>' first reply. Only add when:
+  // - Paper/arxiv, GitHub repo, product/docs link, or demo video in original
+  // - Reply links that artifact (prefer artifact URL over tweet URL) and credits @author
+  // Pure explanation/opinion posts fully covered by our rewrite get no source reply
+  if (isX && input.externalUrls && input.externalUrls.length > 0) {
+    const externalArtifact = pickExternalArtifact(input.externalUrls);
+    if (externalArtifact && input.authorHandle) {
       const mainContent = input.baseContent.replace(input.sourceUrl, "").trim();
-      return { mainContent };
-    }
-    
-    // Similarity <= 0.75: append source link as first reply for image/text posts
-    if (input.media?.mediaType === "image" || !input.media) {
-      // Strip source URL from content if present
-      const mainContent = input.baseContent.replace(input.sourceUrl, "").trim();
-      // Fix #1: Do NOT collapse whitespace - preserve newlines/lists on X (same as LinkedIn)
-      const firstComment = `source: ${input.sourceUrl}`;
+      const firstComment = `${externalArtifact.url}\n\nvia ${input.authorHandle}`;
       return { mainContent, firstComment };
     }
   }
 
   return { mainContent: input.baseContent };
+}
+
+/**
+ * Pick external artifact that we can't reproduce:
+ * - Paper/arxiv
+ * - GitHub repo
+ * - Product/docs link
+ * - Demo video
+ * Returns the artifact URL if found, null otherwise
+ */
+function pickExternalArtifact(externalUrls: string[]): { url: string; type: string } | null {
+  for (const url of externalUrls) {
+    const lowerUrl = url.toLowerCase();
+    
+    // Paper/arxiv
+    if (lowerUrl.includes("arxiv.org") || 
+        lowerUrl.includes("doi.org") ||
+        lowerUrl.includes("papers.") ||
+        lowerUrl.includes("/paper/") ||
+        lowerUrl.includes("proceedings.") ||
+        lowerUrl.includes("acm.org") ||
+        lowerUrl.includes("ieee.org")) {
+      return { url, type: "paper" };
+    }
+    
+    // GitHub repo
+    if (lowerUrl.includes("github.com") && !lowerUrl.includes("/issues/") && !lowerUrl.includes("/pull/")) {
+      return { url, type: "github" };
+    }
+    
+    // Product/docs link (common documentation patterns)
+    if (lowerUrl.includes("docs.") || 
+        lowerUrl.includes("/docs") ||
+        lowerUrl.includes("/documentation") ||
+        lowerUrl.includes("/guide") ||
+        lowerUrl.includes("/api-reference") ||
+        lowerUrl.includes("readme.")) {
+      return { url, type: "docs" };
+    }
+    
+    // Demo video (YouTube, Vimeo, Loom, etc)
+    if (lowerUrl.includes("youtube.com") ||
+        lowerUrl.includes("youtu.be") ||
+        lowerUrl.includes("vimeo.com") ||
+        lowerUrl.includes("loom.com") ||
+        lowerUrl.includes("/video/") ||
+        lowerUrl.includes("/watch")) {
+      return { url, type: "video" };
+    }
+  }
+  
+  return null;
 }
 
 function pickTweetMedia(tweet: BirdTweet): XLikedMedia | null {

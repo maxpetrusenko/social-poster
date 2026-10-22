@@ -615,6 +615,7 @@ export async function runXLikedAutopost(options: RunOptions): Promise<XLikedAuto
         sourceUrl,
         authorHandle,
         sourceText: cleanText,
+        externalUrls,
       });
       
       return {
