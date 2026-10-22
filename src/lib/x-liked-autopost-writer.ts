@@ -351,7 +351,9 @@ Rules for this draft:
 - No em-dashes (—). Use commas, periods, or conjunctions instead.
 - No subject flips: if the source says "X does Y", do not flip to "Y happens because of X" unless the source already uses that structure.
 - For personal stories: preserve all specific timeframes, events, and outcomes, but reframe experiences to avoid claiming the author's completed work or personal ownership as Max's own.
-- First-person framing rule: Never claim experiences, ownership, or completed work as Max's own ("I built", "I shipped", "my code") when we can't prove it. Reframe to what happened / what was done. For build claims in longer posts, add a short varied "so what's next" angle. For very short one-liners (< 100 chars), neutral first-person observation is OK without a "what's next" line.
+- Fix #5: Never first-person-claim others' reviews, demos, or completed work. If the author shows "agents I keep connected" or their own demo/video, do NOT reframe as "I keep connected" or claim it as Max's. Attribute properly or return SKIP.
+- Fix #4: Third-party work we can't reproduce (author shows their own demo/video/app): Return "SKIP: third-party demo/work - credit original author" UNLESS it's a comparison/opinion post with no proprietary detail (e.g., "X is better than Y" takes are OK as standalone).
+- First-person framing rule: Never claim experiences, ownership, or completed work as Max's own ("I built", "I shipped", "my code", "agents I use") when we can't prove it. Reframe to what happened / what was done. For build claims in longer posts, add a short varied "so what's next" angle. For very short one-liners (< 100 chars), neutral first-person observation is OK without a "what's next" line.
 - Ban canned framings: Do not use formulaic phrases like "what stood out:", "make the case for this side", "here's what matters". Vary your language naturally.
 - Factual accuracy: Every number in your draft must appear in the source. Do not invent numbers, alter digits, or flip who-does-what relationships. If source says "LiteLLM got hijacked", do not write "LiteLLM hijacked X". If source says "keys were 66 and 237", do not write "randomness of 66 and 237 digits".
 - For copied media, include the source's take. Do not add credit lines like "via @...", "Source:", "Credit:", or "h/t".
@@ -687,17 +689,23 @@ export function getXLikedAutopostContentRejection(input: {
     return "writer used canned framing phrases (what stood out, make the case, etc)";
   }
   
-  // Bug fix #7: Don't exceed source length much (allow up to +15% or +200 chars, whichever is smaller)
-  // Run this check last since it's a "soft" constraint that should only apply when all hard constraints pass
-  const allowedOverage = Math.min(input.sourceText.length * 0.15, 200);
-  if (content.length > input.sourceText.length + allowedOverage) {
-    return `writer exceeded source length (${content.length} vs ${input.sourceText.length} source chars)`;
+  // Fix #2: Lenient length rule - allow up to 1.5x source length or 300 char floor for short sources
+  // This makes the rule consistent: RomeWorkshop (371 vs 283) should pass, others longer than source should pass
+  const minAllowedLength = Math.max(input.sourceText.length * 1.5, 300);
+  if (content.length > minAllowedLength) {
+    return `writer exceeded source length (${content.length} vs ${input.sourceText.length} source chars, max ${Math.round(minAllowedLength)})`;
   }
   
   // Fix #4: Enforce max similarity threshold (0.70) - too similar means not enough rewriting
   const similarity = calculateTextSimilarity(content, input.sourceText);
   if (similarity > 0.70) {
     return `writer draft too similar to source (${(similarity * 100).toFixed(0)}% similarity, max 70%)`;
+  }
+  
+  // Fix #3: Skip low-value near-copies - short one-liners near-identical to source
+  // (e.g., 66-char MatthewBerman passkeys post). SKIP instead of publishing.
+  if (content.length < 120 && similarity > 0.85) {
+    return "SKIP: low-value near-copy (short one-liner near-identical to source)";
   }
 
   return null;

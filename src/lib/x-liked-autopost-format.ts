@@ -600,9 +600,8 @@ export function buildXLikedPlatformPostContent(input: {
     // Similarity <= 0.75: append source link as first reply for image/text posts
     if (input.media?.mediaType === "image" || !input.media) {
       // Strip source URL from content if present
-      let mainContent = input.baseContent.replace(input.sourceUrl, "").trim();
-      // Clean up double spaces
-      mainContent = mainContent.replace(/\s+/g, " ").trim();
+      const mainContent = input.baseContent.replace(input.sourceUrl, "").trim();
+      // Fix #1: Do NOT collapse whitespace - preserve newlines/lists on X (same as LinkedIn)
       const firstComment = `source: ${input.sourceUrl}`;
       return { mainContent, firstComment };
     }

@@ -873,10 +873,10 @@ describe("Bug fixes from production runs (2026-10-22)", () => {
     });
   });
 
-  describe("Bug #7: Don't exceed source length much", () => {
-    it("rejects drafts that significantly exceed source length", () => {
-      const source = "a".repeat(910);
-      const draft = "b".repeat(1100); // Exceeds by >15% and >200 chars
+  describe("Fix #2: Lenient length rule", () => {
+    it("rejects drafts that significantly exceed 1.5x source length", () => {
+      const source = "a".repeat(200);
+      const draft = "b".repeat(400); // Exceeds 1.5x (300)
       const rejection = getXLikedAutopostContentRejection({
         content: draft,
         sourceText: source,
@@ -886,9 +886,9 @@ describe("Bug fixes from production runs (2026-10-22)", () => {
       expect(rejection).toContain("exceeded source length");
     });
 
-    it("allows drafts within 15% of source length", () => {
-      const source = "a".repeat(910);
-      const draft = "b".repeat(1000); // Within +15%
+    it("allows drafts within 1.5x of source length (RomeWorkshop case)", () => {
+      const source = "a".repeat(283);
+      const draft = "b".repeat(371); // Within 1.5x (424.5)
       expect(
         getXLikedAutopostContentRejection({
           content: draft,
