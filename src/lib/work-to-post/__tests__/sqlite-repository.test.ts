@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createPersonDossier } from "@/lib/work-to-post/dossier";
 import { ingestCompletedWork } from "@/lib/work-to-post/ingestion";
@@ -9,19 +9,28 @@ import { ingestCompletedWork } from "@/lib/work-to-post/ingestion";
 vi.mock("server-only", () => ({}));
 
 let tempDir: string | null = null;
+// Fixtures use capturedAt 2026-07-24; dossier freshness is 90 days from Date.now().
+// Freeze only Date so the fixtures stay fresh regardless of when the suite runs.
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-07-25T12:00:00.000Z"));
+});
 afterEach(async () => {
+  vi.useRealTimers();
   const dbModule = await import("@/db").catch(() => null);
   dbModule?.sqlite.close();
   vi.unstubAllEnvs();
+  vi.useRealTimers();
   vi.resetModules();
   if (tempDir) fs.rmSync(tempDir, { recursive: true, force: true });
   tempDir = null;
 });
 
 describe("SQLite work-to-post repository", () => {
-  // FIXME: Pre-existing failure - test expects "clear" but gets "blocked_stale"
-  // This is unrelated to x-liked-autopost changes
-  it.skip("persists a sanitized candidate and cited dossier in a fresh database", async () => {
+  it("persists a sanitized candidate and cited dossier in a fresh database", async () => {
+    // Evidence freshness is relative to "now"; pin it so the fixture dates never age out.
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-07-25T12:00:00.000Z"));
     tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "social-poster-work-to-post-repository-"));
     vi.stubEnv("DATABASE_URL", path.join(tempDir, "test.db"));
     const repositoryModule = await import("@/lib/work-to-post/sqlite-repository");

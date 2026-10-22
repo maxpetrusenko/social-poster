@@ -1,4 +1,4 @@
-import { APIError, OAuthError, ProviderError, PublishError } from "./errors";
+import { APIError, OAuthError, PrePublishError, ProviderError, PublishError } from "./errors";
 import { OAuthProvider, buildAuthUrl } from "./oauth";
 import type {
   AccountProfile,
@@ -287,7 +287,7 @@ export class InstagramPersonalProvider extends OAuthProvider {
     );
     const containerId = optionalString(body.id);
     if (!containerId) {
-      throw new PublishError("Failed to create Instagram media container", {
+      throw new PrePublishError("Failed to create Instagram media container", {
         platform: this.platformName,
         rawResponse: body,
       });
@@ -305,7 +305,7 @@ export class InstagramPersonalProvider extends OAuthProvider {
       const status = stringValue(body.status_code);
       if (status === "FINISHED") return;
       if (status === "ERROR") {
-        throw new PublishError(
+        throw new PrePublishError(
           `Instagram container failed: ${stringValue(body.status) || "unknown error"}`,
           { platform: this.platformName, rawResponse: body }
         );
@@ -313,7 +313,7 @@ export class InstagramPersonalProvider extends OAuthProvider {
       await sleep(CONTAINER_POLL_INTERVAL_MS);
     }
 
-    throw new PublishError("Instagram container processing timed out", {
+    throw new PrePublishError("Instagram container processing timed out", {
       platform: this.platformName,
     });
   }

@@ -1,7 +1,7 @@
 import { db } from "@/db";
 import { platforms } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import { APIError, OAuthError, RateLimitError } from "./errors";
+import { APIError, OAuthError, PrePublishError, RateLimitError } from "./errors";
 import { getProvider, hasNativeProvider } from "./registry";
 import {
   mergeProviderCredentials,
@@ -90,7 +90,7 @@ export async function publishViaNativeProvider(
       success: true,
       classification: "success",
       postId: result.platformPostId,
-      postUrl: result.url,
+      postUrl: resolvePostUrl(platformKey, content.postType, result, target.platform.config),
       firstComment: readFirstCommentOutcome(result.extra),
       raw: result.extra,
     };
@@ -201,6 +201,25 @@ async function resolveAccessToken(
   return refreshed.accessToken;
 }
 
+/**
+ * Instagram stories have no /p/<id>/ permalink. Build the stories URL from the
+ * stored handle, or return no URL rather than a wrong feed link.
+ */
+export function resolvePostUrl(
+  platformKey: string,
+  postType: PublishContent["postType"],
+  result: { platformPostId?: string; url?: string },
+  config: unknown
+): string | undefined {
+  if (platformKey !== "instagram" || postType !== "story") return result.url;
+  const profile = (config as { providerProfile?: { handle?: unknown } } | null)
+    ?.providerProfile;
+  const handle =
+    typeof profile?.handle === "string" ? profile.handle.replace(/^@/, "").trim() : "";
+  if (!handle || !result.platformPostId) return undefined;
+  return `https://www.instagram.com/stories/${encodeURIComponent(handle)}/${encodeURIComponent(result.platformPostId)}/`;
+}
+
 function buildPublishContent(target: NativePublishInput): PublishContent {
   const normalizedFormat = target.platformFormat?.toLowerCase();
   const mediaUrls = resolveMediaUrls(target);
@@ -277,6 +296,8 @@ function readFirstCommentOutcome(
 function classifyNativeError(error: unknown): PipelinePublishResult["classification"] {
   if (error instanceof RateLimitError) return "rate_limited";
   if (error instanceof OAuthError) return "auth_error";
+  // Raised strictly before the provider's final publish call: nothing went out.
+  if (error instanceof PrePublishError) return "provider_error";
   if (error instanceof APIError) {
     // X answers 403 for duplicate content; that is not an auth failure.
     if (error.statusCode === 409 || /duplicate/i.test(error.message)) {
