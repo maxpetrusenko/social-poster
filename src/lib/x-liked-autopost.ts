@@ -607,22 +607,27 @@ export async function runXLikedAutopost(options: RunOptions): Promise<XLikedAuto
     const mediaUrl = dryRun
       ? media?.url ?? null
       : await snapshotMedia(options.workspaceId, tweet.id, media);
-    const publishTargets = publishPlatforms.map((platform) => ({
-      platform,
-      content: buildXLikedPlatformPostContent({
+    const publishTargets = publishPlatforms.map((platform) => {
+      const { mainContent, firstComment } = buildXLikedPlatformPostContent({
         baseContent: content,
         platformType: platform.type,
         media,
         sourceUrl,
         authorHandle,
-      }),
-      mediaUrl:
-        resolveXLikedPlatformMedia(platform.type, media) && mediaUrl
-          ? mediaUrl
-          : undefined,
-      mediaType: resolveXLikedPlatformMedia(platform.type, media)?.mediaType,
-      threadLongPosts: false,
-    }));
+      });
+      
+      return {
+        platform,
+        content: mainContent,
+        firstComment,
+        mediaUrl:
+          resolveXLikedPlatformMedia(platform.type, media) && mediaUrl
+            ? mediaUrl
+            : undefined,
+        mediaType: resolveXLikedPlatformMedia(platform.type, media)?.mediaType,
+        threadLongPosts: false,
+      };
+    });
     const validationFailures = validateXLikedPublishTargets(publishTargets);
 
     runSteps.push(

@@ -76,7 +76,9 @@ describe("X liked autopost formatting", () => {
         sourceUrl: "https://x.com/kimmonismus/status/2066591657324146820",
         authorHandle: "@kimmonismus",
       })
-    ).toBe(sourceText);
+    ).toEqual({
+      mainContent: sourceText,
+    });
   });
 
   it("decodes entities and removes trailing t.co media URLs when media is copied", () => {
@@ -128,13 +130,13 @@ describe("X liked autopost formatting", () => {
         media: video,
         sourceUrl: "https://x.com/kimmonismus/status/2058254144855544092",
       })
-    ).toBe(
-      [
+    ).toEqual({
+      mainContent: [
         "Blue-collar automation will arrive unevenly.",
         "",
         "https://x.com/kimmonismus/status/2058254144855544092",
-      ].join("\n")
-    );
+      ].join("\n"),
+    });
     expect(
       buildXLikedPlatformPostContent({
         baseContent: "Blue-collar automation will arrive unevenly.",
@@ -143,7 +145,9 @@ describe("X liked autopost formatting", () => {
         sourceUrl: "https://x.com/kimmonismus/status/2058254144855544092",
         authorHandle: "@kimmonismus",
       })
-    ).toBe("Blue-collar automation will arrive unevenly.");
+    ).toEqual({
+      mainContent: "Blue-collar automation will arrive unevenly.",
+    });
     expect(
       buildXLikedPlatformPostContent({
         baseContent: "Save this repo.",
@@ -152,7 +156,9 @@ describe("X liked autopost formatting", () => {
         sourceUrl: "https://x.com/founder/status/123",
         authorHandle: "@founder",
       })
-    ).toBe("Save this repo.");
+    ).toEqual({
+      mainContent: "Save this repo.",
+    });
   });
 
   it("embeds quoted X video source posts instead of the liked quote-take URL", () => {
@@ -169,13 +175,13 @@ describe("X liked autopost formatting", () => {
         media: video,
         sourceUrl: "https://x.com/svpino/status/2071628258307977499",
       })
-    ).toBe(
-      [
+    ).toEqual({
+      mainContent: [
         "Cline is testing whether the model is really the bottleneck.",
         "",
         "https://x.com/cline/status/2071617325296734309",
-      ].join("\n")
-    );
+      ].join("\n"),
+    });
   });
 
   it("builds stable source URL and dedupe key", () => {

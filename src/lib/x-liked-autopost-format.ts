@@ -563,19 +563,39 @@ export function buildXLikedPlatformPostContent(input: {
   media: XLikedMedia | null;
   sourceUrl: string;
   authorHandle?: string;
-}) {
+}): { mainContent: string; firstComment?: string } {
   const normalized = input.platformType.toLowerCase();
+  const isX = normalized === "x" || normalized === "twitter";
+  
+  // For X with video, embed source URL in main post body (video posts don't move links to replies)
   const shouldEmbedSourceVideo =
-    input.media?.mediaType === "video" &&
-    (normalized === "x" || normalized === "twitter");
+    input.media?.mediaType === "video" && isX;
 
-  if (!shouldEmbedSourceVideo) {
-    return input.baseContent;
+  if (shouldEmbedSourceVideo) {
+    const embedUrl = input.media?.sourceUrl || input.sourceUrl;
+    if (input.baseContent.includes(embedUrl)) {
+      return { mainContent: input.baseContent };
+    }
+    return {
+      mainContent: [input.baseContent.trim(), "", embedUrl].join("\n"),
+    };
   }
 
-  const embedUrl = input.media?.sourceUrl || input.sourceUrl;
-  if (input.baseContent.includes(embedUrl)) return input.baseContent;
-  return [input.baseContent.trim(), "", embedUrl].join("\n");
+  // For X with media (image) or text-only: move source URL to first reply when it makes sense
+  if (isX && input.media?.mediaType === "image") {
+    // Extract URLs from content
+    const urlPattern = /https?:\/\/[^\s]+/g;
+    const urls: string[] = input.baseContent.match(urlPattern) || [];
+    
+    // If content has the source URL, move it to first comment
+    if (urls.includes(input.sourceUrl)) {
+      const mainContent = input.baseContent.replace(input.sourceUrl, "").trim();
+      const firstComment = `source: ${input.sourceUrl}`;
+      return { mainContent, firstComment };
+    }
+  }
+
+  return { mainContent: input.baseContent };
 }
 
 function pickTweetMedia(tweet: BirdTweet): XLikedMedia | null {

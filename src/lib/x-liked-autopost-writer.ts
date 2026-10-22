@@ -336,11 +336,14 @@ Rules for this draft:
 - The output is the main post text only.
 - Rewrite the source in your own words while preserving the meaning of EVERY point the author makes. Do not drop points or compress lists into fewer items.
 - Keep the source's train of thought: same paragraph order, same causal chain, same conclusion.
+- Keep the source's rhythm when it's part of the joke or style (e.g. breathless run-on sentences).
+- Keep lists as lists when the source uses list format. Do not convert structured lists into prose unless the source is prose.
 - Preserve ALL numbers, named actors, mechanisms, and concrete details exactly as they appear.
 - Preserve the full length when needed to cover all points. Do not summarize or compress.
 - Do not reproduce the original's exact wording or layout just to preserve it; preserve meaning and completeness instead.
 - For personal stories: preserve all specific timeframes, events, and outcomes, but reframe experiences to avoid claiming the author's completed work or personal ownership as Max's own.
-- First-person framing rule: Never claim experiences, ownership, or completed work as Max's own ("I built", "I shipped", "my code") when we can't prove it. Reframe to what happened / what was done and what's next ("X got shipped, so what's next", "what stood out", "here's what happened"). Vary these framings creatively; don't use a fixed phrase. First person is OK only for neutral observation that's true for Max (e.g. reading/noticing).
+- First-person framing rule: Never claim experiences, ownership, or completed work as Max's own ("I built", "I shipped", "my code") when we can't prove it. Reframe to what happened / what was done, then add a short varied "so what's next" angle. Vary these framings creatively; don't use a fixed phrase. First person is OK only for neutral observation that's true for Max (e.g. reading/noticing).
+- For very short posts: do not pad to hit a minimum length. Short posts can stay short if the source is short.
 - For copied media, include the source's take. Do not add credit lines like "via @...", "Source:", "Credit:", or "h/t".
 - If a source/quoted media URL is provided, assume the platform formatter will attach it as the visual/embed object.
 - For long X article/essay shares (detected separately), include the source URL in the main post for embedding.
