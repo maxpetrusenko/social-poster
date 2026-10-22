@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createPersonDossier } from "@/lib/work-to-post/dossier";
 import { ingestCompletedWork } from "@/lib/work-to-post/ingestion";
@@ -9,7 +9,14 @@ import { ingestCompletedWork } from "@/lib/work-to-post/ingestion";
 vi.mock("server-only", () => ({}));
 
 let tempDir: string | null = null;
+// Fixtures use capturedAt 2026-07-24; dossier freshness is 90 days from Date.now().
+// Freeze only Date so the fixtures stay fresh regardless of when the suite runs.
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-07-25T12:00:00.000Z"));
+});
 afterEach(async () => {
+  vi.useRealTimers();
   const dbModule = await import("@/db").catch(() => null);
   dbModule?.sqlite.close();
   vi.unstubAllEnvs();
