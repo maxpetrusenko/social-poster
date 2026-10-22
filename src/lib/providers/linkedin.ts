@@ -309,7 +309,10 @@ export class LinkedInProvider extends OAuthProvider {
     postUrn: string,
     text: string
   ) {
-    const body = await this.requestJson<JsonRecord>(
+    // Comments API: POST /rest/socialActions/{urn}/comments, actor = member or
+    // organization URN, id echoed in the x-restli-id header and commentUrn body.
+    // https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/comments-api
+    const response = await this.request(
       "POST",
       `${API_BASE}/rest/socialActions/${encodeURIComponent(postUrn)}/comments`,
       {
@@ -322,8 +325,20 @@ export class LinkedInProvider extends OAuthProvider {
         },
       }
     );
+    const raw = await response.text();
+    let body: JsonRecord = {};
+    try {
+      body = raw ? (JSON.parse(raw) as JsonRecord) : {};
+    } catch {
+      body = {};
+    }
+    const commentUrn = readString(body, "commentUrn");
+    const id = commentUrn || readString(body, "id") || response.headers.get("x-restli-id") || "";
     return {
-      id: readString(body, "commentUrn") || readString(body, "id"),
+      id,
+      url: commentUrn
+        ? `https://www.linkedin.com/feed/update/${postUrn}/?commentUrn=${encodeURIComponent(commentUrn)}`
+        : `https://www.linkedin.com/feed/update/${postUrn}/`,
       raw: body,
     };
   }
