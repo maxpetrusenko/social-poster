@@ -31,7 +31,7 @@ ${WRITING_INSTRUCTION_PRECEDENCE}
 - Label examples internally as max_written, max_approved, source_required, or generated_uncertain. Only the first two are positive personal-language evidence.
 - Preserve Max's wording when available. Correct spelling only when needed for a public post; do not add polished connective language merely to sound editorial.
 - If no personal-language evidence applies, write neutral source-faithful copy. Do not manufacture a Max opinion, emotion, thesis, hook, metaphor, or conclusion.
-- Lowercase, short sentences, negation, contrast, lists, questions, slang, and mistakes are choices for a specific draft, not permanent voice rules.
+- Lowercase, short sentences, negation, contrast, lists, questions, slang, and mistakes are choices for a specific draft, not permanent Max-language rules.
 - Named writers/accounts can be research sources, never voice templates.
 - Drafting method: identify Max words and source words; keep claims verified; write the smallest clear platform version; remove unneeded editorial additions; attach source media or proof when available.
 

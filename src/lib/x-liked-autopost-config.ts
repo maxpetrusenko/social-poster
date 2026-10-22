@@ -24,7 +24,8 @@ export function readXLikedAutopostFetchCount(env: XLikedAutopostEnv = process.en
 }
 
 export function isXLikedAutopostLongPostEnabled(env: XLikedAutopostEnv = process.env) {
-  return env.X_LIKES_AUTOPUBLISH_ALLOW_LONG_POSTS === "true";
+  // Long mode is the default; can be explicitly disabled with "false"
+  return env.X_LIKES_AUTOPUBLISH_ALLOW_LONG_POSTS !== "false";
 }
 
 export function readXLikedAutopostLongPostLimit(env: XLikedAutopostEnv = process.env) {
