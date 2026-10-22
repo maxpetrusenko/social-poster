@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { SQLiteSyncDialect } from "drizzle-orm/sqlite-core";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
@@ -27,7 +28,7 @@ vi.mock("@/db", () => ({
             }
             return Promise.resolve(state.targetRows);
           },
-          innerJoin: () => ({ where: async () => state.targetRows }),
+          leftJoin: () => ({ where: async () => state.targetRows }),
         }),
       };
     },
@@ -58,6 +59,9 @@ describe("GET /api/posts/[id]", () => {
     const { GET } = await import("@/app/api/posts/[id]/route");
     const res = await GET(req(), ctx);
     expect(res.status).toBe(200);
+    const q = new SQLiteSyncDialect().sqlToQuery(state.postWhere as never);
+    expect(q.sql).toContain('"posts"."workspace_id"');
+    expect(q.params).toEqual(["p1", "w1"]);
     const text = JSON.stringify(await res.json());
     expect(text).not.toContain(SECRET);
     const body = JSON.parse(text);

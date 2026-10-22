@@ -9,6 +9,11 @@ import {
 import { readStringArray } from "@/lib/post-publish-metadata";
 import crypto from "node:crypto";
 
+const MAX_ERROR_CHARS = 500;
+function clip(value: string | null): string | null {
+  return value && value.length > MAX_ERROR_CHARS ? `${value.slice(0, MAX_ERROR_CHARS)}...` : value;
+}
+
 /**
  * Read-only post status for API clients that must resolve an unknown publish outcome
  * (publish timed out, response unparsable). Workspace-scoped; never returns credentials,
@@ -47,23 +52,23 @@ export async function GET(
         publishedAt: postTargets.publishedAt,
       })
       .from(postTargets)
-      .innerJoin(platforms, eq(platforms.id, postTargets.platformId))
+      .leftJoin(platforms, eq(platforms.id, postTargets.platformId))
       .where(eq(postTargets.postId, post.id));
 
     return NextResponse.json({
       id: post.id,
       status: post.status,
-      publishedAt: post.publishedAt ? post.publishedAt.toISOString() : null,
+      published_at: post.publishedAt ? post.publishedAt.toISOString() : null,
       targets: targets.map((t) => ({
         platform_id: t.platformId,
-        platform_type: t.platformType,
+        platform_type: t.platformType ?? null,
         status: t.status,
         published_url: t.publishedUrl,
         platform_post_id: t.platformPostId,
         first_comment_id: t.firstCommentId,
         first_comment_url: t.firstCommentUrl,
-        first_comment_error: t.firstCommentError,
-        error: t.error,
+        first_comment_error: clip(t.firstCommentError),
+        error: clip(t.error),
         published_at: t.publishedAt ? t.publishedAt.toISOString() : null,
       })),
     });
