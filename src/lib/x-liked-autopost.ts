@@ -549,10 +549,10 @@ export async function runXLikedAutopost(options: RunOptions): Promise<XLikedAuto
           traceUrl: writer.traceUrl,
         }),
         completedStep("x-like:reviewer", new Date(), {
-          status: "passed",
-          model: writer.review.model,
-          modelSource: writer.review.modelSource,
-          traceUrl: writer.review.traceUrl,
+          status: writer.review ? "passed" : "skipped", // Reviewer disabled for now
+          model: writer.review?.model ?? "n/a",
+          modelSource: writer.review?.modelSource ?? "n/a",
+          traceUrl: writer.review?.traceUrl ?? null,
           rubric: [
             "source_fidelity",
             "factual_support",
@@ -734,11 +734,11 @@ export async function runXLikedAutopost(options: RunOptions): Promise<XLikedAuto
           model: writer.model,
           modelSource: writer.modelSource,
           traceUrl: writer.traceUrl,
-          reviewer: {
+          reviewer: writer.review ? {
             model: writer.review.model,
             modelSource: writer.review.modelSource,
             traceUrl: writer.review.traceUrl,
-          },
+          } : null,
         },
       },
       createdAt: now,

@@ -11,7 +11,6 @@ vi.mock("@/lib/model-runtime", () => ({
 import { callOpenAIResponses } from "@/lib/langsmith";
 import { resolveWritingRuntimes } from "@/lib/model-runtime";
 import {
-  buildXLikedAutopostReviewPrompt,
   buildXLikedAutopostWriterPrompt,
   draftXLikedAutopostContent,
   getXLikedAutopostContentRejection,
@@ -30,34 +29,20 @@ describe("X liked autopost writer", () => {
     });
 
     expect(prompt).toContain("X Posting rules for Max Petrusenko");
-    expect(prompt).toContain("Liked-post reposts should look as close to the original as possible");
+    expect(prompt).toContain("Rewrite the source in your own words while preserving the meaning of EVERY point");
+    expect(prompt).toContain("Do not drop points or compress lists");
     expect(prompt).toContain("Keep the source's train of thought");
-    expect(prompt).toContain("Near-verbatim is fine");
-    expect(prompt).toContain("Preserve the source's formatting");
+    expect(prompt).toContain("Preserve ALL numbers, named actors, mechanisms");
     expect(prompt).toContain("not permanent Max-language rules");
     expect(prompt).toContain("Hard length budget: 2500 characters"); // Long mode default
     expect(prompt).toContain("petergyang/no-ai-slop");
     expect(prompt).toContain("<untrusted-source-data>");
   });
 
-  it("builds an independent reviewer prompt from the same x-posting skill contract", () => {
-    const prompt = buildXLikedAutopostReviewPrompt({
-      authorHandle: "@IBMNews",
-      sourceUrl: "https://x.com/IBMNews/status/123",
-      sourceText: "IBM debuted 0.7nm chip research with 40% SRAM scaling.",
-      externalUrls: ["https://newsroom.ibm.com/example"],
-      hasMedia: false,
-      mediaType: null,
-      content: "IBM's 0.7nm chip research points at AI memory pressure.",
-    });
-
-    expect(prompt).toContain("independent reviewer");
-    expect(prompt).toContain("Do not rewrite it");
-    expect(prompt).toContain("preservation");
-    expect(prompt).toContain("specificity");
-    expect(prompt).toContain("formatting");
-    expect(prompt).toContain("faithfulness");
-    expect(prompt).toContain("as close to the original as possible");
+  it("reviewer is disabled for now (TODO: re-add later)", () => {
+    // Reviewer scoring removed per Max's direction 2026-10-22
+    // Only hard safety gates apply: meta-text, empty/short, char budget, thread numbering, credit footer
+    expect(true).toBe(true);
   });
 
   it("feeds rejection feedback into retry prompts", () => {
@@ -74,7 +59,7 @@ describe("X liked autopost writer", () => {
     expect(prompt).toContain("Hard length budget: 600 characters");
   });
 
-  it("allows first-person from liked posts and includes study URLs", () => {
+  it("reframes first-person and includes study URLs", () => {
     const prompt = buildXLikedAutopostWriterPrompt({
       authorHandle: "@rohanpaul_ai",
       sourceUrl: "https://x.com/rohanpaul_ai/status/123",
@@ -85,12 +70,12 @@ describe("X liked autopost writer", () => {
     });
 
     expect(prompt).toContain("https://arxiv.org/abs/2605.22687");
-    expect(prompt).toContain("First person");
-    expect(prompt).toContain("allowed when the source uses it");
-    expect(prompt).toContain("Max pre-vouched by liking");
+    expect(prompt).toContain("First-person framing rule");
+    expect(prompt).toContain("Never claim experiences, ownership, or completed work as Max's own");
+    expect(prompt).toContain("Reframe to what happened");
   });
 
-  it("rejects no-ai-slop patterns without turning them into Max voice rules", () => {
+  it("rejects no-ai-slop patterns with unslop pass", () => {
     const base = {
       sourceText: "IBM published 0.7nm chip research with 40% SRAM scaling.",
       externalUrls: ["https://newsroom.ibm.com/example"],
@@ -103,25 +88,25 @@ describe("X liked autopost writer", () => {
         ...base,
         content: "This is not about chip size. It is about memory density.",
       })
-    ).toBe("writer used no-ai-slop pattern: binary_contrast");
+    ).toBe("writer used no-ai-slop pattern(s): binary_contrast");
     expect(
       getXLikedAutopostContentRejection({
         ...base,
         content: "The uncomfortable truth is that SRAM scaling drives the useful result.",
       })
-    ).toBe("writer used no-ai-slop pattern: throat_clearing");
+    ).toBe("writer used no-ai-slop pattern(s): throat_clearing");
     expect(
       getXLikedAutopostContentRejection({
         ...base,
         content: "IBM's research marks a pivotal moment for chip design.",
       })
-    ).toBe("writer used no-ai-slop pattern: importance_puffery");
+    ).toBe("writer used no-ai-slop pattern(s): importance_puffery");
     expect(
       getXLikedAutopostContentRejection({
         ...base,
         content: "IBM published 0.7nm research. SRAM scales by 40%. Density is the result.",
       })
-    ).toBe("writer used no-ai-slop pattern: stacked_short_sentences");
+    ).toBe("writer used no-ai-slop pattern(s): stacked_short_sentences");
     expect(
       getXLikedAutopostContentRejection({
         ...base,
@@ -345,35 +330,27 @@ describe("X liked autopost writer", () => {
     ).toBeNull();
   });
 
-  it("allows near-verbatim copies for liked posts (Max pre-vouched)", () => {
-    const sourceText = "AI just made the answer key free.\n\nEveryone has it instantly now.";
-
-    // Near-verbatim is acceptable for liked posts
+  it("requires rewriting in own words (not near-verbatim)", () => {
+    // Must rewrite while preserving meaning of ALL points
+    // This test just confirms no verbatim blocking - actual rewriting happens in writer prompt
     expect(
       getXLikedAutopostContentRejection({
-        content: sourceText,
-        sourceText,
+        content: "ai made the answer key instantly available to everyone now.",
+        sourceText: "AI just made the answer key free.\n\nEveryone has it instantly now.",
         hasMedia: false,
         sourceUrl: "https://x.com/source/status/123",
       })
     ).toBeNull();
   });
 
-  it("preserves first-person voice from liked posts (Max pre-vouched)", () => {
-    // First-person from liked sources is acceptable
+  it("reframes first-person to avoid claiming author's work as Max's own", () => {
+    // Never claim experiences, ownership, or completed work as Max's own
+    // Reframe to what happened / what was done / what's next
+    
+    // OK: neutral observation (reading/noticing)
     expect(
       getXLikedAutopostContentRejection({
-        content: "I basically never write my own /goal anymore. I ask Codex to write it.",
-        sourceText: "I basically never write my own /goal anymore. I ask Codex to write it.",
-        hasMedia: false,
-        sourceUrl: "https://x.com/source/status/123",
-      })
-    ).toBeNull();
-
-    // Even edited first-person is fine
-    expect(
-      getXLikedAutopostContentRejection({
-        content: "I ask Codex to write the goal before it starts.",
+        content: "codex got used for goal writing instead of manual drafts.",
         sourceText: "I basically never write my own /goal anymore. I ask Codex to write it.",
         hasMedia: false,
         sourceUrl: "https://x.com/source/status/123",
@@ -517,7 +494,7 @@ describe("X liked autopost writer", () => {
     });
   });
 
-  it("sends reviewer failures back to the writer before returning a publishable draft", async () => {
+  it("skips reviewer scoring (disabled for now)", async () => {
     vi.mocked(resolveWritingRuntimes).mockResolvedValue([
       {
         protocol: "openai_responses" as const,
@@ -527,51 +504,17 @@ describe("X liked autopost writer", () => {
       source: "env",
       },
     ]);
-    vi.mocked(callOpenAIResponses)
-      .mockResolvedValueOnce({
-        data: {
-          output: [
-            {
-              type: "message",
-              content: [{ text: JSON.stringify({ content: "IBM released a shipping 0.7nm chip today.\n\nAI compute gets cheaper immediately." }) }],
-            },
-          ],
-        },
-        trace: { url: "writer-1" },
-      } as never)
-      .mockResolvedValueOnce({
-        data: {
-          output: [
-            {
-              type: "message",
-              content: [{ text: JSON.stringify({ approved: false, issues: ["draft turns research into a shipping chip"], repairInstruction: "Keep this framed as IBM research and remove immediate-cost claims." }) }],
-            },
-          ],
-        },
-        trace: { url: "reviewer-1" },
-      } as never)
-      .mockResolvedValueOnce({
-        data: {
-          output: [
-            {
-              type: "message",
-              content: [{ text: JSON.stringify({ content: "IBM's 0.7nm chip research points at the next AI infrastructure constraint.\n\nThe useful detail is SRAM scaling: memory movement keeps becoming a bigger part of the compute bill." }) }],
-            },
-          ],
-        },
-        trace: { url: "writer-2" },
-      } as never)
-      .mockResolvedValueOnce({
-        data: {
-          output: [
-            {
-              type: "message",
-              content: [{ text: JSON.stringify({ approved: true, issues: [], repairInstruction: "" }) }],
-            },
-          ],
-        },
-        trace: { url: "reviewer-2" },
-      } as never);
+    vi.mocked(callOpenAIResponses).mockResolvedValueOnce({
+      data: {
+        output: [
+          {
+            type: "message",
+            content: [{ text: JSON.stringify({ content: "IBM's 0.7nm chip research shows SRAM scaling improvements for AI workloads." }) }],
+          },
+        ],
+      },
+      trace: { url: "writer-1" },
+    } as never);
 
     const result = await draftXLikedAutopostContent({
       workspaceId: "workspace-1",
@@ -583,12 +526,11 @@ describe("X liked autopost writer", () => {
       mediaType: null,
     });
 
-    expect(result.content).toContain("0.7nm chip research");
+    expect(result.content).toContain("0.7nm chip");
     expect(result.content).toContain("SRAM scaling");
-    expect(result.review.approved).toBe(true);
-    expect(vi.mocked(callOpenAIResponses)).toHaveBeenCalledTimes(4);
-    expect(vi.mocked(callOpenAIResponses).mock.calls[2]?.[0].body.input).toContain("reviewer rejected draft");
-    expect(vi.mocked(callOpenAIResponses).mock.calls[2]?.[0].body.input).toContain("Keep this framed as IBM research");
+    // Reviewer disabled for now (TODO: re-add later)
+    expect(result.review).toBeNull();
+    expect(vi.mocked(callOpenAIResponses)).toHaveBeenCalledTimes(1); // Only writer, no reviewer
   });
 
   it("rejects drafts that are too short (< 20 chars excluding URLs)", () => {
@@ -611,17 +553,16 @@ describe("X liked autopost writer", () => {
     ).toBe("writer returned too-short draft (< 20 chars excluding URLs)");
   });
 
-  it("preserves source formatting including punctuation (no voice enforcement)", () => {
-    // Punctuation is preserved when part of source structure
-    const contentWithStructure = "AI agents are transforming how we work, and the future is here. The shift is happening now.";
+  it("applies unslop pass to catch AI-slop patterns", () => {
+    // Unslop pass catches em-dashes, 'not X but Y', filler, hype words
     expect(
       getXLikedAutopostContentRejection({
-        content: contentWithStructure,
-        sourceText: contentWithStructure,
+        content: "AI agents — the future is here.",
+        sourceText: "AI agents are transforming everything.",
         hasMedia: false,
         sourceUrl: "https://x.com/source/status/123",
       })
-    ).toBeNull();
+    ).toBe("writer used no-ai-slop pattern(s): decorative_em_dash");
   });
 
   it("includes reviewer scores in rejection feedback", () => {
@@ -646,8 +587,8 @@ describe("X liked autopost writer", () => {
     expect(rejection).toContain("Preserve the specific database names");
   });
 
-  it("preserves long list-style sources including run-on sentences (fiveoutofnine post)", () => {
-    // Extended to > 2500 chars to match real fiveoutofnine post length
+  it("preserves all points from long fiveoutofnine-style posts", () => {
+    // Extended to > 2500 chars with many specific points that must all be preserved
     const runOnSnowballSource = [
       "So basically, today PHP got two critical bugs that let anyone run code on your server without even logging in, which is bad,",
       "and then the details leaked before the patch was even out, which is worse, and it works on WordPress and MediaWiki and Magento",
@@ -684,15 +625,16 @@ describe("X liked autopost writer", () => {
     // Should be over 2500 chars
     expect(runOnSnowballSource.length).toBeGreaterThan(2500);
     
-    // Should preserve source formatting
-    expect(prompt).toContain("Preserve the source's formatting");
-    expect(prompt).toContain("Do not compress, summarize, or shorten");
+    // Should preserve all points and length
+    expect(prompt).toContain("preserving the meaning of EVERY point");
+    expect(prompt).toContain("Do not drop points or compress lists");
+    expect(prompt).toContain("Preserve ALL numbers, named actors, mechanisms");
     
-    // Trimmed to fit 2500 budget should pass
-    const trimmedVersion = runOnSnowballSource.slice(0, 2450);
+    // Rewritten version (trimmed to fit 2500 budget) should pass
+    const rewrittenVersion = runOnSnowballSource.slice(0, 2450).replace(/So basically/g, "Today");
     expect(
       getXLikedAutopostContentRejection({
-        content: trimmedVersion,
+        content: rewrittenVersion,
         sourceText: runOnSnowballSource,
         hasMedia: false,
         sourceUrl: "https://x.com/fiveoutofnine/status/2113045722744717360",
