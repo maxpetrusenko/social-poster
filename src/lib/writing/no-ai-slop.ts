@@ -29,7 +29,7 @@ const PATTERNS: Array<{ code: string; label: string; pattern: RegExp }> = [
   {
     code: "binary_contrast",
     label: "binary contrast",
-    pattern: /\b(?:this|it|the (?:question|point|problem|answer))\s+(?:isn't|is not|wasn't|was not)\b[\s\S]{0,100}\b(?:it is|it's|that is|that's)\b|\bnot\s+(?:just|only)\b[^.!?\n]{0,120}\bbut\b/i,
+    pattern: /\b(?:this|it|the (?:question|point|problem|answer))\s+(?:isn't|is not|wasn't|was not)\b[\s\S]{0,100}\b(?:it is|it's|that is|that's)\b|\bnot\s+(?:just|only)\b[^.!?\n]{0,120}\bbut\b|\b(?:not|isn't|wasn't)\s+[A-Z][^.!?,]{1,50}[.,]\s*(?:it's|it is|that's|that is|instead|rather)\b/i,
   },
   {
     code: "throat_clearing",
