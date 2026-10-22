@@ -5,10 +5,39 @@ import { OAuthReturnNoticeBanner } from "@/components/dashboard/oauth-return-not
 import { resolveOAuthReturnNotice } from "@/lib/providers/oauth-return";
 
 describe("OAuth return notice", () => {
+  it("names the handle of the connected row when two Instagram accounts exist", () => {
+    const rows = { "row-a": "@first", "row-b": "@second" };
+    const notice = resolveOAuthReturnNotice(
+      { connected: "instagram", platformId: "row-b" },
+      rows
+    );
+    render(<OAuthReturnNoticeBanner notice={notice} />);
+    expect(screen.getByRole("status").textContent).toBe("Instagram connected as @second");
+  });
+
+  it("ignores an unknown platformId", () => {
+    const notice = resolveOAuthReturnNotice(
+      { connected: "instagram", platformId: "__proto__" },
+      { "row-a": "@first" }
+    );
+    expect(notice?.message).toBe("Instagram connected");
+  });
+
+  it.each(["__proto__", "constructor", "toString", "some free text"])(
+    "maps unknown error %s to the generic message",
+    (value) => {
+      const notice = resolveOAuthReturnNotice({ error: value });
+      expect(notice).toEqual({
+        kind: "error",
+        message: "Connecting the account failed. Try again.",
+      });
+    }
+  );
+
   it("renders a success notice with the handle", () => {
     const notice = resolveOAuthReturnNotice(
-      { connected: "instagram" },
-      { instagram: "@maxpetrusenko" }
+      { connected: "instagram", platformId: "row-a" },
+      { "row-a": "@maxpetrusenko" }
     );
     render(<OAuthReturnNoticeBanner notice={notice} />);
     expect(screen.getByRole("status").textContent).toBe(

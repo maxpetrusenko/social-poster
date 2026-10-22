@@ -84,8 +84,7 @@ describe("native OAuth platform route", () => {
     const location = response.headers.get("location");
 
     expect(response.status).toBe(307);
-    expect(location).toContain("Instagram+local+OAuth");
-    expect(location).toContain("https%3A%2F%2F127.0.0.1%3A3000");
+    expect(location).toContain("error=instagram_local_https_required");
     expect(getProvider).not.toHaveBeenCalled();
   });
 
@@ -171,8 +170,7 @@ describe("native OAuth platform route", () => {
     expect(location).toContain(
       "/dashboard/workspace-settings/social-accounts"
     );
-    expect(location).toContain("Instagram+Personal+direct+OAuth");
-    expect(location).toContain("Managed+relay");
+    expect(location).toContain("error=instagram_personal_unavailable");
     expect(getProvider).not.toHaveBeenCalled();
   });
 
@@ -198,8 +196,7 @@ describe("native OAuth platform route", () => {
     expect(location).toContain(
       "/dashboard/workspace-settings/social-accounts"
     );
-    expect(location).toContain("Instagram+Personal+direct+OAuth");
-    expect(location).toContain("Managed+relay");
+    expect(location).toContain("error=instagram_personal_unavailable");
     expect(cookieStore.delete).toHaveBeenCalledWith("sp_native_oauth");
     expect(getProvider).not.toHaveBeenCalled();
   });

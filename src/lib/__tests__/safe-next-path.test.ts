@@ -64,6 +64,8 @@ describe("sanitizeOAuthReturnPath", () => {
     "//evil.example",
     "/\\evil.example",
     "/login",
+    "/\tevil.example",
+    "/dashboard/settings/../../login",
   ])("rejects external or looping target %s", (candidate) => {
     expect(sanitizeOAuthReturnPath(candidate)).toBe(SOCIAL);
   });

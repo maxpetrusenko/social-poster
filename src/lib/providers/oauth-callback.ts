@@ -43,7 +43,7 @@ export async function handleNativeOAuthCallback(
   const disabledOAuthMessage = getDisabledNativeOAuthMessage(platform);
   if (disabledOAuthMessage) {
     updateNativeOAuthCookie(cookieStore, oauthCookie, state?.nonce);
-    fallback.searchParams.set("error", disabledOAuthMessage);
+    fallback.searchParams.set("error", "instagram_personal_unavailable");
     return NextResponse.redirect(fallback);
   }
 
@@ -80,15 +80,15 @@ export async function handleNativeOAuthCallback(
   const redirectUri = oauthFlow.redirectUri ?? oauthCallbackUrl(platform, request);
   // Values that must never reach logs or redirect URLs.
   const secrets: string[] = [code];
+  if (oauthFlow.codeVerifier) secrets.push(oauthFlow.codeVerifier);
 
   try {
-    const provider = getProvider(
+    const providerConfig = mergeProviderCredentials(
       platform,
-      mergeProviderCredentials(
-        platform,
-        oauthFlow.credentials ? { credentials: oauthFlow.credentials } : null
-      )
+      oauthFlow.credentials ? { credentials: oauthFlow.credentials } : null
     );
+    secrets.push(...collectSecretValues(providerConfig));
+    const provider = getProvider(platform, providerConfig);
     const tokens = await provider
       .exchangeCode(code, redirectUri, oauthFlow.codeVerifier ?? undefined)
       .catch((exchangeError: unknown) => {
@@ -154,6 +154,7 @@ export async function handleNativeOAuthCallback(
     });
 
     fallback.searchParams.set("connected", platform);
+    fallback.searchParams.set("platformId", result.id);
     console.log(`[oauth-callback] ✅ ${result.created ? "Saved" : "Updated"} ${platform} connection for workspace ${tenant.currentWorkspace.id}`);
 
     // Cancel "connect account" drip if user just connected their first platform
@@ -284,6 +285,17 @@ async function saveFacebookPageConnections({
 function callbackAuthMethod(platform: string, methodId: string | null | undefined) {
   if (platform === "instagram") return "instagram_oauth";
   return methodId ?? `${platform}_native`;
+}
+
+/** Every string under a key containing "secret" (client/app secrets), any depth. */
+function collectSecretValues(value: unknown, depth = 0): string[] {
+  if (!value || typeof value !== "object" || depth > 3) return [];
+  const out: string[] = [];
+  for (const [key, child] of Object.entries(value)) {
+    if (typeof child === "string" && /secret/i.test(key)) out.push(child);
+    else out.push(...collectSecretValues(child, depth + 1));
+  }
+  return out;
 }
 
 function redactSecrets(message: string, secrets: string[]) {

@@ -34,13 +34,9 @@ export default async function WorkspaceSettingsSocialAccountsPage({
     appUrl
   );
 
-  const handleByPlatform: Record<string, string | null> = {};
-  for (const row of data.platforms) {
-    if (row.handle && !(row.type in handleByPlatform)) {
-      handleByPlatform[row.type] = row.handle;
-    }
-  }
-  const notice = resolveOAuthReturnNotice(params, handleByPlatform);
+  const handleByPlatformId: Record<string, string | null> = {};
+  for (const row of data.platforms) handleByPlatformId[row.id] = row.handle;
+  const notice = resolveOAuthReturnNotice(params, handleByPlatformId);
 
   return (
     <ConnectionsPage

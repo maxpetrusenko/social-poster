@@ -45,7 +45,7 @@ async function startNativeOAuth(
 
   const disabledOAuthMessage = getDisabledNativeOAuthMessage(platform);
   if (disabledOAuthMessage) {
-    return oauthStartError(request, appUrl, disabledOAuthMessage);
+    return oauthStartError(request, appUrl, disabledOAuthMessage, "instagram_personal_unavailable");
   }
 
   const nonce = crypto.randomBytes(24).toString("base64url");
@@ -61,7 +61,7 @@ async function startNativeOAuth(
   const redirectUri = oauthCallbackUrl(platform, request);
   const setupError = getOAuthSetupError(platform, appUrl, redirectUri);
   if (setupError) {
-    return oauthStartError(request, appUrl, setupError);
+    return oauthStartError(request, appUrl, setupError, "instagram_local_https_required");
   }
   const oauthCredentials = isAppManagedOAuth(platform)
     ? null
@@ -127,7 +127,12 @@ function isAppManagedOAuth(platform: string) {
   );
 }
 
-function oauthStartError(request: NextRequest, appUrl: string, message: string) {
+function oauthStartError(
+  request: NextRequest,
+  appUrl: string,
+  message: string,
+  code = "oauth_start_failed"
+) {
   if (request.method === "POST") {
     return NextResponse.json({ error: message }, { status: 400 });
   }
@@ -135,7 +140,7 @@ function oauthStartError(request: NextRequest, appUrl: string, message: string) 
     "/dashboard/workspace-settings/social-accounts",
     appUrl
   );
-  fallback.searchParams.set("error", message);
+  fallback.searchParams.set("error", code);
   return NextResponse.redirect(fallback);
 }
 
