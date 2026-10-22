@@ -56,6 +56,7 @@ export default async function BlogPage() {
               <Link
                 key={post.slug}
                 href={`/blog/${post.slug}`}
+                data-week-start={post.weekStart}
                 className="group overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--paper)] hover:border-[var(--accent-tech)]/30 transition-colors"
               >
                 {post.imageUrl ? (

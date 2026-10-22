@@ -12,6 +12,8 @@ export type BlogPost = {
   imageAlt?: string | null;
   sources?: Array<{ title: string; url: string; publisher?: string }>;
   isMarkdown?: boolean;
+  /** ISO Monday of an externally published weekly article. */
+  weekStart?: string;
   audiences?: PublicSiteKey[];
 };
 
