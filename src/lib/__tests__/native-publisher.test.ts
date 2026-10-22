@@ -8,6 +8,7 @@ vi.mock("@/db", () => ({
 
 import {
   publishViaNativeProvider,
+  resolvePostUrl,
   shouldPublishViaNativeProvider,
 } from "@/lib/providers/native-publisher";
 
@@ -120,5 +121,29 @@ describe("native publisher X 403 classification", () => {
     } finally {
       globalThis.fetch = originalFetch;
     }
+  });
+});
+
+describe("Instagram story permalink", () => {
+  const result = {
+    platformPostId: "18043284359834744",
+    url: "https://www.instagram.com/p/18043284359834744/",
+  };
+
+  it("builds a stories URL from the stored handle", () => {
+    expect(
+      resolvePostUrl("instagram", "story", result, {
+        providerProfile: { handle: "@maxpetrusenko" },
+      })
+    ).toBe("https://www.instagram.com/stories/maxpetrusenko/18043284359834744/");
+  });
+
+  it("returns no URL for a story without a handle, never the /p/ link", () => {
+    expect(resolvePostUrl("instagram", "story", result, {})).toBeUndefined();
+    expect(resolvePostUrl("instagram", "story", result, null)).toBeUndefined();
+  });
+
+  it("keeps the feed URL for non-story posts", () => {
+    expect(resolvePostUrl("instagram", "image", result, {})).toBe(result.url);
   });
 });
