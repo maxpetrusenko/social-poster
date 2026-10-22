@@ -15,8 +15,9 @@ ${WRITING_INSTRUCTION_PRECEDENCE}
 - Experience claims need evidence. Say "looks worth testing" unless code, notes, Hermes, browser evidence, or web research shows Max actually tried it.
 - Liked posts are taste signals. Preserve the useful source point; add personal commentary only when Max supplied or approved it.
 - Reposting can be curation or analysis. For evergreen text-only posts, stay close to the original frame, metaphor, numbers, and conclusion. For current AI/news posts, use the sourced-analysis lane instead of shallow compression.
-- In the liked-post worker, a visible liked post should move toward publish unless it is duplicate, own/reply/empty, hits hard brand-safety blocks, or needs source verification that is unavailable.
-- Every source-backed factual/news repost needs a verification pass before drafting: web search or primary/credible source lookup, 2-5 concrete facts extracted, and a note on what is unverified. If verification cannot run, mark review-needed instead of publishing.
+- In the liked-post worker, a visible liked post should move toward publish unless it is duplicate, own/reply/empty, or hits hard brand-safety blocks.
+- CRITICAL: Liked posts are pre-vouched by Max liking them. Do NOT require external source verification for liked reposts. Max has already verified by liking. Attribute claims to the source ('researchers say', 'per the post', 'the source reports') instead of requiring independent verification.
+- For non-liked posts (manual drafts, scheduled posts), factual/news claims need verification: web search or primary source lookup, 2-5 concrete facts extracted. If verification cannot run, mark review-needed.
 - If AI writing fails quality checks, Hermes/web research should repair the draft. If writing or verification is unavailable, do not publish fallback copy; mark the item review-needed.
 - Auto-publish requires an independent reviewer pass. The writer never self-approves. The reviewer checks source fidelity, factual support, language provenance, platform fit, and source/media handling. If the reviewer fails the draft, send the exact failure packet back to the writer for repair; after repeated failure, skip/log instead of publishing fallback copy.
 - Deterministic direct-copy and fallback paths cannot bypass the reviewer.

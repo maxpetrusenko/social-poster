@@ -940,3 +940,85 @@ describe("Bug fixes from production runs (2026-10-22)", () => {
     });
   });
 });
+
+describe("Critical production bugs (2026-10-22 second batch)", () => {
+  describe("CRITICAL Bug #1: Meta-text gate improvements", () => {
+    it("detects lowercase hyphenated review-needed", () => {
+      const content = "review-needed: source-backed claims about X could not be verified, so no post was drafted.";
+      const rejection = getXLikedAutopostContentRejection({
+        content,
+        sourceText: "test source",
+        hasMedia: false,
+        sourceUrl: "https://x.com/test/status/123",
+      });
+      expect(rejection).toContain("meta-text");
+    });
+
+    it("detects underscore variant review_needed", () => {
+      const content = "review_needed: verification unavailable";
+      const rejection = getXLikedAutopostContentRejection({
+        content,
+        sourceText: "test",
+        hasMedia: false,
+        sourceUrl: "https://x.com/test/status/123",
+      });
+      expect(rejection).toContain("meta-text");
+    });
+
+    it("detects cannot/unable prefixes", () => {
+      expect(
+        getXLikedAutopostContentRejection({
+          content: "cannot verify the claims in this source",
+          sourceText: "test",
+          hasMedia: false,
+          sourceUrl: "https://x.com/test/status/123",
+        })
+      ).toContain("meta-text");
+
+      expect(
+        getXLikedAutopostContentRejection({
+          content: "unable to draft without verification",
+          sourceText: "test",
+          hasMedia: false,
+          sourceUrl: "https://x.com/test/status/123",
+        })
+      ).toContain("meta-text");
+    });
+
+    it("detects 'no post was drafted' phrase", () => {
+      const content = "no post was drafted because verification failed";
+      const rejection = getXLikedAutopostContentRejection({
+        content,
+        sourceText: "test",
+        hasMedia: false,
+        sourceUrl: "https://x.com/test/status/123",
+      });
+      expect(rejection).toContain("meta-text");
+    });
+
+    it("detects 'could not be verified' phrase", () => {
+      const content = "the claims could not be verified without external sources";
+      const rejection = getXLikedAutopostContentRejection({
+        content,
+        sourceText: "test",
+        hasMedia: false,
+        sourceUrl: "https://x.com/test/status/123",
+      });
+      expect(rejection).toContain("meta-text");
+    });
+
+    it("prompt includes CRITICAL instruction about pre-vouched liked posts", () => {
+      const prompt = buildXLikedAutopostWriterPrompt({
+        authorHandle: "@test",
+        sourceUrl: "https://x.com/test/status/123",
+        sourceText: "test source",
+        hasMedia: false,
+        mediaType: null,
+      });
+      expect(prompt).toContain("CRITICAL: This is a LIKED post");
+      expect(prompt).toContain("Max has already pre-vouched");
+      expect(prompt).toContain("do NOT need external source verification");
+      expect(prompt).toContain("Do NOT refuse or return empty drafts");
+    });
+  });
+});

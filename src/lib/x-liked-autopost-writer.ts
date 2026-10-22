@@ -175,8 +175,11 @@ export async function draftXLikedAutopostContent(input: {
         // TODO: Re-add reviewer scoring pass later (removed per Max's direction 2026-10-22)
         // For now, only hard safety gates apply: meta-text, empty/short, char budget, thread numbering, credit footer
         
+        // Bug fix #3: Enforce lowercase voice post-processing (nondeterministic DeepSeek output)
+        const voiceEnforcedContent = enforceVoicePostProcessing(content);
+        
         return {
-          content,
+          content: voiceEnforcedContent,
           model: writerRuntime.model,
           modelSource: writerRuntime.source ?? "unknown",
           traceUrl: lastTraceUrl,
@@ -315,6 +318,8 @@ export function buildXLikedAutopostWriterPrompt(input: {
     : "";
 
   return `You write Max Petrusenko's liked-post autoposts.
+
+CRITICAL: This is a LIKED post. Max has already pre-vouched for it by liking it. You do NOT need external source verification. Do NOT refuse or return empty drafts because "source verification" failed. Attribute claims to the source ('researchers say', 'per the post', 'the source reports') instead of requiring independent verification.
 
 Use these X posting rules as binding instructions:
 ${X_POSTING_SKILL_INSTRUCTIONS}
@@ -526,8 +531,14 @@ export function getXLikedAutopostContentRejection(input: {
 
   if (!content) return "writer returned empty content";
   
-  // Safety gate: detect meta-text that should never be published
-  if (/^(?:SKIP|REVIEW_NEEDED|NOTE|TODO|WARN|ERROR|DEBUG)[\s:]/i.test(content)) {
+  // CRITICAL Bug fix #1: Detect meta-text (case-insensitive, catch all variants)
+  // Check first line for meta-text markers: review-needed, skip, note, cannot, unable, 'no post was drafted'
+  const firstLine = content.split('\n')[0]?.toLowerCase() || '';
+  if (
+    /^(?:skip|review[-_\s]?needed|note|todo|warn|error|debug|cannot|unable)[\s:]/i.test(firstLine) ||
+    /no post (?:was|could be) drafted/i.test(firstLine) ||
+    /could not be verified/i.test(firstLine)
+  ) {
     return "writer returned meta-text instead of publishable content";
   }
   
@@ -706,6 +717,64 @@ function hasCreditFooterLine(text: string) {
   return text
     .split("\n")
     .some((line) => /^\s*(?:source|credit|credits|h\/t|via)\b\s*:?(?:\s+@|\s+https?:\/\/|\s+\S|\s*$)/i.test(line.trim()));
+}
+
+/**
+ * Bug fix #3: Enforce lowercase voice post-processing.
+ * DeepSeek and other models produce nondeterministic capitalization.
+ * Force lowercase except: first word of sentences, proper nouns (acronyms, CamelCase), URLs, handles.
+ */
+function enforceVoicePostProcessing(text: string): string {
+  // Split into sentences (simplistic: period/newline followed by space or newline)
+  const sentences = text.split(/([.!?\n]+\s*)/);
+  const processed: string[] = [];
+  
+  for (let i = 0; i < sentences.length; i++) {
+    const sentence = sentences[i];
+    if (!sentence || /^[.!?\n\s]+$/.test(sentence)) {
+      processed.push(sentence);
+      continue;
+    }
+    
+    const words = sentence.split(/(\s+)/);
+    const processedWords: string[] = [];
+    let isFirstWord = true;
+    
+    for (const word of words) {
+      if (/^\s+$/.test(word)) {
+        processedWords.push(word);
+        continue;
+      }
+      
+      // Skip processing for:
+      // - First word of sentence
+      // - Acronyms (all caps, 2+ letters): AI, IBM, NASA
+      // - URLs
+      // - Handles (@username)
+      // - CamelCase (proper nouns): OpenAI, DeepSeek
+      // - Single capital letters
+      if (
+        isFirstWord ||
+        /^[A-Z]{2,}$/.test(word) ||
+        /^https?:\/\//i.test(word) ||
+        /^@\w+/.test(word) ||
+        /^[A-Z][a-z]+[A-Z]/.test(word) ||
+        /^[A-Z]$/.test(word)
+      ) {
+        processedWords.push(word);
+        if (!/^\s+$/.test(word)) isFirstWord = false;
+        continue;
+      }
+      
+      // Lowercase everything else
+      processedWords.push(word.toLowerCase());
+      isFirstWord = false;
+    }
+    
+    processed.push(processedWords.join(''));
+  }
+  
+  return processed.join('');
 }
 
 function looksLikeStudyClaim(text: string) {
