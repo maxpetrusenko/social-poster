@@ -6,7 +6,6 @@ import {
   getPublishedDynamicBlogPosts,
 } from "./automation";
 import { getPublicSiteKey } from "@/lib/site-domains";
-import { isoWeekStart } from "./week-start";
 
 export type PublicBlogPost = BlogPost & {
   imageUrl?: string | null;
@@ -26,7 +25,6 @@ export async function getAllPublicBlogPosts(host?: string | null): Promise<Publi
     imageAlt: post.heroImageAlt,
     sources: post.sources ?? [],
     isMarkdown: true,
-    weekStart: externalWeekStart(post),
   }));
 
   return [...mappedDynamic, ...filterStaticPostsForHost(BLOG_POSTS, host)].sort((a, b) =>
@@ -60,20 +58,6 @@ export async function findPublicBlogPost(slug: string, host?: string | null): Pr
 function filterStaticPostsForHost(posts: BlogPost[], host?: string | null) {
   const siteKey = getPublicSiteKey(host);
   return posts.filter((post) => !post.audiences?.length || post.audiences.includes(siteKey));
-}
-
-function externalWeekStart(post: {
-  metadata?: Record<string, unknown> | null;
-  publishedAt: Date | null;
-  createdAt: Date;
-}) {
-  const meta = post.metadata;
-  if (meta?.generator !== "hermes-source-of-truth") return undefined;
-  const date =
-    typeof meta.publicationDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(meta.publicationDate)
-      ? meta.publicationDate
-      : formatDate(post.publishedAt ?? post.createdAt);
-  return isoWeekStart(date);
 }
 
 function formatDate(value: Date | null) {

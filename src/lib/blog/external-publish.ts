@@ -93,7 +93,6 @@ export async function publishExternalBlogArticle(value: unknown) {
       generator: "hermes-source-of-truth",
       externalRunId: payload.runId,
       externalPackageId: payload.packageId,
-      ...(payload.publicationDate ? { publicationDate: payload.publicationDate } : {}),
       articleSha256: validated.articleSha256,
       warnings: validated.warnings,
       approvalMode: "autonomous-explicit-user-policy",
