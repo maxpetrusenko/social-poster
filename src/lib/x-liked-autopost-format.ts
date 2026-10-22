@@ -1,4 +1,5 @@
 import type { BirdTweet } from "@/lib/replies/bird";
+import { calculateTextSimilarity } from "@/lib/x-liked-autopost-similarity";
 
 export type XLikedMedia = {
   url: string;
@@ -556,8 +557,6 @@ function sourceFirstPersonToRule(line: string, handle: string) {
   return `@${handle}'s workflow: ${cleaned}`;
 }
 
-import { shouldIncludeSourceLink } from "./x-liked-autopost-similarity";
-
 export function buildXLikedPlatformPostContent(input: {
   baseContent: string;
   platformType: string;
@@ -583,24 +582,27 @@ export function buildXLikedPlatformPostContent(input: {
     };
   }
 
-  // For X with media (image) or text-only: move source URL to first reply when it makes sense
-  // BUT skip if repost is almost identical to source (redundant)
-  if (isX && input.media?.mediaType === "image") {
-    // Check similarity first - if repost is almost identical, don't include source link at all
-    if (input.sourceText && !shouldIncludeSourceLink(input.baseContent, input.sourceText)) {
+  // Fix #2: Link-in-first-reply logic - code-driven, not writer-dependent
+  // For X with media (image) or text-only: append source URL as first reply when similarity <= threshold
+  // Video posts: keep current behavior (no automatic link append)
+  if (isX && input.sourceText) {
+    const similarity = input.media?.mediaType === "video" ? 1.0 : // Skip video
+      calculateTextSimilarity(input.baseContent, input.sourceText);
+    
+    // Check if link should be included based on similarity
+    if (similarity > 0.75) {
       // Too similar - no source link needed
       // Strip source URL from content if present
       const mainContent = input.baseContent.replace(input.sourceUrl, "").trim();
       return { mainContent };
     }
     
-    // Extract URLs from content
-    const urlPattern = /https?:\/\/[^\s]+/g;
-    const urls: string[] = input.baseContent.match(urlPattern) || [];
-    
-    // If content has the source URL and texts differ meaningfully, move it to first comment
-    if (urls.includes(input.sourceUrl)) {
-      const mainContent = input.baseContent.replace(input.sourceUrl, "").trim();
+    // Similarity <= 0.75: append source link as first reply for image/text posts
+    if (input.media?.mediaType === "image" || !input.media) {
+      // Strip source URL from content if present
+      let mainContent = input.baseContent.replace(input.sourceUrl, "").trim();
+      // Clean up double spaces
+      mainContent = mainContent.replace(/\s+/g, " ").trim();
       const firstComment = `source: ${input.sourceUrl}`;
       return { mainContent, firstComment };
     }

@@ -538,10 +538,11 @@ describe("X liked autopost writer", () => {
 
   it("allows short drafts (Bug fix #5: no minimum length requirement)", () => {
     // Bug fix #5: Short posts are allowed now (no minimum length padding)
+    // Fix #4: Use meaningfully rewritten content (not identical) to pass similarity check
     expect(
       getXLikedAutopostContentRejection({
-        content: "good point here from the source",
-        sourceText: "good point here from the source",
+        content: "good point from the original tweet",
+        sourceText: "this is a really good observation about the industry",
         hasMedia: false,
         sourceUrl: "https://x.com/source/status/123",
       })
@@ -549,8 +550,8 @@ describe("X liked autopost writer", () => {
 
     expect(
       getXLikedAutopostContentRejection({
-        content: "check this repository\n\nhttps://github.com/example/repo",
-        sourceText: "check this repository now and examine it carefully for examples",
+        content: "check this repo\n\nhttps://github.com/example/repo",
+        sourceText: "you should examine this repository carefully for examples and patterns",
         hasMedia: false,
         sourceUrl: "https://x.com/source/status/123",
       })
@@ -635,20 +636,9 @@ describe("X liked autopost writer", () => {
     expect(prompt).toContain("Preserve ALL numbers, named actors, mechanisms");
     expect(prompt).toContain("Numbers must match exactly");
     
-    // Rewritten version (trimmed to fit 2500 budget) should pass
-    // Note: voice check requires lowercase, so we need to lowercase everything except proper nouns
-    const rewrittenVersion = runOnSnowballSource
-      .slice(0, 2450)
-      .split(' ')
-      .map((word, i) => {
-        // Keep acronyms and CamelCase
-        if (/^[A-Z]{2,}$/.test(word) || /^[A-Z][a-z]+[A-Z]/.test(word)) return word;
-        // Keep first word of sentences (after period)
-        if (i === 0) return word;
-        // Lowercase everything else
-        return word.replace(/^[A-Z]/, (c) => c.toLowerCase());
-      })
-      .join(' ');
+    // Rewritten version (trimmed to fit 2500 budget and reworded enough to pass similarity check)
+    // Fix #4: Need meaningful rewording, not just trimming
+    const rewrittenVersion = "unslop pipeline now handles markdown detection, meta-commentary removal, and source citations. added test coverage for edge cases including nested lists, code blocks, and mixed formatting. updated documentation with examples. refactored parser logic for better maintainability. fixed bugs in whitespace handling and escape sequences. improved error messages for debugging. added new utility functions for common transformations. optimized performance by caching compiled patterns. reduced memory footprint by streaming large inputs. enhanced CLI with progress indicators and color output.";
     expect(
       getXLikedAutopostContentRejection({
         content: rewrittenVersion,
@@ -671,11 +661,13 @@ function buildReviewerRejection(review: { approved: boolean; issues: string[]; r
 describe("Bug fixes from production runs (2026-10-22)", () => {
   describe("Bug #1: Long mode must apply with media too", () => {
     it("allows 2500 char limit for posts with media when long mode enabled", () => {
-      const longTextWithMedia = "a".repeat(1680);
+      // Fix #4: Need different content to pass similarity check
+      const sourceText = "a".repeat(1680);
+      const rewrittenContent = "b".repeat(840) + "c".repeat(840); // Same length, different words
       expect(
         getXLikedAutopostContentRejection({
-          content: longTextWithMedia,
-          sourceText: "a".repeat(1680),
+          content: rewrittenContent,
+          sourceText,
           hasMedia: true,
           sourceUrl: "https://x.com/test/status/123",
         })
@@ -707,24 +699,25 @@ describe("Bug fixes from production runs (2026-10-22)", () => {
   });
 
   describe("Bug #2: Fallback model must enforce voice rules", () => {
-    it("rejects capitalized/news-wire voice regardless of model", () => {
+    it("Fix #1: no longer hard-rejects capitalized voice (post-processor fixes it)", () => {
       const capitalized = "the System Failed And Then The Backup Also Failed So We Had To Try Again.";
-      const sourceText = "the system failed and then the backup also failed so we had to try again longer";
+      const sourceText = "the system failed and then the backup also failed so we had to try again and eventually it worked";
       const rejection = getXLikedAutopostContentRejection({
         content: capitalized,
         sourceText,
         hasMedia: false,
         sourceUrl: "https://x.com/test/status/123",
       });
-      expect(rejection).not.toBeNull();
+      // Should not hard-reject on capitalization since enforceVoicePostProcessing will fix it
       if (rejection) {
-        expect(rejection).toContain("capitalized/news-wire voice");
+        expect(rejection).not.toContain("capitalized/news-wire voice");
       }
     });
 
     it("allows proper nouns, acronyms, and first-word capitalization", () => {
+      // Fix #4: Use rewritten content to pass similarity check
       const validText = "deepseek failed so we used OpenAI and GPT via LiteLLM to recover. NASA approved it.";
-      const sourceText = "deepseek failed so we used openai and gpt via litellm to recover. nasa approved it.";
+      const sourceText = "deepseek crashed so we switched to openai and gpt through litellm for recovery operations. nasa gave approval.";
       expect(
         getXLikedAutopostContentRejection({
           content: validText,
@@ -764,8 +757,9 @@ describe("Bug fixes from production runs (2026-10-22)", () => {
     });
 
     it("allows drafts where all numbers exist in source", () => {
-      const source = "keys were 66 and 237 characters long in the test run";
-      const draft = "the keys were 66 chars and 237 chars in test run";
+      // Fix #4: Use more reworded content to pass similarity check
+      const source = "keys were 66 and 237 characters long in the test run that we executed";
+      const draft = "test showed keys at 66 chars and 237 chars respectively";
       expect(
         getXLikedAutopostContentRejection({
           content: draft,
@@ -806,8 +800,9 @@ describe("Bug fixes from production runs (2026-10-22)", () => {
 
   describe("Bug #5: No padding on short posts", () => {
     it("allows very short posts without minimum length requirement", () => {
-      const shortPost = "deepseek failed, switched to gpt.";
-      const sourceText = "deepseek failed, switched to gpt.";
+      // Fix #4: Use reworded content to pass similarity check
+      const shortPost = "deepseek crashed, used gpt instead.";
+      const sourceText = "deepseek failed so we switched to gpt for the task.";
       expect(
         getXLikedAutopostContentRejection({
           content: shortPost,
@@ -1024,6 +1019,170 @@ describe("Critical production bugs (2026-10-22 second batch)", () => {
       expect(prompt).toContain("Max has already pre-vouched");
       expect(prompt).toContain("do NOT need external source verification");
       expect(prompt).toContain("Do NOT refuse or return empty drafts");
+    });
+  });
+  
+  describe("Fix #1: Post-process before validate, retry quality rejections", () => {
+    it("does not hard-reject on capitalization (enforceVoicePostProcessing fixes it)", () => {
+      const content = "OpenAI Released GPT-5 Today And It Is Amazing";
+      const rejection = getXLikedAutopostContentRejection({
+        content,
+        sourceText: "OpenAI released GPT-5 today and it is amazing",
+        hasMedia: false,
+        sourceUrl: "https://x.com/test/status/123",
+      });
+      // Should not reject on capitalization since post-processing will fix it
+      expect(rejection).not.toContain("capitalized/news-wire voice");
+    });
+  });
+
+  describe("Fix #3: Source-based preserve list for brands/names", () => {
+    it("preserves brand names from source text in post-processing", async () => {
+      const { enforceVoicePostProcessing } = await import("../x-liked-autopost-writer");
+      const sourceText = "OpenAI released QwenGyre and NL2RepoBench today. GPUs are expensive.";
+      const draftText = "OpenAI Released QwenGyre And NL2RepoBench Today. GPUs Are Expensive.";
+      const processed = enforceVoicePostProcessing(draftText, sourceText);
+      
+      // Should preserve: OpenAI, QwenGyre, NL2RepoBench, GPUs
+      expect(processed).toContain("OpenAI");
+      expect(processed).toContain("QwenGyre");
+      expect(processed).toContain("NL2RepoBench");
+      expect(processed).toContain("GPUs");
+      // Should lowercase ordinary words
+      expect(processed).toContain("released");
+      expect(processed).toContain("and");
+      expect(processed).toContain("today");
+    });
+    
+    it("preserves CamelCase and mixed-case brand names", async () => {
+      const { enforceVoicePostProcessing } = await import("../x-liked-autopost-writer");
+      const sourceText = "ChatGPT, Claude Duet, Grok Bot, and DeepSeek are AI models.";
+      const draftText = "ChatGPT, Claude Duet, Grok Bot, And DeepSeek Are AI Models.";
+      const processed = enforceVoicePostProcessing(draftText, sourceText);
+      
+      expect(processed).toContain("ChatGPT");
+      expect(processed).toContain("Claude");
+      expect(processed).toContain("Duet");
+      expect(processed).toContain("Grok");
+      expect(processed).toContain("Bot");
+      expect(processed).toContain("DeepSeek");
+      expect(processed).toContain("AI");
+      // Ordinary words lowercased
+      expect(processed).toContain("and");
+      expect(processed).toContain("are");
+      expect(processed).toContain("models");
+    });
+  });
+
+  describe("Fix #4: Max similarity check & unslop binary contrast", () => {
+    it("rejects drafts with >70% similarity to source", () => {
+      const sourceText = "the quick brown fox jumps over the lazy dog in the forest";
+      const almostIdentical = "the quick brown fox jumps over the lazy dog in the woods";
+      
+      const rejection = getXLikedAutopostContentRejection({
+        content: almostIdentical,
+        sourceText,
+        hasMedia: false,
+        sourceUrl: "https://x.com/test/status/123",
+      });
+      
+      expect(rejection).toContain("too similar to source");
+      expect(rejection).toContain("similarity");
+    });
+    
+    it("allows drafts with meaningful rewording (<70% similarity)", () => {
+      const sourceText = "researchers discovered that artificial intelligence models learn patterns from data";
+      const rewritten = "ai systems pick up patterns when trained on datasets, per the study";
+      
+      const rejection = getXLikedAutopostContentRejection({
+        content: rewritten,
+        sourceText,
+        hasMedia: false,
+        sourceUrl: "https://x.com/test/status/123",
+      });
+      
+      expect(rejection).toBeNull();
+    });
+    
+    it("unslop catches 'not X, Y' binary contrast patterns", () => {
+      const content = "this isn't about speed, it's about accuracy";
+      const rejection = getXLikedAutopostContentRejection({
+        content,
+        sourceText: "speed vs accuracy",
+        hasMedia: false,
+        sourceUrl: "https://x.com/test/status/123",
+      });
+      
+      expect(rejection).toContain("no-ai-slop pattern");
+      expect(rejection).toContain("binary_contrast");
+    });
+  });
+
+  describe("Fix #5: Short post meaning preservation", () => {
+    it("includes instruction for short posts (<120 chars) in prompt", () => {
+      const prompt = buildXLikedAutopostWriterPrompt({
+        authorHandle: "@test",
+        sourceUrl: "https://x.com/test/status/123",
+        sourceText: "short source here under 120 chars",
+        hasMedia: false,
+        mediaType: null,
+      });
+      
+      expect(prompt).toContain("For very short source posts (<120 chars)");
+      expect(prompt).toContain("preserve the core meaning and sentiment faithfully");
+    });
+  });
+
+  describe("Fix #6: Dangling link references", () => {
+    it("detects 'don't miss the full review'", () => {
+      const content = "great new feature. don't miss the full review";
+      const rejection = getXLikedAutopostContentRejection({
+        content,
+        sourceText: "great new feature https://example.com",
+        hasMedia: false,
+        sourceUrl: "https://x.com/test/status/123",
+      });
+      
+      expect(rejection).toContain("dangling link reference");
+    });
+    
+    it("detects 'check the link below'", () => {
+      const content = "interesting findings. check the link below for details";
+      const rejection = getXLikedAutopostContentRejection({
+        content,
+        sourceText: "interesting findings",
+        hasMedia: false,
+        sourceUrl: "https://x.com/test/status/123",
+      });
+      
+      expect(rejection).toContain("dangling link reference");
+    });
+    
+    it("detects 'full details here'", () => {
+      const content = "new study results. full details here";
+      const rejection = getXLikedAutopostContentRejection({
+        content,
+        sourceText: "new study results",
+        hasMedia: false,
+        sourceUrl: "https://x.com/test/status/123",
+      });
+      
+      expect(rejection).toContain("dangling link reference");
+    });
+    
+    it("allows content without dangling references", () => {
+      const content = "new study shows ai models improve with more data and better training methods";
+      const rejection = getXLikedAutopostContentRejection({
+        content,
+        sourceText: "study: ai models improve with data",
+        hasMedia: false,
+        sourceUrl: "https://x.com/test/status/123",
+      });
+      
+      // May fail for other reasons (length overage), but should not fail on dangling references
+      if (rejection) {
+        expect(rejection).not.toContain("dangling link reference");
+      }
     });
   });
 });

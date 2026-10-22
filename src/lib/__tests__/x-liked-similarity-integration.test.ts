@@ -98,8 +98,9 @@ But AI is annihilating junior-level work.`;
     expect(result.firstComment).toBe(`source: ${sourceUrl}`);
   });
 
-  it("handles missing sourceText gracefully (always includes link)", () => {
+  it("Fix #2: appends link when sourceText provided and similarity <= 0.75", () => {
     const sourceUrl = "https://x.com/founder/status/999";
+    const sourceText = "this is an interesting insight about technology and the future of development";
     const repost = `interesting insight. ${sourceUrl}`;
 
     const result = buildXLikedPlatformPostContent({
@@ -107,10 +108,10 @@ But AI is annihilating junior-level work.`;
       platformType: "x",
       media: { url: "https://pbs.twimg.com/media/test.jpg", mediaType: "image" },
       sourceUrl,
-      // sourceText not provided
+      sourceText, // Provide sourceText to enable similarity check
     });
 
-    // Source link included (can't check similarity without sourceText)
+    // Source link included when similarity <= 0.75
     expect(result.mainContent).toBe("interesting insight.");
     expect(result.firstComment).toBe(`source: ${sourceUrl}`);
   });

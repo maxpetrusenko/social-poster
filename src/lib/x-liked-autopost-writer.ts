@@ -3,6 +3,7 @@ import "server-only";
 import { callWritingModel } from "@/lib/writing-model";
 import { X_POSTING_SKILL_INSTRUCTIONS } from "@/lib/x-posting-skill";
 import { findNoAiSlopIssues } from "@/lib/writing/no-ai-slop";
+import { calculateTextSimilarity } from "@/lib/x-liked-autopost-similarity";
 import { 
   getMaxContextForSource, 
   getMaxVoiceExamples, 
@@ -175,8 +176,8 @@ export async function draftXLikedAutopostContent(input: {
         // TODO: Re-add reviewer scoring pass later (removed per Max's direction 2026-10-22)
         // For now, only hard safety gates apply: meta-text, empty/short, char budget, thread numbering, credit footer
         
-        // Bug fix #3: Enforce lowercase voice post-processing (nondeterministic DeepSeek output)
-        const voiceEnforcedContent = enforceVoicePostProcessing(content);
+        // Fix #3: Enforce lowercase voice post-processing with source-based preserve list
+        const voiceEnforcedContent = enforceVoicePostProcessing(content, input.sourceText);
         
         return {
           content: voiceEnforcedContent,
@@ -358,6 +359,7 @@ Rules for this draft:
 - For long X article/essay shares (detected separately), include the source URL in the main post for embedding.
 - Keep useful URLs when the source includes them.
 - Write one standalone post. No thread markers such as 1/2.
+- Fix #5: For very short source posts (<120 chars), preserve the core meaning and sentiment faithfully. Do not distort the framing or flip the tone (e.g., "too afraid to ask" should not become "asking feels worse than guessing").
 - Hard length budget: ${ALLOW_LONG_POSTS ? X_LONG_POST_LIMIT : X_SAFE_CHAR_LIMIT} characters. Count all characters.${ALLOW_LONG_POSTS ? " Long posts enabled (default for long sources): preserve the source's full length and all points. Do not compress, summarize, or drop items." : ""}
 - Do NOT exceed the source length much. If source is 900 chars, draft should be close to 900 chars, not 1200+.
 - For very short posts (< 100 chars): do not pad to hit a minimum length. Short posts can stay short.
@@ -557,23 +559,8 @@ export function getXLikedAutopostContentRejection(input: {
     return `writer used no-ai-slop pattern(s): ${patterns}`;
   }
   
-  // Bug fix #2: Voice check - lowercase style (allow proper nouns, acronyms, first word)
-  const words = content.split(/\s+/);
-  const capitalizedWords = words.filter((word, i) => {
-    // Skip first word, proper nouns (acronyms, URLs, @handles), and single letters
-    if (i === 0) return false;
-    if (/^[A-Z]{2,}$/.test(word)) return false; // Acronyms: AI, IBM, NASA
-    if (/^https?:\/\//i.test(word)) return false; // URLs
-    if (/^@\w+/.test(word)) return false; // Handles
-    if (/^[A-Z]$/.test(word)) return false; // Single letters
-    // Check for CamelCase (proper noun) - skip it if it's CamelCase
-    if (/^[A-Z][a-z]+[A-Z]/.test(word)) return false;
-    // Now check if starts with capital
-    return /^[A-Z]/.test(word);
-  });
-  if (capitalizedWords.length > 3) {
-    return "writer used capitalized/news-wire voice instead of lowercase style";
-  }
+  // Fix #1: Don't hard-reject on capitalization since enforceVoicePostProcessing fixes it
+  // The post-processor will handle capitalization deterministically
   
   // Bug fix #3: Check that all numbers in draft appear in source
   // Only check standalone numbers (word boundaries), not numbers in identifiers like "gpt-4"
@@ -679,6 +666,21 @@ export function getXLikedAutopostContentRejection(input: {
     return "writer included raw t.co links in body (they belong in first reply)";
   }
   
+  // Fix #6: Check for dangling link references (phrases that refer to removed URLs)
+  const danglingRefPatterns = [
+    /don't miss the (full )?(review|article|video|link|post|thread)/i,
+    /check (the )?link (below|here|in)/i,
+    /full (details|post|thread|story) (here|below|at)/i,
+    /read (the full|more) (here|below|at)/i,
+    /see (the )?(full )?(link|post|article) (below|here)/i,
+  ];
+  
+  for (const pattern of danglingRefPatterns) {
+    if (pattern.test(content)) {
+      return "writer included dangling link reference (refers to removed URL)";
+    }
+  }
+  
   // Bug fix #6: Ban canned framings
   const cannedFramings = /\b(what stood out:|make the case for this side|here's what matters:)/i;
   if (cannedFramings.test(content)) {
@@ -690,6 +692,12 @@ export function getXLikedAutopostContentRejection(input: {
   const allowedOverage = Math.min(input.sourceText.length * 0.15, 200);
   if (content.length > input.sourceText.length + allowedOverage) {
     return `writer exceeded source length (${content.length} vs ${input.sourceText.length} source chars)`;
+  }
+  
+  // Fix #4: Enforce max similarity threshold (0.70) - too similar means not enough rewriting
+  const similarity = calculateTextSimilarity(content, input.sourceText);
+  if (similarity > 0.70) {
+    return `writer draft too similar to source (${(similarity * 100).toFixed(0)}% similarity, max 70%)`;
   }
 
   return null;
@@ -720,12 +728,36 @@ function hasCreditFooterLine(text: string) {
 }
 
 /**
- * Bug fix #3: Enforce lowercase voice post-processing.
- * DeepSeek and other models produce nondeterministic capitalization.
- * Force lowercase except: first word of sentences, proper nouns (acronyms, CamelCase), URLs, handles.
+ * Fix #3: Enforce lowercase voice post-processing with source-based preserve list.
+ * Extract brand/product names from source (tokens capitalized mid-sentence) and preserve them.
+ * Examples: OpenAI, QwenGyre, NL2RepoBench, GPUs, ChatGPT, Claude, Grok
  */
-function enforceVoicePostProcessing(text: string): string {
-  // Split into sentences (simplistic: period/newline followed by space or newline)
+export function enforceVoicePostProcessing(text: string, sourceText: string): string {
+  // Build preserve-list from source: tokens capitalized mid-sentence
+  const sourceWords = sourceText.split(/\s+/);
+  const preserveSet = new Set<string>();
+  let isSourceSentenceStart = true;
+  
+  for (const word of sourceWords) {
+    const cleanWord = word.replace(/[.,;:!?()[\]{}'"]/g, '');
+    if (!cleanWord) continue;
+    
+    // Reset sentence start tracker
+    if (/[.!?]\s*$/.test(word)) {
+      isSourceSentenceStart = true;
+      continue;
+    }
+    
+    // If capitalized mid-sentence, it's a brand/name - preserve it
+    if (!isSourceSentenceStart && /^[A-Z]/.test(cleanWord)) {
+      preserveSet.add(cleanWord);
+      preserveSet.add(cleanWord.toLowerCase()); // Match both forms
+    }
+    
+    if (cleanWord) isSourceSentenceStart = false;
+  }
+  
+  // Split into sentences
   const sentences = text.split(/([.!?\n]+\s*)/);
   const processed: string[] = [];
   
@@ -746,20 +778,25 @@ function enforceVoicePostProcessing(text: string): string {
         continue;
       }
       
-      // Skip processing for:
-      // - First word of sentence
-      // - Acronyms (all caps, 2+ letters): AI, IBM, NASA
+      const cleanWord = word.replace(/[.,;:!?()[\]{}'"]/g, '');
+      
+      // Preserve:
+      // - First word of sentence (only if sentence-initial)
+      // - Acronyms (all caps, 2+ letters): AI, GPUs, IBM, NASA
       // - URLs
       // - Handles (@username)
-      // - CamelCase (proper nouns): OpenAI, DeepSeek
+      // - CamelCase: OpenAI, ChatGPT, DeepSeek
       // - Single capital letters
+      // - Brand/product names from source preserve-list
       if (
         isFirstWord ||
-        /^[A-Z]{2,}$/.test(word) ||
+        /^[A-Z]{2,}$/.test(cleanWord) ||
         /^https?:\/\//i.test(word) ||
         /^@\w+/.test(word) ||
-        /^[A-Z][a-z]+[A-Z]/.test(word) ||
-        /^[A-Z]$/.test(word)
+        /^[A-Z][a-z]+[A-Z]/.test(cleanWord) ||
+        /^[A-Z]$/.test(cleanWord) ||
+        preserveSet.has(cleanWord) ||
+        preserveSet.has(cleanWord.toLowerCase())
       ) {
         processedWords.push(word);
         if (!/^\s+$/.test(word)) isFirstWord = false;
