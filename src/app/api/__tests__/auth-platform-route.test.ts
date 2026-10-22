@@ -270,4 +270,48 @@ describe("native OAuth platform route", () => {
       expect.objectContaining({ httpOnly: true, sameSite: "lax" })
     );
   });
+
+  it("sanitizes a trailing-dot next at OAuth start and callback", async () => {
+    const { verifyOAuthState } = await import("@/lib/providers/oauth-state");
+    getProvider.mockReturnValue({
+      getAuthUrl: (_redirect: string, state: string) =>
+        `https://www.instagram.com/oauth/authorize?state=${state}`,
+    });
+    const { GET } = await import("@/app/api/auth/[platform]/route");
+    const res = await GET(
+      new NextRequest(
+        "https://social.maxpetrusenko.com/api/auth/instagram?next=" +
+          encodeURIComponent("/dashboard/workspace-settings/social-accounts."),
+        {
+          headers: {
+            "x-forwarded-proto": "https",
+            "x-forwarded-host": "social.maxpetrusenko.com",
+          },
+        }
+      ),
+      { params: Promise.resolve({ platform: "instagram" }) }
+    );
+    const authUrl = new URL(res.headers.get("location") ?? "");
+    const state = verifyOAuthState(authUrl.searchParams.get("state") ?? "");
+    expect(state?.next).toBe("/dashboard/workspace-settings/social-accounts");
+
+    const { handleNativeOAuthCallback } = await import(
+      "@/lib/providers/oauth-callback"
+    );
+    for (const [next, expected] of [
+      ["/dashboard/workspace-settings/social-accounts.", "/dashboard/workspace-settings/social-accounts"],
+      ["/not/a/page", "/dashboard/workspace-settings/social-accounts"],
+      ["https://evil.example/x", "/dashboard/workspace-settings/social-accounts"],
+    ]) {
+      const response = await handleNativeOAuthCallback(
+        new NextRequest("https://social.maxpetrusenko.com/api/auth/callback?error=access_denied"),
+        "instagram",
+        { nonce: "n", platform: "instagram", timestamp: Date.now(), next }
+      );
+      const location = new URL(response.headers.get("location") ?? "");
+      expect(location.origin).toBe("https://social.maxpetrusenko.com");
+      expect(location.pathname).toBe(expected);
+      expect(location.searchParams.get("error")).toBe("access_denied");
+    }
+  });
 });

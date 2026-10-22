@@ -5,6 +5,7 @@ import { requireApiWorkspaceManager } from "@/lib/api-authorization";
 import { getRequestAppUrl } from "@/lib/app-url";
 import { mergeProviderCredentials } from "@/lib/providers/credentials";
 import { getDisabledNativeOAuthMessage } from "@/lib/providers/disabled-native-oauth";
+import { sanitizeOAuthReturnPath } from "@/lib/safe-next-path";
 import { getProvider } from "@/lib/providers/registry";
 import {
   signOAuthState,
@@ -54,9 +55,7 @@ async function startNativeOAuth(
     platform,
     profileId: request.nextUrl.searchParams.get("profileId"),
     methodId: request.nextUrl.searchParams.get("methodId"),
-    next:
-      request.nextUrl.searchParams.get("next") ??
-      "/dashboard/workspace-settings/social-accounts",
+    next: sanitizeOAuthReturnPath(request.nextUrl.searchParams.get("next")),
     timestamp: Date.now(),
   });
   const redirectUri = oauthCallbackUrl(platform, request);

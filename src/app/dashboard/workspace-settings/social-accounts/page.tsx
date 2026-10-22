@@ -7,6 +7,7 @@ import { getConnectionsPageData } from "@/lib/dashboard/connections-data";
 import { canManageCurrentWorkspace, getTenantContext } from "@/lib/tenancy";
 import { getNativeConnectionAvailabilityByPlatform } from "@/lib/providers/env-availability";
 import { resolveOAuthCallbackOverride } from "@/lib/providers/oauth-state";
+import { resolveOAuthReturnNotice } from "@/lib/providers/oauth-return";
 
 export const dynamic = "force-dynamic";
 
@@ -33,6 +34,14 @@ export default async function WorkspaceSettingsSocialAccountsPage({
     appUrl
   );
 
+  const handleByPlatform: Record<string, string | null> = {};
+  for (const row of data.platforms) {
+    if (row.handle && !(row.type in handleByPlatform)) {
+      handleByPlatform[row.type] = row.handle;
+    }
+  }
+  const notice = resolveOAuthReturnNotice(params, handleByPlatform);
+
   return (
     <ConnectionsPage
       workspaceName={tenant.currentWorkspace.name}
@@ -41,7 +50,8 @@ export default async function WorkspaceSettingsSocialAccountsPage({
       insights={data.insights}
       initialDrawerOpen={Boolean(params.connect)}
       initialPlatformType={initialPlatformType}
-      initialError={params.error ?? null}
+      initialError={notice?.kind === "error" ? notice.message : null}
+      successNotice={notice?.kind === "success" ? notice : null}
       nativeAvailabilityByPlatform={nativeAvailabilityByPlatform}
       oauthCallbackUrlOverride={oauthCallbackUrlOverride}
     />
