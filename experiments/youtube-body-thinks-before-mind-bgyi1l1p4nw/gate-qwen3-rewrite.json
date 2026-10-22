@@ -1,0 +1,142 @@
+{
+  "pass": false,
+  "evaluated": true,
+  "slug": "youtube-body-thinks-before-mind-bgyi1l1p4nw",
+  "threshold": 0.9,
+  "reasons": [
+    "claims changed=6 missing=1",
+    "links not preserved: ['[Tandy and Lawrence \"ghost in the machine\" account](https://www.richardwiseman.com/resources/ghost-in-machine.pdf)', '[double-blind infrasound experiment](https://www.frontiersin.org/journals/behavioral-neuroscience/articles/10.3389/fnbeh.2026.1729876/full)', '[Cell Reports study](https://www.cell.com/cell-reports/fulltext/S2211-1247%2826%2900477-8)']"
+  ],
+  "blocking": {
+    "signal_family": "semantic_retention",
+    "claims": {
+      "total": 165,
+      "claims_entailed": 158,
+      "claims_changed": 6,
+      "claims_missing": 1,
+      "claims_unjudged": 0,
+      "judge": "claude-sonnet"
+    },
+    "flagged_claims": [
+      {
+        "section": "A dream can spend the night on your behalf",
+        "claim": "Despite the normal chart, the patient can still wake up with a physical debt.",
+        "verdict": "changed",
+        "reason": "Passage says 'physical cost from the night', not a 'physical debt'; close but reworded."
+      },
+      {
+        "section": "A dream can spend the night on your behalf",
+        "claim": "Medicine repeatedly runs into a blind spot of this kind.",
+        "verdict": "changed",
+        "reason": "Passage says 'often runs into cases' of unmeasured patterns, not a blind spot of this kind."
+      },
+      {
+        "section": "A tiny gland can lock a whole life state",
+        "claim": "The passage moves to a smaller scale of example.",
+        "verdict": "missing",
+        "reason": "No statement that the passage shifts to a smaller-scale example."
+      },
+      {
+        "section": "A tiny gland can lock a whole life state",
+        "claim": "The author calls the case a perfect control-system story.",
+        "verdict": "changed",
+        "reason": "'Perfect' weakened to 'well'; the author's attribution is also lost."
+      },
+      {
+        "section": "Repair may be a locked program",
+        "claim": "The spinal-cord section is the part where careless writing is most hazardous, because the hope for repair is so obvious.",
+        "verdict": "changed",
+        "reason": "Passage says 'most risky' and 'the hope it raises'; original says 'most hazardous', 'hope for repair'."
+      },
+      {
+        "section": "The hidden layer keeps winning",
+        "claim": "A signal from the pituitary locks reproduction.",
+        "verdict": "changed",
+        "reason": "Passage says the pituitary signal suppresses reproduction, not locks it; also less certain wording."
+      },
+      {
+        "section": "The hidden layer keeps winning",
+        "claim": "The recommended article is about how large systems hide consequences that operate at a human scale.",
+        "verdict": "changed",
+        "reason": "Passage says vast systems mask personal-feeling effects like wealth gaps or climate impacts; roughly similar but adds examples and different framing."
+      }
+    ],
+    "semantic_similarity_whole": 0.9813256728979103,
+    "structure": {
+      "headings": {
+        "original": 9,
+        "rewrite": 9,
+        "preserved": true,
+        "missing": []
+      },
+      "images": {
+        "original": 10,
+        "rewrite": 10,
+        "preserved": true,
+        "missing": []
+      },
+      "codes": {
+        "original": 0,
+        "rewrite": 0,
+        "preserved": true,
+        "missing": []
+      },
+      "links": {
+        "original": 24,
+        "rewrite": 23,
+        "preserved": false,
+        "missing": [
+          "[Tandy and Lawrence \"ghost in the machine\" account](https://www.richardwiseman.com/resources/ghost-in-machine.pdf)",
+          "[double-blind infrasound experiment](https://www.frontiersin.org/journals/behavioral-neuroscience/articles/10.3389/fnbeh.2026.1729876/full)",
+          "[Cell Reports study](https://www.cell.com/cell-reports/fulltext/S2211-1247%2826%2900477-8)"
+        ]
+      },
+      "all_preserved": false
+    }
+  },
+  "advisory": {
+    "same_file_as_draft": false,
+    "author_anchor": {
+      "signal_family": "author_anchor",
+      "before": {
+        "sentence_length_jsd": 0.20559925676107438,
+        "paragraph_length_jsd": 0.1053793346532492,
+        "punctuation_jsd": 0.2817248460760422,
+        "function_word_cosine": 0.1928332182937954,
+        "burrows_delta": 0.6866970761715637,
+        "composite": 0.1963841639460403
+      },
+      "after": {
+        "sentence_length_jsd": 0.23896766001610242,
+        "paragraph_length_jsd": 0.3635849115887985,
+        "punctuation_jsd": 0.28885233934914545,
+        "function_word_cosine": 0.18713100268855654,
+        "burrows_delta": 0.7353978004456393,
+        "composite": 0.26963397841065073
+      }
+    },
+    "stylistic_structural": {
+      "signal_family": "stylistic_structural",
+      "pipeline_outlier": {
+        "distance_to_corpus_centroid": 0.1967591272945222,
+        "corpus_mean_distance": 0.18039545040911956,
+        "z": 0.3123576245621463,
+        "percentile": 0.75,
+        "n_corpus_docs": 28
+      },
+      "repeated_ngram_rate": 0.26269074118770447,
+      "structural_templates": {
+        "rule_of_three_lists": {
+          "count": 14,
+          "examples": [
+            "The digest covers infrasound, anesthesia, cancer, and spinal repair.",
+            "The older model of the brain assigns consciousness a central executive role in noticing, deciding, remembering, and explaining.",
+            "Patients report nights of dreams containing plots, missions, conversations, travel, conflict, and obligation."
+          ]
+        }
+      },
+      "sentence_length_jsd_draft_vs_final": 0.281518883801517,
+      "paragraph_length_jsd_draft_vs_final": 0.4076967176245811
+    }
+  }
+}
