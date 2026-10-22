@@ -64,6 +64,12 @@ export function getXLikedAutopostSkipReason(input: {
 }) {
   const text = cleanXLikedText(input.sourceText, { hasMedia: input.hasMedia });
 
+  // Skip posts that are only emojis/flags without meaningful text
+  const textWithoutEmojis = text.replace(/[\u{1F1E6}-\u{1F1FF}\u{1F300}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, "").trim();
+  if (textWithoutEmojis.length === 0) {
+    return "source post contains only emojis/flags - not publishable";
+  }
+
   if (/\b(fuck|fucking|shit|bitch|cunt|dick)\b/i.test(text)) {
     return "profanity";
   }

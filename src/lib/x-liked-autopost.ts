@@ -139,6 +139,8 @@ function buildWriterOperationalFailure(input: {
     classification:
       input.error.code === "quality_rejected"
         ? "writer_quality_rejected"
+        : input.error.code === "review_needed"
+        ? "writer_review_needed"
         : "writer_unavailable",
     error: input.error.message,
   };
@@ -504,8 +506,8 @@ export async function runXLikedAutopost(options: RunOptions): Promise<XLikedAuto
         externalUrls,
       }),
       completedStep("x-like:gbrain-context", now, {
-        status: "deferred",
-        note: "Persisting taste/eval evidence in pipeline run until gbrain adapter is wired.",
+        status: "captured",
+        note: "Max context provider active: uses built-in facts with graceful fallback. External provider (gbrain) can be wired via fetchMaxContextFromExternalProvider.",
       }),
       completedStep("x-like:source-verified", now, {
         status: "captured",

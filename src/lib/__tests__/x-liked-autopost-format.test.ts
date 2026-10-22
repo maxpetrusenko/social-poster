@@ -219,6 +219,20 @@ describe("X liked autopost formatting", () => {
         sourceText: "Free time as a man is a meme. Fucking Peter Pan ass.",
       })
     ).toBe("profanity");
+    
+    // Flag-emoji-only posts should be skipped
+    expect(
+      getXLikedAutopostSkipReason({
+        sourceText: "🇺🇸🇬🇧🇫🇷",
+      })
+    ).toBe("source post contains only emojis/flags - not publishable");
+    
+    expect(
+      getXLikedAutopostSkipReason({
+        sourceText: "🎉🎊✨",
+      })
+    ).toBe("source post contains only emojis/flags - not publishable");
+    
     expect(
       getXLikedAutopostSkipReason({
         sourceText: "NEW: U.S. green card applicants must leave the country.",

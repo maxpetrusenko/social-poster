@@ -22,3 +22,12 @@ export function readXLikedAutopostFetchCount(env: XLikedAutopostEnv = process.en
   if (!Number.isFinite(count) || count <= 0) return 50;
   return Math.min(100, Math.floor(count));
 }
+
+export function isXLikedAutopostLongPostEnabled(env: XLikedAutopostEnv = process.env) {
+  return env.X_LIKES_AUTOPUBLISH_ALLOW_LONG_POSTS === "true";
+}
+
+export function readXLikedAutopostLongPostLimit(env: XLikedAutopostEnv = process.env) {
+  const limit = Number(env.X_LIKES_AUTOPUBLISH_LONG_POST_LIMIT ?? 2500);
+  return Number.isFinite(limit) && limit > 0 ? Math.min(4000, Math.floor(limit)) : 2500;
+}

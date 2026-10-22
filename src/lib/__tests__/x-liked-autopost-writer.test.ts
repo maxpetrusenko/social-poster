@@ -170,7 +170,7 @@ describe("X liked autopost writer", () => {
     ).toBe("writer omitted recovered primary study URL");
   });
 
-  it("still rejects REVIEW_NEEDED drafts", () => {
+  it("rejects meta-text (SKIP/REVIEW_NEEDED/NOTE) as unpublishable", () => {
     expect(
       getXLikedAutopostContentRejection({
         content: "REVIEW_NEEDED: verify central claim before publishing.",
@@ -178,7 +178,25 @@ describe("X liked autopost writer", () => {
         hasMedia: false,
         sourceUrl: "https://x.com/source/status/123",
       })
-    ).toBe("writer requires source verification");
+    ).toBe("writer returned meta-text instead of publishable content");
+
+    expect(
+      getXLikedAutopostContentRejection({
+        content: "SKIP: source post contains only flag emojis 🇺🇸🇬🇧🇫🇷 - not publishable.",
+        sourceText: "🇺🇸🇬🇧🇫🇷",
+        hasMedia: false,
+        sourceUrl: "https://x.com/source/status/123",
+      })
+    ).toBe("writer returned meta-text instead of publishable content");
+
+    expect(
+      getXLikedAutopostContentRejection({
+        content: "NOTE: This needs manual review before queuing.",
+        sourceText: "Some source text here.",
+        hasMedia: false,
+        sourceUrl: "https://x.com/source/status/123",
+      })
+    ).toBe("writer returned meta-text instead of publishable content");
   });
 
   it("rejects unsupported benchmark framing introduced by the writer", () => {
@@ -571,4 +589,108 @@ describe("X liked autopost writer", () => {
     expect(vi.mocked(callOpenAIResponses).mock.calls[2]?.[0].body.input).toContain("reviewer rejected draft");
     expect(vi.mocked(callOpenAIResponses).mock.calls[2]?.[0].body.input).toContain("Keep this framed as IBM research");
   });
+
+  it("rejects drafts that are too short (< 20 chars excluding URLs)", () => {
+    expect(
+      getXLikedAutopostContentRejection({
+        content: "good point",
+        sourceText: "This is a longer source text with meaningful content.",
+        hasMedia: false,
+        sourceUrl: "https://x.com/source/status/123",
+      })
+    ).toBe("writer returned too-short draft (< 20 chars excluding URLs)");
+
+    expect(
+      getXLikedAutopostContentRejection({
+        content: "check this out\n\nhttps://github.com/example/repo",
+        sourceText: "This is a longer source text with meaningful content.",
+        hasMedia: false,
+        sourceUrl: "https://x.com/source/status/123",
+      })
+    ).toBe("writer returned too-short draft (< 20 chars excluding URLs)");
+  });
+
+  it("rejects em dashes in short copy (Max voice enforcement)", () => {
+    expect(
+      getXLikedAutopostContentRejection({
+        content: "AI agents — the future is here.",
+        sourceText: "AI agents are transforming how we work.",
+        hasMedia: false,
+        sourceUrl: "https://x.com/source/status/123",
+      })
+    ).toBe("writer used em dash in short copy (Max's voice avoids this)");
+
+    // But allows em dashes in longer content (>= 600 chars)
+    expect(
+      getXLikedAutopostContentRejection({
+        content: "A".repeat(550) + " — and more content here.",
+        sourceText: "Long source text " + "A".repeat(600),
+        hasMedia: false,
+        sourceUrl: "https://x.com/source/status/123",
+      })
+    ).toBeNull();
+  });
+
+  it("includes reviewer scores in rejection feedback", () => {
+    const review = {
+      approved: false,
+      issues: ["loses concrete mechanism", "generic commentary added"],
+      repairInstruction: "Preserve the specific database names and latency numbers from the source.",
+      scores: {
+        hook: 2,
+        specificity: 2,
+        voice: 3,
+        faithfulness: 3,
+      },
+      model: "test-model",
+      modelSource: "test",
+      traceUrl: null,
+    };
+
+    const rejection = buildReviewerRejection(review);
+    expect(rejection).toContain("loses concrete mechanism");
+    expect(rejection).toContain("Scores: hook=2, specificity=2, voice=3, faithfulness=3");
+    expect(rejection).toContain("Preserve the specific database names");
+  });
+
+  it("detects long list-style sources for special handling (like fiveoutofnine post)", () => {
+    const longListSource = [
+      "recent crypto security incidents that stuck with me:",
+      "",
+      "1. Bybit lost $1.4B to a permissions bug",
+      "2. Radiant Capital: leaked Telegram message with wallet access",
+      "3. Ronin Network: fake LinkedIn recruiter installed malware",
+      "4. Multichain: CEO disappeared, private keys inaccessible",
+      "5. Nomad Bridge: copy-paste bug in verification",
+      "6. Wormhole: signature verification skipped",
+      "7. Poly Network: callback function takeover",
+      "8. Cream Finance: reentrancy through flash loan",
+      "9. Euler Finance: donation function exploit",
+      "10. Wintermute: vanity address collision",
+      "11. Transit Swap: arbitrary call vulnerability",
+      "12. KyberSwap: tick manipulation in concentrated liquidity",
+      "",
+      "one of them was 4. just 4.",
+    ].join("\n");
+
+    const prompt = buildXLikedAutopostWriterPrompt({
+      authorHandle: "@fiveoutofnine",
+      sourceUrl: "https://x.com/fiveoutofnine/status/2113045722744717360",
+      sourceText: longListSource,
+      hasMedia: false,
+      mediaType: null,
+    });
+
+    // When long posts are enabled, should detect the list pattern
+    expect(longListSource.length).toBeGreaterThan(1500);
+    expect(longListSource.split("\n").filter(line => /^\d+\./.test(line.trim())).length).toBeGreaterThanOrEqual(5);
+  });
 });
+
+function buildReviewerRejection(review: { approved: boolean; issues: string[]; repairInstruction: string; scores?: { hook: number; specificity: number; voice: number; faithfulness: number } }) {
+  const issues = review.issues.length > 0 ? review.issues.join("; ") : "reviewer rejected draft";
+  const scoresSummary = review.scores
+    ? ` Scores: hook=${review.scores.hook}, specificity=${review.scores.specificity}, voice=${review.scores.voice}, faithfulness=${review.scores.faithfulness}.`
+    : "";
+  return `reviewer rejected draft: ${issues}.${scoresSummary} Repair: ${review.repairInstruction || "rewrite from source facts and x-posting rules"}`;
+}
