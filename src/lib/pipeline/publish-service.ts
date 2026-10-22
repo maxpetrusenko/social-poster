@@ -20,6 +20,7 @@ import {
 } from "@/lib/platform-auth-status";
 import { readConnectionIssue } from "@/lib/platform-connection-state";
 import { and, eq } from "drizzle-orm";
+import { isPostingEnabled, POSTING_PAUSED_ERROR } from "./posting-kill-switch";
 
 type PlatformRow = typeof platforms.$inferSelect;
 
@@ -97,12 +98,29 @@ function createDisabledSkip(target: PublishPlatformInput): PublishResult {
   };
 }
 
+function createPausedSkip(target: PublishPlatformInput): PublishResult {
+  return {
+    platform: target.platform.type,
+    provider: getPublishProviderLabel(target.platform),
+    accountId: target.platform.accountId,
+    success: false,
+    classification: "validation_error",
+    error: POSTING_PAUSED_ERROR,
+  };
+}
+
 export async function publishPlatformTargets(
   targets: PublishPlatformInput[]
 ): Promise<PublishExecutionSummary> {
   const outcomes: PublishResult[] = [];
+  const postingEnabled = isPostingEnabled();
 
   for (const target of targets) {
+    if (!postingEnabled) {
+      outcomes.push(createPausedSkip(target));
+      continue;
+    }
+
     if (!target.platform.enabled) {
       outcomes.push(createDisabledSkip(target));
       continue;
