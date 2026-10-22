@@ -653,37 +653,46 @@ describe("X liked autopost writer", () => {
     expect(rejection).toContain("Preserve the specific database names");
   });
 
-  it("detects long list-style sources for special handling (like fiveoutofnine post)", () => {
-    const longListSource = [
-      "recent crypto security incidents that stuck with me:",
-      "",
-      "1. Bybit lost $1.4B to a permissions bug",
-      "2. Radiant Capital: leaked Telegram message with wallet access",
-      "3. Ronin Network: fake LinkedIn recruiter installed malware",
-      "4. Multichain: CEO disappeared, private keys inaccessible",
-      "5. Nomad Bridge: copy-paste bug in verification",
-      "6. Wormhole: signature verification skipped",
-      "7. Poly Network: callback function takeover",
-      "8. Cream Finance: reentrancy through flash loan",
-      "9. Euler Finance: donation function exploit",
-      "10. Wintermute: vanity address collision",
-      "11. Transit Swap: arbitrary call vulnerability",
-      "12. KyberSwap: tick manipulation in concentrated liquidity",
-      "",
-      "one of them was 4. just 4.",
-    ].join("\n");
+  it("detects long list-style sources including run-on snowball sentences (fiveoutofnine post)", () => {
+    // Real fiveoutofnine post: ONE breathless run-on sentence with 'and then ... and ...' refrain
+    const runOnSnowballSource = [
+      "So basically, today PHP got two critical bugs that let anyone run code on your server without even logging in, which is bad,",
+      "and then the details leaked before the patch was even out, which is worse, and it works on WordPress and MediaWiki and Magento",
+      "and Joomla and Laravel, and Censys says like 1.5 million servers are running a version with no fix, so the NSA was like",
+      "\"take your system offline,\" and the FBI and CISA and the UK and CERT-EU and Japan's PM at 5:55am to 48.8M people,",
+      "and the Dutch parliament and Port of Rotterdam and Wikipedia and Archive.org and Asana and GOG went down, and GitLab had a",
+      "CVSS 10.0 bug since 2014, and LiteLLM 1.107.0 got hijacked with a credential stealer and RAT in every wheel and Docker image,",
+      "and Railway paused every deployment over env vars, and TiDB Cloud lost 10.6TB, and Zeabur is shutting down, and Node.js had",
+      "an RCE, and Plex got exploited, and 300 Tor exit relays, and SafePay hit 600+ orgs, and eMudhra's private keys were supposed",
+      "to be 100+ digit random numbers, and one of them was 4. Just 4. And the others were like 66 and 237. Anyway, it's Wednesday.",
+    ].join(" ");
 
     const prompt = buildXLikedAutopostWriterPrompt({
       authorHandle: "@fiveoutofnine",
       sourceUrl: "https://x.com/fiveoutofnine/status/2113045722744717360",
-      sourceText: longListSource,
+      sourceText: runOnSnowballSource,
+      externalUrls: ["https://archive.org"],
       hasMedia: false,
       mediaType: null,
     });
 
-    // When long posts are enabled, should detect the list pattern
-    expect(longListSource.length).toBeGreaterThan(1500);
-    expect(longListSource.split("\n").filter(line => /^\d+\./.test(line.trim())).length).toBeGreaterThanOrEqual(5);
+    // Should detect run-on snowball pattern (2500+ chars, 8+ 'and', high comma density, low sentences)
+    expect(runOnSnowballSource.length).toBeGreaterThan(2500);
+    expect((runOnSnowballSource.match(/\band\b/gi) || []).length).toBeGreaterThanOrEqual(8);
+    expect(prompt).toContain("long list-style post");
+    expect(prompt).toContain("run-on snowball");
+    
+    // Should NOT turn news claims into REVIEW_NEEDED failure when source is liked
+    // (archive.org link is present but news claims are backed by source text)
+    expect(
+      getXLikedAutopostContentRejection({
+        content: runOnSnowballSource.slice(0, 1200), // trimmed version
+        sourceText: runOnSnowballSource,
+        externalUrls: ["https://archive.org"],
+        hasMedia: false,
+        sourceUrl: "https://x.com/fiveoutofnine/status/2113045722744717360",
+      })
+    ).not.toBe("writer returned meta-text instead of publishable content");
   });
 });
 

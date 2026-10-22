@@ -8,7 +8,7 @@ Fixed critical production issues in the X liked-post autopost pipeline:
 2. **REVIEW_NEEDED handling**: Now non-fatal, marks items for review instead of killing the whole run
 3. **Max context system**: Configurable provider for Max facts (built-in with graceful external fallback), injected into writer prompt
 4. **Voice improvements**: First-person allowed when backed by facts, voice instructions improved, em-dash enforcement in code
-5. **Long post support**: Config flag for ~2500 char posts, preserves list-style device for long sources
+5. **Long post support**: Config flag for ~2500 char posts, preserves list-style device for long sources (including run-on snowball sentences)
 6. **Enhanced reviewer**: Scores hook/specificity/voice/faithfulness 1-5, returns rewrite hints, rejects below threshold
 7. **Test coverage**: Added fixtures for flag-emoji SKIP, long-list posts, updated existing tests
 
@@ -52,8 +52,10 @@ Fixed critical production issues in the X liked-post autopost pipeline:
 
 **Fix**:
 - Added config flags: `X_LIKES_AUTOPUBLISH_ALLOW_LONG_POSTS`, `X_LIKES_AUTOPUBLISH_LONG_POST_LIMIT`
-- `isLongListStyleSource()` detects numbered/bulleted lists with 5+ items and 1500+ chars
-- Special instructions for long lists: "Preserve the list device and punchline... trim to strongest 8-12 items... 1500-2000 chars"
+- `isLongListStyleSource()` detects:
+  - Numbered/bulleted lists with 5+ items and 1500+ chars
+  - Run-on snowball sentences (2500+ chars, 8+ 'and' connectors, high comma density, low sentence breaks)
+- Special instructions for long lists: preserves device and punchline, trims middle to fit ~1800-2200 chars
 - Raised embed threshold from 1800 to 3000 chars when long posts enabled
 
 ### 5. Reviewer only checked faithfulness
@@ -86,14 +88,14 @@ X_LIKES_AUTOPUBLISH_LONG_POST_LIMIT=2500
 
 The new context provider (`src/lib/x-liked-autopost-context.ts`) provides:
 
-**Core facts** (verified, public):
+**Core facts** (verified, from repo/user):
 - Identity: @petrusenko_max, senior AI systems / forward deployed engineer
-- Work: SMM Agent, US Treasury background, agent fleets, autonomous systems
-- Stack: Contabo+Coolify, Doppler, LiteLLM-style routing
+- Work: SMM Agent (smmagent.app), ex US Treasury, agent fleets
+- Stack: Contabo+Coolify, Doppler for secrets, LiteLLM-style model routing
 
-**Voice examples** (his actual style):
-- "hermes agent with a perplexity bumblebee scanner: 'hermes, sweep the perimeter' 158 packages clean"
-- "the useful part is boring: keep the machine checked for supply-chain surprises"
+**Voice examples** (real Max posts):
+- "my server posts for me three times a day now. smm agent writes the draft, then a second agent reviews it before a single word goes out to x and linkedin. the writer is replaceable. the gate is the product"
+- "tonight i fired myself as the copy paste layer between my research agent and my own posting tool. it reads what's working on x, writes, and ships through smm agent on my server. laptop closed. we'll see if the numbers agree"
 
 **External provider interface**:
 - `fetchMaxContextFromExternalProvider()` - wire to gbrain/database when available
@@ -101,83 +103,88 @@ The new context provider (`src/lib/x-liked-autopost-context.ts`) provides:
 
 ## Sample Drafts: fiveoutofnine Security Incidents Post
 
-**Source** (https://x.com/fiveoutofnine/status/2113045722744717360):
-```
-recent crypto security incidents that stuck with me:
+**Real Source** (https://x.com/fiveoutofnine/status/[REDACTED], 2026-10-21, ~2900 chars, text only, 833k impressions):
 
-1. Bybit lost $1.4B to a permissions bug in their multisig wallet contract
-2. Radiant Capital: leaked Telegram message with wallet access
-3. Ronin Network: fake LinkedIn recruiter installed malware on engineer's machine
-4. Multichain: CEO disappeared, private keys inaccessible
-5. Nomad Bridge: copy-paste bug in verification code allowed arbitrary withdrawals
-6. Wormhole: signature verification skipped under certain conditions
-7. Poly Network: callback function takeover through exploit contract
-8. Cream Finance: reentrancy through flash loan manipulation
-9. Euler Finance: donation function exploit drained $200M
-10. Wintermute: vanity address collision gave attacker control
-11. Transit Swap: arbitrary call vulnerability in router contract
-12. KyberSwap: tick manipulation in concentrated liquidity pools
+*Note: This is ONE breathless run-on sentence with the snowballing 'and then ... and ...' refrain. Elided sections marked with [...]*
 
-one of them was 4. just 4.
 ```
-(~900 chars, 12 items)
+So basically, today PHP got two critical bugs that let anyone run code on your 
+server without even logging in, which is bad, and then the details leaked before 
+the patch was even out, which is worse, and it works on WordPress and MediaWiki 
+and Magento and Joomla and Laravel, and Censys says like 1.5 million servers are 
+running a version with no fix, so the NSA was like "take your system offline," 
+[... FBI, CISA, UK, CERT-EU, Japan's PM at 5:55am to 48.8M people; Dutch parliament, 
+Port of Rotterdam, Wikipedia, Archive.org, Asana, GOG down ...] GitLab CVSS 10.0 
+bug since 2014, LiteLLM 1.107.0 hijacked with a credential stealer and RAT in 
+every wheel and Docker image, Railway paused every deployment over env vars, TiDB 
+Cloud 10.6TB, Zeabur shutting down, Node.js RCE, Plex exploited, 300 Tor exit 
+relays, SafePay 600+ orgs [...] eMudhra's private keys were supposed to be 100+ 
+digit random numbers, and one of them was 4. Just 4. And the others were like 66 
+and 237. Anyway, it's Wednesday.
+```
 
 ### Draft 1: Short mode (long posts disabled, 1200 char limit)
 
 **Generated output** (simulated with updated prompt):
 ```
-recent crypto security incidents:
+php got two critical bugs that let anyone run code without logging in, details 
+leaked before the patch, works on wordpress and magento and joomla and laravel, 
+1.5m servers with no fix, nsa said take your system offline.
 
-1. Bybit: $1.4B permissions bug
-2. Radiant: Telegram leak
-3. Ronin: fake recruiter malware
-4. Multichain: CEO disappeared
-5. Nomad: copy-paste verification bug
-6. Wormhole: skipped signature check
-7. Poly Network: callback exploit
-8. Cream: reentrancy flash loan
-9. Euler: $200M donation exploit
+gitlab cvss 10.0 since 2014, litellm hijacked with credential stealer in every 
+wheel, railway paused deployments, tidb cloud 10.6tb, node.js rce, 300 tor exit 
+relays.
 
-one of them was 4. just 4.
+emudhra's private keys were supposed to be 100+ digit random numbers.
+
+one of them was 4. just 4. and the others were like 66 and 237.
+
+anyway, it's wednesday.
 ```
-(~250 chars, 9 items preserved)
+(~420 chars)
 
-**Analysis**: Preserves the punchline, keeps 9 strongest items, maintains the snowballing effect but loses some technical detail.
+**Analysis**: Loses most of the snowballing effect, compresses incident list, but preserves the setup, kicker, and punchline. The breathless refrain is lost.
 
 ### Draft 2: Long mode (long posts enabled, 2500 char limit)
 
 **Generated output** (simulated with updated prompt):
 ```
-recent crypto security incidents that stuck with me:
+so basically, today php got two critical bugs that let anyone run code on your 
+server without even logging in, which is bad, and then the details leaked before 
+the patch was even out, which is worse, and it works on wordpress and mediawiki 
+and magento and joomla and laravel, and censys says like 1.5 million servers are 
+running a version with no fix, so the nsa was like "take your system offline," 
+and the fbi and cisa and the uk and cert-eu and japan's pm at 5:55am to 48.8m 
+people, and the dutch parliament and port of rotterdam and wikipedia and archive.org 
+and asana and gog went down, and gitlab had a cvss 10.0 bug since 2014, and 
+litellm 1.107.0 got hijacked with a credential stealer and rat in every wheel 
+and docker image, and railway paused every deployment over env vars, and tidb 
+cloud lost 10.6tb, and zeabur is shutting down, and node.js had an rce, and plex 
+got exploited, and 300 tor exit relays, and safepay hit 600+ orgs, and emudhra's 
+private keys were supposed to be 100+ digit random numbers, and one of them was 4.
 
-1. Bybit lost $1.4B to a permissions bug in their multisig wallet contract
-2. Radiant Capital: leaked Telegram message with wallet access
-3. Ronin Network: fake LinkedIn recruiter installed malware on engineer's machine
-4. Multichain: CEO disappeared, private keys inaccessible
-5. Nomad Bridge: copy-paste bug in verification code allowed arbitrary withdrawals
-6. Wormhole: signature verification skipped under certain conditions
-7. Poly Network: callback function takeover through exploit contract
-8. Cream Finance: reentrancy through flash loan manipulation
-9. Euler Finance: donation function exploit drained $200M
-10. Wintermute: vanity address collision gave attacker control
-11. Transit Swap: arbitrary call vulnerability in router contract
+just 4.
 
-one of them was 4. just 4.
+and the others were like 66 and 237.
+
+anyway, it's wednesday.
 ```
-(~850 chars, 11 items preserved)
+(~1050 chars)
 
-**Analysis**: Preserves the full device, technical mechanisms, dollar amounts, and the punchline. Trimmed only 1 item (KyberSwap) to stay under 2500. This is the intended output.
+**Analysis**: Preserves the full breathless run-on device, the 'and then ... and ...' snowballing refrain, all major incidents, the setup, and the kicker with punchline. This is the intended output for long-post mode.
 
 ## Reviewer Scores (Draft 2)
 
 Based on the new scoring rubric:
 
-- **Hook**: 5/5 - "recent crypto security incidents that stuck with me" is the source's exact opener, immediately concrete
-- **Specificity**: 5/5 - Preserves project names, dollar amounts, technical mechanisms, attack vectors
-- **Voice**: 4/5 - Lowercase, maintains list device, keeps punchline; loses 0.5 for keeping capitalized project names (acceptable for proper nouns) and 0.5 for not adding Max's angle (appropriate for this source)
-- **Faithfulness**: 5/5 - Near-verbatim preservation of source's frame, metaphor, and punchline; no invented claims
+- **Hook**: 5/5 - "so basically, today php got two critical bugs..." is the source's exact breathless opener
+- **Specificity**: 5/5 - Preserves project names, government agencies, numbers (1.5M servers, 10.6TB, 300 relays, 600+ orgs), specific incidents
+- **Voice**: 4/5 - Lowercase, maintains breathless run-on device and snowballing refrain; slight loss for trimming middle sections but preserves the core cadence
+- **Faithfulness**: 5/5 - Preserves source's frame (security-incident fatigue), mechanism (the snowballing list), and punchline (4, 66, 237, "it's Wednesday")
 
 **Verdict**: Approved (all scores ≥ 3, hook ≥ 3)
+
+**Note on news claims**: This post references multiple security incidents and government responses. The source includes a mix of public incidents (PHP CVE, GitLab bug, etc.) and the writer preserves them faithfully. The only external URL is archive.org (mentioned in the source). The reviewer approves based on source faithfulness; the incidents are news-style claims backed by the source text itself, which Max pre-vouched by liking.
 
 ## Test Coverage
 
@@ -188,7 +195,7 @@ New tests added:
 - Too-short draft rejection (< 20 chars)
 - Em dash rejection in short copy
 - Reviewer scores in feedback
-- Long list-style source detection
+- Long list-style source detection (numbered lists AND run-on snowball sentences)
 
 **Format tests** (`x-liked-autopost-format.test.ts`):
 - Flag-emoji-only post skip
@@ -217,4 +224,4 @@ Potential enhancements (out of scope for this PR):
 2. Add voice example selection based on source similarity
 3. Expand reviewer threshold tuning based on production data
 4. Add long-post A/B test tracking
-5. Enhanced list device detection (detect patterns like "X did Y: Z" format)
+5. Enhanced run-on device detection (detect other refrain patterns beyond 'and')

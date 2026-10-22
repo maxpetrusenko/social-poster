@@ -16,7 +16,7 @@ export type MaxContextFact = {
 
 /**
  * Core facts about Max that can be used in first-person when relevant.
- * These are verified, public facts that should be kept up to date.
+ * These are verified, public facts from the repo and user-provided context.
  */
 const CORE_MAX_FACTS: MaxContextFact[] = [
   {
@@ -25,13 +25,8 @@ const CORE_MAX_FACTS: MaxContextFact[] = [
     confidence: "verified",
   },
   {
-    category: "expertise",
-    fact: "Max works on agent fleets, autonomous systems, and production AI infrastructure",
-    confidence: "verified",
-  },
-  {
     category: "work",
-    fact: "Max previously worked at US Treasury building financial systems",
+    fact: "Max previously worked at US Treasury",
     confidence: "verified",
   },
   {
@@ -41,44 +36,39 @@ const CORE_MAX_FACTS: MaxContextFact[] = [
   },
   {
     category: "work",
-    fact: "Max deploys on Contabo VPS via Coolify for production infrastructure",
+    fact: "Max runs Contabo VPS via Coolify for production infrastructure",
     confidence: "verified",
   },
   {
     category: "work",
-    fact: "Max uses Doppler for secrets management in production systems",
+    fact: "Max uses Doppler for secrets management",
     confidence: "verified",
   },
   {
     category: "work",
-    fact: "Max builds with LiteLLM-style model routing stacks for production AI systems",
+    fact: "Max uses LiteLLM-style model routing stacks",
     confidence: "verified",
   },
   {
     category: "expertise",
-    fact: "Max has production experience with agent systems that run autonomously and make decisions",
+    fact: "Max builds agent fleets and autonomous systems",
     confidence: "verified",
   },
 ];
 
 /**
  * Voice examples from Max's actual posts (lowercase, story-mode, specific objects).
- * These demonstrate his style without being voice rules.
+ * Real posts provided by the user. Can be loaded configurably via external provider.
  */
 const MAX_VOICE_EXAMPLES = [
   {
     category: "voice_example" as const,
-    fact: "hermes agent with a perplexity bumblebee scanner: 'hermes, sweep the perimeter' 158 packages clean",
+    fact: "my server posts for me three times a day now. smm agent writes the draft, then a second agent reviews it before a single word goes out to x and linkedin. the writer is replaceable. the gate is the product",
     confidence: "verified" as const,
   },
   {
     category: "voice_example" as const,
-    fact: "the useful part is boring: keep the machine checked for supply-chain surprises",
-    confidence: "verified" as const,
-  },
-  {
-    category: "voice_example" as const,
-    fact: "ai feels faster before it is faster. measured saving: 7.5 seconds.",
+    fact: "tonight i fired myself as the copy paste layer between my research agent and my own posting tool. it reads what's working on x, writes, and ships through smm agent on my server. laptop closed. we'll see if the numbers agree",
     confidence: "verified" as const,
   },
 ];
@@ -176,7 +166,8 @@ export function formatMaxContextForPrompt(facts: MaxContextFact[]): string {
  * External provider interface for future gbrain/database integration.
  * Currently returns null; can be wired to external systems when available.
  */
-export async function fetchMaxContextFromExternalProvider(input: {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export async function fetchMaxContextFromExternalProvider(_input: {
   sourceText: string;
   sourceUrl: string;
 }): Promise<MaxContextFact[] | null> {

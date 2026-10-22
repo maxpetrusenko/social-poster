@@ -8,6 +8,7 @@ import {
   getMaxVoiceExamples, 
   formatMaxContextForPrompt,
   fetchMaxContextFromExternalProvider,
+  type MaxContextFact,
 } from "@/lib/x-liked-autopost-context";
 
 const DEFAULT_MODEL = process.env.OPENAI_SOCIAL_POST_MODEL || "gpt-4.1-mini";
@@ -31,15 +32,31 @@ function shouldEmbedSourceForTextOnlyPost(input: {
 }
 
 function isLongListStyleSource(sourceText: string): boolean {
-  // Detect long list-style posts like the fiveoutofnine security incidents post
+  // Detect long list-style posts:
+  // 1. Numbered/bulleted lists (5+ items, 1500+ chars)
+  // 2. Run-on snowball sentences with 'and then ... and ...' refrain (2500+ chars, 8+ 'and')
+  
   const lines = sourceText.split("\n").filter(line => line.trim());
   const numberedItems = lines.filter(line => /^\d+[\.)]\s/.test(line.trim()));
   const bulletedItems = lines.filter(line => /^[-•*]\s/.test(line.trim()));
   
-  return (
-    (numberedItems.length >= 5 && sourceText.length > 1500) ||
-    (bulletedItems.length >= 5 && sourceText.length > 1500)
-  );
+  if ((numberedItems.length >= 5 || bulletedItems.length >= 5) && sourceText.length > 1500) {
+    return true;
+  }
+  
+  // Detect run-on snowball sentences (like fiveoutofnine PHP/security incident post)
+  // Long breathless sentences with repeated 'and' connectors creating snowballing effect
+  if (sourceText.length > 2500) {
+    const andCount = (sourceText.match(/\band\b/gi) || []).length;
+    const commaCount = (sourceText.match(/,/g) || []).length;
+    // Run-on style: high and/comma density, low sentence breaks
+    const sentences = sourceText.split(/[.!?]+/).filter(s => s.trim().length > 50);
+    if (andCount >= 8 && commaCount >= 15 && sentences.length <= 3) {
+      return true;
+    }
+  }
+  
+  return false;
 }
 
 function normalizeComparableText(value: string) {
@@ -262,7 +279,7 @@ export function buildXLikedAutopostWriterPrompt(input: {
   hasMedia: boolean;
   mediaType: "image" | "video" | null;
   mediaSourceUrl?: string | null;
-  maxContext?: Array<{ category: string; fact: string; confidence: string }>;
+  maxContext?: MaxContextFact[];
   previousRejection?: string | null;
 }) {
   const retryInstruction = input.previousRejection
@@ -286,12 +303,12 @@ export function buildXLikedAutopostWriterPrompt(input: {
     : isLongList
     ? [
         "",
-        "This source is a long list-style post (numbered/bulleted incidents or examples).",
-        "Long posts are enabled. Preserve the list device and punchline:",
-        "- Keep the hook and framing from the first 1-2 lines.",
-        "- Trim to the strongest 8-12 list items that show the pattern.",
-        "- Keep the punchline or kicker from the end.",
-        "- Use roughly 1500-2000 chars to preserve the snowballing effect.",
+        "This source is a long list-style post (numbered/bulleted list OR run-on snowball sentence).",
+        "Long posts are enabled. Preserve the device and punchline:",
+        "- For numbered/bulleted lists: Keep hook, trim to strongest 8-12 items, keep punchline.",
+        "- For run-on snowball sentences: Keep the breathless cadence and 'and then ... and ...' refrain, trim middle sections to fit ~1800-2200 chars, preserve the setup and kicker.",
+        "- The device (list structure or snowballing refrain) is the point. Don't compress it into a summary.",
+        "- Keep named actors, specific incidents, numbers, and the punchline.",
       ].join("\n")
     : "";
 
