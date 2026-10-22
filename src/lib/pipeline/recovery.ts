@@ -1,5 +1,7 @@
 import type { PipelineStep } from "@/db/schema";
 
+export const ABANDONED_RUN_ERROR = "Run interrupted by app restart before completion";
+
 export function finalizeAbandonedSteps(steps: PipelineStep[] | null | undefined, error: string): PipelineStep[] {
   if (!steps || steps.length === 0) return [];
 

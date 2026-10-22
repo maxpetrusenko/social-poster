@@ -85,6 +85,37 @@ function networkErrorMarkerTime(error: string | null | undefined) {
   return Number.isFinite(ts) ? ts : null;
 }
 
+export const INTERRUPTED_BY_RESTART_DETAIL = "interrupted by restart; delivery unknown";
+
+/**
+ * Startup recovery for a pipeline run killed mid-publish (container restart).
+ * Targets still `publishing` with no marker have an unknown delivery state:
+ * stamp the same network_error marker a finished unknown-delivery attempt gets.
+ * That keeps them visible and makes them reclaimable ONLY through the explicit
+ * manual `retryUnknownDelivery` path (after STALE_PUBLISHING_MS); the scheduler
+ * never retries them. Delivered targets and existing markers are left alone.
+ */
+export function markInterruptedPublishTargets(postId: string, at: Date = new Date()): number {
+  return db.transaction((tx) => {
+    const rows = tx
+      .select()
+      .from(postTargets)
+      .where(and(eq(postTargets.postId, postId), eq(postTargets.status, "publishing")))
+      .all();
+    let marked = 0;
+    for (const target of rows) {
+      if (isDeliveredTarget(target)) continue;
+      if (networkErrorMarkerTime(target.error) !== null) continue;
+      tx.update(postTargets)
+        .set({ error: stampNetworkError(INTERRUPTED_BY_RESTART_DETAIL, at) })
+        .where(and(eq(postTargets.id, target.id), eq(postTargets.status, "publishing")))
+        .run();
+      marked += 1;
+    }
+    return marked;
+  });
+}
+
 export const DISABLED_TARGET_RETRY_MARKER =
   "disabled-target: re-enable this platform to retry";
 
