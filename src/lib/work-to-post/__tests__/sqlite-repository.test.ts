@@ -13,6 +13,7 @@ afterEach(async () => {
   const dbModule = await import("@/db").catch(() => null);
   dbModule?.sqlite.close();
   vi.unstubAllEnvs();
+  vi.useRealTimers();
   vi.resetModules();
   if (tempDir) fs.rmSync(tempDir, { recursive: true, force: true });
   tempDir = null;
@@ -20,6 +21,9 @@ afterEach(async () => {
 
 describe("SQLite work-to-post repository", () => {
   it("persists a sanitized candidate and cited dossier in a fresh database", async () => {
+    // Evidence freshness is relative to "now"; pin it so the fixture dates never age out.
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-07-25T12:00:00.000Z"));
     tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "social-poster-work-to-post-repository-"));
     vi.stubEnv("DATABASE_URL", path.join(tempDir, "test.db"));
     const repositoryModule = await import("@/lib/work-to-post/sqlite-repository");
