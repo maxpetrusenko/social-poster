@@ -7,7 +7,7 @@ import {
   codexArgs,
   runClaudeCli,
   runCodexCli,
-  stripEnv,
+  pickEnv,
 } from "./cli-providers.ts";
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "cli-prov-"));
@@ -33,13 +33,19 @@ describe("cli providers", () => {
     expect(JSON.parse(out)).toEqual({ stdin: "hello prompt", key: null, tok: null, oauth: "o" });
   });
 
-  it("codex: strips OPENAI_API_KEY", async () => {
+  it("codex: gets only allowlisted env and an empty scratch cwd", async () => {
     const bin = fakeBin(
       "codex-ok",
-      `process.stdin.resume();process.stdin.on("end",()=>process.stdout.write(String(process.env.OPENAI_API_KEY)))`
+      `const fs=require("fs");process.stdin.resume();process.stdin.on("end",()=>process.stdout.write(JSON.stringify({keys:Object.keys(process.env).sort(),cwdFiles:fs.readdirSync(process.cwd()),cwd:process.cwd()})))`
     );
-    const out = await runCodexCli("p", { bin, env: { PATH: process.env.PATH, OPENAI_API_KEY: "sk" } });
-    expect(out).toBe("undefined");
+    const out = await runCodexCli("p", {
+      bin,
+      env: { PATH: process.env.PATH, HOME: "/h", CODEX_HOME: "/c", OPENAI_API_KEY: "sk", DATABASE_URL: "/data/x.db", DEEPSEEK_API_KEY: "d" },
+    });
+    const seen = JSON.parse(out);
+    expect(seen.keys.filter((k: string) => !["PWD", "SHLVL", "_", "__CF_USER_TEXT_ENCODING"].includes(k))).toEqual(["CODEX_HOME", "HOME", "PATH"]);
+    expect(seen.cwdFiles).toEqual([]);
+    expect(seen.cwd).toContain("reply-cli-");
   });
 
   it("missing binary rejects with a clear reason", async () => {
@@ -64,9 +70,7 @@ describe("cli providers", () => {
     expect(codexArgs()).toEqual(expect.arrayContaining(["--sandbox", "read-only"]));
   });
 
-  it("stripEnv does not mutate its input", () => {
-    const env = { A: "1", B: "2" };
-    expect(stripEnv(env, ["A"])).toEqual({ B: "2" });
-    expect(env.A).toBe("1");
+  it("pickEnv keeps only listed keys", () => {
+    expect(pickEnv({ PATH: "/bin", SECRET: "s", HOME: undefined }, ["PATH", "HOME"])).toEqual({ PATH: "/bin" });
   });
 });

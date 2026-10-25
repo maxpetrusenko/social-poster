@@ -98,11 +98,22 @@ describe("reply draft provider chain", () => {
     delete process.env.XAI_API_KEY;
   });
 
-  it("falls through on unparseable CLI output", async () => {
+  it("falls through on unparseable CLI output to opted-in codex", async () => {
+    process.env.REPLY_CODEX_ENABLED = "1";
     vi.mocked(runClaudeCli).mockResolvedValue("not json");
     vi.mocked(runCodexCli).mockResolvedValue(GOOD);
     const out = await generateAiReplyDraftsWithProvider([CANDIDATE]);
     expect(out.provider).toBe("codex-cli");
+    delete process.env.REPLY_CODEX_ENABLED;
+  });
+
+  it("never runs codex unless REPLY_CODEX_ENABLED=1", async () => {
+    vi.mocked(runClaudeCli).mockRejectedValue(new Error("x"));
+    vi.mocked(runCodexCli).mockResolvedValue(GOOD);
+    vi.mocked(callWritingModel).mockResolvedValue(dsResult(GOOD));
+    const out = await generateAiReplyDraftsWithProvider([CANDIDATE]);
+    expect(runCodexCli).not.toHaveBeenCalled();
+    expect(out.provider).toBe("deepseek");
   });
 
   it("throws a clear error and never calls the model without a DeepSeek runtime", async () => {

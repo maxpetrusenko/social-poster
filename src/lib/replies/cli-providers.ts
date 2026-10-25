@@ -1,4 +1,7 @@
 import { spawn } from "node:child_process";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 
 export const CLI_PROVIDER_TIMEOUT_MS = 90_000;
 
@@ -10,12 +13,18 @@ export type CliOptions = {
 
 export type EnvMap = Record<string, string | undefined>;
 
-const CLAUDE_STRIPPED_ENV = ["ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN"];
-const CODEX_STRIPPED_ENV = ["OPENAI_API_KEY"];
+/**
+ * Tweet text is untrusted, so the child sees an allowlisted env only: no app
+ * secrets, no API keys, just what the CLI needs to find itself and its
+ * subscription login.
+ */
+const BASE_ENV = ["PATH", "HOME", "LANG", "LC_ALL", "TMPDIR"];
+const CLAUDE_ENV = [...BASE_ENV, "CLAUDE_CODE_OAUTH_TOKEN", "CLAUDE_CONFIG_DIR"];
+const CODEX_ENV = [...BASE_ENV, "CODEX_HOME"];
 
-export function stripEnv(env: EnvMap, keys: string[]): EnvMap {
-  const next = { ...env };
-  for (const key of keys) delete next[key];
+export function pickEnv(env: EnvMap, keys: string[]): EnvMap {
+  const next: EnvMap = {};
+  for (const key of keys) if (env[key] !== undefined) next[key] = env[key];
   return next;
 }
 
@@ -62,12 +71,15 @@ function runCli(
     let settled = false;
     let stdout = "";
     let stderr = "";
-    const child = spawn(bin, args, { env: env as NodeJS.ProcessEnv, stdio: ["pipe", "pipe", "pipe"] });
+    // Empty scratch cwd so the CLI starts away from /app and /data.
+    const cwd = fs.mkdtempSync(path.join(os.tmpdir(), "reply-cli-"));
+    const child = spawn(bin, args, { cwd, env: env as NodeJS.ProcessEnv, stdio: ["pipe", "pipe", "pipe"] });
 
     const finish = (fn: () => void) => {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
+      fs.rmSync(cwd, { recursive: true, force: true });
       fn();
     };
 
@@ -100,7 +112,7 @@ function runCli(
 
 export async function runClaudeCli(prompt: string, options: CliOptions = {}): Promise<string> {
   const bin = options.bin ?? "claude";
-  const env = stripEnv(options.env ?? process.env, CLAUDE_STRIPPED_ENV);
+  const env = pickEnv(options.env ?? process.env, CLAUDE_ENV);
   const out = await runCli(bin, claudeArgs(), prompt, env, options.timeoutMs ?? CLI_PROVIDER_TIMEOUT_MS);
   let parsed: { result?: unknown; is_error?: unknown };
   try {
@@ -119,7 +131,7 @@ export async function runClaudeCli(prompt: string, options: CliOptions = {}): Pr
 
 export async function runCodexCli(prompt: string, options: CliOptions = {}): Promise<string> {
   const bin = options.bin ?? "codex";
-  const env = stripEnv(options.env ?? process.env, CODEX_STRIPPED_ENV);
+  const env = pickEnv(options.env ?? process.env, CODEX_ENV);
   const out = await runCli(bin, codexArgs(), prompt, env, options.timeoutMs ?? CLI_PROVIDER_TIMEOUT_MS);
   if (!out.trim()) throw new Error("codex returned no output");
   return out;

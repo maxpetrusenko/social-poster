@@ -96,15 +96,21 @@ export async function generateAiReplyDraftsWithProvider(
         return runClaudeCli(prompt, { timeoutMs });
       },
     },
-    {
+  ];
+
+  // codex exec keeps read-only shell access even in its sandbox, so a prompt
+  // injected through tweet text could read files into a public reply. Opt in
+  // only where the process cannot read app secrets.
+  if (process.env.REPLY_CODEX_ENABLED === "1") {
+    steps.push({
       provider: "codex-cli",
       run: async () => {
         const timeoutMs = cliBudget();
         if (timeoutMs <= 0) throw new Error("time budget exhausted");
         return runCodexCli(prompt, { timeoutMs });
       },
-    },
-  ];
+    });
+  }
 
   const xaiKey = process.env.XAI_API_KEY;
   if (xaiKey) {
