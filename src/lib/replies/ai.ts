@@ -1,6 +1,9 @@
 import { z } from "zod";
 import { uniqueReplyDrafts } from "@/lib/replies/duplicate-guard";
 import type { ReplyDirection } from "@/lib/replies/strategy";
+import { resolveWritingRuntimes } from "@/lib/model-runtime";
+import { callChatCompletions } from "@/lib/chat-completions";
+import { CLI_PROVIDER_TIMEOUT_MS, runClaudeCli, runCodexCli } from "@/lib/replies/cli-providers";
 import { callWritingModel } from "@/lib/writing-model";
 import {
   findNoAiSlopIssues,
@@ -43,40 +46,132 @@ export type ReplyDraftCandidate = {
 
 type ReplyDraftMode = "primary" | "fallback";
 
+export type ReplyDraftProvider = "claude-cli" | "codex-cli" | "xai-grok" | "deepseek";
+
+const REPLY_DRAFT_TOTAL_CAP_MS = 240_000;
+const REPLY_DEEPSEEK_TIMEOUT_MS = 45_000;
+
 export async function generateAiReplyDraftsBatch(
   candidates: ReplyDraftCandidate[],
   mode: ReplyDraftMode = "primary",
   workspaceId?: string | null
 ): Promise<Map<string, string[]>> {
-  if (candidates.length === 0) return new Map();
+  return (await generateAiReplyDraftsWithProvider(candidates, mode, workspaceId)).drafts;
+}
 
-  const result = await callWritingModel({
-    name: "reply-draft-generation",
-    prompt: buildReplyDraftPrompt(candidates, mode),
-    fallbackModel: DEFAULT_REPLY_MODEL,
-    workspaceId: workspaceId ?? null,
-    slot: "reply",
-    reasoning: { effort: "low" },
-    signal: AbortSignal.timeout(45_000),
-    tags: ["replies", mode],
-    metadata: {
-      candidateCount: candidates.length,
-      mode,
+/**
+ * Reply-slot provider chain: claude CLI (subscription), codex CLI (subscription),
+ * xAI Grok (only when XAI_API_KEY is set), DeepSeek API last. A provider that is
+ * missing, times out or returns unusable output is skipped with a logged reason.
+ * No OpenAI API key is used anywhere in this path.
+ */
+export async function generateAiReplyDraftsWithProvider(
+  candidates: ReplyDraftCandidate[],
+  mode: ReplyDraftMode = "primary",
+  workspaceId?: string | null
+): Promise<{ drafts: Map<string, string[]>; provider: ReplyDraftProvider | null }> {
+  if (candidates.length === 0) return { drafts: new Map(), provider: null };
+
+  const prompt = buildReplyDraftPrompt(candidates, mode);
+  const deadline = Date.now() + REPLY_DRAFT_TOTAL_CAP_MS;
+  const cliBudget = () => Math.min(CLI_PROVIDER_TIMEOUT_MS, deadline - REPLY_DEEPSEEK_TIMEOUT_MS - Date.now());
+
+  const parse = (text: string) => {
+    const parsed = responseSchema.parse(extractJsonObject(text));
+    const byTweetId = new Map<string, string[]>();
+    for (const candidate of candidates) {
+      const drafts =
+        parsed.replies.find((entry) => entry.tweetId === candidate.tweetId)?.drafts ?? [];
+      byTweetId.set(candidate.tweetId, normalizeDrafts(drafts));
+    }
+    return byTweetId;
+  };
+
+  const steps: Array<{ provider: ReplyDraftProvider; run: () => Promise<string> }> = [
+    {
+      provider: "claude-cli",
+      run: async () => {
+        const timeoutMs = cliBudget();
+        if (timeoutMs <= 0) throw new Error("time budget exhausted");
+        return runClaudeCli(prompt, { timeoutMs });
+      },
+    },
+    {
+      provider: "codex-cli",
+      run: async () => {
+        const timeoutMs = cliBudget();
+        if (timeoutMs <= 0) throw new Error("time budget exhausted");
+        return runCodexCli(prompt, { timeoutMs });
+      },
+    },
+  ];
+
+  const xaiKey = process.env.XAI_API_KEY;
+  if (xaiKey) {
+    steps.push({
+      provider: "xai-grok",
+      run: async () => {
+        const { text } = await callChatCompletions({
+          name: "reply-draft-generation",
+          apiKey: xaiKey,
+          baseUrl: process.env.XAI_BASE_URL || "https://api.x.ai/v1",
+          model: process.env.XAI_REPLY_MODEL || "grok-4",
+          prompt,
+          signal: AbortSignal.timeout(Math.max(1_000, Math.min(60_000, deadline - REPLY_DEEPSEEK_TIMEOUT_MS - Date.now()))),
+          tags: ["replies", mode],
+          metadata: { candidateCount: candidates.length, mode, provider: "xai" },
+        });
+        return text;
+      },
+    });
+  }
+
+  steps.push({
+    provider: "deepseek",
+    run: async () => {
+      const allRuntimes = await resolveWritingRuntimes({
+        workspaceId: workspaceId ?? null,
+        fallbackModel: DEFAULT_REPLY_MODEL,
+        slot: "reply",
+      });
+      const runtimes = allRuntimes.filter((runtime) => runtime.provider === "deepseek");
+      if (runtimes.length === 0) {
+        throw new Error("Reply drafts require DEEPSEEK_API_KEY");
+      }
+      const result = await callWritingModel({
+        runtimes,
+        name: "reply-draft-generation",
+        prompt,
+        fallbackModel: DEFAULT_REPLY_MODEL,
+        workspaceId: workspaceId ?? null,
+        slot: "reply",
+        reasoning: { effort: "low" },
+        signal: AbortSignal.timeout(Math.max(1_000, Math.min(REPLY_DEEPSEEK_TIMEOUT_MS, deadline - Date.now()))),
+        tags: ["replies", mode],
+        metadata: { candidateCount: candidates.length, mode },
+      });
+      return extractOutputText(result.data);
     },
   });
 
-  const outputText = extractOutputText(result.data);
-  const parsed = responseSchema.parse(extractJsonObject(outputText));
-
-  const byTweetId = new Map<string, string[]>();
-
-  for (const candidate of candidates) {
-    const drafts =
-      parsed.replies.find((entry) => entry.tweetId === candidate.tweetId)?.drafts ?? [];
-    byTweetId.set(candidate.tweetId, normalizeDrafts(drafts));
+  const failures: string[] = [];
+  for (const { provider, run } of steps) {
+    try {
+      const drafts = parse(await run());
+      return { drafts, provider };
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : String(err);
+      if (provider === "deepseek" && reason === "Reply drafts require DEEPSEEK_API_KEY") {
+        throw new Error(
+          failures.length ? `${reason} (earlier providers: ${failures.join(" | ")})` : reason
+        );
+      }
+      console.warn(`[reply-drafts] ${provider} skipped: ${reason}`);
+      failures.push(`${provider}: ${reason}`);
+    }
   }
 
-  return byTweetId;
+  throw new Error(`All reply draft providers failed: ${failures.join(" | ")}`);
 }
 
 export function buildReplyDraftPrompt(candidates: ReplyDraftCandidate[], mode: ReplyDraftMode) {
@@ -174,7 +269,7 @@ function extractOutputText(payload: Record<string, unknown>) {
     if (parts.length > 0) return parts.join("\n");
   }
 
-  throw new Error("OpenAI reply draft generation returned no text output");
+  throw new Error("Reply draft generation returned no text output");
 }
 
 function extractJsonObject(value: string) {
@@ -182,7 +277,7 @@ function extractJsonObject(value: string) {
   const end = value.lastIndexOf("}");
 
   if (start === -1 || end === -1 || end <= start) {
-    throw new Error(`OpenAI reply draft generation returned invalid JSON: ${value}`);
+    throw new Error(`Reply draft generation returned invalid JSON: ${value}`);
   }
 
   return JSON.parse(value.slice(start, end + 1));

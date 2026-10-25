@@ -13,7 +13,7 @@ import {
   isReplyTweet,
   searchTweetsForPlatform,
 } from "@/lib/replies/bird";
-import { generateAiReplyDraftsBatch } from "@/lib/replies/ai";
+import { generateAiReplyDraftsWithProvider } from "@/lib/replies/ai";
 import {
   claimReplySlot,
   filterUntriedReplyDrafts,
@@ -56,6 +56,22 @@ type ReplySendResult =
 
 type CandidateSeed = Omit<ReplyCandidate, "drafts">;
 
+export function isDryRunConfig(config: unknown): boolean {
+  let value = config;
+  if (typeof value === "string") {
+    try {
+      value = JSON.parse(value);
+    } catch {
+      return false;
+    }
+  }
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    (value as Record<string, unknown>).dryRun === true
+  );
+}
+
 export async function runReplyEngineJob(
   schedule: ScheduleRow,
   trigger: TriggerKind = "cron"
@@ -77,6 +93,7 @@ export async function runReplyEngineJob(
     startedAt,
   });
 
+  const dryRun = isDryRunConfig(schedule.config);
   let selectedCandidate: ReplyCandidate | null = null;
   let selectedReplyText: string | null = null;
   let targetPlatformId: string | null = null;
@@ -90,8 +107,10 @@ export async function runReplyEngineJob(
 
     const discoverStep = step("reply:discover");
     steps.push(discoverStep);
-    const candidates = await discoverCandidates(targetPlatform, schedule.workspaceId);
+    const discovered = await discoverCandidates(targetPlatform, schedule.workspaceId);
+    const candidates = discovered.candidates;
     complete(discoverStep, {
+      draftProvider: discovered.draftProvider,
       count: candidates.length,
       authors: candidates.slice(0, 5).map((candidate) => candidate.author),
     });
@@ -111,6 +130,33 @@ export async function runReplyEngineJob(
         riskScore: candidate.riskScore,
       })),
     });
+
+    if (dryRun) {
+      const dryRunStep = step("reply:dry-run");
+      steps.push(dryRunStep);
+      complete(dryRunStep, {
+        dryRun: true,
+        draftProvider: discovered.draftProvider,
+        candidates: candidates.map((candidate) => ({
+          tweetUrl: candidate.tweetUrl,
+          author: candidate.author,
+          tweetText: candidate.tweetText,
+          drafts: candidate.drafts,
+        })),
+      });
+      const doneAt = new Date();
+      await db
+        .update(pipelineRuns)
+        .set({
+          status: "completed",
+          steps,
+          durationMs: doneAt.getTime() - startedAt.getTime(),
+          completedAt: doneAt,
+        })
+        .where(eq(pipelineRuns.id, runId));
+      console.log(`[reply-engine] run ${runId} dry-run done`);
+      return;
+    }
 
     const sendStep = step("publish");
     steps.push(sendStep);
@@ -317,10 +363,10 @@ async function resolveXPlatform(schedule: ScheduleRow) {
 async function discoverCandidates(
   targetPlatform: Pick<typeof platforms.$inferSelect, "config" | "handle">,
   workspaceId?: string | null
-): Promise<ReplyCandidate[]> {
+): Promise<{ candidates: ReplyCandidate[]; draftProvider: string | null }> {
   const dailyCount = await getDailyReplyCount();
   if (dailyCount >= REPLY_TARGETS.dailyLimit) {
-    return [];
+    return { candidates: [], draftProvider: null };
   }
 
   const candidates: CandidateSeed[] = [];
@@ -346,7 +392,7 @@ async function discoverCandidates(
     .sort((a, b) => a.riskScore - b.riskScore)
     .slice(0, REPLY_TARGETS.burstSize);
 
-  const aiDrafts = await generateAiReplyDraftsBatch(
+  const { drafts: aiDrafts, provider } = await generateAiReplyDraftsWithProvider(
     ranked.map((candidate) => ({
       tweetId: candidate.tweetId,
       author: candidate.author,
@@ -361,10 +407,13 @@ async function discoverCandidates(
     workspaceId
   );
 
-  return ranked.flatMap((candidate) => {
-    const drafts = aiDrafts.get(candidate.tweetId) ?? [];
-    return drafts.length > 0 ? [{ ...candidate, drafts }] : [];
-  });
+  return {
+    draftProvider: provider,
+    candidates: ranked.flatMap((candidate) => {
+      const drafts = aiDrafts.get(candidate.tweetId) ?? [];
+      return drafts.length > 0 ? [{ ...candidate, drafts }] : [];
+    }),
+  };
 }
 
 async function buildCandidate(
