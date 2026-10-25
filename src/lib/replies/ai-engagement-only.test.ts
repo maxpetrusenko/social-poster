@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
-import { buildReplyDraftPrompt } from "@/lib/replies/ai";
+import { buildReplyDraftPrompt, hasPromotion } from "@/lib/replies/ai";
 
 const candidates = [
   {
@@ -38,4 +38,33 @@ describe("buildReplyDraftPrompt engagementOnly", () => {
     expect(base).toContain("  - product:");
     expect(base).toContain("  - github:");
   });
+
+  it("engagementOnly prompt drops every Agent Persona / CTA line", () => {
+    const prompt = buildReplyDraftPrompt(candidates, "primary", { engagementOnly: true });
+    expect(prompt).not.toContain("CTA second");
+    expect(prompt).not.toContain("if mentioning Agent Persona");
+    expect(prompt).not.toMatch(/only mention Agent Persona/);
+  });
 });
+
+describe("hasPromotion", () => {
+  it("flags links, repos, domains and product mentions", () => {
+    for (const draft of [
+      "see https://x.example/thing for the fix",
+      "we keep this in github.com/acme/repo",
+      "Agent Persona replays exactly this",
+      "agent-persona handles that",
+      "try agent-persona.org for replay",
+      "smmagent.app does the same",
+    ]) expect(hasPromotion(draft)).toBe(true);
+  });
+
+  it("passes plain engagement replies", () => {
+    for (const draft of [
+      "What breaks first when subagents share one context window?",
+      "Next.js caching bit us the same way, invalidation was the real cost",
+      "Evals on replayed traces caught it, unit tests never did",
+    ]) expect(hasPromotion(draft)).toBe(false);
+  });
+});
+
