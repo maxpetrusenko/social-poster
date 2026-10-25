@@ -73,7 +73,17 @@ export const LIVE_REPLY_DISCOVERY_QUERIES: ReplyDiscoveryQuery[] = [
   { query: "voice agent sdk open source", direction: "github" },
 ];
 
-export const REPLY_AUTO_DRAFT_SEARCH_QUERIES = LIVE_REPLY_DISCOVERY_QUERIES.map(
+// Default last-resort search queries for the X reply engine (AI agent engineering niche).
+export const REPLY_ENGINE_DISCOVERY_QUERIES: ReplyDiscoveryQuery[] = [
+  { query: "claude code", direction: "dev" },
+  { query: "codex cli", direction: "dev" },
+  { query: "ai coding agent", direction: "dev" },
+  { query: "agent evals", direction: "dev" },
+  { query: "llm agents production", direction: "dev" },
+  { query: "mcp server", direction: "dev" },
+];
+
+export const REPLY_AUTO_DRAFT_SEARCH_QUERIES = REPLY_ENGINE_DISCOVERY_QUERIES.map(
   ({ query }) => query
 );
 

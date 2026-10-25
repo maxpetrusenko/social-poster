@@ -5,6 +5,7 @@ import { pipelineRuns, platforms, replyEvents, schedules } from "@/db/schema";
 import type { PipelineStep } from "@/db/schema";
 import { REPLY_TARGETS, type ReplyCandidate } from "@/lib/replies/config";
 import {
+  getHomeTimelineForPlatform,
   getMentionsForPlatform,
   getReplyCount,
   getRetweetCount,
@@ -22,7 +23,7 @@ import {
   markReplySlotSent,
   normalizeReplyText,
 } from "@/lib/replies/duplicate-guard";
-import { inferReplyDirection } from "@/lib/replies/strategy";
+import { REPLY_ENGINE_DISCOVERY_QUERIES, inferReplyDirection } from "@/lib/replies/strategy";
 import { sendReplyViaPlatform } from "@/lib/replies/transport";
 
 type ScheduleRow = typeof schedules.$inferSelect;
@@ -56,20 +57,54 @@ type ReplySendResult =
 
 type CandidateSeed = Omit<ReplyCandidate, "drafts">;
 
-export function isDryRunConfig(config: unknown): boolean {
+export const DEFAULT_MAX_TWEET_AGE_MINUTES = 180;
+const MIN_CANDIDATES = 5;
+const HOME_TIMELINE_COUNT = 40;
+
+export type ReplyEngineConfig = {
+  dryRun: boolean;
+  maxTweetAgeMinutes: number;
+  searchQueries: string[];
+  engagementOnly: boolean;
+};
+
+function readConfigObject(config: unknown): Record<string, unknown> | null {
   let value = config;
   if (typeof value === "string") {
     try {
       value = JSON.parse(value);
     } catch {
-      return false;
+      return null;
     }
   }
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    (value as Record<string, unknown>).dryRun === true
-  );
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+export function isDryRunConfig(config: unknown): boolean {
+  return readConfigObject(config)?.dryRun === true;
+}
+
+export function parseReplyEngineConfig(config: unknown): ReplyEngineConfig {
+  const obj = readConfigObject(config);
+  const age = obj?.maxTweetAgeMinutes;
+  const queries = Array.isArray(obj?.searchQueries)
+    ? (obj.searchQueries as unknown[])
+        .filter((q): q is string => typeof q === "string")
+        .map((q) => q.trim())
+        .filter(Boolean)
+    : [];
+  return {
+    dryRun: obj?.dryRun === true,
+    maxTweetAgeMinutes:
+      typeof age === "number" && Number.isFinite(age) && age > 0
+        ? age
+        : DEFAULT_MAX_TWEET_AGE_MINUTES,
+    searchQueries:
+      queries.length > 0 ? queries : REPLY_ENGINE_DISCOVERY_QUERIES.map(({ query }) => query),
+    engagementOnly: obj?.engagementOnly === true,
+  };
 }
 
 export async function runReplyEngineJob(
@@ -93,7 +128,8 @@ export async function runReplyEngineJob(
     startedAt,
   });
 
-  const dryRun = isDryRunConfig(schedule.config);
+  const engineConfig = parseReplyEngineConfig(schedule.config);
+  const dryRun = engineConfig.dryRun;
   let selectedCandidate: ReplyCandidate | null = null;
   let selectedReplyText: string | null = null;
   let targetPlatformId: string | null = null;
@@ -107,7 +143,11 @@ export async function runReplyEngineJob(
 
     const discoverStep = step("reply:discover");
     steps.push(discoverStep);
-    const discovered = await discoverCandidates(targetPlatform, schedule.workspaceId);
+    const discovered = await discoverCandidates(
+      targetPlatform,
+      schedule.workspaceId,
+      engineConfig
+    );
     const candidates = discovered.candidates;
     complete(discoverStep, {
       draftProvider: discovered.draftProvider,
@@ -362,7 +402,8 @@ async function resolveXPlatform(schedule: ScheduleRow) {
 
 async function discoverCandidates(
   targetPlatform: Pick<typeof platforms.$inferSelect, "config" | "handle">,
-  workspaceId?: string | null
+  workspaceId: string | null | undefined,
+  engineConfig: ReplyEngineConfig
 ): Promise<{ candidates: ReplyCandidate[]; draftProvider: string | null }> {
   const dailyCount = await getDailyReplyCount();
   if (dailyCount >= REPLY_TARGETS.dailyLimit) {
@@ -370,20 +411,46 @@ async function discoverCandidates(
   }
 
   const candidates: CandidateSeed[] = [];
+  const seen = new Set<string>();
+  const ownerHandle = (targetPlatform.handle || "").replace(/^@/, "").toLowerCase();
+  const add = async (
+    tweet: Parameters<typeof buildCandidate>[0],
+    category: string,
+    reason: string
+  ) => {
+    if (tweet.id && seen.has(tweet.id)) return;
+    if (ownerHandle && getTweetAuthor(tweet).toLowerCase() === ownerHandle) return;
+    const candidate = await buildCandidate(
+      tweet,
+      category,
+      reason,
+      engineConfig.maxTweetAgeMinutes
+    );
+    if (candidate) {
+      seen.add(candidate.tweetId);
+      candidates.push(candidate);
+    }
+  };
+
   const mentions = await getMentionsForPlatform(targetPlatform);
   for (const tweet of mentions.slice(0, 5)) {
-    const candidate = await buildCandidate(tweet, "mentions", "Engaged with Max's post");
-    if (candidate) candidates.push(candidate);
+    await add(tweet, "mentions", "Engaged with Max's post");
   }
 
-  if (candidates.length === 0) {
-    for (const query of REPLY_TARGETS.autoDraftSearchQueries.slice(0, 5)) {
+  if (candidates.length < MIN_CANDIDATES) {
+    const home = await getHomeTimelineForPlatform(targetPlatform, HOME_TIMELINE_COUNT);
+    for (const tweet of home.slice(0, HOME_TIMELINE_COUNT)) {
+      await add(tweet, "following", "Posted by an account Max follows");
+    }
+  }
+
+  if (candidates.length < MIN_CANDIDATES) {
+    for (const query of engineConfig.searchQueries.slice(0, 5)) {
       const tweets = await searchTweetsForPlatform(targetPlatform, query, 10);
       for (const tweet of tweets.slice(0, 3)) {
-        const candidate = await buildCandidate(tweet, query, `Trending in ${query}`);
-        if (candidate) candidates.push(candidate);
+        await add(tweet, query, `Trending in ${query}`);
       }
-      if (candidates.length >= 5) break;
+      if (candidates.length >= MIN_CANDIDATES) break;
     }
   }
 
@@ -404,7 +471,8 @@ async function discoverCandidates(
       contextLabel: candidate.reason,
     })),
     "primary",
-    workspaceId
+    workspaceId,
+    { engagementOnly: engineConfig.engagementOnly }
   );
 
   return {
@@ -431,7 +499,8 @@ async function buildCandidate(
     url?: string;
   },
   category: string,
-  reason: string
+  reason: string,
+  maxTweetAgeMinutes: number
 ): Promise<CandidateSeed | null> {
   const author = getTweetAuthor(tweet);
   const tweetUrl = getTweetUrl(tweet);
@@ -439,7 +508,7 @@ async function buildCandidate(
 
   if (!tweet.id || !tweetText.trim()) return null;
   if (isReplyTweet(tweet)) return null;
-  if (!isFreshTweet(tweet.createdAt)) return null;
+  if (!isFreshTweet(tweet.createdAt, maxTweetAgeMinutes)) return null;
 
   const alreadyReplied = await db.query.replyEvents.findFirst({
     where: and(
@@ -476,14 +545,14 @@ async function buildCandidate(
   };
 }
 
-function isFreshTweet(createdAt?: string) {
+export function isFreshTweet(createdAt: string | undefined, maxAgeMinutes: number) {
   if (!createdAt) return false;
 
   const createdAtMs = new Date(createdAt).getTime();
   if (Number.isNaN(createdAtMs)) return false;
 
   const ageMinutes = (Date.now() - createdAtMs) / 60_000;
-  return ageMinutes >= 0 && ageMinutes <= REPLY_TARGETS.maxTweetAgeMinutes;
+  return ageMinutes >= 0 && ageMinutes <= maxAgeMinutes;
 }
 
 function calculateRiskScore(
