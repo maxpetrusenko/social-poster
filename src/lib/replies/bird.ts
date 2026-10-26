@@ -344,6 +344,15 @@ export async function getHomeTimelineForPlatform(
   );
 }
 
+export async function getFollowingTimelineForPlatform(
+  platform: BirdPlatform,
+  count = 20
+): Promise<BirdTweet[]> {
+  return coerceTweets(
+    await runBird(["home", "--following", "--json", "--count", String(count)], true, platform)
+  );
+}
+
 export async function getLikedTweetsFromInstalledSession(count = 20, full = false): Promise<BirdTweet[]> {
   return coerceTweets(
     await runBird(["likes", full ? "--json-full" : "--json", "--count", String(count)], true, undefined, false)

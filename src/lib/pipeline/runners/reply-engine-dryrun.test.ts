@@ -34,7 +34,7 @@ vi.mock("@/lib/replies/bird", () => ({
       author: { username: "someone", followersCount: 10 },
     },
   ],
-  getHomeTimelineForPlatform: async () => [],
+  getFollowingTimelineForPlatform: async () => [],
   searchTweetsForPlatform: async () => [],
   getReplyCount: () => 0,
   getRetweetCount: () => 0,

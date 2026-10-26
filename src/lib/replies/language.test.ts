@@ -1,6 +1,7 @@
 import { test } from "vitest";
 import assert from "node:assert/strict";
 import {
+  hasNonLatinScript,
   detectReplyLanguage,
   isReplyLanguageAllowed,
   normalizeReplyLanguage,
@@ -27,4 +28,11 @@ test("reply language setting defaults to English", () => {
   assert.equal(normalizeReplyLanguage("any"), "any");
   assert.equal(normalizeReplyLanguage("id"), "en");
   assert.equal(normalizeReplyLanguage(null), "en");
+});
+
+test("hasNonLatinScript flags CJK or Cyrillic heavy text and passes English", () => {
+  assert.equal(hasNonLatinScript("我把 Claude Code 官方文档编译成中文了"), true);
+  assert.equal(hasNonLatinScript("Привет, как работает этот агент"), true);
+  assert.equal(hasNonLatinScript("Shipping subagents in Claude Code today"), false);
+  assert.equal(hasNonLatinScript(""), false);
 });
