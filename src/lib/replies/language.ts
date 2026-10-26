@@ -78,3 +78,11 @@ export function isReplyLanguageAllowed(
 ) {
   return language === "any" || detectReplyLanguage(text) === "en";
 }
+
+/** True when non-Latin letters (CJK, Cyrillic, Arabic, ...) make up a real share of the text. */
+export function hasNonLatinScript(text: string) {
+  const letters = text.match(/\p{L}/gu) ?? [];
+  if (letters.length === 0) return false;
+  const nonLatin = letters.filter((letter) => !/\p{Script=Latin}/u.test(letter)).length;
+  return nonLatin / letters.length > 0.2;
+}

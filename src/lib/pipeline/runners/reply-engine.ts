@@ -5,7 +5,7 @@ import { pipelineRuns, platforms, replyEvents, schedules } from "@/db/schema";
 import type { PipelineStep } from "@/db/schema";
 import { REPLY_TARGETS, type ReplyCandidate } from "@/lib/replies/config";
 import {
-  getHomeTimelineForPlatform,
+  getFollowingTimelineForPlatform,
   getMentionsForPlatform,
   getReplyCount,
   getRetweetCount,
@@ -23,6 +23,7 @@ import {
   markReplySlotSent,
   normalizeReplyText,
 } from "@/lib/replies/duplicate-guard";
+import { hasNonLatinScript, isReplyLanguageAllowed } from "@/lib/replies/language";
 import { REPLY_ENGINE_DISCOVERY_QUERIES, inferReplyDirection } from "@/lib/replies/strategy";
 import { sendReplyViaPlatform } from "@/lib/replies/transport";
 
@@ -420,6 +421,9 @@ async function discoverCandidates(
   ) => {
     if (tweet.id && seen.has(tweet.id)) return;
     if (ownerHandle && getTweetAuthor(tweet).toLowerCase() === ownerHandle) return;
+    // Replies are written in English, so only reply to English posts.
+    const text = tweet.text || "";
+    if (hasNonLatinScript(text) || !isReplyLanguageAllowed(text, "en")) return;
     const candidate = await buildCandidate(
       tweet,
       category,
@@ -438,7 +442,7 @@ async function discoverCandidates(
   }
 
   if (candidates.length < MIN_CANDIDATES) {
-    const home = await getHomeTimelineForPlatform(targetPlatform, HOME_TIMELINE_COUNT);
+    const home = await getFollowingTimelineForPlatform(targetPlatform, HOME_TIMELINE_COUNT);
     for (const tweet of home.slice(0, HOME_TIMELINE_COUNT)) {
       await add(tweet, "following", "Posted by an account Max follows");
     }

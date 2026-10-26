@@ -34,7 +34,7 @@ vi.mock("@/db", () => {
 });
 vi.mock("@/lib/replies/bird", () => ({
   getMentionsForPlatform: async () => h.mentions,
-  getHomeTimelineForPlatform: async () => {
+  getFollowingTimelineForPlatform: async () => {
     h.homeCalls += 1;
     return h.home;
   },
@@ -161,6 +161,17 @@ describe("reply engine discovery", () => {
 
   it("skips the owner's own tweets case-insensitively", async () => {
     h.home = [tweet("h1", "maxpetrusenko"), tweet("h2", "MAXPETRUSENKO"), tweet("h3", "opencode")];
+    await dryRunAuthors();
+    const sent = h.generate.mock.calls[0][0].map((c: { author: string }) => c.author);
+    expect(sent).toEqual(["opencode"]);
+  });
+
+  it("skips non-English posts so English replies never land on them", async () => {
+    h.home = [
+      { ...tweet("c1", "swordbluesy"), text: "我把《Claude Code 官方文档 Overview》编译成中文了，这是第1/2部分 claude code agentic" },
+      { ...tweet("s1", "someone"), text: "estamos probando los agentes de codigo para el equipo esta semana" },
+      tweet("e1", "opencode"),
+    ];
     await dryRunAuthors();
     const sent = h.generate.mock.calls[0][0].map((c: { author: string }) => c.author);
     expect(sent).toEqual(["opencode"]);
