@@ -11,9 +11,11 @@ vi.mock("@/lib/model-runtime", () => ({
 import { callOpenAIResponses } from "@/lib/langsmith";
 import { resolveWritingRuntimes } from "@/lib/model-runtime";
 import {
+  buildXLikedAutopostReviewPrompt,
   buildXLikedAutopostWriterPrompt,
   draftXLikedAutopostContent,
   getXLikedAutopostContentRejection,
+  getXLikedAutopostNarrationRejection,
   parseReviewerResponse,
   parseWriterResponse,
 } from "../x-liked-autopost-writer.ts";
@@ -1184,5 +1186,126 @@ describe("Critical production bugs (2026-10-22 second batch)", () => {
         expect(rejection).not.toContain("dangling link reference");
       }
     });
+  });
+});
+
+describe("Liked-post voice: Max reacts instead of narrating the author", () => {
+  const productionDraft = [
+    "@kimmonismus says this is one of the most insane and stunning use cases he's ever seen someone build with Opus 5.5.",
+    "ai opens worlds, it enables so much creativity.",
+    "he loves it.",
+  ].join("\n");
+  const productionSource =
+    "One of the most insane use cases I have ever seen someone build with Opus 5.5. AI opens worlds. It enables so much creativity.";
+  const productionUrl = "https://x.com/kimmonismus/status/2058254144855544092";
+
+  it("rejects the production draft that narrated a liked post in third person", () => {
+    expect(
+      getXLikedAutopostContentRejection({
+        content: productionDraft,
+        sourceText: productionSource,
+        hasMedia: false,
+        sourceUrl: productionUrl,
+        authorHandle: "@kimmonismus",
+      })
+    ).toBe("writer narrated the liked author instead of reacting (@handle says shape)");
+  });
+
+  it("rejects a forced @handle attribution anywhere in the draft", () => {
+    expect(
+      getXLikedAutopostNarrationRejection({
+        content: "opus 5.5 keeps surprising me. @kimmonismus says it is the best build out there.",
+        authorHandle: "kimmonismus",
+      })
+    ).toBe("writer narrated the liked author instead of reacting (@handle says shape)");
+  });
+
+  it("rejects a pronoun that points back at the liked author", () => {
+    expect(
+      getXLikedAutopostNarrationRejection({
+        content: "the demo shows agents writing their own tools, and he says that is the best part.",
+        authorHandle: "@kimmonismus",
+      })
+    ).toBe("writer referred to the liked author by pronoun instead of writing as Max");
+  });
+
+  it("rejects third-person narration of the post itself", () => {
+    expect(
+      getXLikedAutopostNarrationRejection({
+        content: "the post says ai opens worlds. i want to try it.",
+        authorHandle: "@kimmonismus",
+      })
+    ).toBe("writer narrated the liked post in third person ('the post says ...')");
+  });
+
+  it("approves a first-person reaction with no attribution", () => {
+    const reaction = "this is one of the wildest opus 5.5 demos i have seen. i want to rebuild it today.";
+
+    expect(
+      getXLikedAutopostNarrationRejection({
+        content: reaction,
+        authorHandle: "@kimmonismus",
+      })
+    ).toBeNull();
+    expect(
+      getXLikedAutopostContentRejection({
+        content: reaction,
+        sourceText: productionSource,
+        hasMedia: false,
+        sourceUrl: productionUrl,
+        authorHandle: "@kimmonismus",
+      })
+    ).toBeNull();
+  });
+
+  it("allows naming the author without narrating them", () => {
+    expect(
+      getXLikedAutopostNarrationRejection({
+        content: "@kimmonismus's opus 5.5 build is the first demo i actually want to rebuild.",
+        authorHandle: "@kimmonismus",
+      })
+    ).toBeNull();
+  });
+
+  it("keeps x-posting-skill as the single source of truth for voice rules", () => {
+    const prompt = buildXLikedAutopostWriterPrompt({
+      authorHandle: "@kimmonismus",
+      sourceUrl: productionUrl,
+      sourceText: productionSource,
+      hasMedia: false,
+      mediaType: null,
+    });
+
+    // The skill is injected and owns the voice/attribution rules.
+    expect(prompt).toContain("Use these X posting rules as binding instructions");
+    expect(prompt).toContain("Liked-post voice: first person where natural");
+    expect(prompt).toContain("Liked posts are taste signals. The autopost is Max's own first-person reaction");
+
+    // The stale writer-local duplicates must not come back.
+    expect(prompt).not.toContain("ALWAYS credit them");
+    expect(prompt).not.toContain("Attribution is not the default");
+    expect(prompt).not.toContain("CRITICAL VOICE RULE - Use lowercase style throughout");
+    expect(prompt).not.toContain("Refer to people by @handle, not pronouns");
+
+    // Writer-specific mechanics and safety rules survive.
+    expect(prompt).toContain("Never claim experiences, ownership, or completed work as Max's own");
+    expect(prompt).toContain("Never first-person-claim others' reviews");
+    expect(prompt).toContain("Hard length budget:");
+  });
+
+  it("gives the reviewer an explicit narration rejection", () => {
+    const prompt = buildXLikedAutopostReviewPrompt({
+      authorHandle: "@kimmonismus",
+      sourceUrl: productionUrl,
+      sourceText: productionSource,
+      hasMedia: false,
+      mediaType: null,
+      content: productionDraft,
+    });
+
+    expect(prompt).toContain("It narrates the liked post or its author in the third person");
+    expect(prompt).toContain("leaks a pronoun that points at the author");
+    expect(prompt).toContain("quote card / reply shape");
+    expect(prompt).not.toContain("Near-verbatim is acceptable");
   });
 });

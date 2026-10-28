@@ -9,10 +9,18 @@ vi.mock("@/lib/replies/bird", () => ({
   getLikedTweetsForPlatform: vi.fn(async () => [
     {
       id: "2064478648057610422",
-      text: "Claude Fable 5 system prompt leak shows product behavior living in the prompt layer.",
+      text: "Claude Fable 5 system prompt leak shows product behavior living in the prompt layer. credit: @sama",
       author: {
         username: "elder_plinius",
         name: "Pliny",
+      },
+      quotedTweet: {
+        id: "2064478648057610000",
+        text: "the system prompt walkthrough",
+        author: {
+          username: "teortaxes",
+          name: "Teortaxes",
+        },
       },
     },
   ]),
@@ -137,6 +145,26 @@ describe("X liked autopost race safety", () => {
     expect(
       sqlite.prepare("SELECT COUNT(*) AS count FROM post_targets").get()
     ).toEqual({ count: 2 });
+
+    // Owners are captured outside the published body: liker target, quoted
+    // originator, and anyone the post credits.
+    const postRow = sqlite.prepare("SELECT metadata FROM posts").get() as {
+      metadata: string | Record<string, unknown>;
+    };
+    const postMetadata =
+      typeof postRow.metadata === "string"
+        ? (JSON.parse(postRow.metadata) as Record<string, unknown>)
+        : postRow.metadata;
+    expect(postMetadata.sourceOwners).toEqual({
+      primary: "elder_plinius",
+      originator: "teortaxes",
+      all: ["elder_plinius", "teortaxes", "sama"],
+      roles: [
+        { handle: "elder_plinius", role: "author" },
+        { handle: "teortaxes", role: "quoted_author" },
+        { handle: "sama", role: "credited" },
+      ],
+    });
 
     sqlite.close();
   });

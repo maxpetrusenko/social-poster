@@ -556,6 +556,15 @@ function sourceFirstPersonToRule(line: string, handle: string) {
   return `@${handle}'s workflow: ${cleaned}`;
 }
 
+function stripLikedSourceUrlFromBody(content: string, sourceUrl: string) {
+  return content
+    .split("\n")
+    .filter((line) => !line.includes(sourceUrl))
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 export function buildXLikedPlatformPostContent(input: {
   baseContent: string;
   platformType: string;
@@ -567,18 +576,26 @@ export function buildXLikedPlatformPostContent(input: {
 }): { mainContent: string; firstComment?: string } {
   const normalized = input.platformType.toLowerCase();
   const isX = normalized === "x" || normalized === "twitter";
-  
-  // For X with video, embed source URL in main post body (video posts don't move links to replies)
+
+  // For X with video, embed source URL in main post body (video posts don't move links to replies).
+  // A liked-post URL is only needed when X cannot carry the object natively: a trailing
+  // status URL renders as a quote card and makes the autopost read as a reply, so image
+  // and text posts never keep it.
   const shouldEmbedSourceVideo =
     input.media?.mediaType === "video" && isX;
 
+  const baseContent =
+    isX && !shouldEmbedSourceVideo && input.baseContent.includes(input.sourceUrl)
+      ? stripLikedSourceUrlFromBody(input.baseContent, input.sourceUrl)
+      : input.baseContent;
+
   if (shouldEmbedSourceVideo) {
     const embedUrl = input.media?.sourceUrl || input.sourceUrl;
-    if (input.baseContent.includes(embedUrl)) {
-      return { mainContent: input.baseContent };
+    if (baseContent.includes(embedUrl)) {
+      return { mainContent: baseContent };
     }
     return {
-      mainContent: [input.baseContent.trim(), "", embedUrl].join("\n"),
+      mainContent: [baseContent.trim(), "", embedUrl].join("\n"),
     };
   }
 
@@ -591,7 +608,7 @@ export function buildXLikedPlatformPostContent(input: {
     const externalArtifact = pickExternalArtifact(input.externalUrls);
     if (externalArtifact && input.authorHandle) {
       // Fix #2: Strip artifact URL from main post when moved to first reply
-      let mainContent = input.baseContent
+      let mainContent = baseContent
         .replace(input.sourceUrl, "")
         .replace(externalArtifact.url, "")
         .trim();
@@ -605,7 +622,7 @@ export function buildXLikedPlatformPostContent(input: {
     }
   }
 
-  return { mainContent: input.baseContent };
+  return { mainContent: baseContent };
 }
 
 /**
@@ -706,6 +723,66 @@ export function resolveXLikedPlatformMedia(
   }
 
   return media;
+}
+
+export type XLikedSourceOwnerRole = "author" | "quoted_author" | "credited";
+
+export type XLikedSourceOwners = {
+  primary: string | null;
+  originator: string | null;
+  all: string[];
+  roles: Array<{ handle: string; role: XLikedSourceOwnerRole }>;
+};
+
+const LIKED_CREDIT_PATTERNS = [
+  /(?:\bvia|\bcredit(?:ed)?(?:\s+to)?|\bh\/t|\bthanks(?:\s+to)?|\bsource)\s*:?\s*@([A-Za-z0-9_]{1,15})/gi,
+  /\b(?:by|with|from)\s+@([A-Za-z0-9_]{1,15})/gi,
+  /@([A-Za-z0-9_]{1,15})(?:'s|\u2019s)\s+(?:post|thread|demo|video|build|work|repo|essay)/gi,
+];
+
+/**
+ * Capture every owner of a liked post: the account that posted the like target,
+ * the author of the post it quotes (quote-takes and threads where the liker is
+ * not the originator), and anyone the post credits. Owners belong in metadata;
+ * they are only named in the body when the copy reads naturally.
+ */
+export function getXLikedSourceOwners(input: {
+  tweet?: BirdTweet | null;
+  sourceText?: string;
+}): XLikedSourceOwners {
+  const roles: XLikedSourceOwners["roles"] = [];
+  const seen = new Set<string>();
+
+  const push = (raw: string | undefined | null, role: XLikedSourceOwnerRole) => {
+    const handle = normalizeHandle(raw ?? "");
+    if (!handle || handle === "unknown") return;
+    const key = handle.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    roles.push({ handle, role });
+  };
+
+  push(input.tweet?.author?.username ?? input.tweet?.authorId, "author");
+  push(input.tweet?.quotedTweet?.author?.username, "quoted_author");
+
+  const creditTexts = [input.sourceText ?? "", input.tweet?.quotedTweet?.text ?? ""];
+  for (const text of creditTexts) {
+    for (const pattern of LIKED_CREDIT_PATTERNS) {
+      for (const match of text.matchAll(pattern)) {
+        push(match[1], "credited");
+      }
+    }
+  }
+
+  return {
+    primary: roles[0]?.handle ?? null,
+    originator:
+      roles.find((entry) => entry.role === "quoted_author")?.handle ??
+      roles[0]?.handle ??
+      null,
+    all: roles.map((entry) => entry.handle),
+    roles,
+  };
 }
 
 export function getXLikedExternalUrls(input: {
