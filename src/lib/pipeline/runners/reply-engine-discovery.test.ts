@@ -186,8 +186,8 @@ describe("reply engine discovery", () => {
 });
 
 describe("freshness window", () => {
-  it("defaults to 180 minutes", async () => {
-    h.home = [tweet("old", "a", 240), tweet("ok", "b", 120)];
+  it("defaults to 120 minutes", async () => {
+    h.home = [tweet("old", "a", 150), tweet("ok", "b", 90)];
     await dryRunAuthors();
     expect(h.generate.mock.calls[0][0].map((c: { author: string }) => c.author)).toEqual(["b"]);
   });
