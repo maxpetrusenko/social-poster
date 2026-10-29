@@ -103,7 +103,7 @@ afterEach(() => vi.restoreAllMocks());
 describe("parseReplyEngineConfig", () => {
   it("defaults, parses strings, ignores junk", () => {
     const d = parseReplyEngineConfig(null);
-    expect(d.maxTweetAgeMinutes).toBe(180);
+    expect(d.maxTweetAgeMinutes).toBe(120);
     expect(d.engagementOnly).toBe(false);
     expect(d.searchQueries).toEqual(REPLY_ENGINE_DISCOVERY_QUERIES.map((q) => q.query));
     expect(d.searchQueries).toEqual([
@@ -117,7 +117,7 @@ describe("parseReplyEngineConfig", () => {
     expect(c).toEqual({ dryRun: true, maxTweetAgeMinutes: 60, searchQueries: ["a", "b"], engagementOnly: true });
 
     const bad = parseReplyEngineConfig({ maxTweetAgeMinutes: "x", searchQueries: [], engagementOnly: "true" });
-    expect(bad.maxTweetAgeMinutes).toBe(180);
+    expect(bad.maxTweetAgeMinutes).toBe(120);
     expect(bad.engagementOnly).toBe(false);
     expect(bad.searchQueries.length).toBe(6);
     expect(parseReplyEngineConfig("not json").dryRun).toBe(false);
