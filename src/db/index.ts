@@ -208,7 +208,7 @@ function ensureSchema(sqlite: Database.Database) {
       plan_label TEXT NOT NULL DEFAULT 'Free',
       max_profiles INTEGER NOT NULL DEFAULT 5,
       max_platforms INTEGER NOT NULL DEFAULT 3,
-      max_posts_per_month INTEGER NOT NULL DEFAULT 50,
+      max_posts_per_month INTEGER NOT NULL DEFAULT 150,
       billing_email TEXT,
       billing_cycle_start INTEGER,
       deletion_requested_at INTEGER,
@@ -755,9 +755,11 @@ function ensureSchema(sqlite: Database.Database) {
   addColumnIfMissing(sqlite, "organizations", "plan_label", "plan_label TEXT NOT NULL DEFAULT 'Free'");
   addColumnIfMissing(sqlite, "organizations", "max_profiles", "max_profiles INTEGER NOT NULL DEFAULT 5");
   addColumnIfMissing(sqlite, "organizations", "max_platforms", "max_platforms INTEGER NOT NULL DEFAULT 3");
-  addColumnIfMissing(sqlite, "organizations", "max_posts_per_month", "max_posts_per_month INTEGER NOT NULL DEFAULT 50");
+  addColumnIfMissing(sqlite, "organizations", "max_posts_per_month", "max_posts_per_month INTEGER NOT NULL DEFAULT 150");
   addColumnIfMissing(sqlite, "organizations", "billing_email", "billing_email TEXT");
   addColumnIfMissing(sqlite, "organizations", "billing_cycle_start", "billing_cycle_start INTEGER");
+  // Raise orgs still on the old 50-post default to the current default.
+  sqlite.exec("UPDATE organizations SET max_posts_per_month = 150 WHERE max_posts_per_month = 50");
 
   // ── API Keys ──
   sqlite.exec(`

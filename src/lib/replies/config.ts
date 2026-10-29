@@ -37,7 +37,7 @@ export const REPLY_TARGETS = {
   weeklyPerAccountLimit: 2,
   burstSize: 3,
   cooldownMinutes: 10,
-  maxTweetAgeMinutes: 30,
+  maxTweetAgeMinutes: 120,
 } as const;
 
 export type ReplyLane = "auto_draft" | "manual_lock";

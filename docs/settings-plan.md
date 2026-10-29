@@ -62,7 +62,7 @@ plan          TEXT DEFAULT 'free'        -- 'free' | 'starter' | 'pro' | 'busine
 planLabel     TEXT DEFAULT 'Free'
 maxProfiles   INTEGER DEFAULT 5
 maxPlatforms  INTEGER DEFAULT 3
-maxPostsPerMonth INTEGER DEFAULT 50
+maxPostsPerMonth INTEGER DEFAULT 150
 billingEmail  TEXT
 billingCycleStart DATETIME
 ```

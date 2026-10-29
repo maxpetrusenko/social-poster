@@ -58,7 +58,7 @@ type ReplySendResult =
 
 type CandidateSeed = Omit<ReplyCandidate, "drafts">;
 
-export const DEFAULT_MAX_TWEET_AGE_MINUTES = 180;
+export const DEFAULT_MAX_TWEET_AGE_MINUTES = REPLY_TARGETS.maxTweetAgeMinutes;
 const MIN_CANDIDATES = 5;
 const HOME_TIMELINE_COUNT = 40;
 

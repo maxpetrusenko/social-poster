@@ -24,7 +24,7 @@ export const organizations = sqliteTable("organizations", {
   planLabel: text("plan_label").notNull().default("Free"),
   maxProfiles: integer("max_profiles").notNull().default(5),
   maxPlatforms: integer("max_platforms").notNull().default(3),
-  maxPostsPerMonth: integer("max_posts_per_month").notNull().default(50),
+  maxPostsPerMonth: integer("max_posts_per_month").notNull().default(150),
   billingEmail: text("billing_email"),
   billingCycleStart: integer("billing_cycle_start", { mode: "timestamp" }),
   deletionRequestedAt: integer("deletion_requested_at", { mode: "timestamp" }),
