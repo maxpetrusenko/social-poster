@@ -80,7 +80,7 @@ export default async function BlogPage() {
           {isVariant("seo_h014_tldr", PATH) ? (
             <div className="mb-12 -mt-6">
               <SeoTldr>
-                {`This blog covers how ${brandName} drafts, schedules, and publishes social posts: source-backed writing, approval steps, platform formatting, and running an agent without constant supervision. Posts are grouped by category, and each one links back to the product feature it describes. Start with the newest, or filter by category.`}
+                {`This blog covers how ${brandName} drafts, schedules, and publishes social posts: source-backed writing, approval steps, platform formatting, and running an agent without constant supervision. Posts are grouped by category. Start with the newest, or filter by category.`}
               </SeoTldr>
             </div>
           ) : null}

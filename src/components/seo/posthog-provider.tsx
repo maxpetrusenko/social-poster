@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import posthog from "posthog-js";
+import { variantMap } from "@/lib/seo-flags";
 
 const KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY;
 const HOST = process.env.NEXT_PUBLIC_POSTHOG_HOST || "https://us.i.posthog.com";
@@ -58,16 +59,10 @@ export function classifyTraffic(referrer: string, search: string): string {
   return "other";
 }
 
-function readVariants(): Record<string, string> {
-  const content =
-    document.querySelector('meta[name="seo-variants"]')?.getAttribute("content") ?? "";
-  const names = { v: "variant", c: "control", s: "site" } as const;
+function pageVariants(pathname: string): Record<string, string> {
   const out: Record<string, string> = {};
-  for (const pair of content.split(";")) {
-    const [key, arm] = pair.split("=");
-    if (key && arm && arm in names) {
-      out[`seo_${key}`] = names[arm as keyof typeof names];
-    }
+  for (const [key, arm] of Object.entries(variantMap(pathname))) {
+    out[`seo_${key}`] = arm;
   }
   return out;
 }
@@ -87,11 +82,12 @@ export function PostHogProvider() {
         person_profiles: "identified_only",
         capture_pageview: false,
         disable_session_recording: true,
+        autocapture: false,
       });
       posthog.register({ site: window.location.hostname, seo_experiment: EXPERIMENT });
       initialized = true;
     }
-    posthog.register(readVariants());
+    posthog.register(pageVariants(pathname));
     posthog.capture("$pageview", {
       traffic_class: classifyTraffic(document.referrer, window.location.search),
     });

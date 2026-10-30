@@ -5,7 +5,7 @@ import { isVariant } from "@/lib/seo-flags";
 
 const PATH = "/social-media-bot";
 const TLDR =
-  "ClawPoster is an AI social media bot that drafts posts from your source material, adapts each one to its platform, and holds it for your approval before anything goes live. You bring your own model keys. It works with X and LinkedIn, among other platforms, and every draft stays reviewable until you publish.";
+  "ClawPoster is an AI social media bot that drafts posts from your source material, adapts each one to its platform, and can hold it for your approval before anything goes live. You bring your own model keys. It works with X and LinkedIn, among other platforms, and drafts can stay reviewable until you publish.";
 
 const FILTERED_CATEGORIES = new Set(["Agent", "Growth", "Features"]);
 

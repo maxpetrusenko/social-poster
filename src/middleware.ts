@@ -147,6 +147,12 @@ export async function middleware(request: NextRequest) {
     return appHostRedirect(request);
   }
 
+  if (request.headers.has("x-seo-path")) {
+    const stripped = new Headers(request.headers);
+    stripped.delete("x-seo-path");
+    request = new NextRequest(request, { headers: stripped });
+  }
+
   if (!request.nextUrl.pathname.startsWith("/dashboard")) {
     if (host && isPublicMarketingHost(host) && isSeoPublicPath(request.nextUrl.pathname)) {
       const forwarded = new Headers(request.headers);

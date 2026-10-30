@@ -153,7 +153,9 @@ export default function DocsPage() {
             </h1>
             {isVariant("seo_h014_tldr", PATH) ? <SeoTldr>{TLDR}</SeoTldr> : null}
             <p className="mt-6 max-w-2xl text-lg leading-8 text-[#34404a]">
-              {keywordFirst ? "The SMM Agent social media posting API creates drafts," : "Use the SMM Agent API to create drafts,"} schedule posts, and publish
+              {keywordFirst
+                ? "The SMM Agent social media posting API creates drafts, schedules posts, and publishes"
+                : "Use the SMM Agent API to create drafts, schedule posts, and publish"}{" "}
               approved content from Codex, Claude, Cursor, cron jobs, or any HTTP client.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">

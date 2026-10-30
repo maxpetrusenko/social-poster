@@ -1,7 +1,7 @@
 import config from "../../seo-flags.json";
 
 export type SeoFlagKey = keyof typeof config.flags;
-export type SeoArm = "variant" | "control" | "site";
+export type SeoArm = "variant" | "control" | "site" | "none";
 
 type FlagDef = { scope: string; enabled: boolean; split?: number };
 
@@ -46,23 +46,43 @@ const SHORT: Record<SeoFlagKey, string> = {
   seo_h022_internal_links: "h022",
 };
 
+const CORE_PAGES = ["/social-media-bot", "/docs", "/blog"];
+
+/** Paths where each page flag actually renders a treatment. Others report "none". */
+function isTreatedPath(key: SeoFlagKey, normalized: string): boolean {
+  if (key === "seo_h022_internal_links") {
+    return CORE_PAGES.includes(normalized) || normalized.startsWith("/blog/");
+  }
+  if (
+    key === "seo_h003_titles" ||
+    key === "seo_h013_keyword_placement" ||
+    key === "seo_h014_tldr"
+  ) {
+    return CORE_PAGES.includes(normalized);
+  }
+  return false;
+}
+
 export function variantMap(path: string): Record<string, SeoArm> {
+  const normalized = normalizePath(path);
   const out: Record<string, SeoArm> = {};
   for (const key of Object.keys(SHORT) as SeoFlagKey[]) {
     const def = config.flags[key] as FlagDef;
     out[SHORT[key]] =
       def.scope === "site"
         ? "site"
-        : isVariant(key, path)
-          ? "variant"
-          : "control";
+        : !def.enabled || !isTreatedPath(key, normalized)
+          ? "none"
+          : isVariant(key, normalized)
+            ? "variant"
+            : "control";
   }
   return out;
 }
 
 /** Content for <meta name="seo-variants">, e.g. "h003=v;h013=c;h005=s". */
 export function variantMetaContent(path: string): string {
-  const letter = { variant: "v", control: "c", site: "s" } as const;
+  const letter = { variant: "v", control: "c", site: "s", none: "n" } as const;
   return Object.entries(variantMap(path))
     .map(([k, v]) => `${k}=${letter[v]}`)
     .join(";");
