@@ -4,11 +4,13 @@ import Image from "next/image";
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { BLOG_POSTS } from "@/lib/blog/posts";
-import { findPublicBlogPost } from "@/lib/blog/dynamic";
+import { findPublicBlogPost, getAllPublicBlogPosts } from "@/lib/blog/dynamic";
 import { LandingNav } from "@/components/landing/nav";
 import { WaitlistForm } from "@/components/landing/waitlist-form";
 import { getSession } from "@/lib/auth";
 import { getCanonicalUrl, getPublicSiteBrandName, normalizeHost } from "@/lib/site-domains";
+import { SeoRelated } from "@/components/seo/seo-blocks";
+import { isVariant } from "@/lib/seo-flags";
 import { BlogMarkdownRenderer } from "@/components/blog/markdown-renderer";
 
 type Props = { params: Promise<{ slug: string }> };
@@ -56,6 +58,18 @@ export default async function BlogPostPage({ params }: Props) {
 
   const session = await getSession();
 
+  let related: Array<{ href: string; label: string }> = [];
+  if (isVariant("seo_h022_internal_links", `/blog/${post.slug}`)) {
+    const others = (await getAllPublicBlogPosts(host)).filter((p) => p.slug !== post.slug);
+    const sameCategory = others.filter((p) => p.category === post.category);
+    const rest = others.filter((p) => p.category !== post.category);
+    related = [...sameCategory, ...rest].slice(0, 4).map((p) => ({
+      href: `/blog/${p.slug}`,
+      label: p.title,
+    }));
+    related.push({ href: "/blog", label: `All ${brandName} posts` });
+  }
+
   return (
     <>
       <LandingNav
@@ -100,6 +114,8 @@ export default async function BlogPostPage({ params }: Props) {
               ))}
             </div>
           )}
+
+          <SeoRelated links={related} />
 
           <div className="mt-16 rounded-2xl border border-[var(--line)] bg-[var(--paper)] p-8 text-center">
             <h3 className="text-xl font-semibold mb-2 font-[family-name:var(--font-sans)]">

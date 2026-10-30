@@ -81,6 +81,16 @@ function appHostRedirect(request: NextRequest) {
   return NextResponse.redirect(url);
 }
 
+const SEO_PUBLIC_PATHS = ["/", "/blog", "/social-media-bot", "/docs", "/privacy", "/terms"];
+
+function isSeoPublicPath(pathname: string) {
+  return (
+    SEO_PUBLIC_PATHS.includes(pathname) ||
+    pathname.startsWith("/blog/") ||
+    pathname.startsWith("/docs/")
+  );
+}
+
 function isAppOnlyPath(pathname: string) {
   return (
     pathname === "/login" ||
@@ -138,6 +148,11 @@ export async function middleware(request: NextRequest) {
   }
 
   if (!request.nextUrl.pathname.startsWith("/dashboard")) {
+    if (host && isPublicMarketingHost(host) && isSeoPublicPath(request.nextUrl.pathname)) {
+      const forwarded = new Headers(request.headers);
+      forwarded.set("x-seo-path", request.nextUrl.pathname);
+      return NextResponse.next({ request: { headers: forwarded } });
+    }
     return NextResponse.next();
   }
 

@@ -41,6 +41,8 @@ const ROUTE_SOURCES = {
   "/blog": ["src/app/blog/page.tsx", "src/components/blog", "src/lib/blog"],
   "/docs": ["src/app/docs/page.tsx"],
   "/social-media-bot": ["src/app/social-media-bot/page.tsx"],
+  "/privacy": ["src/app/privacy/page.tsx"],
+  "/terms": ["src/app/terms/page.tsx"],
 };
 
 function git(args) {

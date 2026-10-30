@@ -37,7 +37,7 @@ describe("robots.txt sitemap host", () => {
   it("keeps the crawler rules it had before the host fix", async () => {
     mocks.host = "smmagent.app";
     const result = await robots();
-    expect(result.rules).toMatchObject([
+    expect((result.rules as unknown[])[0]).toMatchObject(
       {
         userAgent: "*",
         allow: ["/"],
@@ -50,7 +50,20 @@ describe("robots.txt sitemap host", () => {
           "/health",
           "/social-accounts/",
         ],
-      },
-    ]);
+      }
+    );
+  });
+});
+
+describe("robots.txt AI crawler group (seo_h005_ai_crawlers)", () => {
+  it("allows AI crawlers and repeats the private disallows", async () => {
+    mocks.host = "smmagent.app";
+    const result = await robots();
+    const rules = result.rules as Array<{ userAgent: string | string[]; disallow: string[] }>;
+    const ai = rules.find((r) => Array.isArray(r.userAgent));
+    expect(ai?.userAgent).toEqual(
+      expect.arrayContaining(["GPTBot", "ClaudeBot", "PerplexityBot", "Googlebot", "DuckAssistBot"])
+    );
+    expect(ai?.disallow).toEqual(expect.arrayContaining(["/admin/", "/api/", "/dashboard/", "/auth/"]));
   });
 });

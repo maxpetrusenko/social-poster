@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { headers } from "next/headers";
+import { isSiteFlagOn } from "@/lib/seo-flags";
 import { BLOG_POSTS } from "@/lib/blog/posts";
 import { getPublishedDynamicBlogPosts } from "@/lib/blog/automation";
 import {
@@ -107,6 +108,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   ];
 
+  // seo_h021_indexing: /privacy and /terms are public, indexable and canonicalize
+  // to the product host, so only that host's sitemap lists them.
+  const legal: MetadataRoute.Sitemap = isSiteFlagOn("seo_h021_indexing")
+    ? ["/privacy", "/terms"].map((route) => ({
+        url: getProductCanonicalUrl(route),
+        lastModified: toLastModified(routeLastmod(route)),
+        changeFrequency: "yearly" as const,
+        priority: 0.3,
+      }))
+    : [];
+
   return [
     {
       url: urlFor("/"),
@@ -121,6 +133,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.8,
     },
     ...brandFixed.filter((entry) => new URL(entry.url).host === canonicalHost),
+    ...legal.filter((entry) => new URL(entry.url).host === canonicalHost),
     ...blogCategories,
     ...blogPosts,
   ];

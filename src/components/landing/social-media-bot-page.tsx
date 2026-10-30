@@ -1,5 +1,11 @@
 import Link from "next/link";
 import { BLOG_POSTS } from "@/lib/blog/posts";
+import { SeoRelated, SeoTldr } from "@/components/seo/seo-blocks";
+import { isVariant } from "@/lib/seo-flags";
+
+const PATH = "/social-media-bot";
+const TLDR =
+  "ClawPoster is an AI social media bot that drafts posts from your source material, adapts each one to its platform, and holds it for your approval before anything goes live. You bring your own model keys. It works with X and LinkedIn, among other platforms, and every draft stays reviewable until you publish.";
 
 const FILTERED_CATEGORIES = new Set(["Agent", "Growth", "Features"]);
 
@@ -15,16 +21,32 @@ export function SocialMediaBotPage() {
     b.publishedAt.localeCompare(a.publishedAt)
   );
 
+  const keywordFirst = isVariant("seo_h013_keyword_placement", PATH);
+  const related = isVariant("seo_h022_internal_links", PATH)
+    ? [
+        { href: "/blog", label: "ClawPoster blog: every post on drafting and publishing" },
+        ...posts.slice(0, 4).map((post) => ({
+          href: `/blog/${post.slug}`,
+          label: post.title,
+        })),
+      ]
+    : [];
+
   return (
     <main className="pt-28 pb-20 px-6">
       <div className="container">
         <section className="max-w-4xl">
           <p className="section-eyebrow text-[var(--accent-mindfold)] mb-4">AI social media bot</p>
           <h1 className="text-4xl md:text-6xl font-bold leading-[1.05] max-w-3xl">
-            A social media agent that writes, adapts, and publishes like a reliable teammate.
+            {keywordFirst
+              ? "An AI social media bot that writes, adapts, and publishes like a reliable teammate."
+              : "A social media agent that writes, adapts, and publishes like a reliable teammate."}
           </h1>
+          {isVariant("seo_h014_tldr", PATH) ? <SeoTldr>{TLDR}</SeoTldr> : null}
           <p className="mt-6 text-lg md:text-xl text-[var(--muted)] leading-relaxed max-w-2xl">
-            Searchers looking for an AI social media bot usually want more than a caption toy. They want an agent that understands brand voice, handles distribution, and keeps social activity moving without constant supervision.
+            {keywordFirst
+              ? "An AI social media bot is only useful if it understands brand voice, handles distribution, and keeps social activity moving without constant supervision. A caption toy does none of that."
+              : "Searchers looking for an AI social media bot usually want more than a caption toy. They want an agent that understands brand voice, handles distribution, and keeps social activity moving without constant supervision."}
           </p>
 
           <div className="mt-8 flex flex-wrap gap-2">
@@ -71,6 +93,7 @@ export function SocialMediaBotPage() {
             ))}
           </div>
         </section>
+        <SeoRelated links={related} />
       </div>
     </main>
   );

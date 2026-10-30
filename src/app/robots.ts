@@ -1,11 +1,40 @@
 import type { MetadataRoute } from "next";
 import { headers } from "next/headers";
+import { isSiteFlagOn } from "@/lib/seo-flags";
 import {
   getCanonicalUrl,
   getPublicSiteHost,
   getPublicSiteKey,
   normalizeHost,
 } from "@/lib/site-domains";
+
+const PRIVATE_DISALLOW = [
+  "/api/",
+  "/auth/",
+  "/dashboard/",
+  "/invite/",
+  "/login",
+  "/health",
+  "/social-accounts/",
+];
+
+const AI_CRAWLERS = [
+  "GPTBot",
+  "OAI-SearchBot",
+  "ChatGPT-User",
+  "ClaudeBot",
+  "Claude-SearchBot",
+  "Claude-User",
+  "PerplexityBot",
+  "Perplexity-User",
+  "Google-Extended",
+  "Applebot-Extended",
+  "Bingbot",
+  "Googlebot",
+  "CCBot",
+  "meta-externalagent",
+  "DuckAssistBot",
+];
 
 /**
  * robots.txt is host-aware for the same reason sitemap.ts is: this app serves
@@ -25,22 +54,22 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
   );
   const canonicalHost = getPublicSiteHost(getPublicSiteKey(host));
 
+  const rules: MetadataRoute.Robots["rules"] = [
+    { userAgent: "*", allow: ["/"], disallow: PRIVATE_DISALLOW },
+  ];
+
+  // seo_h005_ai_crawlers: a named group replaces the "*" group for that bot, so
+  // the private disallows are repeated on it.
+  if (isSiteFlagOn("seo_h005_ai_crawlers")) {
+    rules.push({
+      userAgent: AI_CRAWLERS,
+      allow: ["/"],
+      disallow: ["/admin/", ...PRIVATE_DISALLOW],
+    });
+  }
+
   return {
-    rules: [
-      {
-        userAgent: "*",
-        allow: ["/"],
-        disallow: [
-          "/api/",
-          "/auth/",
-          "/dashboard/",
-          "/invite/",
-          "/login",
-          "/health",
-          "/social-accounts/",
-        ],
-      },
-    ],
+    rules,
     sitemap: getCanonicalUrl("/sitemap.xml", canonicalHost),
   };
 }

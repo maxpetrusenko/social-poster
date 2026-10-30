@@ -3,6 +3,8 @@ import { headers } from "next/headers";
 import { Cormorant_Garamond, DM_Sans } from "next/font/google";
 import { LandingFooter } from "@/components/landing/footer";
 import { SiteJsonLd } from "@/components/seo/site-json-ld";
+import { PostHogProvider } from "@/components/seo/posthog-provider";
+import { variantMetaContent } from "@/lib/seo-flags";
 import { normalizeHost, SMM_AGENT_ORIGIN } from "@/lib/site-domains";
 import "./globals.css";
 
@@ -70,11 +72,15 @@ export const metadata: Metadata = {
  * request. `LandingFooter` below already reads `headers()`, so resolving the host
  * here does not make any route dynamic that was not dynamic before.
  */
-async function getRequestHost() {
+async function getRequestContext() {
   const requestHeaders = await headers();
-  return normalizeHost(
-    requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host")
-  );
+  return {
+    host: normalizeHost(
+      requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host")
+    ),
+    // Set by middleware for public marketing paths only.
+    seoPath: requestHeaders.get("x-seo-path"),
+  };
 }
 
 export default async function RootLayout({
@@ -82,11 +88,15 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const host = await getRequestHost();
+  const { host, seoPath } = await getRequestContext();
 
   return (
     <html lang="en">
       <body className={`${sans.variable} ${serif.variable} bg-[var(--sand)] text-[var(--ink)] antialiased`}>
+        {seoPath ? (
+          <meta name="seo-variants" content={variantMetaContent(seoPath)} />
+        ) : null}
+        <PostHogProvider />
         <SiteJsonLd host={host} />
         {children}
         <LandingFooter />

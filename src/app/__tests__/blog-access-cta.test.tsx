@@ -21,6 +21,7 @@ vi.mock("@/lib/auth", () => ({
 }));
 
 vi.mock("@/lib/blog/dynamic", () => ({
+  getAllPublicBlogPosts: vi.fn(async () => []),
   findPublicBlogPost: vi.fn(async () => ({
     slug: "test-article",
     title: "Test article",
