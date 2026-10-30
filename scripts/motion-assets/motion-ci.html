@@ -1,0 +1,78 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<style>
+  :root { --t: 0; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 1080px; height: 1920px; background: #08090a; overflow: hidden; }
+  body { font-family: "Helvetica Neue", Inter, sans-serif; color: #f4f5f2; -webkit-font-smoothing: antialiased; }
+
+  .shot { position: absolute; inset: 0; overflow: hidden; }
+  .shot img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .shot:after {
+    content: ""; position: absolute; inset: 0;
+    background: linear-gradient(180deg, rgba(8,9,10,0.55) 0%, rgba(8,9,10,0) 32%, rgba(8,9,10,0.15) 55%, rgba(8,9,10,0.92) 100%);
+  }
+  /* shot windows: 0.00-0.31, 0.30-0.60, 0.59-0.86, end 0.85-1 */
+  #s1 { opacity: clamp(0, var(--t) * 40, 1); }
+  #s1 img { transform: scale(calc(1.06 + var(--t) * 0.5)) translateY(calc(var(--t) * -60px)); }
+  #s2 { opacity: clamp(0, (var(--t) - 0.295) * 40, 1); }
+  #s2 img { transform: scale(calc(1.10 + (var(--t) - 0.3) * 0.6)) translateX(calc((var(--t) - 0.3) * -40px)); }
+  #s3 { opacity: clamp(0, (var(--t) - 0.59) * 40, 1); }
+  #s3 img { transform: scale(calc(1.06 + (var(--t) - 0.6) * 0.55)) translateY(calc((var(--t) - 0.6) * 50px)); }
+
+  .brand {
+    position: absolute; left: 92px; top: 132px; display: flex; align-items: center; gap: 18px;
+    opacity: clamp(0, var(--t) * 30, 1);
+  }
+  .mark { width: 52px; height: 52px; background: #7ef2b0; display: grid; place-items: center; }
+  .mark b { font: 700 30px/1 "SF Mono", monospace; color: #08090a; }
+  .brand span { font: 500 25px/1 "SF Mono", monospace; letter-spacing: 0.2em; color: #cfd6d1; }
+
+  .cap {
+    position: absolute; left: 76px; right: 76px; bottom: 268px;
+    background: #f7f8f5; color: #0b0c0d;
+    padding: 40px 44px; border-radius: 6px;
+    box-shadow: 0 28px 70px rgba(0,0,0,0.45);
+    display: flex; gap: 26px; align-items: flex-start;
+  }
+  .cap .sq { width: 46px; height: 46px; background: #0b0c0d; flex: 0 0 46px; margin-top: 6px; }
+  .cap p { font: 400 52px/1.24 "Helvetica Neue", Inter, sans-serif; letter-spacing: -0.015em; }
+  .cap p em { font-style: normal; color: #0f7a4a; }
+  #c1 { opacity: clamp(0, (var(--t) - 0.02) * 60, 1); transform: translateY(calc((1 - clamp(0, (var(--t) - 0.02) / 0.06, 1)) * 26px)); }
+  #c2 { opacity: clamp(0, (var(--t) - 0.31) * 60, 1); transform: translateY(calc((1 - clamp(0, (var(--t) - 0.31) / 0.06, 1)) * 26px)); }
+  #c3 { opacity: clamp(0, (var(--t) - 0.60) * 60, 1); transform: translateY(calc((1 - clamp(0, (var(--t) - 0.60) / 0.06, 1)) * 26px)); }
+
+  .end {
+    position: absolute; inset: 0; background: #08090a; display: grid; align-content: center;
+    padding: 0 108px; gap: 30px; opacity: clamp(0, (var(--t) - 0.855) * 50, 1);
+  }
+  .end .k { font: 500 28px/1 "SF Mono", monospace; letter-spacing: 0.22em; color: #7ef2b0; }
+  .end h1 { font: 600 92px/1.06 "Helvetica Neue", Inter, sans-serif; letter-spacing: -0.04em; }
+  .end h1 u { text-decoration: none; color: #7ef2b0; }
+  .end .who { font: 500 30px/1 "SF Mono", monospace; color: #8b9390; letter-spacing: 0.08em; }
+</style>
+</head>
+<body>
+  <div class="shot" id="s1"><img src="shot1.png" /></div>
+  <div class="shot" id="s2"><img src="shot2.png" /></div>
+  <div class="shot" id="s3"><img src="shot3.png" /></div>
+
+  <div class="brand"><div class="mark"><b>M</b></div><span>MISTRAL LARGE 4</span></div>
+
+  <div class="cap" id="c1"><div class="sq"></div><p>same score, at <em>48%</em> on the coding agent index.</p></div>
+  <div class="cap" id="c2"><div class="sq"></div><p><em>47% fewer tokens</em> per task than glm-5.3.</p></div>
+  <div class="cap" id="c3"><div class="sq"></div><p>and half the price,<br/>against <em>its own preview</em>.</p></div>
+
+  <div class="end">
+    <div class="k">THE NUMBER THAT DECIDES</div>
+    <h1>cost per<br/><u>finished task</u>,<br/>not rank.</h1>
+    <div class="who">@petrusenko_max</div>
+  </div>
+
+<script>
+  window.setT = (t) => { document.documentElement.style.setProperty("--t", String(t)); };
+</script>
+</body>
+</html>

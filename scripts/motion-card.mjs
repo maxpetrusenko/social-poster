@@ -1,5 +1,6 @@
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
+import os from "node:os";
 import path from "node:path";
 import puppeteer from "puppeteer-core";
 
@@ -10,8 +11,8 @@ const fps = 24;
 const chrome =
   "/Users/maxpetrusenko/.cache/puppeteer/chrome-headless-shell/mac_arm-131.0.6778.204/chrome-headless-shell-mac-arm64/chrome-headless-shell";
 
-const framesDir = path.join(process.cwd(), "frames");
-rmSync(framesDir, { recursive: true, force: true });
+const framesDir = path.join(os.tmpdir(), `motion-frames-${process.pid}`);
+rmSync(framesDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 120 });
 mkdirSync(framesDir, { recursive: true });
 
 const browser = await puppeteer.launch({
@@ -20,7 +21,7 @@ const browser = await puppeteer.launch({
   args: ["--force-device-scale-factor=1", "--hide-scrollbars", "--font-render-hinting=none"],
 });
 const page = await browser.newPage();
-await page.setViewport({ width: 1080, height: 1920, deviceScaleFactor: 2 });
+await page.setViewport({ width: 1080, height: 1920, deviceScaleFactor: 1.5 });
 await page.goto("file://" + path.resolve(html), { waitUntil: "load" });
 await new Promise((r) => setTimeout(r, 400));
 

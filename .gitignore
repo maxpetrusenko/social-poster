@@ -31,3 +31,4 @@ certs/
 .playwright-mcp/
 .env.*
 env.thesis-test
+scripts/motion-assets/*.png
