@@ -58,14 +58,29 @@ returns `{skipped, reason}` or `{thesis, content}` for review.
   are the next slice; `generateThesisForStory({extraSources})` already accepts them.
 - Skip is a failure state for the run, by design: silence is easier to ignore than a red run.
 
+## Phase D — confirm
+
+`src/lib/pipeline/thesis-confirm.ts` checks the finished post against its own evidence: every
+numeric token in the post must appear in the evidence corpus, no raw links, no "see evidence". It
+counts digits, not claims, so it is cheap and hard to fool. Failures become `thesis:confirm` in the
+run steps and block the publish; the RSS route returns `{skipped, reason}`.
+
+## Repair and tighten
+
+- The thesis prompt now states the hard limits, and a failed validation triggers one repair call that
+  keeps the same facts and fixes only the stated problems.
+- The writer gets an explicit 180–240 character target. A draft that breaks a hard limit goes through
+  one `tightenDraft` rewrite (same claim, fewer words) before the deterministic fallback is used.
+
 ## Slices
 
 1. thesis module + validation + tests (done)
 2. generator with source fetch + skip rule + tests (done)
 3. writer integration + prompt tests (done)
 4. image-post runner step + RSS route wiring (done)
-5. enable `THESIS_STAGE=on` in Coolify, watch one run end to end (open)
-6. cross-feed coverage + search provider (open)
+5. phase D confirm + repair/tighten passes (done)
+6. `THESIS_STAGE=on` in Coolify, container verified (done)
+7. cross-feed coverage + search provider (open)
 
 ## Proof gates
 

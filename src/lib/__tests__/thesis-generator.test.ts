@@ -129,4 +129,34 @@ describe("stripHtmlToText", () => {
     expect(text).toContain("Carbon scores 59.");
     expect(text).toContain("Opus scores 62.");
   });
+
+  it("retries once with the validation problems when the first answer breaks a limit", async () => {
+    const longClaim = "x".repeat(300);
+    callWritingModel
+      .mockResolvedValueOnce({
+        data: responsesShape({ ...validThesisJson, claim: longClaim }),
+        text: "",
+        runtime: {},
+      })
+      .mockResolvedValueOnce({
+        data: responsesShape(validThesisJson),
+        text: "",
+        runtime: {},
+      });
+
+    const result = await generateThesisForStory(
+      {
+        title: "Gemini 4 Carbon lands",
+        summary: "s".repeat(200),
+        link: "https://example.com/story",
+      },
+      { fetchText: async () => "Source text about the launch. ".repeat(20) }
+    );
+
+    expect(callWritingModel).toHaveBeenCalledTimes(2);
+    const second = callWritingModel.mock.calls[1][0] as { prompt: string };
+    expect(second.prompt).toContain("failed validation");
+    expect(result.action).toBe("post");
+  });
+
 });

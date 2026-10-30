@@ -29,3 +29,5 @@ scripts/oauth-portals/*.png
 certs/
 .gstack/
 .playwright-mcp/
+.env.*
+env.thesis-test

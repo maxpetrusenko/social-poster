@@ -1,5 +1,5 @@
 import { resolveWritingRuntimes, type WritingRuntime } from "@/lib/model-runtime";
-import { callWritingModel } from "@/lib/writing-model";
+import { callWritingModel, extractResponsesText } from "@/lib/writing-model";
 import { safeFetchRemote } from "@/lib/safe-remote-fetch";
 import type { RssSettingsConfig } from "@/lib/rss-config";
 import {
@@ -115,6 +115,33 @@ export async function draftHumanPostContent(
       });
     }
 
+    const tightened = await Promise.all(
+      rejectedPlatforms.map(async (platform) => {
+        const previous = contentByPlatform[platform] ?? parsed.contentByPlatform[platform] ?? "";
+        const attempt = await tightenDraft({
+          runtime: usedRuntime,
+          story: sanitizedStory,
+          thesis: options.thesis ?? null,
+          platform,
+          previous,
+          problems: qualityIssues[platform] ?? [],
+        });
+        return { platform, attempt };
+      })
+    );
+    for (const { platform, attempt } of tightened) {
+      const candidate = attempt ? cleanHumanPostDraft(attempt, platform) : "";
+      if (!candidate) continue;
+      const quality = assessPostQuality(candidate, sanitizedStory, platform);
+      if (quality.ok) {
+        contentByPlatform[platform] = candidate;
+      } else {
+        qualityIssues[platform] = Array.from(
+          new Set([...(qualityIssues[platform] ?? []), ...quality.reasons])
+        );
+      }
+    }
+
     const acceptedAny = normalizedPlatforms.some(
       (platform) => contentByPlatform[platform] !== fallback.contentByPlatform[platform]
     );
@@ -185,6 +212,54 @@ async function generateDraft(input: {
   }
 
   throw new Error(`All writing models failed: ${failures.join(" | ")}`);
+}
+
+/**
+ * One last rewrite for a draft that broke a hard limit. Same claim, fewer words:
+ * models routinely land 20-40% over the limit and cutting is a different task from drafting.
+ */
+async function tightenDraft(input: {
+  runtime: WritingRuntime;
+  story: ReturnType<typeof sanitizeHumanPostStory>;
+  thesis: Thesis | null;
+  platform: string;
+  previous: string;
+  problems: string[];
+}): Promise<string> {
+  const limit = input.platform === "twitter" ? X_LIMIT : 900;
+  const prompt = `Rewrite Max's post so it passes the hard limits. Keep the same claim and the same facts. Cut words, never the judgment.
+
+Hard limits:
+- ${limit} characters maximum, aim for ${Math.round(limit * 0.8)}.
+- lowercase, including the first letter.
+- no hashtags, no emoji, no links, no em dashes, no "For builders," preamble.
+- do not add any number that is not in the draft below.
+
+Problems with the current draft: ${input.problems.join("; ") || "length"}.
+
+${input.thesis ? `The view being written: ${input.thesis.claim}\n` : ""}Story title: ${input.story.title}
+
+Current draft:
+${input.previous}
+
+Return the post text only. No quotes, no explanation.`;
+
+  try {
+    const result = await callWritingModel({
+      name: "pipeline-human-post-tighten",
+      prompt,
+      json: false,
+      fallbackModel: input.runtime.model,
+      slot: "writing",
+      runtimes: [input.runtime],
+      tags: ["pipeline", "human-post", "tighten"],
+      metadata: { source: "pipeline", platform: input.platform, title: input.story.title },
+    });
+    const text = (extractResponsesText(result.data) || result.text || "").trim();
+    return text.replace(/^["'`]+|["'`]+$/g, "").trim();
+  } catch {
+    return "";
+  }
 }
 
 async function callRuntime(runtime: WritingRuntime, call: DraftCall) {

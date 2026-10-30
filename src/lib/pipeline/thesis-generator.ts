@@ -2,7 +2,13 @@ import "server-only";
 
 import { callWritingModel, extractResponsesText } from "@/lib/writing-model";
 import { safeFetchRemote } from "@/lib/safe-remote-fetch";
-import { buildThesisPrompt, parseThesisResponse, validateThesis, type ThesisResult } from "./thesis";
+import {
+  buildThesisPrompt,
+  buildThesisRepairSuffix,
+  parseThesisResponse,
+  validateThesis,
+  type ThesisResult,
+} from "./thesis";
 
 export type ThesisStory = {
   title: string;
@@ -95,35 +101,43 @@ export async function generateThesisForStory(
     extraSources: options.extraSources,
   });
 
-  const result = await callWritingModel({
-    name: "pipeline-thesis",
-    prompt,
-    json: true,
-    fallbackModel: "deepseek-chat",
-    workspaceId: options.workspaceId ?? null,
-    slot: "writing",
-    tags: ["pipeline", "thesis"],
-    metadata: { source: "thesis", sourceUrl: story.link ?? null, title },
-  });
+  let attemptPrompt = prompt;
+  let lastReason = "";
 
-  const text = extractResponsesText(result.data) || result.text || "";
-  let payload: unknown = null;
-  try {
-    payload = JSON.parse(text);
-  } catch {
-    payload = null;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const result = await callWritingModel({
+      name: "pipeline-thesis",
+      prompt: attemptPrompt,
+      json: true,
+      fallbackModel: "deepseek-chat",
+      workspaceId: options.workspaceId ?? null,
+      slot: "writing",
+      tags: ["pipeline", "thesis"],
+      metadata: { source: "thesis", sourceUrl: story.link ?? null, title, attempt },
+    });
+
+    const text = extractResponsesText(result.data) || result.text || "";
+    let payload: unknown = null;
+    try {
+      payload = JSON.parse(text);
+    } catch {
+      payload = null;
+    }
+    if (!payload) {
+      lastReason = "model did not return JSON";
+      attemptPrompt = `${prompt}${buildThesisRepairSuffix([lastReason])}`;
+      continue;
+    }
+
+    const parsed = parseThesisResponse(payload);
+    if (parsed.action === "skip") return parsed;
+
+    const validation = validateThesis(parsed.thesis, { title });
+    if (validation.ok) return parsed;
+
+    lastReason = validation.problems.join("; ");
+    attemptPrompt = `${prompt}${buildThesisRepairSuffix(validation.problems)}`;
   }
-  if (!payload) {
-    return { action: "skip", reason: "thesis model did not return JSON" };
-  }
 
-  const parsed = parseThesisResponse(payload);
-  if (parsed.action === "skip") return parsed;
-
-  const validation = validateThesis(parsed.thesis, { title });
-  if (!validation.ok) {
-    return { action: "skip", reason: `thesis failed validation: ${validation.problems.join("; ")}` };
-  }
-
-  return parsed;
+  return { action: "skip", reason: `thesis failed validation: ${lastReason}` };
 }

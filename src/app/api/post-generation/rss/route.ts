@@ -5,6 +5,7 @@ import { getDashboardCandidates } from "@/lib/dashboard/candidates";
 import { draftHumanPostContent } from "@/lib/pipeline/human-post-writer";
 import { getWorkspaceRssSettings } from "@/lib/rss-config";
 import { generateThesisForStory, isThesisStageEnabled } from "@/lib/pipeline/thesis-generator";
+import { confirmPostAgainstThesis } from "@/lib/pipeline/thesis-confirm";
 
 export async function POST(request: NextRequest) {
   const tenant = await requireApiWorkspaceEditor();
@@ -50,6 +51,15 @@ export async function POST(request: NextRequest) {
       { workspaceId, rssSettings: settings, thesis }
     );
     const content = resolveDraftForPlatform(drafts.contentByPlatform, platformType);
+    if (thesis) {
+      const confirm = confirmPostAgainstThesis(content, thesis);
+      if (!confirm.ok) {
+        return NextResponse.json(
+          { source: "rss", skipped: true, reason: `thesis:confirm: ${confirm.reasons.join("; ")}` },
+          { status: 200 }
+        );
+      }
+    }
     const imageUrl = story.ogImageUrl ?? story.imageUrl ?? null;
     const candidateDrafts = await mapWithConcurrency(stories, 3, async (candidate) => {
       const draft = await draftHumanPostContent(

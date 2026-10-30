@@ -25,6 +25,7 @@ import { probeScheduleMediaUrl } from "@/lib/schedule-media";
 import { isSafeRemoteHttpUrl } from "@/lib/safe-remote-fetch";
 import { selectFeedStoryForSchedule } from "./feed-story-selection";
 import { generateThesisForStory, isThesisStageEnabled } from "../thesis-generator";
+import { confirmPostAgainstThesis } from "../thesis-confirm";
 
 async function resolveStoryImages(
   stories: Story[],
@@ -242,6 +243,27 @@ export async function runImagePostJob(
             thesis,
           }
         );
+    const confirmStep: PipelineStep = {
+      name: "thesis:confirm",
+      status: "skipped",
+    };
+    steps.push(confirmStep);
+    if (thesis) {
+      const confirmText =
+        resolveDraftForPlatform(humanDrafts?.contentByPlatform, targets[0]?.type) ?? "";
+      confirmStep.status = "running";
+      confirmStep.startedAt = new Date().toISOString();
+      const confirm = confirmPostAgainstThesis(confirmText, thesis);
+      confirmStep.completedAt = new Date().toISOString();
+      if (!confirm.ok) {
+        confirmStep.status = "failed";
+        confirmStep.error = confirm.reasons.join("; ");
+        throw new Error(`thesis:confirm: ${confirm.reasons.join("; ")}`);
+      }
+      confirmStep.status = "completed";
+      confirmStep.output = { checked: confirm.checked };
+    }
+
     const publishTargets = targets.map((platform) => {
       const platformType = scheduleContentPlatformKey(platform.type);
       const mediaUrl = (
