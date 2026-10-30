@@ -81,7 +81,7 @@ describe("generateThesisForStory", () => {
     expect(result.thesis.confidence).toBe("medium");
   });
 
-  it("skips when the model restates the headline instead of holding a view", async () => {
+  it("never drops the slot: a headline restatement still ships with its evidence", async () => {
     callWritingModel.mockResolvedValue({
       data: responsesShape({ ...validThesisJson, claim: "Gemini 4 Carbon launches in the Gemini app today" }),
       text: "",
@@ -96,18 +96,23 @@ describe("generateThesisForStory", () => {
       { fetchText: async () => "Carbon scores 59 on the index." }
     );
 
-    expect(result.action).toBe("skip");
-    if (result.action !== "skip") throw new Error("expected skip");
-    expect(result.reason).toContain("thesis failed validation");
-    expect(result.reason).toContain("claim restates the headline");
+    expect(callWritingModel).toHaveBeenCalledTimes(3);
+    expect(result.action).toBe("post");
   });
 
-  it("passes the skip decision through without inventing a fallback view", async () => {
-    callWritingModel.mockResolvedValue({
-      data: responsesShape({ action: "skip", reason: "press release with no consequence" }),
-      text: "",
-      runtime: {},
-    });
+  it("sends a model skip back to the agent instead of dropping the post", async () => {
+    callWritingModel
+      .mockResolvedValueOnce({
+        data: responsesShape({ action: "skip", reason: "press release with no consequence" }),
+        text: "",
+        runtime: {},
+      })
+      .mockResolvedValueOnce({
+        data: responsesShape(validThesisJson),
+        text: "",
+        runtime: {},
+      });
+
     const result = await generateThesisForStory(
       {
         title: "Vendor announces partnership",
@@ -116,7 +121,27 @@ describe("generateThesisForStory", () => {
       },
       { fetchText: async () => "The companies said they will collaborate on future products." }
     );
-    expect(result).toEqual({ action: "skip", reason: "press release with no consequence" });
+
+    expect(result.action).toBe("post");
+    const second = callWritingModel.mock.calls[1][0] as { prompt: string };
+    expect(second.prompt).toContain("a post is required");
+  });
+
+  it("returns skip only when the model never produces a thesis at all", async () => {
+    callWritingModel.mockResolvedValue({ data: responsesShape(null), text: "not json", runtime: {} });
+    const result = await generateThesisForStory(
+      {
+        title: "Something broke",
+        summary: "s".repeat(200),
+        link: "https://example.com/story",
+      },
+      { fetchText: async () => "Material. ".repeat(30) }
+    );
+
+    expect(callWritingModel).toHaveBeenCalledTimes(3);
+    expect(result.action).toBe("skip");
+    if (result.action !== "skip") throw new Error("expected skip");
+    expect(result.reason).toContain("unusable after 3 attempts");
   });
 });
 

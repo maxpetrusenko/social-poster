@@ -7,6 +7,9 @@ import {
   buildThesisRepairSuffix,
   parseThesisResponse,
   validateThesis,
+  THESIS_MAX_CLAIM_CHARS,
+  THESIS_MIN_CLAIM_CHARS,
+  type Thesis,
   type ThesisResult,
 } from "./thesis";
 
@@ -33,6 +36,7 @@ export function isThesisStageEnabled() {
 }
 
 const MAX_SOURCE_CHARS = 6000;
+const MAX_ATTEMPTS = 3;
 
 export function stripHtmlToText(html: string) {
   return html
@@ -102,9 +106,10 @@ export async function generateThesisForStory(
   });
 
   let attemptPrompt = prompt;
+  let best: { thesis: Thesis; problems: string[] } | null = null;
   let lastReason = "";
 
-  for (let attempt = 0; attempt < 2; attempt += 1) {
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt += 1) {
     const result = await callWritingModel({
       name: "pipeline-thesis",
       prompt: attemptPrompt,
@@ -123,6 +128,7 @@ export async function generateThesisForStory(
     } catch {
       payload = null;
     }
+
     if (!payload) {
       lastReason = "model did not return JSON";
       attemptPrompt = `${prompt}${buildThesisRepairSuffix([lastReason])}`;
@@ -130,14 +136,50 @@ export async function generateThesisForStory(
     }
 
     const parsed = parseThesisResponse(payload);
-    if (parsed.action === "skip") return parsed;
 
-    const validation = validateThesis(parsed.thesis, { title });
-    if (validation.ok) return parsed;
+    if (parsed.action === "post") {
+      const validation = validateThesis(parsed.thesis, { title });
+      if (validation.ok) return parsed;
+      if (!best) best = { thesis: parsed.thesis, problems: validation.problems };
+      lastReason = validation.problems.join("; ");
+      attemptPrompt = `${prompt}${buildThesisRepairSuffix(validation.problems)}`;
+      continue;
+    }
 
-    lastReason = validation.problems.join("; ");
-    attemptPrompt = `${prompt}${buildThesisRepairSuffix(validation.problems)}`;
+    // The model answered "skip". A dropped slot is the one outcome we do not accept,
+    // so send it back with the material it already has and ask for the view.
+    lastReason = parsed.reason || "model skipped";
+    attemptPrompt = `${prompt}${buildThesisRepairSuffix([
+      `the previous answer skipped the story: ${lastReason}`,
+      "a post is required: find the defensible view in the material already provided, or state the strongest supported judgment with its uncertainty named",
+    ])}`;
   }
 
-  return { action: "skip", reason: `thesis failed validation: ${lastReason}` };
+  // Three agent attempts, still short of the limits. Ship the best attempt rather than
+  // drop the slot, but only when it carries evidence; a view with no sources is worse
+  // than a missed slot and must be fixed by a human, not invented here.
+  if (best && best.thesis.evidence.length > 0) {
+    const thesis: Thesis = {
+      ...best.thesis,
+      claim: fitClaim(best.thesis.claim),
+    };
+    return { action: "post", thesis };
+  }
+
+  return { action: "skip", reason: `thesis unusable after ${MAX_ATTEMPTS} attempts: ${lastReason}` };
+}
+
+/** Final resort after the agent attempts: keep the first sentence that fits. */
+function fitClaim(claim: string) {
+  const clean = claim.replace(/\s+/g, " ").trim();
+  if (clean.length <= THESIS_MAX_CLAIM_CHARS) return clean;
+  const sentences = clean.split(/(?<=[.!?])\s+/);
+  for (const sentence of sentences) {
+    if (sentence.length >= THESIS_MIN_CLAIM_CHARS && sentence.length <= THESIS_MAX_CLAIM_CHARS) {
+      return sentence;
+    }
+  }
+  const cut = clean.slice(0, THESIS_MAX_CLAIM_CHARS);
+  const lastSpace = cut.lastIndexOf(" ");
+  return cut.slice(0, lastSpace > THESIS_MIN_CLAIM_CHARS ? lastSpace : THESIS_MAX_CLAIM_CHARS).trim();
 }
