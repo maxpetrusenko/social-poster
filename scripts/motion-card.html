@@ -1,0 +1,95 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<style>
+  :root { --t: 0; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 1080px; height: 1920px; background: #08090a; overflow: hidden; }
+  body { font-family: "Helvetica Neue", Inter, "SF Pro Display", sans-serif; color: #f2f3f0; -webkit-font-smoothing: antialiased; }
+  .stage { position: absolute; inset: 0; }
+  .vignette {
+    position: absolute; inset: 0;
+    background: radial-gradient(120% 75% at 15% -5%, rgba(70,255,160,0.13), transparent 55%),
+                radial-gradient(80% 55% at 105% 105%, rgba(70,255,160,0.05), transparent 60%);
+    opacity: calc(0.3 + var(--t) * 0.7);
+  }
+  .grid {
+    position: absolute; inset: 0;
+    background-image: linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px);
+    background-size: 100% 120px;
+    opacity: calc(var(--t) * 0.9);
+  }
+  .frame { position: absolute; left: 72px; right: 72px; top: 164px; bottom: 244px; border: 1px solid rgba(255,255,255,0.09);
+           opacity: calc(clamp(0, (var(--t) - 0.02) / 0.15, 1)); }
+  .brand {
+    position: absolute; left: 128px; top: 248px;
+    font: 500 30px/1 "SF Mono", ui-monospace, monospace; letter-spacing: 0.2em; color: #7ef2b0;
+    opacity: clamp(0, (var(--t) - 0.04) / 0.12, 1);
+  }
+  .brand span { color: #79817d; }
+  .head { position: absolute; left: 124px; right: 124px; top: 420px; }
+  .head .line { display: block; overflow: hidden; }
+  .head .line i {
+    display: block; font-style: normal; font-weight: 600;
+    font-size: 96px; line-height: 1.16; letter-spacing: -0.035em; white-space: nowrap;
+  }
+  .head .line:nth-child(1) i { transform: translateY(calc((1 - clamp(0, (var(--t) - 0.06) / 0.2, 1)) * 120px)); }
+  .head .line:nth-child(2) i { transform: translateY(calc((1 - clamp(0, (var(--t) - 0.16) / 0.2, 1)) * 120px)); }
+  .head .line:nth-child(3) i { transform: translateY(calc((1 - clamp(0, (var(--t) - 0.26) / 0.2, 1)) * 120px)); color: #7ef2b0; }
+  .rule { position: absolute; left: 124px; right: 124px; height: 1px; background: rgba(255,255,255,0.14); top: 880px;
+          transform-origin: left; transform: scaleX(clamp(0, (var(--t) - 0.34) / 0.18, 1)); }
+  .stat { position: absolute; left: 124px; right: 124px; top: 960px; display: flex; justify-content: space-between; }
+  .stat > div { width: 400px; opacity: clamp(0, (var(--t) - 0.38) / 0.16, 1);
+                transform: translateY(calc((1 - clamp(0, (var(--t) - 0.38) / 0.18, 1)) * 26px)); }
+  .stat .n { font: 600 104px/1 "SF Mono", ui-monospace, monospace; letter-spacing: -0.04em; }
+  .stat .n em { font-style: normal; font-size: 52px; color: #7ef2b0; }
+  .stat .k { margin-top: 22px; font: 400 31px/1.38 Inter, sans-serif; color: #a4aca7; letter-spacing: 0.005em; }
+  .price { position: absolute; left: 124px; right: 124px; top: 1250px; opacity: clamp(0, (var(--t) - 0.52) / 0.16, 1); }
+  .price .lbl { font: 500 26px/1.4 "SF Mono", ui-monospace, monospace; letter-spacing: 0.16em; color: #79817d; text-transform: uppercase; margin-bottom: 26px; }
+  .price .row { display: flex; align-items: baseline; gap: 28px; font: 500 42px/1.6 "SF Mono", ui-monospace, monospace; }
+  .price .tag { font: 500 24px/1 "SF Mono", ui-monospace, monospace; color: #79817d; letter-spacing: 0.14em; width: 108px; }
+  .price .old { color: #6a726e; position: relative; }
+  .price .old:after {
+    content: ""; position: absolute; left: -6px; right: -6px; top: 54%; height: 2px; background: #6a726e;
+    transform: scaleX(clamp(0, (var(--t) - 0.66) / 0.12, 1)); transform-origin: left;
+  }
+  .price .new { color: #f2f3f0; }
+  .foot { position: absolute; left: 128px; bottom: 288px; font: 500 28px/1 "SF Mono", ui-monospace, monospace; color: #7ef2b0;
+          letter-spacing: 0.06em; opacity: clamp(0, (var(--t) - 0.78) / 0.14, 1); }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="vignette"></div>
+  <div class="grid"></div>
+  <div class="frame"></div>
+  <div class="brand">MISTRAL LARGE 4 <span>/ OPEN WEIGHTS</span></div>
+  <div class="head">
+    <div class="line"><i>same score.</i></div>
+    <div class="line"><i>47% fewer tokens.</i></div>
+    <div class="line"><i>half the price.</i></div>
+  </div>
+  <div class="rule"></div>
+  <div class="stat">
+    <div>
+      <div class="n">48<em>%</em></div>
+      <div class="k">coding agent index<br/>level with GLM-5.3</div>
+    </div>
+    <div>
+      <div class="n">−49<em>%</em></div>
+      <div class="k">input price against<br/>its own preview build</div>
+    </div>
+  </div>
+  <div class="price">
+    <div class="lbl">usd per million tokens · mistral vs its own preview</div>
+    <div class="row"><span class="tag">BEFORE</span><span class="old">$1.36 / $4.18</span></div>
+    <div class="row"><span class="tag">NOW</span><span class="new">$0.70 / $2.10</span></div>
+  </div>
+  <div class="foot">@petrusenko_max</div>
+</div>
+<script>
+  window.setT = (t) => { document.documentElement.style.setProperty("--t", String(t)); };
+</script>
+</body>
+</html>
