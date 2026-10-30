@@ -3,7 +3,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const { callWritingModel } = vi.hoisted(() => ({ callWritingModel: vi.fn() }));
 
 vi.mock("server-only", () => ({}));
-vi.mock("@/lib/writing-model", () => ({ callWritingModel }));
+vi.mock("@/lib/writing-model", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/writing-model")>("@/lib/writing-model");
+  return { callWritingModel, extractResponsesText: actual.extractResponsesText };
+});
 
 import { generateThesisForStory, stripHtmlToText } from "@/lib/pipeline/thesis-generator";
 
@@ -31,6 +34,12 @@ const validThesisJson = {
   ],
 };
 
+function responsesShape(payload: unknown) {
+  return {
+    output: [{ type: "message", content: [{ type: "output_text", text: JSON.stringify(payload) }] }],
+  };
+}
+
 beforeEach(() => {
   callWritingModel.mockReset();
 });
@@ -56,7 +65,7 @@ describe("generateThesisForStory", () => {
   });
 
   it("returns a validated thesis from the model", async () => {
-    callWritingModel.mockResolvedValue({ data: validThesisJson, text: "", runtime: {} });
+    callWritingModel.mockResolvedValue({ data: responsesShape(validThesisJson), text: "", runtime: {} });
     const result = await generateThesisForStory(
       {
         title: "Gemini 4 Carbon launches",
@@ -74,7 +83,7 @@ describe("generateThesisForStory", () => {
 
   it("skips when the model restates the headline instead of holding a view", async () => {
     callWritingModel.mockResolvedValue({
-      data: { ...validThesisJson, claim: "Gemini 4 Carbon launches in the Gemini app today" },
+      data: responsesShape({ ...validThesisJson, claim: "Gemini 4 Carbon launches in the Gemini app today" }),
       text: "",
       runtime: {},
     });
@@ -95,7 +104,7 @@ describe("generateThesisForStory", () => {
 
   it("passes the skip decision through without inventing a fallback view", async () => {
     callWritingModel.mockResolvedValue({
-      data: { action: "skip", reason: "press release with no consequence" },
+      data: responsesShape({ action: "skip", reason: "press release with no consequence" }),
       text: "",
       runtime: {},
     });

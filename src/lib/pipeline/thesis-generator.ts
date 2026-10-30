@@ -1,6 +1,6 @@
 import "server-only";
 
-import { callWritingModel } from "@/lib/writing-model";
+import { callWritingModel, extractResponsesText } from "@/lib/writing-model";
 import { safeFetchRemote } from "@/lib/safe-remote-fetch";
 import { buildThesisPrompt, parseThesisResponse, validateThesis, type ThesisResult } from "./thesis";
 
@@ -87,6 +87,7 @@ export async function generateThesisForStory(
 
   const prompt = buildThesisPrompt({
     now: (options.now ?? new Date()).toISOString().slice(0, 10),
+    sourceUrl: story.link ?? "",
     title,
     summary: story.summaryWasGarbage ? "(rss summary was noise)" : summary,
     sourceName: story.sourceName || "unknown",
@@ -105,7 +106,18 @@ export async function generateThesisForStory(
     metadata: { source: "thesis", sourceUrl: story.link ?? null, title },
   });
 
-  const parsed = parseThesisResponse(result.data);
+  const text = extractResponsesText(result.data) || result.text || "";
+  let payload: unknown = null;
+  try {
+    payload = JSON.parse(text);
+  } catch {
+    payload = null;
+  }
+  if (!payload) {
+    return { action: "skip", reason: "thesis model did not return JSON" };
+  }
+
+  const parsed = parseThesisResponse(payload);
   if (parsed.action === "skip") return parsed;
 
   const validation = validateThesis(parsed.thesis, { title });
