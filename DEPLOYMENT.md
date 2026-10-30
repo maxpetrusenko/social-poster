@@ -6,7 +6,8 @@
 - **SSH**: `ssh -i ~/.ssh/contabo_vmi3203669_ed25519 root@173.249.52.27`
 - **Reverse proxy**: Traefik (managed by Coolify) with Let's Encrypt TLS
 - **Primary domain**: `smmagent.app` (marketing root plus app routes)
-- **Additional landing domains**: `clawposter.app`, `www.clawposter.app`, `smmclaw.app`, `www.smmclaw.app`
+- **Retired domains**: `clawposter.app`, `www.clawposter.app`, `smmclaw.app`, `www.smmclaw.app` still resolve to this app but are not canonical. Setting `RETIRED_DOMAIN_REDIRECT=1` makes them 301 to `https://smmagent.app{path}{query}` (never `/api/`, `/auth/`, `/social-accounts/callback/`, `/health`).
+- **PostHog**: `NEXT_PUBLIC_POSTHOG_KEY` and `NEXT_PUBLIC_POSTHOG_HOST` are build-time. GitHub Actions passes them from repository secrets of the same name as docker build-args; empty disables PostHog.
 - **Primary alias**: `www.smmagent.app` redirects to `smmagent.app`
 - **Legacy compatibility domain**: `social.maxpetrusenko.com` remains attached during the callback and redirect observation window
 - **Coolify path**: `Root Team -> social-poster -> production -> social-poster`
