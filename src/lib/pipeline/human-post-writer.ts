@@ -6,6 +6,7 @@ import {
   NO_AI_SLOP_EDITING_INSTRUCTIONS,
   WRITING_INSTRUCTION_PRECEDENCE,
 } from "@/lib/writing/no-ai-slop";
+import { THESIS_WRITING_RULES, thesisToWriterBlock, type Thesis } from "./thesis";
 import {
   assessPostQuality,
   buildDeterministicPostFallback,
@@ -39,6 +40,7 @@ type DraftCall = {
   story: ReturnType<typeof sanitizeHumanPostStory>;
   strict: boolean;
   tags: string[];
+  thesis?: Thesis | null;
 };
 
 
@@ -52,6 +54,8 @@ export async function draftHumanPostContent(
   options: {
     workspaceId?: string | null;
     rssSettings?: RssSettingsConfig | null;
+    /** Supplied point of view. When present the writer stops being neutral. */
+    thesis?: Thesis | null;
   } = {}
 ): Promise<HumanPostDrafts> {
   const normalizedPlatforms = Array.from(new Set(platformTypes.map(normalizePlatform)));
@@ -75,6 +79,7 @@ export async function draftHumanPostContent(
       articleText,
       rssSettings: options.rssSettings ?? null,
       strict: false,
+      thesis: options.thesis ?? null,
     });
     const parsed = firstDraft.parsed;
     const usedRuntime = firstDraft.runtime;
@@ -98,6 +103,7 @@ export async function draftHumanPostContent(
           articleText,
           rssSettings: options.rssSettings ?? null,
           strict: true,
+          thesis: options.thesis ?? null,
         })
       ).parsed;
       applyParsedDrafts({
@@ -147,6 +153,7 @@ async function generateDraft(input: {
   articleText: string;
   rssSettings: RssSettingsConfig | null;
   strict: boolean;
+  thesis?: Thesis | null;
 }): Promise<{ parsed: ReturnType<typeof parseDraftResponse>; runtime: WritingRuntime }> {
   const call: DraftCall = {
     name: input.strict
@@ -157,11 +164,13 @@ async function generateDraft(input: {
       input.platforms,
       input.articleText,
       input.rssSettings,
-      input.strict
+      input.strict,
+      input.thesis ?? null
     ),
     story: input.story,
     strict: input.strict,
     tags: ["pipeline", "social-post", "human-perspective"],
+    thesis: input.thesis ?? null,
   };
 
   const failures: string[] = [];
@@ -232,7 +241,8 @@ export function buildHumanPostPrompt(
   platforms: string[],
   articleText: string,
   rssSettings: RssSettingsConfig | null,
-  strict: boolean
+  strict: boolean,
+  thesis: Thesis | null = null
 ) {
   const title = story.title;
   const summary = story.summary;
@@ -252,7 +262,7 @@ export function buildHumanPostPrompt(
 
 ${WRITING_INSTRUCTION_PRECEDENCE}
 
-Goal: state the useful sourced information clearly. If no personal-language evidence is supplied, stay neutral. Do not invent Max's opinion, emotion, thesis, hook, metaphor, or conclusion.
+${thesis ? `Goal: write the post from the supplied point of view. The claim, stakes, falsifier and evidence are given below. State them in Max's voice. Do not add facts, numbers or quotes that are not in the evidence list.\n\n${THESIS_WRITING_RULES}\n\n${thesisToWriterBlock(thesis)}` : "Goal: state the useful sourced information clearly. If no personal-language evidence is supplied, stay neutral. Do not invent Max's opinion, emotion, thesis, hook, metaphor, or conclusion."}
 
 Hard rules:
 - Stay source-faithful. Do not add facts not present below.

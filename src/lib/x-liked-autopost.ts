@@ -23,6 +23,7 @@ import {
   buildXLikedDedupKey,
   buildXLikedPlatformPostContent,
   getXLikedExternalUrls,
+  getXLikedSourceOwners,
   buildXLikedPostContent,
   buildXLikedSourceUrl,
   cleanXLikedText,
@@ -53,6 +54,7 @@ export type XLikedAutopostResult = {
     postId: string;
     sourceUrl: string;
     authorHandle: string;
+    sourceOwners?: string[];
     content?: string;
     mediaUrl: string | null;
     mediaSourceUrl?: string | null;
@@ -485,6 +487,7 @@ export async function runXLikedAutopost(options: RunOptions): Promise<XLikedAuto
     const authorHandle = getTweetAuthor(tweet);
     const cleanText = cleanXLikedText(getTweetText(tweet));
     const externalUrls = getXLikedExternalUrls({ tweet, sourceText: cleanText });
+    const sourceOwners = getXLikedSourceOwners({ tweet, sourceText: cleanText });
     if (!cleanText.trim()) {
       result.skipped.push({ url: sourceUrl, reason: "empty cleaned tweet text" });
       continue;
@@ -501,6 +504,7 @@ export async function runXLikedAutopost(options: RunOptions): Promise<XLikedAuto
       completedStep("x-like:source-captured", now, {
         sourceUrl,
         authorHandle,
+        sourceOwners,
         tweetId: tweet.id ?? null,
         mediaUrl: media?.url ?? null,
         externalUrls,
@@ -729,6 +733,7 @@ export async function runXLikedAutopost(options: RunOptions): Promise<XLikedAuto
         dashboardUrl: getDashboardRunUrl(runId),
         tweetId: tweet.id ?? null,
         authorHandle,
+        sourceOwners,
         platformOverrides,
         mediaUrlsByPlatformId,
         contentMachine: {
@@ -792,6 +797,7 @@ export async function runXLikedAutopost(options: RunOptions): Promise<XLikedAuto
       postId,
       sourceUrl,
       authorHandle,
+      sourceOwners: sourceOwners.all,
       mediaUrl,
       scheduledAt: scheduledAt.toISOString(),
       targets: publishTargets.map((target) => ({

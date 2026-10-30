@@ -9,6 +9,7 @@ import {
   buildXLikedSourceUrl,
   cleanXLikedText,
   getXLikedExternalUrls,
+  getXLikedSourceOwners,
   getXLikedAutopostSkipReason,
   getXLikedPostAngle,
   pickXLikedMedia,
@@ -611,5 +612,113 @@ describe("X liked autopost formatting", () => {
 
     expect(content.length).toBeLessThanOrEqual(1200);
     expect(content).toContain("https://github.com/tashfeenahmed/freellmapi");
+  });
+});
+
+describe("Liked-post source URL never becomes a quote card", () => {
+  const sourceUrl = "https://x.com/kimmonismus/status/2058254144855544092";
+
+  it("strips the liked post URL from an X body that carries native media", () => {
+    expect(
+      buildXLikedPlatformPostContent({
+        baseContent: ["this build makes opus 5.5 click for me.", "", sourceUrl].join("\n"),
+        platformType: "x",
+        media: { url: "https://cdn.example/post.jpg", mediaType: "image" },
+        sourceUrl,
+        authorHandle: "@kimmonismus",
+      })
+    ).toEqual({ mainContent: "this build makes opus 5.5 click for me." });
+  });
+
+  it("keeps the source URL for the X video lane that cannot reuse the video", () => {
+    expect(
+      buildXLikedPlatformPostContent({
+        baseContent: "this build makes opus 5.5 click for me.",
+        platformType: "x",
+        media: { url: "https://cdn.example/post.mp4", mediaType: "video" },
+        sourceUrl,
+        authorHandle: "@kimmonismus",
+      })
+    ).toEqual({
+      mainContent: ["this build makes opus 5.5 click for me.", "", sourceUrl].join("\n"),
+    });
+  });
+
+  it("leaves a plain first-person reaction untouched", () => {
+    expect(
+      buildXLikedPlatformPostContent({
+        baseContent: "this build makes opus 5.5 click for me.",
+        platformType: "x",
+        media: null,
+        sourceUrl,
+        authorHandle: "@kimmonismus",
+      })
+    ).toEqual({ mainContent: "this build makes opus 5.5 click for me." });
+  });
+});
+
+describe("Liked-post source owners", () => {
+  it("captures the single author as primary owner", () => {
+    expect(
+      getXLikedSourceOwners({
+        tweet: { author: { username: "kimmonismus" } },
+        sourceText: "opus 5.5 built a whole game from one prompt",
+      })
+    ).toEqual({
+      primary: "kimmonismus",
+      originator: "kimmonismus",
+      all: ["kimmonismus"],
+      roles: [{ handle: "kimmonismus", role: "author" }],
+    });
+  });
+
+  it("captures the quoted originator and credited co-owners", () => {
+    expect(
+      getXLikedSourceOwners({
+        tweet: {
+          author: { username: "elder_plinius" },
+          quotedTweet: {
+            id: "1",
+            text: "the full system prompt walkthrough",
+            author: { username: "teortaxes" },
+          },
+        },
+        sourceText: "credit: @teortaxes for the original leak, built with @sama",
+      })
+    ).toEqual({
+      primary: "elder_plinius",
+      originator: "teortaxes",
+      all: ["elder_plinius", "teortaxes", "sama"],
+      roles: [
+        { handle: "elder_plinius", role: "author" },
+        { handle: "teortaxes", role: "quoted_author" },
+        { handle: "sama", role: "credited" },
+      ],
+    });
+  });
+
+  it("attributes the originator on a quote-take thread reply", () => {
+    const owners = getXLikedSourceOwners({
+      tweet: {
+        author: { username: "svpino" },
+        inReplyToStatusId: "9",
+        quotedTweet: { id: "8", author: { username: "cline" } },
+        text: "this is the part of @cline's post that matters",
+      },
+      sourceText: "this is the part of @cline's post that matters",
+    });
+
+    expect(owners.primary).toBe("svpino");
+    expect(owners.originator).toBe("cline");
+    expect(owners.all).toEqual(["svpino", "cline"]);
+  });
+
+  it("never duplicates an owner and ignores unknown authors", () => {
+    expect(
+      getXLikedSourceOwners({
+        tweet: { authorId: "unknown" },
+        sourceText: "via @kimmonismus and via @Kimmonismus",
+      }).roles
+    ).toEqual([{ handle: "kimmonismus", role: "credited" }]);
   });
 });

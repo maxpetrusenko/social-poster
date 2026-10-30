@@ -170,6 +170,7 @@ export async function draftXLikedAutopostContent(input: {
         externalUrls: input.externalUrls,
         hasMedia: input.hasMedia,
         sourceUrl: input.sourceUrl,
+        authorHandle: input.authorHandle,
       });
 
       if (!rejection) {
@@ -320,7 +321,7 @@ export function buildXLikedAutopostWriterPrompt(input: {
 
   return `You write Max Petrusenko's liked-post autoposts.
 
-CRITICAL: This is a LIKED post. Max has already pre-vouched for it by liking it. You do NOT need external source verification. Do NOT refuse or return empty drafts because "source verification" failed. Attribute claims to the source ('researchers say', 'per the post', 'the source reports') instead of requiring independent verification.
+CRITICAL: This is a LIKED post. Max has already pre-vouched for it by liking it. You do NOT need external source verification. Do NOT refuse or return empty drafts because "source verification" failed.
 
 Use these X posting rules as binding instructions:
 ${X_POSTING_SKILL_INSTRUCTIONS}
@@ -350,12 +351,9 @@ Rules for this draft:
 - Do NOT reproduce the original's exact wording or layout. Reframe sentences, vary vocabulary, restructure paragraphs while keeping all meaning.
 - No em-dashes (—). Use commas, periods, or conjunctions instead.
 - No subject flips: if the source says "X does Y", do not flip to "Y happens because of X" unless the source already uses that structure.
-- Fix #3: CRITICAL VOICE RULE - Use lowercase style throughout. Do NOT capitalize sentence starts. Only capitalize: (1) acronyms (AI, GPUs, NASA), (2) @handles, (3) brand/product names from the source (OpenAI, ChatGPT, QwenGyre). Example: "openai released gpt-5. google responded." NOT "OpenAI released GPT-5. Google responded."
 - For personal stories: preserve all specific timeframes, events, and outcomes, but reframe experiences to avoid claiming the author's completed work or personal ownership as Max's own.
 - Fix #5: Never first-person-claim others' reviews, demos, or completed work. If the author shows "agents I keep connected" or their own demo/video, do NOT reframe as "I keep connected" or claim it as Max's. Attribute properly or return SKIP.
 - Fix #4: Third-party work we can't reproduce (author shows their own demo/video/app): Return "SKIP: third-party demo/work - credit original author" UNLESS it's a comparison/opinion post with no proprietary detail (e.g., "X is better than Y" takes are OK as standalone).
-- Fix #2: When describing the author's work, opinion, or observation, ALWAYS credit them as @${input.authorHandle} (e.g., "@tibo_maker says", "@researcher found", "per @author"). Never use bare names ("Tibo says"), generic terms ("the author", "researchers"), or omit attribution. This applies to ALL author-specific content.
-- Fix #4: When the liked post quotes/links someone else's video or work, credit that creator by @handle too (e.g., "@anshuc"). Refer to people by @handle, not pronouns ("them", "they"). Keep at most one inline link in the X post body.
 - First-person framing rule: Never claim experiences, ownership, or completed work as Max's own ("I built", "I shipped", "my code", "agents I use") when we can't prove it. Reframe to what happened / what was done. For build claims in longer posts, add a short varied "so what's next" angle. For very short one-liners (< 100 chars), neutral first-person observation is OK without a "what's next" line.
 - Ban canned framings: Do not use formulaic phrases like "what stood out:", "make the case for this side", "here's what matters". Vary your language naturally.
 - Factual accuracy: Every number in your draft must appear in the source. Do not invent numbers, alter digits, or flip who-does-what relationships. If source says "LiteLLM got hijacked", do not write "LiteLLM hijacked X". If source says "keys were 66 and 237", do not write "randomness of 66 and 237 digits".
@@ -423,9 +421,12 @@ Reject the draft (approved: false) if any of these are true:
 - It includes source/credit footer labels or unnecessary source URLs.
 - Source or quoted media exists but the draft ignores the source object or cannot carry a media/embed attachment.
 - It changes the source's voice, tone, formatting, or structure unnecessarily.
+- It narrates the liked post or its author in the third person ("@handle says ...", "the author notes ...", "he/she/they explain ...") instead of Max reacting in his own first-person voice.
+- It opens with an attribution to the author, carries a forced @handle mention, or leaks a pronoun that points at the author (he, she, his, her, him, they, their, them).
+- It ends with the liked post URL, which turns the post into a quote card / reply shape, when the source object is not the point.
 - Preservation or specificity or faithfulness scores are below 3.
 
-Liked posts should look as close to the original as possible. Near-verbatim is acceptable—Max pre-vouched by liking.
+The source's facts, numbers, and point must stay accurate (Max pre-vouched by liking), but the body is Max reacting in his own voice. A narrated summary of the source, or a report about what the author thinks, fails review even when it is accurate.
 
 If you reject it, write an exact repair instruction addressed to the writer that made the mistake. Include specific guidance on which scores need improvement.
 
@@ -526,12 +527,71 @@ export function parseReviewerResponse(data: Record<string, unknown>): Pick<XLike
   };
 }
 
+const LIKED_AUTHOR_NARRATION_VERBS =
+  "says|said|notes|noted|writes|wrote|explains|explained|argues|argued|thinks|thought|believes|believed|" +
+  "shares|shared|shows|showed|reports|reported|claims|claimed|observes|observed|describes|described|" +
+  "mentions|mentioned|calls|called|recaps|recapped|points out|pointed out|tweets|posted";
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
+ * Liked-post autoposts must sound like Max reacting in his own voice.
+ * Rejects the narration shapes that shipped to production: a forced
+ * "@handle says ..." attribution, a pronoun pointing at the author, and
+ * third-person narration of the liked post itself.
+ */
+export function getXLikedAutopostNarrationRejection(input: {
+  content: string;
+  authorHandle?: string | null;
+}) {
+  const content = input.content.trim();
+  if (!content) return null;
+
+  const handle = (input.authorHandle ?? "").trim().replace(/^@/, "");
+  if (handle) {
+    const escaped = escapeRegExp(handle);
+    const attributed = new RegExp(
+      String.raw`@${escaped}\b[^.!?\n]{0,80}?\b(?:${LIKED_AUTHOR_NARRATION_VERBS})\b`,
+      "i"
+    );
+    if (attributed.test(content)) {
+      return "writer narrated the liked author instead of reacting (@handle says shape)";
+    }
+    const opener = new RegExp(
+      String.raw`^\s*${escaped}\b[^.!?\n]{0,40}?\b(?:${LIKED_AUTHOR_NARRATION_VERBS})\b`,
+      "i"
+    );
+    if (opener.test(content)) {
+      return "writer opened by narrating the liked author instead of reacting";
+    }
+  }
+
+  const pronounLeak = new RegExp(
+    String.raw`\b(?:${LIKED_AUTHOR_NARRATION_VERBS})\b[^.!?\n]{0,120}\b(?:he|she|his|her|him|hers)\b`,
+    "i"
+  );
+  if (pronounLeak.test(content)) {
+    return "writer referred to the liked author by pronoun instead of writing as Max";
+  }
+
+  const sourceNarration =
+    /\b(?:the|this|that|his|her|their)\s+(?:post|source|author|tweet|thread|write-?up)\s+(?:says|said|notes|noted|explains|explained|argues|argued|shows|showed|reports|reported|claims|claimed|describes|described|points out|mentions|mentioned)\b/i;
+  if (sourceNarration.test(content)) {
+    return "writer narrated the liked post in third person ('the post says ...')";
+  }
+
+  return null;
+}
+
 export function getXLikedAutopostContentRejection(input: {
   content: string;
   sourceText: string;
   externalUrls?: string[];
   hasMedia: boolean;
   sourceUrl: string;
+  authorHandle?: string | null;
 }) {
   const content = input.content.trim();
   const source = input.sourceText.toLowerCase();
@@ -556,6 +616,13 @@ export function getXLikedAutopostContentRejection(input: {
   }
   if (/^1\s*\/\s*2\b/m.test(content)) return "writer returned thread numbering";
   if (hasCreditFooterLine(content)) return "writer included source/credit label";
+
+  // Liked-post voice: Max reacts in first person, nobody narrates the author.
+  const narrationRejection = getXLikedAutopostNarrationRejection({
+    content,
+    authorHandle: input.authorHandle,
+  });
+  if (narrationRejection) return narrationRejection;
   
   // Bug fix #2: Apply unslop + voice checks to ALL drafts regardless of model
   const slopIssues = findNoAiSlopIssues(content, { shortCopy: content.length < 600 });

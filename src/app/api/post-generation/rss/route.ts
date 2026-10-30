@@ -4,6 +4,7 @@ import { requireApiWorkspaceEditor } from "@/lib/api-authorization";
 import { getDashboardCandidates } from "@/lib/dashboard/candidates";
 import { draftHumanPostContent } from "@/lib/pipeline/human-post-writer";
 import { getWorkspaceRssSettings } from "@/lib/rss-config";
+import { generateThesisForStory, isThesisStageEnabled } from "@/lib/pipeline/thesis-generator";
 
 export async function POST(request: NextRequest) {
   const tenant = await requireApiWorkspaceEditor();
@@ -23,11 +24,30 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "No eligible RSS candidates found." }, { status: 404 });
     }
 
+    const thesisDecision = isThesisStageEnabled()
+      ? await generateThesisForStory(
+          {
+            title: story.title,
+            summary: story.summary,
+            link: story.link,
+            sourceName: story.sourceName,
+          },
+          { workspaceId }
+        )
+      : null;
+    if (thesisDecision?.action === "skip") {
+      return NextResponse.json(
+        { source: "rss", skipped: true, reason: thesisDecision.reason },
+        { status: 200 }
+      );
+    }
+    const thesis = thesisDecision?.action === "post" ? thesisDecision.thesis : null;
+
     const platformType = chooseCaptionPlatform(platformTypes);
     const drafts = await draftHumanPostContent(
       story,
       [platformType],
-      { workspaceId, rssSettings: settings }
+      { workspaceId, rssSettings: settings, thesis }
     );
     const content = resolveDraftForPlatform(drafts.contentByPlatform, platformType);
     const imageUrl = story.ogImageUrl ?? story.imageUrl ?? null;
@@ -50,6 +70,7 @@ export async function POST(request: NextRequest) {
       summary: story.summary,
       content,
       imageUrl,
+      thesis,
       candidates: candidateDrafts.map(({ candidate, content: candidateContent }) => ({
         title: candidate.title,
         link: candidate.link,
