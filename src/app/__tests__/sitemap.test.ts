@@ -21,37 +21,22 @@ import sitemap from "../sitemap";
 const HOSTS = ["clawposter.app", "smmagent.app", "smmclaw.app", "www.smmagent.app"];
 
 describe("sitemap host locality", () => {
-  it.each(HOSTS)("never lists a URL on another host (%s)", async (host) => {
+  it.each(HOSTS)("lists only smmagent.app URLs (%s)", async (host) => {
     mocks.host = host;
     const entries = await sitemap();
     const foreign = entries
       .map((entry) => new URL(entry.url).host)
-      .filter((urlHost) => urlHost !== host.replace(/^www\./, ""));
+      .filter((urlHost) => urlHost !== "smmagent.app");
 
     expect(foreign).toEqual([]);
   });
 
-  it("emits the product page only where it canonically lives", async () => {
+  it("includes the product page, docs and legal pages on smmagent.app", async () => {
     mocks.host = "clawposter.app";
-    const product = await sitemap();
-    expect(product.some((e) => e.url === "https://clawposter.app/social-media-bot")).toBe(true);
-
-    for (const host of ["smmagent.app", "smmclaw.app"]) {
-      mocks.host = host;
-      const entries = await sitemap();
-      expect(entries.some((e) => e.url.includes("clawposter.app"))).toBe(false);
+    const urls = (await sitemap()).map((e) => e.url);
+    for (const path of ["/social-media-bot", "/docs", "/privacy", "/terms"]) {
+      expect(urls).toContain(`https://smmagent.app${path}`);
     }
-  });
-
-  it("emits the docs page only where it canonically lives", async () => {
-    mocks.host = "smmagent.app";
-    const app = await sitemap();
-    expect(app.some((e) => e.url === "https://smmagent.app/docs")).toBe(true);
-
-    for (const host of ["clawposter.app", "smmclaw.app"]) {
-      mocks.host = host;
-      const entries = await sitemap();
-      expect(entries.some((e) => e.url.includes("smmagent.app"))).toBe(false);
-    }
+    expect(urls.some((u) => u.includes("clawposter.app") || u.includes("smmclaw.app"))).toBe(false);
   });
 });

@@ -112,9 +112,9 @@ export default function DocsPage() {
   const related = isVariant("seo_h022_internal_links", PATH)
     ? [
         { href: "/blog", label: "SMM Agent blog" },
-        { href: "https://clawposter.app/social-media-bot", label: "AI social media bot overview" },
+        { href: "/social-media-bot", label: "AI social media bot overview" },
         ...BLOG_POSTS.filter(
-          (post) => post.category === "Agent" && (!post.audiences?.length || post.audiences.includes("smmagent"))
+          (post) => post.category === "Agent"
         )
           .slice(0, 3)
           .map((post) => ({ href: `/blog/${post.slug}`, label: post.title })),

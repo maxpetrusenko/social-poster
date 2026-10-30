@@ -55,7 +55,7 @@ export default async function BlogPage() {
           href: `/blog/category/${category.toLowerCase().replace(/\s+/g, "-")}`,
           label: `${category} posts on ${brandName}`,
         })),
-        { href: "https://clawposter.app/social-media-bot", label: "AI social media bot overview" },
+        { href: "/social-media-bot", label: "AI social media bot overview" },
       ]
     : [];
 

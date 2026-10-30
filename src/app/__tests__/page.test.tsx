@@ -100,9 +100,9 @@ describe("root app host transition", () => {
   );
 
   it.each([
-    ["smmclaw.app", "https://smmclaw.app/"],
-    ["clawposter.app", "https://clawposter.app/"],
-  ])("keeps marketing metadata unchanged for %s", async (host, canonical) => {
+    ["smmclaw.app", "https://smmagent.app/"],
+    ["clawposter.app", "https://smmagent.app/"],
+  ])("points retired host %s at the smmagent.app canonical", async (host, canonical) => {
     mocks.host = host;
 
     const { generateMetadata } = await import("@/app/page");

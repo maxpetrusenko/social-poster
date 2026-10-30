@@ -11,14 +11,13 @@ export const SOURCE_OF_TRUTH_POSTS: BlogPost[] = [
     imageUrl: "/blog/ai-social-publishing-agent.png",
     imageAlt: "AI social publishing command center with content queues and platform lanes.",
     isMarkdown: true,
-    audiences: ["clawposter"],
     content: `# AI Social Publishing Agent: The Source-of-Truth Guide
 
 > Definition: An AI social publishing agent is software that turns approved inputs, brand voice rules, platform constraints, schedules, and connected account permissions into publishable social posts. The useful version does not only generate captions. It adapts each post to the destination network, keeps an audit trail, and makes failure visible before content reaches the public feed.
 
 Most teams buy automation because posting feels repetitive. Then they discover the real work was not repetition. It was judgment: what to say, which source to trust, which platform needs a different shape, when to pause, and how to avoid sounding like a machine that has never met the audience.
 
-ClawPoster exists for that second problem. It treats automation as an operating system for social publishing, not a bulk caption button.
+SMM Agent exists for that second problem. It treats automation as an operating system for social publishing, not a bulk caption button.
 
 ## The misconception
 
@@ -33,7 +32,7 @@ The old way is one draft, one calendar, one publish button. The new way is one i
 - Generates platform-specific drafts instead of one universal caption.
 - Routes drafts through review, edit, approval, scheduling, and publishing states.
 - Logs each run so a failed post is a visible operations event, not a silent gap.
-- Keeps related surfaces connected: [ClawPoster](https://clawposter.app), [SMMClaw](https://smmclaw.app), [SMM Agent](https://smmagent.app), and the [app dashboard](https://smmagent.app/dashboard).
+- Keeps related surfaces connected: [SMM Agent](https://smmagent.app) and the [app dashboard](https://smmagent.app/dashboard).
 
 ## Old way vs new way
 
@@ -100,14 +99,13 @@ The uncomfortable part: automation does not fix a weak point of view; it only pu
     imageUrl: "/blog/platform-native-social-posting.png",
     imageAlt: "One source idea splitting into multiple platform-native social post formats.",
     isMarkdown: true,
-    audiences: ["clawposter"],
     content: `# Platform-Native Social Posting: Why One Draft Cannot Fit Every Network
 
 > Definition: Platform-native social posting means adapting the same underlying idea to each network's format, audience behavior, media surface, and publishing constraints. It is not copy-paste distribution. It is translation: one source of truth becomes several posts that preserve the point while changing structure, length, media, and call to action.
 
 The mistake is treating platforms as output folders. They are not. They are social environments with different incentives. LinkedIn rewards professional framing and context. X rewards compression and immediacy. YouTube requires video metadata and upload behavior. TikTok has publishing flows that are not the same as a text-first network.
 
-ClawPoster's job is to keep the idea consistent while changing the delivery.
+SMM Agent's job is to keep the idea consistent while changing the delivery.
 
 ## The tension
 
@@ -180,7 +178,7 @@ Secondary actions:
 
 ## Related pages
 
-Read the product surface at [ClawPoster](https://clawposter.app), the agency surface at [SMMClaw](https://smmclaw.app), the agent surface at [SMM Agent](https://smmagent.app), and the [app dashboard](https://smmagent.app/dashboard).
+Read more at [SMM Agent](https://smmagent.app) or open the [app dashboard](https://smmagent.app/dashboard).
 
 ## Conclusion
 
@@ -198,14 +196,13 @@ The uncomfortable part: if a post cannot survive translation, it was probably no
     imageUrl: "/blog/agency-social-automation-table.png",
     imageAlt: "Agency social automation dashboard with client rows and approval status.",
     isMarkdown: true,
-    audiences: ["smmclaw"],
     content: `# Social Media Automation for Agencies: Scale Output Without Losing Review
 
 > Definition: Social media automation for agencies is a client-workflow system that turns brand profiles, source inputs, approval rules, schedules, and connected social accounts into repeatable publishing operations. The goal is not replacing account managers. The goal is increasing throughput while keeping client context, review state, and platform risk visible.
 
 Agencies do not fail at social because they cannot write captions. They fail because every client adds a second calendar, a second voice, a second approval loop, and a second set of platform permissions. Work expands in rows, not in ideas.
 
-SMMClaw is built around that agency reality.
+SMM Agent is built around that agency reality.
 
 ## The misconception
 
@@ -219,7 +216,7 @@ The wrong promise is "do more posts with fewer people." That attracts churn. The
 - Review queue: edit, approve, reject, or request revision.
 - Schedule: recurring jobs and campaign drops.
 - Publish log: account, platform, post, status, failure reason.
-- Backlinks and surfaces: [SMMClaw](https://smmclaw.app), [ClawPoster](https://clawposter.app), [SMM Agent](https://smmagent.app), and the [SMM Agent dashboard](https://smmagent.app/dashboard).
+- Related: [SMM Agent](https://smmagent.app) and the [SMM Agent dashboard](https://smmagent.app/dashboard).
 
 ## Evidence from platform constraints
 
@@ -289,7 +286,6 @@ The uncomfortable part: if nobody owns the approval state, the agency is not aut
     imageUrl: "/blog/source-backed-social-agents.png",
     imageAlt: "Evidence cards feeding an AI draft review and approval pipeline.",
     isMarkdown: true,
-    audiences: ["smmagent"],
     content: `# Source-Backed Social Agents: How to Keep AI Posts Grounded
 
 > Definition: A source-backed social agent is an AI workflow that keeps generated posts tied to verifiable inputs such as RSS items, URLs, notes, product updates, platform docs, or approved campaign material. It should preserve source links, separate evidence from opinion, and require review when the claim, topic, or destination creates risk.
@@ -363,7 +359,7 @@ Secondary actions:
 
 ## Related pages
 
-Use [SMM Agent](https://smmagent.app) for agent workflows and its [dashboard](https://smmagent.app/dashboard), [ClawPoster](https://clawposter.app) for the product home, and [SMMClaw](https://smmclaw.app) for agency use cases.
+Use [SMM Agent](https://smmagent.app) for agent workflows and its [dashboard](https://smmagent.app/dashboard).
 
 ## Conclusion
 
@@ -381,7 +377,6 @@ The uncomfortable part: if the source is invisible, the draft is just a confiden
     imageUrl: "/blog/model-key-management.png",
     imageAlt: "Secure model key settings table with hidden keys and test status icons.",
     isMarkdown: true,
-    audiences: ["smmagent"],
     content: `# Bring-Your-Own Model Keys for Social Automation
 
 > Definition: Bring-your-own model keys means each workspace can add provider endpoints and API keys, test them, and unlock only the models that key can actually use. The app should store secrets securely, mask them after save, prevent later extraction, and block model selection when no tested key exists.
@@ -464,7 +459,7 @@ Secondary actions:
 
 ## Related pages
 
-Model-key workflows live on [SMM Agent](https://smmagent.app) and its [dashboard](https://smmagent.app/dashboard). The product surface is [ClawPoster](https://clawposter.app) and agencies can start from [SMMClaw](https://smmclaw.app).
+Model-key workflows live on [SMM Agent](https://smmagent.app) and its [dashboard](https://smmagent.app/dashboard).
 
 ## Conclusion
 

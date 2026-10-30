@@ -10,11 +10,13 @@ import {
   isSupabaseConfigured,
 } from "@/lib/supabase/config";
 import {
+  APP_ORIGIN,
   SITE_DOMAINS,
   getAppHostKind,
   getRedirectHost,
   isAppHost,
   isPublicMarketingHost,
+  isRetiredHost,
   normalizeHost,
 } from "@/lib/site-domains";
 
@@ -107,10 +109,38 @@ function isLegacyOAuthCallbackPath(pathname: string) {
   );
 }
 
+// Paths that must keep answering on a retired host: OAuth callbacks and
+// webhooks have the host baked into third-party config, and /health is the
+// deploy canary.
+const RETIRED_REDIRECT_EXCLUDED_PREFIXES = [
+  "/api/",
+  "/auth/",
+  "/social-accounts/callback/",
+  "/health",
+];
+
+function isRetiredRedirectExcluded(pathname: string) {
+  return RETIRED_REDIRECT_EXCLUDED_PREFIXES.some(
+    (prefix) =>
+      pathname.startsWith(prefix) || pathname === prefix.replace(/\/$/, "")
+  );
+}
+
 export async function middleware(request: NextRequest) {
   const host = normalizeHost(
     request.headers.get("x-forwarded-host") ?? request.headers.get("host")
   );
+
+  if (
+    process.env.RETIRED_DOMAIN_REDIRECT === "1" &&
+    isRetiredHost(host) &&
+    !isRetiredRedirectExcluded(request.nextUrl.pathname)
+  ) {
+    return NextResponse.redirect(
+      `${APP_ORIGIN}${request.nextUrl.pathname}${request.nextUrl.search}`,
+      301
+    );
+  }
   const redirectHost = getRedirectHost(host);
 
   if (redirectHost) {
@@ -135,7 +165,7 @@ export async function middleware(request: NextRequest) {
     getAppHostKind(host) === "legacy" &&
     isProductPath(request.nextUrl.pathname)
   ) {
-    return permanentHostRedirect(request, SITE_DOMAINS.product);
+    return permanentHostRedirect(request, SITE_DOMAINS.app);
   }
 
   if (

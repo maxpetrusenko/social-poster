@@ -1,8 +1,9 @@
 export const SITE_DOMAINS = {
   app: "smmagent.app",
   legacyApp: "social.maxpetrusenko.com",
-  product: "clawposter.app",
-  smm: "smmclaw.app",
+  // Retired 2026-10-30. Still served until DNS/redirect moves; never canonical.
+  retiredProduct: "clawposter.app",
+  retiredSmm: "smmclaw.app",
   smmAgent: "smmagent.app",
 } as const;
 
@@ -12,22 +13,25 @@ export const APP_DOMAIN_TRANSITION_MODE = "dual-host" as const;
 
 export const WWW_REDIRECTS = {
   "www.social.maxpetrusenko.com": SITE_DOMAINS.app,
-  "www.clawposter.app": SITE_DOMAINS.product,
-  "www.smmclaw.app": SITE_DOMAINS.smm,
+  "www.clawposter.app": SITE_DOMAINS.retiredProduct,
+  "www.smmclaw.app": SITE_DOMAINS.retiredSmm,
   "www.smmagent.app": SITE_DOMAINS.app,
 } as const satisfies Record<string, SiteDomain>;
 
-export const CANONICAL_PUBLIC_HOSTS = [
-  SITE_DOMAINS.product,
-  SITE_DOMAINS.smm,
-  SITE_DOMAINS.smmAgent,
-] as const;
+/** Hosts that serve the marketing site. Only smmagent.app is canonical. */
+export const CANONICAL_PUBLIC_HOSTS = [SITE_DOMAINS.smmAgent] as const;
+
+/** Retired brand hosts (apex and www). 301 to smmagent.app when RETIRED_DOMAIN_REDIRECT=1. */
+export const RETIRED_HOSTS: readonly string[] = [
+  "clawposter.app",
+  "www.clawposter.app",
+  "smmclaw.app",
+  "www.smmclaw.app",
+];
 
 export const APP_ORIGIN = `https://${SITE_DOMAINS.app}`;
-export const PRODUCT_ORIGIN = `https://${SITE_DOMAINS.product}`;
-export const SMM_ORIGIN = `https://${SITE_DOMAINS.smm}`;
 export const SMM_AGENT_ORIGIN = `https://${SITE_DOMAINS.smmAgent}`;
-export const DEFAULT_CANONICAL_ORIGIN = PRODUCT_ORIGIN;
+export const DEFAULT_CANONICAL_ORIGIN = SMM_AGENT_ORIGIN;
 
 function stripPort(host: string) {
   return host.toLowerCase().replace(/:\d+$/, "");
@@ -64,21 +68,17 @@ export function isAppHost(host?: string | null) {
   return getAppHostKind(host) !== null;
 }
 
-export function getCanonicalHost(host?: string | null): string | null {
-  const normalizedHost = normalizeHost(host);
-
-  if (!normalizedHost) {
-    return null;
-  }
-
-  return Object.prototype.hasOwnProperty.call(WWW_REDIRECTS, normalizedHost)
-    ? WWW_REDIRECTS[normalizedHost as keyof typeof WWW_REDIRECTS]
-    : normalizedHost;
+/* eslint-disable @typescript-eslint/no-unused-vars -- host args stay so call sites keep one signature */
+/**
+ * Every public marketing URL (canonical, og:url, JSON-LD, sitemap, robots)
+ * lives on smmagent.app, whatever host the request arrived on.
+ */
+export function getCanonicalHost(_host?: string | null): string {
+  return SITE_DOMAINS.smmAgent;
 }
 
-export function getCanonicalOrigin(host?: string | null) {
-  const canonicalHost = getCanonicalHost(host) ?? SITE_DOMAINS.product;
-  return `https://${canonicalHost}`;
+export function getCanonicalOrigin(_host?: string | null) {
+  return SMM_AGENT_ORIGIN;
 }
 
 export function getCanonicalUrl(pathname = "/", host?: string | null) {
@@ -90,67 +90,44 @@ export function getCanonicalUrl(pathname = "/", host?: string | null) {
 }
 
 export function getAppCanonicalUrl(pathname = "/") {
-  return getCanonicalUrl(pathname, SITE_DOMAINS.app);
-}
-
-export function getProductCanonicalUrl(pathname = "/") {
-  return getCanonicalUrl(pathname, SITE_DOMAINS.product);
-}
-
-export function getSmmCanonicalUrl(pathname = "/") {
-  return getCanonicalUrl(pathname, SITE_DOMAINS.smm);
+  return getCanonicalUrl(pathname);
 }
 
 export function getSmmAgentCanonicalUrl(pathname = "/") {
-  return getCanonicalUrl(pathname, SITE_DOMAINS.smmAgent);
+  return getCanonicalUrl(pathname);
 }
 
-export function isPublicMarketingHost(host?: string | null) {
-  const canonicalHost = getCanonicalHost(host);
+export function isRetiredHost(host?: string | null) {
+  const normalizedHost = normalizeHost(host);
+  return normalizedHost !== null && RETIRED_HOSTS.includes(normalizedHost);
+}
 
+/** Hosts that render the public marketing pages (smmagent.app plus retired hosts still served). */
+export function isPublicMarketingHost(host?: string | null) {
+  const normalizedHost = normalizeHost(host);
+  if (!normalizedHost) return false;
   return (
-    canonicalHost === SITE_DOMAINS.product ||
-    canonicalHost === SITE_DOMAINS.smm ||
-    canonicalHost === SITE_DOMAINS.smmAgent
+    normalizedHost === SITE_DOMAINS.smmAgent ||
+    normalizedHost === "www.smmagent.app" ||
+    isRetiredHost(normalizedHost)
   );
 }
 
-export type PublicSiteKey = "clawposter" | "smmclaw" | "smmagent";
+export type PublicSiteKey = "smmagent";
 
-/**
- * Canonical host for a public site key.
- *
- * Lives here (not in a route file) because two routes must agree: `sitemap.ts`
- * emits each URL on this host, and `robots.ts` must advertise the sitemap on the
- * SAME host. When robots read the product canonical instead, every other public
- * host advertised https://clawposter.app/sitemap.xml — measured 2026-09-18 on
- * smmagent.app and smmclaw.app, where crawlers were handed another brand's URL
- * list and the host's own pages were only discoverable by link following.
- */
-export function getPublicSiteHost(siteKey: PublicSiteKey): string {
-  switch (siteKey) {
-    case "clawposter":
-      return SITE_DOMAINS.product;
-    case "smmclaw":
-      return SITE_DOMAINS.smm;
-    case "smmagent":
-      return SITE_DOMAINS.smmAgent;
-  }
+export function getPublicSiteHost(_siteKey?: PublicSiteKey): string {
+  return SITE_DOMAINS.smmAgent;
 }
 
-export function getPublicSiteKey(host?: string | null): PublicSiteKey {
-  const canonicalHost = getCanonicalHost(host);
-  if (canonicalHost === SITE_DOMAINS.smm) return "smmclaw";
-  if (canonicalHost === SITE_DOMAINS.smmAgent) return "smmagent";
-  return "clawposter";
+export function getPublicSiteKey(_host?: string | null): PublicSiteKey {
+  return "smmagent";
 }
 
-export function getPublicSiteBrandName(host?: string | null) {
-  const siteKey = getPublicSiteKey(host);
-  if (siteKey === "smmclaw") return "SMMClaw";
-  if (siteKey === "smmagent") return "SMM Agent";
-  return "ClawPoster";
+export function getPublicSiteBrandName(_host?: string | null) {
+  return "SMM Agent";
 }
+
+/* eslint-enable @typescript-eslint/no-unused-vars */
 
 export function getRedirectHost(host?: string | null) {
   const normalizedHost = normalizeHost(host);

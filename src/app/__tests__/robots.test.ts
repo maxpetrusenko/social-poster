@@ -11,27 +11,14 @@ vi.mock("next/headers", () => ({
 import robots from "@/app/robots";
 
 describe("robots.txt sitemap host", () => {
-  // The bug this locks down (measured live 2026-09-18): every public host
-  // advertised https://clawposter.app/sitemap.xml, so a crawler on smmagent.app
-  // was handed another brand's URL list.
-  it("advertises the sitemap on the host being crawled", async () => {
-    for (const host of ["clawposter.app", "smmclaw.app", "smmagent.app"]) {
+  // Retired hosts still resolve until the redirect is on; none may advertise
+  // its own sitemap.
+  it("always advertises the smmagent.app sitemap", async () => {
+    for (const host of ["clawposter.app", "smmclaw.app", "smmagent.app", "www.smmagent.app", "www.clawposter.app"]) {
       mocks.host = host;
       const result = await robots();
-      expect(result.sitemap).toBe(`https://${host}/sitemap.xml`);
+      expect(result.sitemap).toBe("https://smmagent.app/sitemap.xml");
     }
-  });
-
-  it("resolves a www host to its canonical public host", async () => {
-    mocks.host = "www.smmagent.app";
-    await expect(robots()).resolves.toMatchObject({
-      sitemap: "https://smmagent.app/sitemap.xml",
-    });
-
-    mocks.host = "www.clawposter.app";
-    await expect(robots()).resolves.toMatchObject({
-      sitemap: "https://clawposter.app/sitemap.xml",
-    });
   });
 
   it("keeps the crawler rules it had before the host fix", async () => {

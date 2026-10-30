@@ -68,13 +68,13 @@ describe("public article access call to action", () => {
     expect(link.getAttribute("href")).toBe("/dashboard");
   });
 
-  it("preserves the waitlist form for a different product brand", async () => {
+  it("shows the SMM Agent login call to action on retired hosts", async () => {
     mocks.host = "clawposter.app";
     const { default: BlogPostPage } = await import("@/app/blog/[slug]/page");
     render(await BlogPostPage({ params: Promise.resolve({ slug: "test-article" }) }));
 
-    expect(screen.getByRole("button", { name: "Join Waitlist" })).toBeTruthy();
-    expect(screen.getByPlaceholderText("you@company.com")).toBeTruthy();
-    expect(screen.queryByRole("link", { name: "Start using SMM Agent" })).toBeNull();
+    const link = screen.getByRole("link", { name: "Start using SMM Agent" });
+    expect(link.getAttribute("href")).toBe("/login");
+    expect(screen.queryByPlaceholderText("you@company.com")).toBeNull();
   });
 });

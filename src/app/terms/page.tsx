@@ -1,14 +1,14 @@
 import type { Metadata } from "next";
 import { LegalPage } from "@/components/legal/legal-page";
-import { getProductCanonicalUrl } from "@/lib/site-domains";
+import { getCanonicalUrl } from "@/lib/site-domains";
 
 const effectiveDate = "April 21, 2026";
 
 export const metadata: Metadata = {
   title: "Terms of Service — SMM Agent",
-  description: "Terms of Service for SMM Agent at clawposter.app.",
+  description: "Terms of Service for SMM Agent at smmagent.app.",
   alternates: {
-    canonical: getProductCanonicalUrl("/terms"),
+    canonical: getCanonicalUrl("/terms"),
   },
 };
 
@@ -16,7 +16,7 @@ const sections = [
   {
     title: "Agreement",
     body: [
-      "These Terms of Service govern your access to and use of SMM Agent, including smmagent.app, clawposter.app, social.maxpetrusenko.com during the migration window, dashboards, APIs, automations, integrations, and related services.",
+      "These Terms of Service govern your access to and use of SMM Agent, including smmagent.app, social.maxpetrusenko.com during the migration window, dashboards, APIs, automations, integrations, and related services. clawposter.app and smmclaw.app are retired and redirect to smmagent.app.",
       "By using SMM Agent, you agree to these terms. If you use SMM Agent for a company, client, or workspace, you confirm that you have authority to bind that organization.",
     ],
   },

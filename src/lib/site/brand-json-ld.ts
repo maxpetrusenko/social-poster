@@ -6,38 +6,21 @@ import {
 } from "@/lib/site-domains";
 
 /**
- * The sitewide structured-data graph for a request host.
- *
- * Three public brands are served by this one deployment (see
- * `src/lib/site-domains.ts`), so a single hardcoded graph would tell Google that
- * smmclaw.app is "SMM Agent". That is the same class of defect as the robots.txt
- * `Sitemap:` line and the sitemap URL list that both handed one brand another
- * brand's URLs. Every value below is derived from
- * `getPublicSiteHost(getPublicSiteKey(host))` — the helper `sitemap.ts` and
- * `robots.ts` already share — so a host can only ever describe itself.
+ * The sitewide structured-data graph. Every URL is on https://smmagent.app and
+ * the brand is "SMM Agent", whichever host served the request (clawposter.app
+ * and smmclaw.app are retired).
  *
  * Deliberately NOT emitted, with the reason, so nobody "fixes" it later:
  *
- * - `Review` / `AggregateRating`: the reviews these pages talk about are of our
- *   own product, and Google's review-snippet policy disallows self-serving
- *   review markup. The pages also explicitly decline to publish invented
- *   ratings (`src/components/landing/smm-home.tsx`, "We do not fabricate reviews
- *   or buy ratings"), so markup for ratings that do not exist would be both a
- *   policy violation and a false claim. Missing Review markup on these
- *   properties is a non-action, not a gap.
- * - `SearchAction`: no host serves a search URL. `/search` returns 404 on
- *   clawposter.app, smmclaw.app and smmagent.app (checked 2026-09-20), so a
- *   `potentialAction` would point at a URL that does not exist. Add it only
- *   once a real search endpoint exists.
- * - `offers`: no price is published on the public pages. The only pricing
- *   language in the app is the generic "we may change pricing, limits, trials"
- *   clause in `/terms`, which is not a price. Schema.org allows a
- *   SoftwareApplication without `offers`, so the field is omitted rather than
- *   invented; add it when a real price is on the page.
+ * - `Review` / `AggregateRating`: Google's review-snippet policy disallows
+ *   self-serving review markup, and the pages decline to publish invented
+ *   ratings (`src/components/landing/smm-home.tsx`).
+ * - `SearchAction`: no host serves a search URL, so a `potentialAction` would
+ *   point at a 404. Add it once a real search endpoint exists.
+ * - `offers`: no price is published on the public pages. Add it when one is.
  *
  * Because `offers` and rating markup are absent by policy, this graph is
- * entity/identity markup rather than a bid for Google's Software App rich
- * result (which requires price plus rating or review). That is intentional.
+ * identity markup, not a bid for Google's Software App rich result.
  */
 
 export type JsonLdNode = Record<string, unknown>;
@@ -68,8 +51,8 @@ const OPERATING_SYSTEM = "Web";
 /**
  * Build the graph for the host that served the request.
  *
- * Returns `null` for any host that is not one of the three public marketing
- * hosts — the legacy `social.maxpetrusenko.com` host, a custom domain, or
+ * Returns `null` for any host that does not serve the public marketing pages
+ * (smmagent.app and the retired hosts that still resolve) — the legacy `social.maxpetrusenko.com` host, a custom domain, or
  * localhost gets no structured data at all, because guessing an identity for
  * them is exactly the failure mode this file exists to prevent.
  */

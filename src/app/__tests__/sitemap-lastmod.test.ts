@@ -69,29 +69,27 @@ describe("sitemap lastmod freshness", () => {
   it("dates each static route from that route's own source history", async () => {
     mocks.host = "clawposter.app";
     const entries = await sitemap();
-    expect(isoOf(lastmodOf(entries, "https://clawposter.app/"))).toBe(ROUTE_LASTMOD["/"]);
-    expect(isoOf(lastmodOf(entries, "https://clawposter.app/blog"))).toBe(ROUTE_LASTMOD["/blog"]);
-    expect(isoOf(lastmodOf(entries, "https://clawposter.app/social-media-bot"))).toBe(
+    expect(isoOf(lastmodOf(entries, "https://smmagent.app/"))).toBe(ROUTE_LASTMOD["/"]);
+    expect(isoOf(lastmodOf(entries, "https://smmagent.app/blog"))).toBe(ROUTE_LASTMOD["/blog"]);
+    expect(isoOf(lastmodOf(entries, "https://smmagent.app/social-media-bot"))).toBe(
       ROUTE_LASTMOD["/social-media-bot"]
     );
 
-    mocks.host = "smmagent.app";
-    const app = await sitemap();
-    expect(isoOf(lastmodOf(app, "https://smmagent.app/docs"))).toBe(ROUTE_LASTMOD["/docs"]);
+    expect(isoOf(lastmodOf(entries, "https://smmagent.app/docs"))).toBe(ROUTE_LASTMOD["/docs"]);
   });
 
   it("dates a category from the newest post in that category", async () => {
     mocks.host = "clawposter.app";
     const entries = await sitemap();
     // Automation holds the 2026-09-12 dynamic post, not the 2026-08-02 static one.
-    expect(isoOf(lastmodOf(entries, "https://clawposter.app/blog/category/automation"))).toBe("2026-09-12");
-    expect(isoOf(lastmodOf(entries, "https://clawposter.app/blog/category/teams"))).toBe("2026-05-01");
+    expect(isoOf(lastmodOf(entries, "https://smmagent.app/blog/category/automation"))).toBe("2026-09-12");
+    expect(isoOf(lastmodOf(entries, "https://smmagent.app/blog/category/teams"))).toBe("2026-05-01");
   });
 
   it("dates each post from that post's own publishedAt", async () => {
     mocks.host = "clawposter.app";
     const entries = await sitemap();
-    expect(isoOf(lastmodOf(entries, "https://clawposter.app/blog/dynamic-post"))).toBe("2026-09-12");
-    expect(isoOf(lastmodOf(entries, "https://clawposter.app/blog/older-automation"))).toBe("2026-06-11");
+    expect(isoOf(lastmodOf(entries, "https://smmagent.app/blog/dynamic-post"))).toBe("2026-09-12");
+    expect(isoOf(lastmodOf(entries, "https://smmagent.app/blog/older-automation"))).toBe("2026-06-11");
   });
 });
