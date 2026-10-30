@@ -147,19 +147,17 @@ export async function middleware(request: NextRequest) {
     return appHostRedirect(request);
   }
 
-  if (request.headers.has("x-seo-path")) {
-    const stripped = new Headers(request.headers);
-    stripped.delete("x-seo-path");
-    request = new NextRequest(request, { headers: stripped });
-  }
+  const stripped = new Headers(request.headers);
+  stripped.delete("x-seo-path");
+  const passThrough = () => NextResponse.next({ request: { headers: stripped } });
 
   if (!request.nextUrl.pathname.startsWith("/dashboard")) {
     if (host && isPublicMarketingHost(host) && isSeoPublicPath(request.nextUrl.pathname)) {
-      const forwarded = new Headers(request.headers);
+      const forwarded = new Headers(stripped);
       forwarded.set("x-seo-path", request.nextUrl.pathname);
       return NextResponse.next({ request: { headers: forwarded } });
     }
-    return NextResponse.next();
+    return passThrough();
   }
 
   if (AUTH_MODE === "bypass") {
@@ -171,13 +169,13 @@ export async function middleware(request: NextRequest) {
       return dashboardLoginRedirect(request);
     }
 
-    return NextResponse.next();
+    return passThrough();
   }
 
   if (AUTH_MODE === "supabase" && isSupabaseConfigured()) {
     const { storageKey } = getSupabaseServerEnv();
     if (hasCookieLike(request, storageKey)) {
-      return NextResponse.next();
+      return passThrough();
     }
 
     return dashboardLoginRedirect(request);
@@ -192,7 +190,7 @@ export async function middleware(request: NextRequest) {
     return dashboardLoginRedirect(request);
   }
 
-  return NextResponse.next();
+  return passThrough();
 }
 
 export const config = {

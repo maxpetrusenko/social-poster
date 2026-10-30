@@ -51,7 +51,8 @@ const CORE_PAGES = ["/social-media-bot", "/docs", "/blog"];
 /** Paths where each page flag actually renders a treatment. Others report "none". */
 function isTreatedPath(key: SeoFlagKey, normalized: string): boolean {
   if (key === "seo_h022_internal_links") {
-    return CORE_PAGES.includes(normalized) || normalized.startsWith("/blog/");
+    return CORE_PAGES.includes(normalized) || (normalized.startsWith("/blog/") &&
+        !normalized.startsWith("/blog/category/"))
   }
   if (
     key === "seo_h003_titles" ||

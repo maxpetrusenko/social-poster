@@ -43,6 +43,7 @@ describe("seo flags", () => {
     expect(variantMap("/privacy").h003).toBe("none");
     expect(variantMap("/docs").h015).toBe("none");
     expect(variantMap("/blog/some-post").h014).toBe("none");
+    expect(variantMap("/blog/category/agent").h022).toBe("none");
     expect(variantMap("/blog/some-post").h022).toMatch(/variant|control/);
     expect(variantMap("/social-media-bot").h003).toMatch(/variant|control/);
   });
