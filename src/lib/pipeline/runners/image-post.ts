@@ -24,6 +24,7 @@ import { getWorkspaceRssSettings } from "@/lib/rss-config";
 import { probeScheduleMediaUrl } from "@/lib/schedule-media";
 import { isSafeRemoteHttpUrl } from "@/lib/safe-remote-fetch";
 import { selectFeedStoryForSchedule } from "./feed-story-selection";
+import { generateThesisForStory, isThesisStageEnabled } from "../thesis-generator";
 
 async function resolveStoryImages(
   stories: Story[],
@@ -178,6 +179,48 @@ export async function runImagePostJob(
         : story.summary;
     const enrichedStory = { ...story, summary: enrichedSummary };
 
+    // 1c. Thesis: a post without a point of view does not ship.
+    const thesisStep: PipelineStep = {
+      name: "thesis:decide",
+      status: "pending",
+    };
+    steps.push(thesisStep);
+    let thesis: import("../thesis").Thesis | null = null;
+    if (!scheduledContent && isThesisStageEnabled()) {
+      thesisStep.status = "running";
+      thesisStep.startedAt = new Date().toISOString();
+      const decision = await generateThesisForStory(
+        {
+          title: enrichedStory.title,
+          summary: enrichedStory.summary,
+          link: enrichedStory.link,
+          sourceName: enrichedStory.sourceName,
+        },
+        { workspaceId: schedule.workspaceId }
+      );
+      if (decision.action === "skip") {
+        thesisStep.status = "skipped";
+        thesisStep.completedAt = new Date().toISOString();
+        thesisStep.error = decision.reason;
+        throw new Error(`thesis:skip: ${decision.reason}`);
+      }
+      thesis = decision.thesis;
+      thesisStep.status = "completed";
+      thesisStep.completedAt = new Date().toISOString();
+      thesisStep.output = {
+        claim: thesis.claim,
+        stakes: thesis.stakes,
+        falsifier: thesis.falsifier,
+        confidence: thesis.confidence,
+        evidenceCount: thesis.evidence.length,
+      };
+    } else {
+      thesisStep.status = "skipped";
+      thesisStep.error = scheduledContent
+        ? "fixed schedule content, thesis stage not applicable"
+        : "THESIS_STAGE not enabled";
+    }
+
     // 2. Caption
     const s2: PipelineStep = { name: "caption:write", status: "running", startedAt: new Date().toISOString() };
     steps.push(s2);
@@ -196,6 +239,7 @@ export async function runImagePostJob(
           {
             workspaceId: schedule.workspaceId,
             rssSettings,
+            thesis,
           }
         );
     const publishTargets = targets.map((platform) => {
