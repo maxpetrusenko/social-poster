@@ -1,0 +1,126 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<style>
+  :root { --t: 0; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 1080px; height: 1920px; background: #07090a; overflow: hidden; }
+  body { font-family: "Helvetica Neue", Inter, sans-serif; color: #eef1ee; -webkit-font-smoothing: antialiased; }
+  .mono { font-family: "SF Mono", ui-monospace, monospace; }
+
+  .shot { position: absolute; inset: 0; overflow: hidden; }
+  .shot img { width: 100%; height: 100%; object-fit: cover; display: block; filter: saturate(0.85) contrast(1.06); }
+  .shot:after {
+    content: ""; position: absolute; inset: 0;
+    background: linear-gradient(180deg, rgba(7,9,10,0.55) 0%, rgba(7,9,10,0.05) 30%, rgba(7,9,10,0.35) 60%, rgba(7,9,10,0.95) 100%);
+  }
+  #s1 { opacity: clamp(0, var(--t) * 40, 1); }
+  #s1 img { transform: scale(calc(1.05 + var(--t) * 0.35)) translateY(calc(var(--t) * -30px)); }
+  #s2 { opacity: clamp(0, (var(--t) - 0.245) * 45, 1); }
+  #s2 img { transform: scale(calc(1.12 + (var(--t) - 0.25) * 0.45)); }
+  #s3 { opacity: clamp(0, (var(--t) - 0.515) * 45, 1); }
+  #s3 img { transform: scale(calc(1.06 + (var(--t) - 0.52) * 0.4)) translateY(calc((var(--t) - 0.52) * 40px)); }
+
+  .brand { position: absolute; left: 92px; top: 130px; display: flex; align-items: center; gap: 18px; opacity: clamp(0, var(--t) * 30, 1); }
+  .mark { width: 52px; height: 52px; background: #6fe3b4; display: grid; place-items: center; }
+  .mark b { font: 700 30px/1 "SF Mono", monospace; color: #07090a; }
+  .brand span { font: 500 25px/1 "SF Mono", monospace; letter-spacing: 0.2em; color: #c9d2cc; }
+
+  /* ---- shot 1: the tie ---- */
+  .board { position: absolute; left: 88px; right: 88px; top: 360px; padding: 34px 40px;
+           background: rgba(6,10,11,0.86); border: 1px solid rgba(120,210,180,0.28);
+           box-shadow: 0 30px 90px rgba(0,0,0,0.6);
+           opacity: calc(clamp(0, (var(--t) - 0.02) * 60, 1) * clamp(0, (0.275 - var(--t)) * 60, 1)); }
+  .board .hd { font: 500 21px/1 "SF Mono", monospace; letter-spacing: 0.24em; color: #7f8f88; margin-bottom: 24px; }
+  .row { display: flex; align-items: baseline; justify-content: space-between; padding: 14px 0;
+         border-bottom: 1px solid rgba(255,255,255,0.08); }
+  .row:last-child { border-bottom: 0; }
+  .row .nm { font: 500 40px/1 "SF Mono", monospace; color: #dfe6e1; letter-spacing: 0.02em; }
+  .row .sc { font: 600 62px/1 "SF Mono", monospace; color: #f3f6f3; }
+  .r1 { opacity: clamp(0, (var(--t) - 0.03) * 90, 1); }
+  .r2 { opacity: clamp(0, (var(--t) - 0.10) * 90, 1); }
+  .tie { margin-top: 18px; font: 600 26px/1 "SF Mono", monospace; letter-spacing: 0.28em; color: #6fe3b4;
+         opacity: clamp(0, (var(--t) - 0.16) * 90, 1); }
+
+  /* ---- shot 2: the counter ---- */
+  .counter { position: absolute; left: 88px; right: 88px; top: 420px; text-align: center;
+             opacity: calc(clamp(0, (var(--t) - 0.285) * 45, 1) * clamp(0, (0.525 - var(--t)) * 45, 1)); }
+  .counter .big { font: 700 250px/0.9 "SF Mono", monospace; letter-spacing: -0.05em; color: #6fe3b4;
+                  text-shadow: 0 0 60px rgba(111,227,180,0.35); }
+  .counter .lbl { margin-top: 26px; font: 500 34px/1.3 "SF Mono", monospace; letter-spacing: 0.14em; color: #d6ded8; }
+
+  /* ---- shot 3: the price sheet ---- */
+  .sheet { position: absolute; left: 84px; right: 84px; top: 400px; padding: 36px 40px;
+           background: rgba(7,10,11,0.9); border: 1px solid rgba(255,190,120,0.26);
+           opacity: clamp(0, (var(--t) - 0.545) * 40, 1); }
+  .sheet .hd { font: 500 21px/1 "SF Mono", monospace; letter-spacing: 0.24em; color: #8f8a7f; margin-bottom: 22px; }
+  .prow { display: flex; align-items: baseline; gap: 22px; padding: 16px 0; border-bottom: 1px solid rgba(255,255,255,0.07); }
+  .prow:last-child { border-bottom: 0; }
+  .prow .k { font: 500 30px/1 "SF Mono", monospace; color: #9aa39d; width: 96px; }
+  .prow .old { font: 500 52px/1 "SF Mono", monospace; color: #8b938e; position: relative; }
+  .prow .old:after { content: ""; position: absolute; left: -6px; right: -6px; top: 50%; height: 4px;
+                     background: #ff9f6b; transform: scaleX(clamp(0, (var(--t) - 0.66) * 60, 1)); transform-origin: left; }
+  .prow .arw { font: 400 44px/1 "SF Mono", monospace; color: #6a736d; }
+  .prow .new { font: 600 58px/1 "SF Mono", monospace; color: #ffc59b; }
+
+  /* ---- captions ---- */
+  .cap { position: absolute; left: 76px; right: 76px; bottom: 268px; background: #f7f8f5; color: #0b0c0d;
+         padding: 40px 44px; border-radius: 6px; box-shadow: 0 28px 70px rgba(0,0,0,0.5);
+         display: flex; gap: 26px; align-items: flex-start; }
+  .cap .sq { width: 44px; height: 44px; background: #0b0c0d; flex: 0 0 44px; margin-top: 6px; }
+  .cap p { font: 400 50px/1.24 "Helvetica Neue", Inter, sans-serif; letter-spacing: -0.012em; }
+  .cap p em { font-style: normal; color: #0d6b46; }
+  #c1 { opacity: calc(clamp(0, (var(--t) - 0.02) * 60, 1) * clamp(0, (0.275 - var(--t)) * 60, 1)); }
+  #c2 { opacity: calc(clamp(0, (var(--t) - 0.285) * 60, 1) * clamp(0, (0.53 - var(--t)) * 60, 1)); }
+  #c3 { opacity: calc(clamp(0, (var(--t) - 0.545) * 60, 1) * clamp(0, (0.83 - var(--t)) * 60, 1)); }
+
+  /* ---- end ---- */
+  .end { position: absolute; inset: 0; background: #07090a; display: grid; align-content: center;
+         padding: 0 108px; gap: 30px; opacity: clamp(0, (var(--t) - 0.83) * 45, 1); }
+  .end .k { font: 500 28px/1 "SF Mono", monospace; letter-spacing: 0.22em; color: #6fe3b4; }
+  .end h1 { font: 600 90px/1.06 "Helvetica Neue", Inter, sans-serif; letter-spacing: -0.04em; }
+  .end h1 u { text-decoration: none; color: #6fe3b4; }
+  .end .who { font: 500 30px/1 "SF Mono", monospace; color: #7d8580; letter-spacing: 0.08em; }
+</style>
+</head>
+<body>
+  <div class="shot" id="s1"><img src="ai1.png" /></div>
+  <div class="shot" id="s2"><img src="ai2.png" /></div>
+  <div class="shot" id="s3"><img src="ai3.png" /></div>
+
+  <div class="brand"><div class="mark"><b>M</b></div><span>MISTRAL LARGE 4</span></div>
+
+  <div class="board">
+    <div class="hd">CODING AGENT INDEX</div>
+    <div class="row r1"><span class="nm">GLM-5.3</span><span class="sc">48%</span></div>
+    <div class="row r2"><span class="nm">LARGE 4</span><span class="sc">48%</span></div>
+    <div class="tie">TIED</div>
+  </div>
+
+  <div class="counter">
+    <div class="big">−47%</div>
+    <div class="lbl">TOKENS PER TASK</div>
+  </div>
+
+  <div class="sheet">
+    <div class="hd">PRICE / MILLION TOKENS</div>
+    <div class="prow"><span class="k">in</span><span class="old">$1.36</span><span class="arw">→</span><span class="new">$0.70</span></div>
+    <div class="prow"><span class="k">out</span><span class="old">$4.18</span><span class="arw">→</span><span class="new">$2.10</span></div>
+  </div>
+
+  <div class="cap" id="c1"><div class="sq"></div><p>same score, at <em>48%</em> on the coding agent index.</p></div>
+  <div class="cap" id="c2"><div class="sq"></div><p><em>47% fewer tokens</em> per task than glm-5.3.</p></div>
+  <div class="cap" id="c3"><div class="sq"></div><p>and half the price,<br/>against <em>its own preview</em>.</p></div>
+
+  <div class="end">
+    <div class="k">THE NUMBER THAT DECIDES</div>
+    <h1>cost per<br/><u>finished task</u>,<br/>not rank.</h1>
+    <div class="who">@petrusenko_max</div>
+  </div>
+
+<script>
+  window.setT = (t) => { document.documentElement.style.setProperty("--t", String(t)); };
+</script>
+</body>
+</html>
