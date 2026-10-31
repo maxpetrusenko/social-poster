@@ -1,0 +1,104 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<style>
+  :root { --t: 0; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 1080px; height: 1920px; background: #06080a; overflow: hidden; }
+  body { font-family: "Helvetica Neue", Inter, sans-serif; color: #eef1ee; -webkit-font-smoothing: antialiased; }
+  .mono { font-family: "SF Mono", ui-monospace, monospace; }
+
+  .shot { position: absolute; inset: 0; opacity: 0; }
+
+  .band { position: absolute; left: 50%; transform: translateX(-50%); top: 286px; width: 1000px;
+          border-radius: 4px; overflow: hidden; box-shadow: 0 40px 120px rgba(0,0,0,0.7); }
+  .band img { width: 100%; display: block; }
+
+  .fig { position: absolute; left: 72px; right: 72px; top: 760px; }
+  .fig .big { font: 700 300px/0.86 "SF Mono", monospace; letter-spacing: -0.055em; color: #ff9a5c; }
+  .fig .lbl { margin-top: 26px; font: 500 40px/1.28 "Helvetica Neue", Inter, sans-serif; color: #cfd6d1; max-width: 900px; }
+
+  #s1 { opacity: calc(clamp(0, var(--t) * 30, 1) * clamp(0, (0.195 - var(--t)) * 30, 1)); }
+  #s1 .band img { transform: scale(calc(1 + var(--t) * 0.12)); }
+  #s2 { opacity: calc(clamp(0, (var(--t) - 0.20) * 30, 1) * clamp(0, (0.565 - var(--t)) * 30, 1)); }
+  #s2 .band { top: 250px; width: 1040px; }
+  #s2 .band img { transform: scale(calc(1.02 + (var(--t) - 0.20) * 0.22)); }
+  #s2 .fig { top: 1120px; }
+  #s3 { opacity: calc(clamp(0, (var(--t) - 0.57) * 30, 1) * clamp(0, (0.795 - var(--t)) * 30, 1)); }
+  #s3 .band { top: 300px; width: 1000px; }
+  #s3 .fig { top: 700px; }
+  #s3 .fig .big { font-size: 210px; }
+  #s3 .fig .row2 { margin-top: 40px; }
+
+  .vig { position: absolute; inset: 0; pointer-events: none; z-index: 3;
+         background: linear-gradient(180deg, rgba(6,8,10,0.92) 0%, rgba(6,8,10,0) 16%, rgba(6,8,10,0) 58%, rgba(6,8,10,0.97) 84%); }
+
+  .brand { position: absolute; left: 72px; top: 116px; display: flex; align-items: center; gap: 16px; z-index: 6;
+           opacity: clamp(0, var(--t) * 30, 1); }
+  .mark { width: 46px; height: 46px; background: #ff7000; display: grid; place-items: center; border-radius: 9px; }
+  .mark b { font: 700 26px/1 "SF Mono", monospace; color: #0b0c0d; }
+  .brand span { font: 500 22px/1 "SF Mono", monospace; letter-spacing: 0.2em; color: #d5dbd7; }
+
+  .cap { position: absolute; left: 72px; right: 72px; bottom: 272px; background: #f7f8f5; color: #0b0c0d;
+         padding: 38px 42px; border-radius: 6px; box-shadow: 0 28px 70px rgba(0,0,0,0.6);
+         display: flex; gap: 24px; align-items: flex-start; z-index: 7; }
+  .cap .sq { width: 40px; height: 40px; background: #0b0c0d; flex: 0 0 40px; margin-top: 8px; }
+  .cap p { font: 400 48px/1.26 "Helvetica Neue", Inter, sans-serif; letter-spacing: -0.012em; }
+  .cap p em { font-style: normal; color: #0d6b46; }
+  #c1 { opacity: calc(clamp(0, (var(--t) - 0.005) * 40, 1) * clamp(0, (0.198 - var(--t)) * 40, 1)); }
+  #c2 { opacity: calc(clamp(0, (var(--t) - 0.205) * 40, 1) * clamp(0, (0.568 - var(--t)) * 40, 1)); }
+  #c3 { opacity: calc(clamp(0, (var(--t) - 0.575) * 40, 1) * clamp(0, (0.792 - var(--t)) * 40, 1)); }
+
+  .end { position: absolute; inset: 0; background: #06080a; display: grid; align-content: center; padding: 0 90px;
+         gap: 34px; z-index: 8; opacity: calc(clamp(0, (var(--t) - 0.80) * 40, 1) * clamp(0, (0.998 - var(--t)) * 500, 1)); }
+  .end .k { font: 500 26px/1 "SF Mono", monospace; letter-spacing: 0.22em; color: #ff9a5c; }
+  .end h1 { font: 600 100px/1.05 "Helvetica Neue", Inter, sans-serif; letter-spacing: -0.04em; }
+  .end h1 u { text-decoration: none; color: #ff9a5c; }
+  .end .who { font: 500 28px/1 "SF Mono", monospace; color: #7d8580; letter-spacing: 0.08em; }
+</style>
+</head>
+<body>
+  <div class="shot" id="s1">
+    <div class="band"><img src="k_sent.png" /></div>
+    <div class="fig">
+      <div class="big">48%</div>
+      <div class="lbl">coding agent index. level with glm-5.3.</div>
+    </div>
+  </div>
+
+  <div class="shot" id="s2">
+    <div class="band"><img src="k_chart2.png" /></div>
+    <div class="fig">
+      <div class="big">47%</div>
+      <div class="lbl">fewer tokens per task, same score.</div>
+    </div>
+  </div>
+
+  <div class="shot" id="s3">
+    <div class="band"><img src="k_price.png" /></div>
+    <div class="fig">
+      <div class="big mono">$0.70<span style="font-size:0.45em;color:#8d958f"> /M in</span></div>
+      <div class="big mono row2">$2.10<span style="font-size:0.45em;color:#8d958f"> /M out</span></div>
+    </div>
+  </div>
+
+  <div class="vig"></div>
+
+  <div class="brand"><div class="mark"><b>M</b></div><span>MISTRAL LARGE 4</span></div>
+
+  <div class="cap" id="c1"><div class="sq"></div><p>everyone will read this<br/>as a tie. <em>it isn't.</em></p></div>
+  <div class="cap" id="c2"><div class="sq"></div><p>same 48%. <em>47% fewer tokens</em><br/>doing the same task.</p></div>
+  <div class="cap" id="c3"><div class="sq"></div><p><em>$0.70 in, $2.10 out.</em><br/>half its own preview price.</p></div>
+
+  <div class="end">
+    <div class="k">THE NUMBER THAT DECIDES</div>
+    <h1>cost per<br/><u>finished task</u>,<br/>not rank.</h1>
+    <div class="who">@petrusenko_max</div>
+  </div>
+
+<script>
+  window.setT = (t) => { document.documentElement.style.setProperty("--t", String(t)); };
+</script>
+</body>
+</html>
