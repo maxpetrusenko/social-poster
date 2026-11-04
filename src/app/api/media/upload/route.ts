@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { requireApiWorkspaceEditor } from "@/lib/api-authorization";
+import { MAX_MEDIA_BYTES, MAX_MEDIA_MB } from "@/lib/media-limits";
 import { uploadMediaAsset } from "@/lib/storage/r2";
 
-const MAX_MEDIA_BYTES = 25 * 1024 * 1024;
 const ALLOWED_MEDIA_TYPES = new Set([
   "image/jpeg",
   "image/png",
@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
 
     if (file.size > MAX_MEDIA_BYTES) {
       return NextResponse.json(
-        { error: "Media must be 25 MB or smaller." },
+        { error: `Media must be ${MAX_MEDIA_MB} MB or smaller.` },
         { status: 413 }
       );
     }

@@ -4,7 +4,10 @@ import https from "node:https";
 import net from "node:net";
 
 const MAX_REDIRECTS = 5;
+// Default cap for HTML, feeds and API pages. Media callers pass a larger maxBytes.
 const MAX_RESPONSE_BYTES = 25 * 1024 * 1024;
+
+export type SafeFetchInit = RequestInit & { maxBytes?: number };
 
 type SafeAddress = {
   address: string;
@@ -23,7 +26,7 @@ export type SafeRemoteResponse = {
 
 export async function safeFetchRemote(
   url: string,
-  init: RequestInit = {},
+  init: SafeFetchInit = {},
   redirectsRemaining = MAX_REDIRECTS
 ): Promise<SafeRemoteResponse | null> {
   const resolved = await resolveSafeRemoteUrl(url);
@@ -83,8 +86,9 @@ async function resolveSafeRemoteUrl(value: string): Promise<{ url: URL; address:
 function requestPinnedRemote(
   url: URL,
   address: SafeAddress,
-  init: RequestInit
+  init: SafeFetchInit
 ): Promise<SafeRemoteResponse> {
+  const maxBytes = init.maxBytes ?? MAX_RESPONSE_BYTES;
   return new Promise((resolve, reject) => {
     const transport = url.protocol === "https:" ? https : http;
     const headers = headersToRecord(init.headers);
@@ -111,7 +115,7 @@ function requestPinnedRemote(
 
         response.on("data", (chunk: Buffer) => {
           size += chunk.byteLength;
-          if (size > MAX_RESPONSE_BYTES) {
+          if (size > maxBytes) {
             request.destroy(new Error("Remote response is too large."));
             return;
           }
