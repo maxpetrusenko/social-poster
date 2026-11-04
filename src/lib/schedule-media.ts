@@ -12,9 +12,9 @@ import {
   type CloudflareR2ApiConfig,
   type R2Config,
 } from "@/lib/storage/r2-config";
+import { MAX_MEDIA_BYTES } from "@/lib/media-limits";
 import { isSafeRemoteHttpUrl, safeFetchRemote } from "@/lib/safe-remote-fetch";
 
-const MAX_MEDIA_BYTES = 25 * 1024 * 1024;
 const SCHEDULE_MEDIA_DIR = path.resolve(process.cwd(), "data", "schedule-media");
 
 type JsonRecord = Record<string, unknown>;
@@ -112,6 +112,7 @@ export async function probeScheduleMediaUrl(
       Accept: "image/*,*/*;q=0.8",
     },
     signal: AbortSignal.timeout(12_000),
+    maxBytes: MAX_MEDIA_BYTES,
   }).catch(() => null);
 
   return {
@@ -243,6 +244,7 @@ async function fetchScheduleMedia(value: string): Promise<FetchedScheduleMedia |
       Accept: "image/*,*/*;q=0.8",
     },
     signal: AbortSignal.timeout(15_000),
+    maxBytes: MAX_MEDIA_BYTES,
   }).catch(() => null);
 
   if (!response?.ok) return null;

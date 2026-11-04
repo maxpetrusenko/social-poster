@@ -8,10 +8,10 @@ import { fetchOpenGraphImage } from "@/lib/open-graph-image";
 import { isRenderableMediaUrl, mediaTypeFromContentType, mediaTypeFromUrl } from "@/lib/media-url";
 import { readAccessToken } from "@/lib/providers/credentials";
 import { getTweetImageUrl, readTweetForPlatform } from "@/lib/replies/bird";
+import { MAX_MEDIA_BYTES } from "@/lib/media-limits";
 import { isSafeRemoteHttpUrl, safeFetchRemote } from "@/lib/safe-remote-fetch";
 import { uploadMediaAsset } from "@/lib/storage/r2";
 
-const MAX_REMOTE_MEDIA_BYTES = 25 * 1024 * 1024;
 
 export async function POST(request: NextRequest) {
   const tenant = await requireApiWorkspaceEditor();
@@ -230,6 +230,7 @@ async function resolveRemoteImageAsset({
       Accept: "image/*,*/*;q=0.8",
     },
     signal: AbortSignal.timeout(12000),
+    maxBytes: MAX_MEDIA_BYTES,
   }).catch(() => null);
 
   if (!response?.ok) return null;
@@ -238,10 +239,10 @@ async function resolveRemoteImageAsset({
   if (mediaTypeFromContentType(contentType) !== "image") return null;
 
   const contentLength = Number(response.headers.get("content-length") || 0);
-  if (contentLength > MAX_REMOTE_MEDIA_BYTES) return null;
+  if (contentLength > MAX_MEDIA_BYTES) return null;
 
   const arrayBuffer = await response.arrayBuffer();
-  if (arrayBuffer.byteLength > MAX_REMOTE_MEDIA_BYTES) return null;
+  if (arrayBuffer.byteLength > MAX_MEDIA_BYTES) return null;
 
   const hosted = await uploadMediaAsset({
     bytes: Buffer.from(arrayBuffer),
