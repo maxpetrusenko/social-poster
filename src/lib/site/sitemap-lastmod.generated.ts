@@ -24,18 +24,26 @@ export const ROUTE_SOURCES: Record<string, string[]> = {
   "/social-media-bot": [
     "src/app/social-media-bot/page.tsx",
   ],
+  "/privacy": [
+    "src/app/privacy/page.tsx",
+  ],
+  "/terms": [
+    "src/app/terms/page.tsx",
+  ],
 };
 
 /** static route -> newest commit date (%cs) among that route's source paths. */
 export const ROUTE_LASTMOD: Record<string, string> = {
-  "/": "2026-09-15",
-  "/blog": "2026-09-15",
+  "/": "2026-09-21",
+  "/blog": "2026-10-22",
   "/docs": "2026-07-24",
   "/social-media-bot": "2026-09-15",
+  "/privacy": "2026-07-24",
+  "/terms": "2026-07-24",
 };
 
 /**
  * Newest generated value. Last-resort fallback so no sitemap entry can ever be
  * emitted without a lastmod; still source-derived, never the request time.
  */
-export const LATEST_ROUTE_LASTMOD = "2026-09-15";
+export const LATEST_ROUTE_LASTMOD = "2026-10-22";

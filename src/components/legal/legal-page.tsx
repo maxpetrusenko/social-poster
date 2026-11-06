@@ -6,8 +6,6 @@ type LegalSection = {
 };
 
 const relatedSites = [
-  { label: "ClawPoster", href: "https://clawposter.app" },
-  { label: "SMMClaw", href: "https://smmclaw.app" },
   { label: "SMM Agent", href: "https://smmagent.app" },
   { label: "Dashboard", href: "https://smmagent.app/dashboard" },
 ];
@@ -30,7 +28,7 @@ export function LegalPage({
           href="/"
           className="inline-flex h-10 items-center rounded-full border border-[var(--line)] bg-white px-4 text-sm font-semibold text-[var(--muted)] transition hover:text-[var(--ink)]"
         >
-          ClawPoster
+          SMM Agent
         </Link>
 
         <article className="mt-8 rounded-[1.5rem] border border-[var(--line)] bg-white p-6 shadow-[0_18px_50px_rgba(12,17,21,0.08)] md:p-10">

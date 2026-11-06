@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { SeoRelated, SeoTldr } from "@/components/seo/seo-blocks";
+import { isVariant } from "@/lib/seo-flags";
+import { BLOG_POSTS } from "@/lib/blog/posts";
 import {
   ArrowRight,
   CheckCircle2,
@@ -11,8 +14,14 @@ import {
   TerminalSquare,
 } from "lucide-react";
 
+const PATH = "/docs";
+const TLDR =
+  "The SMM Agent API lets an external agent or script create a draft, schedule it for a future time, and publish it using a bearer API key. Keys are scoped to one workspace, scheduled times must be in the future, and publishing is its own explicit call, so a draft never goes out by accident.";
+
 export const metadata: Metadata = {
-  title: "Docs",
+  title: isVariant("seo_h003_titles", PATH)
+    ? { absolute: "Social Media Posting API for Agents | SMM Agent" }
+    : "Docs",
   description:
     "Use SMM Agent from external agents and scripts to create, schedule, and publish social posts.",
   alternates: {
@@ -99,6 +108,19 @@ function SectionTitle({
 }
 
 export default function DocsPage() {
+  const keywordFirst = isVariant("seo_h013_keyword_placement", PATH);
+  const related = isVariant("seo_h022_internal_links", PATH)
+    ? [
+        { href: "/blog", label: "SMM Agent blog" },
+        { href: "/social-media-bot", label: "AI social media bot overview" },
+        ...BLOG_POSTS.filter(
+          (post) => post.category === "Agent"
+        )
+          .slice(0, 3)
+          .map((post) => ({ href: `/blog/${post.slug}`, label: post.title })),
+      ]
+    : [];
+
   return (
     <main className="min-h-screen">
       <section className="border-b border-[#e1d4c2] bg-[#f7f1e6]">
@@ -127,10 +149,13 @@ export default function DocsPage() {
           <div>
             <p className="section-eyebrow text-[#0e615d]">Agent posting docs</p>
             <h1 className="mt-4 max-w-3xl text-5xl font-semibold leading-[0.96] text-[#0c1115] md:text-7xl">
-              Post from any agent.
+              {keywordFirst ? "Social media posting API for any agent." : "Post from any agent."}
             </h1>
+            {isVariant("seo_h014_tldr", PATH) ? <SeoTldr>{TLDR}</SeoTldr> : null}
             <p className="mt-6 max-w-2xl text-lg leading-8 text-[#34404a]">
-              Use the SMM Agent API to create drafts, schedule posts, and publish
+              {keywordFirst
+                ? "The SMM Agent social media posting API creates drafts, schedules posts, and publishes"
+                : "Use the SMM Agent API to create drafts, schedule posts, and publish"}{" "}
               approved content from Codex, Claude, Cursor, cron jobs, or any HTTP client.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
@@ -248,6 +273,11 @@ export default function DocsPage() {
           </div>
         </div>
       </section>
+      {related.length ? (
+        <div className="container pb-16">
+          <SeoRelated links={related} />
+        </div>
+      ) : null}
     </main>
   );
 }

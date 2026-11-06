@@ -119,6 +119,9 @@ jobs:
             ${{ env.IMAGE_NAME }}:${{ github.sha }}
             ${{ env.IMAGE_NAME }}:main
             ${{ env.IMAGE_NAME }}:latest
+          build-args: |
+            NEXT_PUBLIC_POSTHOG_KEY=${{ secrets.NEXT_PUBLIC_POSTHOG_KEY }}
+            NEXT_PUBLIC_POSTHOG_HOST=${{ secrets.NEXT_PUBLIC_POSTHOG_HOST }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -346,37 +349,39 @@ jobs:
             echo "- Checked: ${api_health_url}"
           } >> "${GITHUB_STEP_SUMMARY}"
 
-      - name: SEO indexing gate (live, one run per brand)
+      - name: SEO indexing gate (live, smmagent.app)
         shell: bash
         run: |
           set -euo pipefail
           log() { printf '[%s] %s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "$*"; }
 
-          # This deployment serves three public brands on three hosts. Checking only
-          # ${PRODUCTION_URL} is what let smmagent.app and smmclaw.app advertise
-          # clawposter.app/sitemap.xml in robots.txt for weeks: the one host that was
-          # checked was the one host that was correct. Every brand is checked now, and
-          # a cross-brand defect fails the canary -> rollback.
+          # smmagent.app is the single canonical host. clawposter.app and
+          # smmclaw.app are retired; their canonicals, sitemaps and robots all
+          # point here, so crawling them with this checker would report
+          # cross-host canonicals by design.
           #
-          # serial crawl + 503 retry (Cloudflare rate-limit safe); capped per host so the
+          # serial crawl + 503 retry (Cloudflare rate-limit safe); capped so the
           # deploy pipeline stays fast. Errors fail the canary -> rollback.
           mkdir -p /tmp/seo-live
-          failed=""
-          for host in https://clawposter.app https://smmagent.app https://smmclaw.app; do
-            log "Running SEO indexing gate against ${host}"
-            if ! python3 .github/scripts/web-seo-check.py \
-              --url "${host}" \
-              --delay 0.3 \
-              --max 25 \
-              --json "/tmp/seo-live/$(printf '%s' "${host}" | sed 's|https://||').json"; then
-              failed="${failed} ${host}"
+          python3 .github/scripts/web-seo-check.py \
+            --url "${PRODUCTION_URL}" \
+            --delay 0.3 \
+            --max 25 \
+            --json /tmp/seo-live/smmagent.app.json
+          log "SEO indexing gate passed for ${PRODUCTION_URL}"
+
+      - name: Retired hosts still resolve (warning only)
+        shell: bash
+        run: |
+          # Works with RETIRED_DOMAIN_REDIRECT on or off (-L follows the 301).
+          # Warning only: deleting the retired domains must not roll back a deploy.
+          for host in clawposter.app smmclaw.app; do
+            if curl -fsSL --max-time 20 -o /dev/null "https://${host}/"; then
+              echo "retired host ${host} responded"
+            else
+              echo "::warning::retired host ${host} did not respond; fine once DNS is removed"
             fi
           done
-          if [ -n "${failed}" ]; then
-            log "SEO indexing gate FAILED for:${failed}"
-            exit 1
-          fi
-          log "SEO indexing gate passed for every brand"
 
       - name: Upload SEO reports
         if: always()

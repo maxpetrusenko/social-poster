@@ -1,15 +1,9 @@
 import type { MetadataRoute } from "next";
-import { headers } from "next/headers";
+import { isSiteFlagOn } from "@/lib/seo-flags";
 import { BLOG_POSTS } from "@/lib/blog/posts";
 import { getPublishedDynamicBlogPosts } from "@/lib/blog/automation";
 import {
-  getAppCanonicalUrl,
   getCanonicalUrl,
-  getProductCanonicalUrl,
-  getPublicSiteHost,
-  normalizeHost,
-  getPublicSiteKey,
-  type PublicSiteKey,
 } from "@/lib/site-domains";
 import {
   newestDate,
@@ -22,24 +16,14 @@ function categorySlug(category: string) {
 }
 
 /**
- * The sitemap is host-aware: it only lists URLs that actually render on the
- * requesting host, and emits each on that host's canonical origin. Emitting a
- * URL on a host where the page 404s (or listing a different host's URLs) is a
- * GSC "Sitemap has errors / Alternate page" risk.
- *
- * Visibility rules mirror `filterStaticPostsForHost`:
- * - posts WITHOUT `audiences` are visible on every public host;
- * - posts WITH `audiences` are visible only on the listed hosts;
- * - dynamic (DB) posts are visible on every public host.
+ * Every URL is emitted on https://smmagent.app, whatever host serves the
+ * request. Retired hosts (clawposter.app, smmclaw.app) return the same list.
  */
-export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const host = await headers().then((h) =>
-    normalizeHost(h.get("x-forwarded-host") ?? h.get("host"))
-  );
-  const siteKey: PublicSiteKey = getPublicSiteKey(host);
-  const canonicalHost = getPublicSiteHost(siteKey);
+// Reads the blog table, so it must not be prerendered at build time.
+export const dynamic = "force-dynamic";
 
-  const urlFor = (pathname: string) => getCanonicalUrl(pathname, canonicalHost);
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const urlFor = (pathname: string) => getCanonicalUrl(pathname);
 
   const dynamicPosts = await getPublishedDynamicBlogPosts();
   const allPosts = [
@@ -51,15 +35,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...BLOG_POSTS,
   ];
 
-  const visible = (post: {
-    audiences?: PublicSiteKey[];
-    slug?: string;
-    category?: string;
-    publishedAt?: string;
-  }) => !post.audiences?.length || post.audiences.includes(siteKey);
-
   const blogPosts: MetadataRoute.Sitemap = allPosts
-    .filter(visible)
     .map((post) => ({
       url: urlFor(`/blog/${post.slug}`),
       lastModified: toLastModified(post.publishedAt),
@@ -67,11 +43,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.6,
     }));
 
-  // A category URL is only valid if at least one visible post is in it, and the
+  // A category URL is only valid if at least one post is in it, and the
   // category's freshness is the newest post inside it — a per-URL value derived
   // from that URL's own content, never a site-wide build date.
   const categoryLastmod = new Map<string, string>();
-  for (const post of allPosts.filter(visible)) {
+  for (const post of allPosts) {
     const slug = categorySlug(post.category);
     categoryLastmod.set(slug, newestDate([categoryLastmod.get(slug), post.publishedAt]));
   }
@@ -85,27 +61,30 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     })
   );
 
-  // Pages that canonicalize to one fixed brand no matter which host serves them: the product
-  // page (/social-media-bot) and the app docs (/docs). A sitemap may only list URLs on its own
-  // host, so each of these is emitted by the brand that owns it and by no one else. Listing them
-  // everywhere is what made smmagent.app/sitemap.xml and smmclaw.app/sitemap.xml advertise
-  // https://clawposter.app/social-media-bot - a crawler of one brand handed another brand's URL,
-  // the same class of defect as the robots.txt Sitemap: line fixed in the previous commit, and
-  // Search Console's "Sitemap contains URLs which are not within the property".
-  const brandFixed: MetadataRoute.Sitemap = [
+  const fixed: MetadataRoute.Sitemap = [
     {
-      url: getProductCanonicalUrl("/social-media-bot"),
+      url: urlFor("/social-media-bot"),
       lastModified: toLastModified(routeLastmod("/social-media-bot")),
       changeFrequency: "weekly",
       priority: 0.85,
     },
     {
-      url: getAppCanonicalUrl("/docs"),
+      url: urlFor("/docs"),
       lastModified: toLastModified(routeLastmod("/docs")),
       changeFrequency: "weekly",
       priority: 0.7,
     },
   ];
+
+  // seo_h021_indexing: /privacy and /terms are public and indexable.
+  const legal: MetadataRoute.Sitemap = isSiteFlagOn("seo_h021_indexing")
+    ? ["/privacy", "/terms"].map((route) => ({
+        url: urlFor(route),
+        lastModified: toLastModified(routeLastmod(route)),
+        changeFrequency: "yearly" as const,
+        priority: 0.3,
+      }))
+    : [];
 
   return [
     {
@@ -120,7 +99,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "weekly",
       priority: 0.8,
     },
-    ...brandFixed.filter((entry) => new URL(entry.url).host === canonicalHost),
+    ...fixed,
+    ...legal,
     ...blogCategories,
     ...blogPosts,
   ];

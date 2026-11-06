@@ -346,7 +346,7 @@ social-poster/
 - Contabo VPS: 173.249.52.27
 - Coolify: coolify.maxpetrusenko.com
 - Primary domain: smmagent.app
-- Landing domains: clawposter.app, www.clawposter.app, smmclaw.app, www.smmclaw.app
+- Retired domains (still served, canonical is smmagent.app): clawposter.app, www.clawposter.app, smmclaw.app, www.smmclaw.app. Redirect is gated by `RETIRED_DOMAIN_REDIRECT=1` (default off).
 - Simli Face ID: 7bb46589-4be6-4df8-ab80-03443fb75d6f
 - Cartesia Voice ID: 7270ea4d-a17a-4f21-a3da-03f2b128669d
 

@@ -5,13 +5,13 @@ import {
   findPublishedDynamicBlogPost,
   getPublishedDynamicBlogPosts,
 } from "./automation";
-import { getPublicSiteKey } from "@/lib/site-domains";
 
 export type PublicBlogPost = BlogPost & {
   imageUrl?: string | null;
   imageAlt?: string | null;
 };
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- every public host serves the same posts
 export async function getAllPublicBlogPosts(host?: string | null): Promise<PublicBlogPost[]> {
   const dynamicPosts = await getPublishedDynamicBlogPosts();
   const mappedDynamic: PublicBlogPost[] = dynamicPosts.map((post) => ({
@@ -27,15 +27,16 @@ export async function getAllPublicBlogPosts(host?: string | null): Promise<Publi
     isMarkdown: true,
   }));
 
-  return [...mappedDynamic, ...filterStaticPostsForHost(BLOG_POSTS, host)].sort((a, b) =>
+  return [...mappedDynamic, ...BLOG_POSTS].sort((a, b) =>
     b.publishedAt.localeCompare(a.publishedAt)
   );
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- every public host serves the same posts
 export async function findPublicBlogPost(slug: string, host?: string | null): Promise<PublicBlogPost | null> {
   const staticPost = BLOG_POSTS.find((post) => post.slug === slug);
   if (staticPost) {
-    return filterStaticPostsForHost([staticPost], host)[0] ?? null;
+    return staticPost;
   }
 
   const post = await findPublishedDynamicBlogPost(slug);
@@ -53,11 +54,6 @@ export async function findPublicBlogPost(slug: string, host?: string | null): Pr
     sources: post.sources ?? [],
     isMarkdown: true,
   };
-}
-
-function filterStaticPostsForHost(posts: BlogPost[], host?: string | null) {
-  const siteKey = getPublicSiteKey(host);
-  return posts.filter((post) => !post.audiences?.length || post.audiences.includes(siteKey));
 }
 
 function formatDate(value: Date | null) {

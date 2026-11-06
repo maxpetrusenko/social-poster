@@ -1,14 +1,14 @@
 import type { Metadata } from "next";
 import { LegalPage } from "@/components/legal/legal-page";
-import { getProductCanonicalUrl } from "@/lib/site-domains";
+import { getCanonicalUrl } from "@/lib/site-domains";
 
 const effectiveDate = "April 21, 2026";
 
 export const metadata: Metadata = {
   title: "Privacy Policy — SMM Agent",
-  description: "Privacy Policy for SMM Agent at clawposter.app.",
+  description: "Privacy Policy for SMM Agent at smmagent.app.",
   alternates: {
-    canonical: getProductCanonicalUrl("/privacy"),
+    canonical: getCanonicalUrl("/privacy"),
   },
 };
 
@@ -17,7 +17,8 @@ const sections = [
     title: "Who we are",
     body: [
       "SMM Agent is a social posting and automation product operated by Max Petrusenko. You can contact us at max.petrusenko@gmail.com.",
-      "This policy applies to smmagent.app, clawposter.app, social.maxpetrusenko.com during the migration window, and related SMM Agent services, dashboards, forms, integrations, and support channels.",
+      "This policy applies to smmagent.app, social.maxpetrusenko.com during the migration window, and related SMM Agent services, dashboards, forms, integrations, and support channels.",
+      "clawposter.app and smmclaw.app are retired and redirect to smmagent.app. This policy covers them while they redirect.",
     ],
   },
   {

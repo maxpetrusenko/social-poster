@@ -1,9 +1,9 @@
-# ClawPoster / SMMClaw / SMM Agent
+# SMM Agent
 
 AI social media automation for operators, agencies, and lean teams: draft, approve, and publish social posts with source-backed evidence and bring-your-own model keys.
 
 ## Core pages
-- [Home](https://clawposter.app/)
+- [Home](https://smmagent.app/)
 - [Blog](https://smmagent.app/blog)
 
 ## What this product does
@@ -15,5 +15,5 @@ AI social media automation for operators, agencies, and lean teams: draft, appro
 
 ## Key facts
 - Operated by Max Petrusenko
-- Brand surfaces: ClawPoster (social management), SMMClaw (agencies), SMM Agent (operators)
+- Domain: smmagent.app (clawposter.app and smmclaw.app are retired and redirect here)
 - Blog articles cover evaluation, evidence, and drafting workflows

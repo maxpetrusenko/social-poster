@@ -2,18 +2,13 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 
 /**
- * Proves the sitewide JSON-LD graph is resolved per request host.
+ * Proves the sitewide JSON-LD graph always describes SMM Agent on smmagent.app.
  *
  * This renders the REAL root layout (`src/app/layout.tsx`) through React's
  * server renderer with only `next/headers` swapped for a mutable host, then
  * parses the `<script type="application/ld+json">` block out of the markup as
  * JSON — the same thing a crawler does. It does not grep the graph's source: a
  * hardcoded brand would still pass a grep of the code and must fail here.
- *
- * The negative-control case is the point of the file. The three public brands
- * share one deployment, so the realistic regression is somebody hardcoding one
- * brand (or reusing one `@id` origin) and every host then claiming to be
- * clawposter.app. `every host only ever describes itself` fails loudly on that.
  */
 
 const mocks = vi.hoisted(() => ({ host: "clawposter.app" }));
@@ -36,39 +31,11 @@ vi.mock("@/components/landing/footer", () => ({ LandingFooter: () => null }));
 import RootLayout from "@/app/layout";
 import { SiteJsonLd } from "@/components/seo/site-json-ld";
 
-type Brand = {
-  host: string;
-  name: string;
-  /** Every other brand on this deployment — none of these may appear. */
-  rivals: { host: string; name: string }[];
-};
-
-const BRANDS: Brand[] = [
-  {
-    host: "clawposter.app",
-    name: "ClawPoster",
-    rivals: [
-      { host: "smmclaw.app", name: "SMMClaw" },
-      { host: "smmagent.app", name: "SMM Agent" },
-    ],
-  },
-  {
-    host: "smmclaw.app",
-    name: "SMMClaw",
-    rivals: [
-      { host: "clawposter.app", name: "ClawPoster" },
-      { host: "smmagent.app", name: "SMM Agent" },
-    ],
-  },
-  {
-    host: "smmagent.app",
-    name: "SMM Agent",
-    rivals: [
-      { host: "clawposter.app", name: "ClawPoster" },
-      { host: "smmclaw.app", name: "SMMClaw" },
-    ],
-  },
-];
+// One canonical brand. Retired hosts still resolve until the redirect is on and
+// must describe SMM Agent on smmagent.app, never themselves.
+const RETIRED_HOSTS = ["clawposter.app", "smmclaw.app", "www.clawposter.app", "www.smmclaw.app"];
+const BRANDS = [{ host: "smmagent.app", name: "SMM Agent" }];
+const CANONICAL_HOST = "smmagent.app";
 
 type JsonLdNode = Record<string, unknown>;
 
@@ -130,15 +97,15 @@ describe("sitewide JSON-LD graph, resolved per host", () => {
     }
   );
 
-  it.each(BRANDS)(
-    "gives $host its own brand identity in every node",
-    async (brand) => {
-      const graph = await renderedGraph(brand.host);
-      const origin = `https://${brand.host}`;
+  it.each([...BRANDS.map((b) => b.host), ...RETIRED_HOSTS])(
+    "describes SMM Agent on smmagent.app in every node when served from %s",
+    async (host) => {
+      const graph = await renderedGraph(host);
+      const origin = `https://${CANONICAL_HOST}`;
 
       const organization = nodeOfType(graph, "Organization");
       expect(organization["@id"]).toBe(`${origin}/#organization`);
-      expect(organization.name).toBe(brand.name);
+      expect(organization.name).toBe("SMM Agent");
       expect(organization.url).toBe(`${origin}/`);
       expect(organization.logo).toMatchObject({
         "@type": "ImageObject",
@@ -147,82 +114,39 @@ describe("sitewide JSON-LD graph, resolved per host", () => {
 
       const website = nodeOfType(graph, "WebSite");
       expect(website["@id"]).toBe(`${origin}/#website`);
-      expect(website.name).toBe(brand.name);
+      expect(website.name).toBe("SMM Agent");
       expect(website.url).toBe(`${origin}/`);
+      expect(website.publisher).toEqual({ "@id": organization["@id"] });
 
       const software = nodeOfType(graph, "SoftwareApplication");
       expect(software["@id"]).toBe(`${origin}/#software`);
-      expect(software.name).toBe(brand.name);
+      expect(software.name).toBe("SMM Agent");
       expect(software.url).toBe(`${origin}/`);
+      expect(software.publisher).toEqual({ "@id": organization["@id"] });
       expect(software.applicationCategory).toBe("SocialNetworkingApplication");
       expect(software.operatingSystem).toBe("Web");
     }
   );
 
-  it.each(BRANDS)(
-    "resolves every @id cross-reference inside $host's own graph",
-    async (brand) => {
-      const graph = await renderedGraph(brand.host);
-      const nodes = graphNodes(graph);
-
-      const ids = nodes.map((node) => node["@id"]);
-      expect(new Set(ids).size, "duplicate @id values in one graph").toBe(ids.length);
-
-      const organizationId = nodeOfType(graph, "Organization")["@id"];
-      expect(organizationId).toBe(`https://${brand.host}/#organization`);
-      for (const type of ["WebSite", "SoftwareApplication"]) {
-        expect(nodeOfType(graph, type).publisher).toEqual({ "@id": organizationId });
-      }
-
-      // Every absolute URL in the graph belongs to the host that rendered it
-      // (the schema.org @context is the vocabulary, not a claimed URL).
-      const urls = (JSON.stringify(graph).match(/https?:\/\/[^"\\]+/g) ?? []).filter(
-        (url) => url !== "https://schema.org" && url !== "http://schema.org"
-      );
-      expect(urls.length).toBeGreaterThan(0);
-      for (const url of urls) {
-        expect(url, `${brand.host} graph contains a foreign URL: ${url}`).toContain(
-          `https://${brand.host}/`
-        );
-      }
+  it.each(RETIRED_HOSTS)("never mentions a retired brand or host on %s", async (host) => {
+    const serialized = JSON.stringify(await renderedGraph(host));
+    for (const retired of ["clawposter", "smmclaw", "ClawPoster", "SMMClaw"]) {
+      expect(serialized).not.toContain(retired);
     }
-  );
-
-  // NEGATIVE CONTROL. A refactor that hardcodes one brand, or reuses one origin
-  // for the @ids, must fail here.
-  it.each(BRANDS.map((brand) => [brand.host, brand.name, brand.rivals] as const))(
-    "never emits another brand's name or host on %s",
-    async (host, name, rivals) => {
-      const graph = await renderedGraph(host);
-      expect(graphNodes(graph)[0].name).toBe(name);
-
-      const serialized = JSON.stringify(graph);
-      for (const rival of rivals) {
-        expect(serialized).not.toContain(rival.host);
-        expect(serialized).not.toContain(rival.name);
-      }
-    }
-  );
-
-  it("pins the smmagent.app regression: smmclaw.app must not describe SMM Agent", async () => {
-    const graph = await renderedGraph("smmclaw.app");
-    const serialized = JSON.stringify(graph);
-
-    expect(serialized).toContain("SMMClaw");
-    expect(serialized).not.toContain("smmagent.app");
-    expect(serialized).not.toContain("SMM Agent");
+    const urls = (serialized.match(/https?:\/\/[^"\\]+/g) ?? []).filter(
+      (url) => url !== "https://schema.org"
+    );
+    expect(urls.length).toBeGreaterThan(0);
+    for (const url of urls) expect(url).toContain("https://smmagent.app/");
   });
 
-  it("resolves a www host to its canonical brand identity", () => {
+  it("resolves a www host to the canonical identity", () => {
     const html = renderToStaticMarkup(<SiteJsonLd host="www.smmclaw.app" />);
     const blocks = jsonLdBlocks(html);
     expect(blocks).toHaveLength(1);
-    const graph = blocks[0];
-
-    expect(graph["@id"]).toBeUndefined();
-    const organization = nodeOfType(graph, "Organization");
-    expect(organization.name).toBe("SMMClaw");
-    expect(organization.url).toBe("https://smmclaw.app/");
+    const organization = nodeOfType(blocks[0], "Organization");
+    expect(organization.name).toBe("SMM Agent");
+    expect(organization.url).toBe("https://smmagent.app/");
   });
 
   // The rest of the estate (legacy app host, custom domains, local dev) has no
