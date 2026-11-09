@@ -22,6 +22,7 @@ import {
 
 const PUBLIC_PRODUCT_PATHS = [
   "/social-media-bot",
+  "/for",
   "/sitemap.xml",
   "/robots.txt",
 ];
@@ -89,7 +90,8 @@ function isSeoPublicPath(pathname: string) {
   return (
     SEO_PUBLIC_PATHS.includes(pathname) ||
     pathname.startsWith("/blog/") ||
-    pathname.startsWith("/docs/")
+    pathname.startsWith("/docs/") ||
+    pathname.startsWith("/for/")
   );
 }
 
