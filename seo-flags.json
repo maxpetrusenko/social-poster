@@ -9,6 +9,7 @@
     "seo_h013_keyword_placement": { "scope": "page", "enabled": true, "split": 0.5 },
     "seo_h014_tldr": { "scope": "page", "enabled": true, "split": 0.5 },
     "seo_h015_open_faq": { "scope": "page", "enabled": false, "split": 0.5 },
-    "seo_h022_internal_links": { "scope": "page", "enabled": true, "split": 0.5 }
+    "seo_h022_internal_links": { "scope": "page", "enabled": true, "split": 0.5 },
+    "seo_h006": { "scope": "site", "enabled": true }
   }
 }

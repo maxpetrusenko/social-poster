@@ -44,6 +44,7 @@ const SHORT: Record<SeoFlagKey, string> = {
   seo_h014_tldr: "h014",
   seo_h015_open_faq: "h015",
   seo_h022_internal_links: "h022",
+  seo_h006: "h006",
 };
 
 const CORE_PAGES = ["/social-media-bot", "/docs", "/blog"];

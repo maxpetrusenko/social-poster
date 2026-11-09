@@ -2,6 +2,7 @@ import type { MetadataRoute } from "next";
 import { isSiteFlagOn } from "@/lib/seo-flags";
 import { BLOG_POSTS } from "@/lib/blog/posts";
 import { getPublishedDynamicBlogPosts } from "@/lib/blog/automation";
+import { BUYER_PAGES, BUYER_PAGES_LASTMOD } from "@/lib/seo/buyer-pages";
 import {
   getCanonicalUrl,
 } from "@/lib/site-domains";
@@ -86,6 +87,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       }))
     : [];
 
+  // seo_h006: buyer-intent landing pages (site flag; off = not listed, route 404s).
+  const buyerPages: MetadataRoute.Sitemap = isSiteFlagOn("seo_h006")
+    ? BUYER_PAGES.map((page) => ({
+        url: urlFor(`/for/${page.slug}`),
+        lastModified: toLastModified(BUYER_PAGES_LASTMOD),
+        changeFrequency: "monthly" as const,
+        priority: 0.7,
+      }))
+    : [];
+
   return [
     {
       url: urlFor("/"),
@@ -100,6 +111,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.8,
     },
     ...fixed,
+    ...buyerPages,
     ...legal,
     ...blogCategories,
     ...blogPosts,
